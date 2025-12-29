@@ -81,6 +81,16 @@
             ]
         },
         {
+            "name": "join_parallel_tasks",
+            "taskReferenceName": "join_ref",
+            "type": "JOIN",
+            "joinOn": [
+                "validate_payment_ref",
+                "inventory_ref",
+                "sms_ref"
+            ]
+        },
+        {
             "name": "finalize_order",
             "taskReferenceName": "finalize_ref",
             "type": "SIMPLE",

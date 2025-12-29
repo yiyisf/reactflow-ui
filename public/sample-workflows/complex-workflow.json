@@ -58,6 +58,15 @@
                                 }
                             ]
                         ]
+                    },
+                    {
+                        "name": "join_prod_checks",
+                        "taskReferenceName": "prod_join_ref",
+                        "type": "JOIN",
+                        "joinOn": [
+                            "security_ref",
+                            "compliance_ref"
+                        ]
                     }
                 ],
                 "staging": [
@@ -165,6 +174,16 @@
                         }
                     }
                 ]
+            ]
+        },
+        {
+            "name": "join_final_tasks",
+            "taskReferenceName": "final_join_ref",
+            "type": "JOIN",
+            "joinOn": [
+                "db_save_ref",
+                "event_ref",
+                "notify_ref"
             ]
         },
         {

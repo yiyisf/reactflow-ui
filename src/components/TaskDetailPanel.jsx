@@ -1,7 +1,7 @@
 import { memo } from 'react';
 
 /**
- * 任务详情面板组件
+ * 任务详情面板组件 - 抽屉式
  */
 const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
     const bgColor = theme === 'light'
@@ -13,24 +13,9 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
     const codeBgColor = theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.3)';
     const hoverBgColor = theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)';
 
+    // 如果没有选中任务，完全隐藏面板
     if (!task) {
-        return (
-            <div style={{
-                width: '350px',
-                height: '100%',
-                background: bgColor,
-                borderLeft: `1px solid ${borderColor}`,
-                padding: '20px',
-                color: textColor,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                opacity: 0.6
-            }}>
-                点击节点查看详情
-            </div>
-        );
+        return null;
     }
 
     const renderValue = (value) => {
@@ -75,15 +60,33 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
 
     return (
         <div style={{
+            position: 'fixed',
+            right: 0,
+            top: 0,
             width: '400px',
-            height: '100%',
+            height: '100vh',
             background: bgColor,
             borderLeft: `1px solid ${borderColor}`,
             color: textColor,
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: theme === 'light' ? '-4px 0 20px rgba(0,0,0,0.1)' : '-4px 0 20px rgba(0,0,0,0.3)'
+            boxShadow: theme === 'light' ? '-4px 0 20px rgba(0,0,0,0.1)' : '-4px 0 20px rgba(0,0,0,0.3)',
+            zIndex: 1000,
+            animation: 'slideInFromRight 0.3s ease-out',
         }}>
+            <style>{`
+        @keyframes slideInFromRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
+
             {/* Header */}
             <div style={{
                 padding: '20px',

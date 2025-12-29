@@ -129,6 +129,9 @@ function parseTask(task, startId, taskMap) {
         case 'FORK_JOIN_DYNAMIC':
             return parseForkJoinTask(task, startId, taskMap);
 
+        case 'JOIN':
+            return parseJoinTask(task, startId, taskMap);
+
         case 'DO_WHILE':
             return parseDoWhileTask(task, startId, taskMap);
 
@@ -452,6 +455,34 @@ function parseSubWorkflowTask(task, startId, taskMap) {
             taskType: task.type,
             task: task,
             subWorkflowName: task.subWorkflowParam?.name || '子流程'
+        },
+        position: { x: 0, y: 0 }
+    };
+
+    const localTaskMap = {
+        [task.taskReferenceName]: task
+    };
+
+    return {
+        nodes: [node],
+        edges: [],
+        taskMap: localTaskMap,
+        nextId: startId + 1
+    };
+}
+
+/**
+ * 解析 JOIN 任务
+ */
+function parseJoinTask(task, startId, taskMap) {
+    const node = {
+        id: task.taskReferenceName,
+        type: 'joinNode',
+        data: {
+            label: task.name || 'JOIN',
+            taskReferenceName: task.taskReferenceName,
+            taskType: task.type,
+            task: task
         },
         position: { x: 0, y: 0 }
     };

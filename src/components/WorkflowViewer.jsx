@@ -81,6 +81,20 @@ const WorkflowViewer = ({
         [onNodeClick, taskMap]
     );
 
+    // 监听循环节点内迷你任务的点击事件
+    useEffect(() => {
+        const handleMiniTaskClick = (event) => {
+            if (onNodeClick && event.detail && event.detail.task) {
+                onNodeClick(event.detail.task);
+            }
+        };
+
+        document.addEventListener('miniTaskClick', handleMiniTaskClick);
+        return () => {
+            document.removeEventListener('miniTaskClick', handleMiniTaskClick);
+        };
+    }, [onNodeClick]);
+
     // 为边添加箭头标记
     const edgesWithMarkers = useMemo(() => {
         return initialEdges.map(edge => {

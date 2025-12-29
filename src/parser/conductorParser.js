@@ -379,6 +379,7 @@ function parseForkJoinTask(task, startId, taskMap) {
 
 /**
  * 解析 DO_WHILE 任务
+ * 循环体任务作为循环节点的内部任务，不单独创建节点
  */
 function parseDoWhileTask(task, startId, taskMap) {
     const nodes = [];
@@ -386,7 +387,7 @@ function parseDoWhileTask(task, startId, taskMap) {
     let nextId = startId;
     const localTaskMap = {};
 
-    // 创建循环节点
+    // 创建循环节点，包含循环体信息
     const loopNode = {
         id: task.taskReferenceName,
         type: 'loopNode',
@@ -394,45 +395,21 @@ function parseDoWhileTask(task, startId, taskMap) {
             label: task.name,
             taskReferenceName: task.taskReferenceName,
             taskType: task.type,
-            task: task
+            task: task,
+            loopOver: task.loopOver, // 保存循环体任务信息
+            loopCondition: task.loopCondition
         },
         position: { x: 0, y: 0 }
     };
     nodes.push(loopNode);
     localTaskMap[task.taskReferenceName] = task;
 
-    // 解析循环体任务
+    // 将循环体中的任务也添加到 taskMap，但不创建节点
+    // 这样点击循环节点时可以显示循环体的详细信息
     const loopOver = task.loopOver || [];
-    if (loopOver.length > 0) {
-        const branchResult = parseBranch(loopOver, nextId, taskMap, `${task.taskReferenceName}_loop`);
-        nodes.push(...branchResult.nodes);
-        edges.push(...branchResult.edges);
-        Object.assign(localTaskMap, branchResult.taskMap);
-        nextId = branchResult.nextId;
-
-        const firstTaskRef = loopOver[0].taskReferenceName;
-        const lastTaskRef = loopOver[loopOver.length - 1].taskReferenceName;
-
-        // 连接循环节点到循环体
-        edges.push({
-            id: `e-${task.taskReferenceName}-${firstTaskRef}`,
-            source: task.taskReferenceName,
-            target: firstTaskRef,
-            label: '循环体',
-            animated: true,
-            style: { stroke: '#f59e0b' }
-        });
-
-        // 循环体最后一个任务回到循环节点
-        edges.push({
-            id: `e-${lastTaskRef}-${task.taskReferenceName}`,
-            source: lastTaskRef,
-            target: task.taskReferenceName,
-            label: '继续',
-            animated: true,
-            style: { stroke: '#f59e0b', strokeDasharray: '5,5' }
-        });
-    }
+    loopOver.forEach(loopTask => {
+        localTaskMap[loopTask.taskReferenceName] = loopTask;
+    });
 
     return {
         nodes,

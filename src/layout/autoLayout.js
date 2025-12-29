@@ -1,6 +1,60 @@
 import dagre from 'dagre';
 
 /**
+ * 根据节点类型和布局方向获取节点尺寸
+ */
+function getNodeDimensions(node, direction = 'TB') {
+    let width = 180;
+    let height = 80;
+
+    switch (node.type) {
+        case 'input':
+        case 'output':
+            width = 60;
+            height = 60;
+            break;
+        case 'decisionNode':
+            width = 150;
+            height = 150;
+            break;
+        case 'forkNode':
+        case 'joinNode':
+            width = 120;
+            height = 80;
+            break;
+        case 'loopNode':
+            // 循环节点需要更大的空间来容纳内部的迷你流程图
+            const loopTaskCount = node.data?.loopOver?.length || 0;
+            const hasCondition = !!node.data?.loopCondition;
+
+            if (direction === 'LR') {
+                // 横向布局：任务水平排列
+                // 宽度 = 基础宽度 + (任务数 * 任务宽度) + 间距
+                width = 300 + (loopTaskCount * 100);
+                width = Math.min(width, 700); // 限制最大宽度
+                // 高度相对固定
+                height = 200 + (hasCondition ? 60 : 0);
+            } else {
+                // 纵向布局：任务垂直排列
+                width = 280;
+                // 高度 = 基础高度 + (任务数 * 任务高度) + 条件区域
+                height = 180 + (loopTaskCount * 45) + (hasCondition ? 60 : 0);
+                height = Math.min(height, 500); // 限制最大高度
+            }
+            break;
+        case 'subWorkflowNode':
+            width = 200;
+            height = 100;
+            break;
+        default:
+            width = 180;
+            height = 80;
+    }
+
+    return { width, height };
+}
+
+/**
  * 使用 dagre 算法自动布局节点
  * @param {Array} nodes - React Flow 节点数组
  * @param {Array} edges - React Flow 边数组
@@ -10,11 +64,11 @@ import dagre from 'dagre';
 export function getLayoutedElements(nodes, edges, options = {}) {
     const {
         direction = 'TB', // TB (top-bottom), LR (left-right)
-        nodeWidth = 180,
-        nodeHeight = 80,
-        rankSep = 100, // 层级间距
-        nodeSep = 80,  // 节点间距
     } = options;
+
+    // 根据布局方向调整间距
+    const rankSep = direction === 'LR' ? 150 : 120; // 横向布局需要更大的层级间距
+    const nodeSep = direction === 'LR' ? 120 : 100; // 横向布局需要更大的节点间距
 
     // 创建 dagre 图
     const dagreGraph = new dagre.graphlib.Graph();
@@ -30,26 +84,9 @@ export function getLayoutedElements(nodes, edges, options = {}) {
         marginy: 50,
     });
 
-    // 添加节点到 dagre 图
+    // 添加节点到 dagre 图，使用动态尺寸（考虑布局方向）
     nodes.forEach((node) => {
-        // 根据节点类型设置不同的尺寸
-        let width = nodeWidth;
-        let height = nodeHeight;
-
-        if (node.type === 'input' || node.type === 'output') {
-            width = 60;
-            height = 60;
-        } else if (node.type === 'decisionNode') {
-            width = 150;
-            height = 150;
-        } else if (node.type === 'forkNode' || node.type === 'joinNode') {
-            width = 120;
-            height = 60;
-        } else if (node.type === 'loopNode') {
-            width = 160;
-            height = 100;
-        }
-
+        const { width, height } = getNodeDimensions(node, direction);
         dagreGraph.setNode(node.id, { width, height });
     });
 
@@ -64,25 +101,9 @@ export function getLayoutedElements(nodes, edges, options = {}) {
     // 更新节点位置
     const layoutedNodes = nodes.map((node) => {
         const nodeWithPosition = dagreGraph.node(node.id);
+        const { width, height } = getNodeDimensions(node, direction);
 
         // dagre 返回的是节点中心点坐标，需要转换为左上角坐标
-        let width = nodeWidth;
-        let height = nodeHeight;
-
-        if (node.type === 'input' || node.type === 'output') {
-            width = 60;
-            height = 60;
-        } else if (node.type === 'decisionNode') {
-            width = 150;
-            height = 150;
-        } else if (node.type === 'forkNode' || node.type === 'joinNode') {
-            width = 120;
-            height = 60;
-        } else if (node.type === 'loopNode') {
-            width = 160;
-            height = 100;
-        }
-
         return {
             ...node,
             position: {

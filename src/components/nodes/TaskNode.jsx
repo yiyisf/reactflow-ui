@@ -1,10 +1,11 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
+import NodeWrapper from './NodeWrapper';
 
 /**
  * 常规任务节点组件
  */
-const TaskNode = ({ data, selected }) => {
+const TaskNode = ({ id, data, selected }) => {
     const taskType = data.taskType || 'SIMPLE';
     const layoutDirection = data.layoutDirection || 'TB';
 
@@ -31,52 +32,54 @@ const TaskNode = ({ data, selected }) => {
     const color = getTaskColor(taskType);
 
     return (
-        <div
-            style={{
-                background: `linear-gradient(135deg, ${color.bg} 0%, ${color.border} 100%)`,
-                border: selected ? `3px solid #fbbf24` : `2px solid ${color.border}`,
-                borderRadius: '12px',
-                padding: '16px',
-                minWidth: '180px',
-                boxShadow: selected
-                    ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                    : '0 4px 12px rgba(0,0,0,0.15)',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer',
-            }}
-        >
-            <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
+        <NodeWrapper nodeId={id} selected={selected}>
+            <div
+                style={{
+                    background: `linear-gradient(135deg, ${color.bg} 0%, ${color.border} 100%)`,
+                    border: selected ? `3px solid #fbbf24` : `2px solid ${color.border}`,
+                    borderRadius: '12px',
+                    padding: '16px',
+                    minWidth: '180px',
+                    boxShadow: selected
+                        ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
+                        : '0 4px 12px rgba(0,0,0,0.15)',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                }}
+            >
+                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
 
-            <div style={{ color: '#fff' }}>
-                <div style={{
-                    fontSize: '10px',
-                    opacity: 0.8,
-                    marginBottom: '4px',
-                    textTransform: 'uppercase',
-                    fontWeight: '600',
-                    letterSpacing: '0.5px'
-                }}>
-                    {taskType}
+                <div style={{ color: '#fff' }}>
+                    <div style={{
+                        fontSize: '10px',
+                        opacity: 0.8,
+                        marginBottom: '4px',
+                        textTransform: 'uppercase',
+                        fontWeight: '600',
+                        letterSpacing: '0.5px'
+                    }}>
+                        {taskType}
+                    </div>
+                    <div style={{
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        marginBottom: '4px',
+                        lineHeight: '1.3'
+                    }}>
+                        {data.label}
+                    </div>
+                    <div style={{
+                        fontSize: '11px',
+                        opacity: 0.7,
+                        fontStyle: 'italic'
+                    }}>
+                        {data.taskReferenceName}
+                    </div>
                 </div>
-                <div style={{
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    marginBottom: '4px',
-                    lineHeight: '1.3'
-                }}>
-                    {data.label}
-                </div>
-                <div style={{
-                    fontSize: '11px',
-                    opacity: 0.7,
-                    fontStyle: 'italic'
-                }}>
-                    {data.taskReferenceName}
-                </div>
+
+                <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
             </div>
-
-            <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
-        </div>
+        </NodeWrapper>
     );
 };
 

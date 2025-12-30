@@ -8,9 +8,10 @@ import dagre from 'dagre';
 /**
  * 解析 Conductor 工作流定义
  * @param {Object} workflowDef - Conductor 工作流定义 JSON
+ * @param {string} direction - 布局方向 'TB' | 'LR'
  * @returns {Object} { nodes, edges, taskMap } - React Flow 所需的数据结构
  */
-export function parseConductorWorkflow(workflowDef) {
+export function parseConductorWorkflow(workflowDef, direction = 'TB') {
     if (!workflowDef || !workflowDef.tasks) {
         return { nodes: [], edges: [], taskMap: {} };
     }
@@ -24,9 +25,9 @@ export function parseConductorWorkflow(workflowDef) {
     const startNode = {
         id: 'start',
         type: 'input',
-        data: { label: '开始', layoutDirection: 'TB' },
+        data: { label: '开始', layoutDirection: direction },
         position: { x: 0, y: 0 },
-        sourcePosition: 'bottom',
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
         style: {
             background: '#4ade80',
             color: '#fff',
@@ -49,7 +50,7 @@ export function parseConductorWorkflow(workflowDef) {
 
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        const result = parseTask(task, nodeIdCounter, taskMap);
+        const result = parseTask(task, nodeIdCounter, taskMap, direction);
 
         nodes.push(...result.nodes);
         edges.push(...result.edges);
@@ -77,9 +78,9 @@ export function parseConductorWorkflow(workflowDef) {
     const endNode = {
         id: 'end',
         type: 'output',
-        data: { label: '结束', layoutDirection: 'TB' },
+        data: { label: '结束', layoutDirection: direction },
         position: { x: 0, y: 0 },
-        targetPosition: 'top',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
         style: {
             background: '#f87171',
             color: '#fff',
@@ -112,7 +113,7 @@ export function parseConductorWorkflow(workflowDef) {
 /**
  * 解析单个任务
  */
-function parseTask(task, startId, taskMap) {
+function parseTask(task, startId, taskMap, direction = 'TB') {
     const nodes = [];
     const edges = [];
     let nextId = startId;
@@ -123,31 +124,31 @@ function parseTask(task, startId, taskMap) {
     switch (taskType) {
         case 'DECISION':
         case 'SWITCH':
-            return parseDecisionTask(task, startId, taskMap);
+            return parseDecisionTask(task, startId, taskMap, direction);
 
         case 'FORK_JOIN':
         case 'FORK_JOIN_DYNAMIC':
-            return parseForkJoinTask(task, startId, taskMap);
+            return parseForkJoinTask(task, startId, taskMap, direction);
 
         case 'JOIN':
-            return parseJoinTask(task, startId, taskMap);
+            return parseJoinTask(task, startId, taskMap, direction);
 
         case 'DO_WHILE':
-            return parseDoWhileTask(task, startId, taskMap);
+            return parseDoWhileTask(task, startId, taskMap, direction);
 
         case 'SUB_WORKFLOW':
-            return parseSubWorkflowTask(task, startId, taskMap);
+            return parseSubWorkflowTask(task, startId, taskMap, direction);
 
         default:
             // 常规任务 (SIMPLE, HTTP, JSON_JQ_TRANSFORM, EVENT, etc.)
-            return parseSimpleTask(task, startId, taskMap);
+            return parseSimpleTask(task, startId, taskMap, direction);
     }
 }
 
 /**
  * 解析简单任务
  */
-function parseSimpleTask(task, startId, taskMap) {
+function parseSimpleTask(task, startId, taskMap, direction = 'TB') {
     const node = {
         id: task.taskReferenceName,
         type: 'taskNode',
@@ -155,9 +156,12 @@ function parseSimpleTask(task, startId, taskMap) {
             label: task.name,
             taskReferenceName: task.taskReferenceName,
             taskType: task.type || 'SIMPLE',
-            task: task
+            task: task,
+            layoutDirection: direction,
         },
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
     };
 
     const localTaskMap = {
@@ -175,7 +179,7 @@ function parseSimpleTask(task, startId, taskMap) {
 /**
  * 解析 DECISION/SWITCH 任务（支持分支嵌套）
  */
-function parseDecisionTask(task, startId, taskMap) {
+function parseDecisionTask(task, startId, taskMap, direction = 'TB') {
     const nodes = [];
     const edges = [];
     let nextId = startId;
@@ -189,9 +193,12 @@ function parseDecisionTask(task, startId, taskMap) {
             label: task.name,
             taskReferenceName: task.taskReferenceName,
             taskType: task.type,
-            task: task
+            task: task,
+            layoutDirection: direction,
         },
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
     };
     nodes.push(decisionNode);
     localTaskMap[task.taskReferenceName] = task;
@@ -201,8 +208,10 @@ function parseDecisionTask(task, startId, taskMap) {
     const joinNode = {
         id: joinNodeId,
         type: 'default',
-        data: { label: '合并' },
+        data: { label: '合并', layoutDirection: direction },
         position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
         style: {
             background: '#a78bfa',
             color: '#fff',
@@ -224,7 +233,7 @@ function parseDecisionTask(task, startId, taskMap) {
 
         if (caseTasks && caseTasks.length > 0) {
             // 解析分支中的任务
-            const branchResult = parseBranch(caseTasks, nextId, taskMap, `${task.taskReferenceName}_case_${caseKey}`);
+            const branchResult = parseBranch(caseTasks, nextId, taskMap, `${task.taskReferenceName}_case_${caseKey}`, direction);
             nodes.push(...branchResult.nodes);
             edges.push(...branchResult.edges);
             Object.assign(localTaskMap, branchResult.taskMap);
@@ -238,6 +247,7 @@ function parseDecisionTask(task, startId, taskMap) {
                 target: firstTaskRef,
                 label: caseKey,
                 animated: true,
+                data: { branchCase: caseKey }, // 即使不为空也标记，方便在起始连线插入
                 style: { stroke: '#3b82f6' }
             });
 
@@ -249,12 +259,23 @@ function parseDecisionTask(task, startId, taskMap) {
                 target: joinNodeId,
                 animated: true
             });
+        } else {
+            // 空分支：直接从决策节点连到合并节点
+            edges.push({
+                id: `e-${task.taskReferenceName}-${joinNodeId}-${caseKey}`,
+                source: task.taskReferenceName,
+                target: joinNodeId,
+                label: caseKey,
+                animated: true,
+                data: { mode: 'edit', branchCase: caseKey }, // 记录分支键名
+                style: { stroke: '#3b82f6', strokeDasharray: '5,5' }
+            });
         }
     });
 
     // 处理默认分支
     if (defaultCase && defaultCase.length > 0) {
-        const branchResult = parseBranch(defaultCase, nextId, taskMap, `${task.taskReferenceName}_default`);
+        const branchResult = parseBranch(defaultCase, nextId, taskMap, `${task.taskReferenceName}_default`, direction);
         nodes.push(...branchResult.nodes);
         edges.push(...branchResult.edges);
         Object.assign(localTaskMap, branchResult.taskMap);
@@ -267,6 +288,7 @@ function parseDecisionTask(task, startId, taskMap) {
             target: firstTaskRef,
             label: 'default',
             animated: true,
+            data: { branchCase: 'default' },
             style: { stroke: '#f59e0b' }
         });
 
@@ -276,6 +298,17 @@ function parseDecisionTask(task, startId, taskMap) {
             source: lastTaskRef,
             target: joinNodeId,
             animated: true
+        });
+    } else {
+        // 默认分支为空
+        edges.push({
+            id: `e-${task.taskReferenceName}-${joinNodeId}-default`,
+            source: task.taskReferenceName,
+            target: joinNodeId,
+            label: 'default',
+            animated: true,
+            data: { mode: 'edit', branchCase: 'default' }, // 记录 default
+            style: { stroke: '#f59e0b', strokeDasharray: '5,5' }
         });
     }
 
@@ -301,7 +334,7 @@ function parseDecisionTask(task, startId, taskMap) {
 /**
  * 解析 FORK_JOIN 任务
  */
-function parseForkJoinTask(task, startId, taskMap) {
+function parseForkJoinTask(task, startId, taskMap, direction = 'TB') {
     const nodes = [];
     const edges = [];
     let nextId = startId;
@@ -315,9 +348,12 @@ function parseForkJoinTask(task, startId, taskMap) {
             label: task.name,
             taskReferenceName: task.taskReferenceName,
             taskType: task.type,
-            task: task
+            task: task,
+            layoutDirection: direction,
         },
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
     };
     nodes.push(forkNode);
     localTaskMap[task.taskReferenceName] = task;
@@ -329,9 +365,12 @@ function parseForkJoinTask(task, startId, taskMap) {
         type: 'joinNode',
         data: {
             label: 'JOIN',
-            taskReferenceName: joinNodeId
+            taskReferenceName: joinNodeId,
+            layoutDirection: direction,
         },
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
     };
     nodes.push(joinNode);
 
@@ -340,7 +379,7 @@ function parseForkJoinTask(task, startId, taskMap) {
 
     forkTasks.forEach((branch, branchIndex) => {
         if (branch && branch.length > 0) {
-            const branchResult = parseBranch(branch, nextId, taskMap, `${task.taskReferenceName}_fork_${branchIndex}`);
+            const branchResult = parseBranch(branch, nextId, taskMap, `${task.taskReferenceName}_fork_${branchIndex}`, direction);
             nodes.push(...branchResult.nodes);
             edges.push(...branchResult.edges);
             Object.assign(localTaskMap, branchResult.taskMap);
@@ -354,6 +393,7 @@ function parseForkJoinTask(task, startId, taskMap) {
                 target: firstTaskRef,
                 label: `分支 ${branchIndex + 1}`,
                 animated: true,
+                data: { forkIndex: branchIndex },
                 style: { stroke: '#10b981' }
             });
 
@@ -364,6 +404,17 @@ function parseForkJoinTask(task, startId, taskMap) {
                 source: lastTaskRef,
                 target: joinNodeId,
                 animated: true
+            });
+        } else {
+            // 空分支：直接从 FORK 连到 JOIN
+            edges.push({
+                id: `e-${task.taskReferenceName}-${joinNodeId}-branch-${branchIndex}`,
+                source: task.taskReferenceName,
+                target: joinNodeId,
+                label: `分支 ${branchIndex + 1}`,
+                animated: true,
+                data: { mode: 'edit', forkIndex: branchIndex }, // 记录 fork 索引
+                style: { stroke: '#10b981', strokeDasharray: '5,5' }
             });
         }
     });
@@ -381,7 +432,7 @@ function parseForkJoinTask(task, startId, taskMap) {
  * 解析 DO_WHILE 任务
  * 循环体任务作为循环节点的内部任务，不单独创建节点
  */
-function parseDoWhileTask(task, startId, taskMap) {
+function parseDoWhileTask(task, startId, taskMap, direction = 'TB') {
     const nodes = [];
     const edges = [];
     let nextId = startId;
@@ -397,9 +448,12 @@ function parseDoWhileTask(task, startId, taskMap) {
             taskType: task.type,
             task: task,
             loopOver: task.loopOver, // 保存循环体任务信息
-            loopCondition: task.loopCondition
+            loopCondition: task.loopCondition,
+            layoutDirection: direction,
         },
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
     };
     nodes.push(loopNode);
     localTaskMap[task.taskReferenceName] = task;
@@ -422,7 +476,7 @@ function parseDoWhileTask(task, startId, taskMap) {
 /**
  * 解析 SUB_WORKFLOW 任务
  */
-function parseSubWorkflowTask(task, startId, taskMap) {
+function parseSubWorkflowTask(task, startId, taskMap, direction = 'TB') {
     const node = {
         id: task.taskReferenceName,
         type: 'subWorkflowNode',
@@ -431,9 +485,12 @@ function parseSubWorkflowTask(task, startId, taskMap) {
             taskReferenceName: task.taskReferenceName,
             taskType: task.type,
             task: task,
-            subWorkflowName: task.subWorkflowParam?.name || '子流程'
+            subWorkflowName: task.subWorkflowParam?.name || '子流程',
+            layoutDirection: direction,
         },
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
     };
 
     const localTaskMap = {
@@ -451,7 +508,7 @@ function parseSubWorkflowTask(task, startId, taskMap) {
 /**
  * 解析 JOIN 任务
  */
-function parseJoinTask(task, startId, taskMap) {
+function parseJoinTask(task, startId, taskMap, direction = 'TB') {
     const node = {
         id: task.taskReferenceName,
         type: 'joinNode',
@@ -459,9 +516,12 @@ function parseJoinTask(task, startId, taskMap) {
             label: task.name || 'JOIN',
             taskReferenceName: task.taskReferenceName,
             taskType: task.type,
-            task: task
+            task: task,
+            layoutDirection: direction,
         },
-        position: { x: 0, y: 0 }
+        position: { x: 0, y: 0 },
+        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
+        targetPosition: direction === 'LR' ? 'left' : 'top',
     };
 
     const localTaskMap = {
@@ -479,7 +539,7 @@ function parseJoinTask(task, startId, taskMap) {
 /**
  * 解析分支（用于 DECISION、FORK_JOIN 等的子任务）
  */
-function parseBranch(tasks, startId, parentTaskMap, branchPrefix) {
+function parseBranch(tasks, startId, parentTaskMap, branchPrefix, direction = 'TB') {
     const nodes = [];
     const edges = [];
     let nextId = startId;
@@ -487,7 +547,7 @@ function parseBranch(tasks, startId, parentTaskMap, branchPrefix) {
 
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        const result = parseTask(task, nextId, parentTaskMap);
+        const result = parseTask(task, nextId, parentTaskMap, direction);
 
         nodes.push(...result.nodes);
         edges.push(...result.edges);
@@ -543,3 +603,8 @@ function getLastNodeId(task) {
         return task.taskReferenceName;
     }
 }
+
+/**
+ * 别名，兼容旧代码
+ */
+export const parseWorkflow = parseConductorWorkflow;

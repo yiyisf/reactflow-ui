@@ -87,10 +87,12 @@ const useWorkflowStore = create((set, get) => ({
             newTask.loopCondition = "$.taskReferenceName.output.value < 10";
             newTask.loopOver = [];
         } else if (newTask.type === 'HTTP') {
-            newTask.httpRequest = {
-                method: 'GET',
-                url: 'http://localhost:8080/api',
-                headers: { "Content-Type": "application/json" }
+            newTask.inputParameters = {
+                http_request: {
+                    method: 'GET',
+                    url: 'http://localhost:8080/api', // Conductor supports both api and url depending on version, keeping it compatible
+                    headers: { "Content-Type": "application/json" }
+                }
             };
         } else if (newTask.type === 'LAMBDA') {
             newTask.inputParameters = {
@@ -167,10 +169,12 @@ const useWorkflowStore = create((set, get) => ({
                 newTask.loopCondition = "true";
                 newTask.loopOver = [];
             } else if (taskType === 'HTTP') {
-                newTask.httpRequest = {
-                    method: 'GET',
-                    url: 'http://localhost:8080/api',
-                    headers: { "Content-Type": "application/json" }
+                newTask.inputParameters = {
+                    http_request: {
+                        method: 'GET',
+                        url: 'http://localhost:8080/api',
+                        headers: { "Content-Type": "application/json" }
+                    }
                 };
             } else if (taskType === 'LAMBDA') {
                 newTask.inputParameters = {
@@ -188,6 +192,53 @@ const useWorkflowStore = create((set, get) => ({
                 nodes: layoutedNodes,
                 edges,
                 taskMap
+            });
+        }
+    },
+
+    // 更新任务
+    updateTask: (taskRef, updates) => {
+        const { workflowDef, layoutDirection } = get();
+        const newDef = JSON.parse(JSON.stringify(workflowDef));
+
+        // 递归更新任务
+        const updateInTasks = (tasks) => {
+            for (let i = 0; i < tasks.length; i++) {
+                if (tasks[i].taskReferenceName === taskRef) {
+                    tasks[i] = { ...tasks[i], ...updates };
+                    return true;
+                }
+
+                // 递归处理子任务
+                if (tasks[i].decisionCases) {
+                    for (const key of Object.keys(tasks[i].decisionCases)) {
+                        if (updateInTasks(tasks[i].decisionCases[key])) return true;
+                    }
+                    if (tasks[i].defaultCase && updateInTasks(tasks[i].defaultCase)) return true;
+                }
+                if (tasks[i].forkTasks) {
+                    for (const branch of tasks[i].forkTasks) {
+                        if (updateInTasks(branch)) return true;
+                    }
+                }
+                if (tasks[i].loopOver && updateInTasks(tasks[i].loopOver)) return true;
+            }
+            return false;
+        };
+
+        if (updateInTasks(newDef.tasks)) {
+            // 重新解析以同步状态
+            const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+
+            // 必须重新布局，否则所有节点会重叠在 (0,0)
+            const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+
+            set({
+                workflowDef: newDef,
+                nodes: layoutedNodes,
+                edges,
+                taskMap,
+                selectedTask: taskMap[taskRef] // 更新当前选中的任务引用
             });
         }
     },

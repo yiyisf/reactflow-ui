@@ -32,7 +32,12 @@ const TaskNode = ({ id, data, selected }) => {
     const color = getTaskColor(taskType);
 
     return (
-        <NodeWrapper nodeId={id} selected={selected}>
+        <NodeWrapper
+            nodeId={id}
+            selected={selected}
+            isError={data.isError}
+            hasWarning={data.hasWarning}
+        >
             <div
                 style={{
                     background: `linear-gradient(135deg, ${color.bg} 0%, ${color.border} 100%)`,

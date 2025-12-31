@@ -220,7 +220,12 @@ const LoopNode = ({ id, data, selected }) => {
     const isHorizontal = layoutDirection === 'LR';
 
     return (
-        <NodeWrapper nodeId={id} selected={selected}>
+        <NodeWrapper
+            nodeId={id}
+            selected={selected}
+            isError={data.isError}
+            hasWarning={data.hasWarning}
+        >
             <div
                 style={{
                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',

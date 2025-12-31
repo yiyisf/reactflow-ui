@@ -4,6 +4,7 @@ import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
 import WorkflowSettingsPanel from './components/WorkflowSettingsPanel';
 import JsonPreviewPanel from './components/JsonPreviewPanel';
+import HealthCheckPanel from './components/HealthCheckPanel';
 import useWorkflowStore from './store/workflowStore';
 import './App.css';
 
@@ -16,7 +17,8 @@ function App() {
     layoutDirection,
     setLayoutDirection,
     selectedTask,
-    setSelectedTask
+    setSelectedTask,
+    validationResults
   } = useWorkflowStore();
 
   const [error, setError] = useState(null);
@@ -26,6 +28,7 @@ function App() {
   const [nodesLocked, setNodesLocked] = useState(true);
   const [showWorkflowSettings, setShowWorkflowSettings] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
+  const [showHealthCheck, setShowHealthCheck] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // 处理文件上传
@@ -188,6 +191,30 @@ function App() {
               >
                 📄
               </button>
+              <button
+                className={`settings-btn ${showHealthCheck ? 'active' : ''}`}
+                onClick={() => setShowHealthCheck(!showHealthCheck)}
+                title="健康检查"
+                style={{ position: 'relative' }}
+              >
+                🩺
+                {(validationResults?.errors?.length > 0 || validationResults?.warnings?.length > 0) && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: (validationResults?.errors?.length || 0) > 0 ? '#ef4444' : '#f59e0b',
+                    color: '#fff',
+                    borderRadius: '10px',
+                    padding: '2px 5px',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    border: '2px solid #1e293b'
+                  }}>
+                    {(validationResults?.errors?.length || 0) + (validationResults?.warnings?.length || 0)}
+                  </span>
+                )}
+              </button>
               <button className="settings-btn" onClick={zoomToFit} title="自动适应窗口">
                 🎯
               </button>
@@ -269,6 +296,12 @@ function App() {
             <WorkflowSettingsPanel
               isOpen={showWorkflowSettings}
               onClose={() => setShowWorkflowSettings(false)}
+              theme={theme}
+            />
+
+            <HealthCheckPanel
+              isOpen={showHealthCheck}
+              onClose={() => setShowHealthCheck(false)}
               theme={theme}
             />
           </div>

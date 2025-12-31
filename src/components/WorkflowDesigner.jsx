@@ -40,7 +40,8 @@ const WorkflowDesigner = ({
         layoutDirection,
         addNode,
         addLoopTask,
-        taskMap
+        taskMap,
+        validationResults
     } = useWorkflowStore();
 
     const [showSelector, setShowSelector] = useState(false);
@@ -56,32 +57,46 @@ const WorkflowDesigner = ({
         return () => window.removeEventListener('workflow-zoom-to-fit', handleZoomToFit);
     }, [fitView]);
 
-    // 处理节点搜索高亮
+    // 处理节点搜索高亮和校验状态
     const processedNodes = useMemo(() => {
-        if (!searchQuery) return nodes;
+        const query = searchQuery?.toLowerCase();
 
-        const query = searchQuery.toLowerCase();
         return nodes.map(node => {
             const label = node.data?.label?.toLowerCase() || '';
-            const refName = node.data?.taskReferenceName?.toLowerCase() || '';
-            const isMatch = label.includes(query) || refName.includes(query);
+            const refName = node.data?.taskReferenceName || '';
+            const isMatch = query ? (label.includes(query) || refName.toLowerCase().includes(query)) : false;
+
+            // 获取校验状态
+            const isError = validationResults?.errors?.some(err => err.ref === refName);
+            const hasWarning = validationResults?.warnings?.some(warn => warn.ref === refName);
+
+            let nodeStyle = { ...node.style, transition: 'all 0.3s ease' };
+
+            if (searchQuery) {
+                nodeStyle.opacity = isMatch ? 1 : 0.3;
+                if (isMatch) {
+                    nodeStyle.boxShadow = '0 0 20px 8px rgba(59, 130, 246, 0.6)';
+                    nodeStyle.border = '3px solid #3b82f6';
+                }
+            } else if (isError) {
+                nodeStyle.border = '2px solid #ef4444';
+                nodeStyle.boxShadow = '0 0 10px rgba(239, 68, 68, 0.3)';
+            } else if (hasWarning) {
+                nodeStyle.border = '2px solid #f59e0b';
+            }
 
             return {
                 ...node,
                 data: {
                     ...node.data,
-                    isHighlighted: isMatch
+                    isHighlighted: isMatch,
+                    isError,
+                    hasWarning
                 },
-                style: {
-                    ...node.style,
-                    boxShadow: isMatch ? '0 0 20px 8px rgba(59, 130, 246, 0.6)' : node.style?.boxShadow,
-                    border: isMatch ? '3px solid #3b82f6' : node.style?.border,
-                    opacity: isMatch || !searchQuery ? 1 : 0.3,
-                    transition: 'all 0.3s ease'
-                }
+                style: nodeStyle
             };
         });
-    }, [nodes, searchQuery]);
+    }, [nodes, searchQuery, validationResults]);
 
     // 注册自定义节点类型
     const nodeTypes = useMemo(

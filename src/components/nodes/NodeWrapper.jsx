@@ -1,7 +1,7 @@
 import React from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 
-const NodeWrapper = ({ children, nodeId, selected, isStartOrEnd = false }) => {
+const NodeWrapper = ({ children, nodeId, selected, isStartOrEnd = false, isError = false, hasWarning = false }) => {
     const { mode, removeNode } = useWorkflowStore();
 
     const onDelete = (e) => {
@@ -41,6 +41,56 @@ const NodeWrapper = ({ children, nodeId, selected, isStartOrEnd = false }) => {
                 >
                     ×
                 </button>
+            )}
+
+            {isError && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '-10px',
+                        left: '-10px',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        border: '2px solid white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        zIndex: 101,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                    }}
+                    title="此节点配置有误"
+                >
+                    ❗
+                </div>
+            )}
+
+            {!isError && hasWarning && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '-10px',
+                        left: '-10px',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: '#f59e0b',
+                        color: 'white',
+                        border: '2px solid white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        zIndex: 101,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                    }}
+                    title="此节点有警告信息"
+                >
+                    ⚠️
+                </div>
             )}
             {children}
         </div>

@@ -35,7 +35,12 @@ const DecisionNode = ({ id, data, selected }) => {
     };
 
     return (
-        <NodeWrapper nodeId={id} selected={selected}>
+        <NodeWrapper
+            nodeId={id}
+            selected={selected}
+            isError={data.isError}
+            hasWarning={data.hasWarning}
+        >
             <div style={{ position: 'relative' }}>
                 <Handle type="target" position={targetPosition} style={{ background: '#fff', [layoutDirection === 'LR' ? 'left' : 'top']: '-5px' }} />
 

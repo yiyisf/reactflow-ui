@@ -3,6 +3,7 @@ import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { parseWorkflow } from '../parser/conductorParser';
 import { getLayoutedElements } from '../layout/autoLayout';
 import { removeTaskFromDef, insertTaskAfter, findTaskByRef, insertFirstTaskIntoBranch } from '../parser/conductorGenerator';
+import { validateWorkflow } from '../utils/validator';
 
 const useWorkflowStore = create((set, get) => ({
     mode: 'view',
@@ -13,12 +14,14 @@ const useWorkflowStore = create((set, get) => ({
     layoutDirection: 'TB',
     selectedTask: null,
     executionData: null,
+    validationResults: { isValid: true, errors: [], warnings: [] },
 
     // 初始化或更新工作流并执行布局
     setWorkflow: (workflowJson, direction) => {
         const dir = direction || get().layoutDirection;
         const { nodes, edges, taskMap } = parseWorkflow(workflowJson, dir);
         const layoutedNodes = getLayoutedElements(nodes, edges, { direction: dir });
+        const validationResults = validateWorkflow(workflowJson);
 
         set({
             workflowDef: JSON.parse(JSON.stringify(workflowJson)), // 深拷贝
@@ -26,7 +29,8 @@ const useWorkflowStore = create((set, get) => ({
             edges,
             taskMap,
             layoutDirection: dir,
-            selectedTask: null
+            selectedTask: null,
+            validationResults
         });
     },
 
@@ -246,13 +250,15 @@ const useWorkflowStore = create((set, get) => ({
             // 重新解析以同步状态
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
             const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const validationResults = validateWorkflow(newDef);
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
                 edges,
                 taskMap,
-                selectedTask: taskMap[updates.taskReferenceName || taskRef]
+                selectedTask: taskMap[updates.taskReferenceName || taskRef],
+                validationResults
             });
             return true;
         }
@@ -270,12 +276,14 @@ const useWorkflowStore = create((set, get) => ({
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
             const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const validationResults = validateWorkflow(newDef);
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
                 edges,
-                taskMap
+                taskMap,
+                validationResults
             });
         }
     },
@@ -293,12 +301,14 @@ const useWorkflowStore = create((set, get) => ({
 
                 const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                 const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                const validationResults = validateWorkflow(newDef);
 
                 set({
                     workflowDef: newDef,
                     nodes: layoutedNodes,
                     edges,
-                    taskMap
+                    taskMap,
+                    validationResults
                 });
             }
         }
@@ -315,12 +325,14 @@ const useWorkflowStore = create((set, get) => ({
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
             const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const validationResults = validateWorkflow(newDef);
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
                 edges,
-                taskMap
+                taskMap,
+                validationResults
             });
         }
     },
@@ -337,11 +349,14 @@ const useWorkflowStore = create((set, get) => ({
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
             const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const validationResults = validateWorkflow(newDef);
+
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
                 edges,
-                taskMap
+                taskMap,
+                validationResults
             });
         }
     },
@@ -352,7 +367,8 @@ const useWorkflowStore = create((set, get) => ({
         if (!workflowDef) return;
 
         const newDef = { ...workflowDef, ...updates };
-        set({ workflowDef: newDef });
+        const validationResults = validateWorkflow(newDef);
+        set({ workflowDef: newDef, validationResults });
     }
 }));
 

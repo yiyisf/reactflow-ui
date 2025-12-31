@@ -15,7 +15,12 @@ export const ForkNode = memo(({ id, data, selected }) => {
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
 
     return (
-        <NodeWrapper nodeId={id} selected={selected}>
+        <NodeWrapper
+            nodeId={id}
+            selected={selected}
+            isError={data.isError}
+            hasWarning={data.hasWarning}
+        >
             <div
                 style={{
                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
@@ -91,7 +96,12 @@ export const JoinNode = memo(({ id, data, selected }) => {
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
 
     return (
-        <NodeWrapper nodeId={id} selected={selected}>
+        <NodeWrapper
+            nodeId={id}
+            selected={selected}
+            isError={data.isError}
+            hasWarning={data.hasWarning}
+        >
             <div
                 style={{
                     background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',

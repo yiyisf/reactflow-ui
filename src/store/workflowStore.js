@@ -196,10 +196,26 @@ const useWorkflowStore = create((set, get) => ({
         }
     },
 
+    // 检查任务引用名是否唯一
+    checkTaskRefUniqueness: (refName, excludeRef) => {
+        const { taskMap } = get();
+        if (!refName) return false;
+        if (excludeRef && refName === excludeRef) return true;
+        return !taskMap[refName];
+    },
+
     // 更新任务
     updateTask: (taskRef, updates) => {
         const { workflowDef, layoutDirection } = get();
         const newDef = JSON.parse(JSON.stringify(workflowDef));
+
+        // 如果修改了 taskReferenceName，需要检查唯一性
+        if (updates.taskReferenceName && updates.taskReferenceName !== taskRef) {
+            if (!get().checkTaskRefUniqueness(updates.taskReferenceName)) {
+                console.warn(`Duplicate taskReferenceName: ${updates.taskReferenceName}`);
+                return false;
+            }
+        }
 
         // 递归更新任务
         const updateInTasks = (tasks) => {
@@ -229,8 +245,6 @@ const useWorkflowStore = create((set, get) => ({
         if (updateInTasks(newDef.tasks)) {
             // 重新解析以同步状态
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-
-            // 必须重新布局，否则所有节点会重叠在 (0,0)
             const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
 
             set({
@@ -238,9 +252,11 @@ const useWorkflowStore = create((set, get) => ({
                 nodes: layoutedNodes,
                 edges,
                 taskMap,
-                selectedTask: taskMap[taskRef] // 更新当前选中的任务引用
+                selectedTask: taskMap[updates.taskReferenceName || taskRef]
             });
+            return true;
         }
+        return false;
     },
 
     // 删除 Loop 任务
@@ -321,7 +337,6 @@ const useWorkflowStore = create((set, get) => ({
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
             const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
@@ -329,6 +344,15 @@ const useWorkflowStore = create((set, get) => ({
                 taskMap
             });
         }
+    },
+
+    // 更新整个工作流的全局属性（名称、版本、描述、输入/输出参数等）
+    updateWorkflowProperties: (updates) => {
+        const { workflowDef } = get();
+        if (!workflowDef) return;
+
+        const newDef = { ...workflowDef, ...updates };
+        set({ workflowDef: newDef });
     }
 }));
 

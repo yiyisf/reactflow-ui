@@ -4,6 +4,7 @@ import ReactFlow, {
     Controls,
     MiniMap,
     MarkerType,
+    useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -24,7 +25,10 @@ const WorkflowDesigner = ({
     edgeType = 'default',
     theme = 'dark',
     nodesLocked = true,
+    searchQuery = '',
 }) => {
+    const { fitView } = useReactFlow();
+
     // 从 store 中获取状态和操作
     const {
         nodes,
@@ -41,7 +45,43 @@ const WorkflowDesigner = ({
 
     const [showSelector, setShowSelector] = useState(false);
     const [pendingEdge, setPendingEdge] = useState(null);
-    const [pendingLoopId, setPendingLoopId] = useState(null); // 新增：正在添加任务的循环 ID
+    const [pendingLoopId, setPendingLoopId] = useState(null);
+
+    // 监听自动缩放事件
+    useEffect(() => {
+        const handleZoomToFit = () => {
+            fitView({ padding: 0.2, duration: 800 });
+        };
+        window.addEventListener('workflow-zoom-to-fit', handleZoomToFit);
+        return () => window.removeEventListener('workflow-zoom-to-fit', handleZoomToFit);
+    }, [fitView]);
+
+    // 处理节点搜索高亮
+    const processedNodes = useMemo(() => {
+        if (!searchQuery) return nodes;
+
+        const query = searchQuery.toLowerCase();
+        return nodes.map(node => {
+            const label = node.data?.label?.toLowerCase() || '';
+            const refName = node.data?.taskReferenceName?.toLowerCase() || '';
+            const isMatch = label.includes(query) || refName.includes(query);
+
+            return {
+                ...node,
+                data: {
+                    ...node.data,
+                    isHighlighted: isMatch
+                },
+                style: {
+                    ...node.style,
+                    boxShadow: isMatch ? '0 0 20px 8px rgba(59, 130, 246, 0.6)' : node.style?.boxShadow,
+                    border: isMatch ? '3px solid #3b82f6' : node.style?.border,
+                    opacity: isMatch || !searchQuery ? 1 : 0.3,
+                    transition: 'all 0.3s ease'
+                }
+            };
+        });
+    }, [nodes, searchQuery]);
 
     // 注册自定义节点类型
     const nodeTypes = useMemo(
@@ -134,7 +174,6 @@ const WorkflowDesigner = ({
         if (pendingEdge) {
             addNode(newNode, pendingEdge.source, pendingEdge.target, pendingEdge.id, pendingEdge.edgeData);
         } else if (pendingLoopId) {
-            // 如果是给循环添加任务
             addLoopTask(pendingLoopId, type);
         }
 
@@ -151,7 +190,7 @@ const WorkflowDesigner = ({
             return {
                 ...edge,
                 type: mode === 'edit' ? 'addable' : edgeType,
-                data: { ...edge.data, mode, label: edge.label }, // 将元数据和 label 传给 AddableEdge
+                data: { ...edge.data, mode, label: edge.label },
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
                     width: 20,
@@ -176,7 +215,7 @@ const WorkflowDesigner = ({
     return (
         <div style={{ width: '100%', height: '100%' }}>
             <ReactFlow
-                nodes={nodes}
+                nodes={processedNodes}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}

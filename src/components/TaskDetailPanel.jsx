@@ -5,7 +5,7 @@ import useWorkflowStore from '../store/workflowStore';
  * 任务配置面板组件 - 抽屉式，支持编辑模式
  */
 const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
-    const { mode, updateTask } = useWorkflowStore();
+    const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState(task);
 
     // 当选中的任务改变时，同步本地状态
@@ -15,7 +15,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
 
     if (!task) return null;
 
-    // 确保 localTask 在 task 切换时立即可用，避免 useEffect 异步导致的 null 引用
+    // 确定当前展示的任务状态
     const displayTask = (localTask && localTask.taskReferenceName === task.taskReferenceName) ? localTask : task;
 
     const isEditMode = mode === 'edit';
@@ -46,14 +46,12 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
     // 专门处理 HTTP 任务的参数变更，确保同步到 inputParameters
     const handleHttpChange = (field, value) => {
         const currentInputs = displayTask.inputParameters || {};
-        // 兼容 http_request (标准) 和 httpRequest (本应用之前使用的)
         const currentHttp = currentInputs.http_request || displayTask.httpRequest || {};
 
         const updatedHttp = { ...currentHttp, [field]: value };
         const updatedInputs = { ...currentInputs, http_request: updatedHttp };
 
         const updates = { inputParameters: updatedInputs };
-        // 如果顶层有旧格式，也同步更新它以保持 UI 一致
         if (displayTask.httpRequest) {
             updates.httpRequest = updatedHttp;
         }
@@ -63,7 +61,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
         updateTask(task.taskReferenceName, updates);
     };
 
-    // 专门处理 inputParameters 内部的参数变更（标准 Conductor 规范）
+    // 专门处理 inputParameters 内部的参数变更
     const handleInputParamChange = (key, value) => {
         const updatedInputs = { ...displayTask.inputParameters, [key]: value };
         const updates = { inputParameters: updatedInputs };
@@ -91,30 +89,37 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
     );
 
     // 渲染通用文本输入框
-    const renderInput = (label, field, type = 'text') => (
-        <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase' }}>
-                {label}
-            </label>
-            <input
-                type={type}
-                value={displayTask[field] || ''}
-                onChange={(e) => handleChange(field, e.target.value)}
-                disabled={!isEditMode}
-                style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: `1px solid ${borderColor}`,
-                    background: inputBg,
-                    color: textColor,
-                    fontSize: '13px',
-                    outline: 'none',
-                    opacity: isEditMode ? 1 : 0.8
-                }}
-            />
-        </div>
-    );
+    const renderInput = (label, field, type = 'text') => {
+        const isRefName = field === 'taskReferenceName';
+        const isDuplicate = isRefName && !checkTaskRefUniqueness(displayTask[field], task.taskReferenceName);
+
+        return (
+            <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase' }}>
+                    {label}
+                    {isRefName && isDuplicate && <span style={{ color: '#ef4444', marginLeft: '8px', textTransform: 'none' }}>⚠️ 已存在相同引用名</span>}
+                </label>
+                <input
+                    type={type}
+                    value={displayTask[field] || ''}
+                    onChange={(e) => handleChange(field, e.target.value)}
+                    disabled={!isEditMode || (isRefName && !isEditMode)}
+                    style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: `1px solid ${isDuplicate ? '#ef4444' : borderColor}`,
+                        background: inputBg,
+                        color: textColor,
+                        fontSize: '13px',
+                        outline: 'none',
+                        opacity: isEditMode ? 1 : 0.8,
+                        fontFamily: isRefName ? 'monospace' : 'inherit'
+                    }}
+                />
+            </div>
+        );
+    };
 
     // 渲染多行文本/JSON 编辑器
     const renderTextArea = (label, field, isJson = false) => {
@@ -133,7 +138,6 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
                             try {
                                 finalValue = JSON.parse(e.target.value);
                             } catch (err) {
-                                // 如果 JSON 格式不正确，先只更新本地 UI 状态，不同步到 Store
                                 setLocalTask(prev => ({ ...prev, [field]: e.target.value }));
                                 return;
                             }
@@ -141,7 +145,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
                         handleChange(field, finalValue);
                     }}
                     disabled={!isEditMode}
-                    rows={5}
+                    rows={field === 'description' ? 3 : 5}
                     style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -391,7 +395,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
                     </div>
                 ))}
 
-                {/* 8. Decision & Loop 专项 UI (复用之前逻辑并美化) */}
+                {/* 8. Decision & Loop 专项 UI */}
                 {(displayTask.type === 'DECISION' || displayTask.type === 'SWITCH') && renderSpecialSection('决策条件配置', '⚖️', '#f59e0b', (
                     <>
                         {renderInput('判断参数名', 'caseValueParam')}
@@ -408,7 +412,10 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
                 {/* --- 通用配置区 --- */}
                 <div style={{ marginTop: '32px', borderTop: `1px solid ${borderColor}`, paddingTop: '24px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '16px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px' }}>通用参数与属性</div>
+
+                    {renderInput('任务唯一引用名 (Reference Name)', 'taskReferenceName')}
                     {renderInput('任务描述', 'description')}
+
                     {renderTextArea('输入参数 (inputParameters)', 'inputParameters', true)}
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '16px' }}>

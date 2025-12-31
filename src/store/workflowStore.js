@@ -20,13 +20,13 @@ const useWorkflowStore = create((set, get) => ({
     setWorkflow: (workflowJson, direction) => {
         const dir = direction || get().layoutDirection;
         const { nodes, edges, taskMap } = parseWorkflow(workflowJson, dir);
-        const layoutedNodes = getLayoutedElements(nodes, edges, { direction: dir });
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: dir });
         const validationResults = validateWorkflow(workflowJson);
 
         set({
             workflowDef: JSON.parse(JSON.stringify(workflowJson)), // 深拷贝
             nodes: layoutedNodes,
-            edges,
+            edges: layoutedEdges,
             taskMap,
             layoutDirection: dir,
             selectedTask: null,
@@ -40,8 +40,8 @@ const useWorkflowStore = create((set, get) => ({
         const { workflowDef } = get();
         if (workflowDef) {
             const { nodes, edges, taskMap } = parseWorkflow(workflowDef, direction);
-            const layoutedNodes = getLayoutedElements(nodes, edges, { direction });
-            set({ nodes: layoutedNodes, edges, taskMap, layoutDirection: direction });
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction });
+            set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap, layoutDirection: direction });
         } else {
             set({ layoutDirection: direction });
         }
@@ -62,8 +62,8 @@ const useWorkflowStore = create((set, get) => ({
     onConnect: (connection) => {
         const { edges, layoutDirection } = get();
         const updatedEdges = addEdge(connection, edges);
-        const layoutedNodes = getLayoutedElements(get().nodes, updatedEdges, { direction: layoutDirection });
-        set({ edges: updatedEdges, nodes: layoutedNodes });
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(get().nodes, updatedEdges, { direction: layoutDirection });
+        set({ edges: layoutedEdges, nodes: layoutedNodes });
     },
 
     setSelectedTask: (task) => set({ selectedTask: task }),
@@ -114,12 +114,12 @@ const useWorkflowStore = create((set, get) => ({
 
         // 重新解析整个工作流以确保所有内部连接正确
         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-        const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
 
         set({
             workflowDef: newDef,
             nodes: layoutedNodes,
-            edges,
+            edges: layoutedEdges,
             taskMap
         });
     },
@@ -133,12 +133,12 @@ const useWorkflowStore = create((set, get) => ({
         removeTaskFromDef(newDef.tasks, nodeId);
 
         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-        const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
 
         set({
             workflowDef: newDef,
             nodes: layoutedNodes,
-            edges,
+            edges: layoutedEdges,
             taskMap
         });
     },
@@ -189,12 +189,12 @@ const useWorkflowStore = create((set, get) => ({
             task.loopOver.push(newTask);
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-            const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
-                edges,
+                edges: layoutedEdges,
                 taskMap
             });
         }
@@ -249,13 +249,13 @@ const useWorkflowStore = create((set, get) => ({
         if (updateInTasks(newDef.tasks)) {
             // 重新解析以同步状态
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-            const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
             const validationResults = validateWorkflow(newDef);
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
-                edges,
+                edges: layoutedEdges,
                 taskMap,
                 selectedTask: taskMap[updates.taskReferenceName || taskRef],
                 validationResults
@@ -275,13 +275,13 @@ const useWorkflowStore = create((set, get) => ({
             task.loopOver = task.loopOver.filter(t => t.taskReferenceName !== taskRef);
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-            const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
             const validationResults = validateWorkflow(newDef);
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
-                edges,
+                edges: layoutedEdges,
                 taskMap,
                 validationResults
             });
@@ -295,22 +295,26 @@ const useWorkflowStore = create((set, get) => ({
 
         const task = findTaskByRef(newDef.tasks, taskRef);
         if (task && (task.type === 'DECISION' || task.type === 'SWITCH')) {
-            if (!task.decisionCases) task.decisionCases = {};
-            if (!task.decisionCases[caseName]) {
-                task.decisionCases[caseName] = [];
-
-                const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                const validationResults = validateWorkflow(newDef);
-
-                set({
-                    workflowDef: newDef,
-                    nodes: layoutedNodes,
-                    edges,
-                    taskMap,
-                    validationResults
-                });
+            if (caseName === 'default') {
+                if (!task.defaultCase) task.defaultCase = [];
+            } else {
+                if (!task.decisionCases) task.decisionCases = {};
+                if (!task.decisionCases[caseName]) {
+                    task.decisionCases[caseName] = [];
+                }
             }
+
+            const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const validationResults = validateWorkflow(newDef);
+
+            set({
+                workflowDef: newDef,
+                nodes: layoutedNodes,
+                edges: layoutedEdges,
+                taskMap,
+                validationResults
+            });
         }
     },
 
@@ -324,13 +328,13 @@ const useWorkflowStore = create((set, get) => ({
             delete task.decisionCases[caseName];
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-            const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
             const validationResults = validateWorkflow(newDef);
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
-                edges,
+                edges: layoutedEdges,
                 taskMap,
                 validationResults
             });
@@ -348,13 +352,13 @@ const useWorkflowStore = create((set, get) => ({
             task.forkTasks.push([]);
 
             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-            const layoutedNodes = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
             const validationResults = validateWorkflow(newDef);
 
             set({
                 workflowDef: newDef,
                 nodes: layoutedNodes,
-                edges,
+                edges: layoutedEdges,
                 taskMap,
                 validationResults
             });

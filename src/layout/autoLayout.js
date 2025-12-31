@@ -67,8 +67,8 @@ export function getLayoutedElements(nodes, edges, options = {}) {
     } = options;
 
     // 根据布局方向调整间距
-    const rankSep = direction === 'LR' ? 150 : 120; // 横向布局需要更大的层级间距
-    const nodeSep = direction === 'LR' ? 120 : 100; // 横向布局需要更大的节点间距
+    const rankSep = direction === 'LR' ? 150 : 120;
+    const nodeSep = direction === 'LR' ? 120 : 100;
 
     // 创建 dagre 图
     const dagreGraph = new dagre.graphlib.Graph();
@@ -84,7 +84,7 @@ export function getLayoutedElements(nodes, edges, options = {}) {
         marginy: 50,
     });
 
-    // 添加节点到 dagre 图，使用动态尺寸（考虑布局方向）
+    // 添加节点到 dagre 图
     nodes.forEach((node) => {
         const { width, height } = getNodeDimensions(node, direction);
         dagreGraph.setNode(node.id, { width, height });
@@ -98,12 +98,11 @@ export function getLayoutedElements(nodes, edges, options = {}) {
     // 执行布局计算
     dagre.layout(dagreGraph);
 
-    // 更新节点位置
+    // 1. 更新节点位置
     const layoutedNodes = nodes.map((node) => {
         const nodeWithPosition = dagreGraph.node(node.id);
         const { width, height } = getNodeDimensions(node, direction);
 
-        // dagre 返回的是节点中心点坐标，需要转换为左上角坐标
         return {
             ...node,
             position: {
@@ -113,7 +112,50 @@ export function getLayoutedElements(nodes, edges, options = {}) {
         };
     });
 
-    return layoutedNodes;
+    // 2. 优化边句柄 (Handle) 分配
+    // 根据布局后的节点中心点相对位置，动态指定 sourceHandle 避免连线交叉
+    const nodeMap = layoutedNodes.reduce((acc, n) => ({ ...acc, [n.id]: n }), {});
+
+    const layoutedEdges = edges.map((edge) => {
+        const sourceNode = nodeMap[edge.source];
+        const targetNode = nodeMap[edge.target];
+
+        if (!sourceNode || !targetNode ||
+            (sourceNode.type !== 'decisionNode' && sourceNode.type !== 'forkNode')) {
+            return edge;
+        }
+
+        const { width: sw, height: sh } = getNodeDimensions(sourceNode, direction);
+        const { width: tw, height: th } = getNodeDimensions(targetNode, direction);
+
+        const sourceCenter = { x: sourceNode.position.x + sw / 2, y: sourceNode.position.y + sh / 2 };
+        const targetCenter = { x: targetNode.position.x + tw / 2, y: targetNode.position.y + th / 2 };
+
+        let sourceHandle = null; // 默认
+
+        if (direction === 'TB') {
+            const threshold = sw * 0.25; // 居中判定阈值
+            if (targetCenter.x < sourceCenter.x - threshold) {
+                sourceHandle = 'left';
+            } else if (targetCenter.x > sourceCenter.x + threshold) {
+                sourceHandle = 'right';
+            }
+        } else {
+            const threshold = sh * 0.25;
+            if (targetCenter.y < sourceCenter.y - threshold) {
+                sourceHandle = 'top';
+            } else if (targetCenter.y > sourceCenter.y + threshold) {
+                sourceHandle = 'bottom';
+            }
+        }
+
+        return {
+            ...edge,
+            sourceHandle
+        };
+    });
+
+    return { nodes: layoutedNodes, edges: layoutedEdges };
 }
 
 /**

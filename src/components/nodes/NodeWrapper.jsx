@@ -35,7 +35,8 @@ const NodeWrapper = ({ children, nodeId, selected, isStartOrEnd = false, isError
                         fontSize: '14px',
                         zIndex: 100,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                        animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                        animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        padding: 0
                     }}
                     title="删除任务"
                 >

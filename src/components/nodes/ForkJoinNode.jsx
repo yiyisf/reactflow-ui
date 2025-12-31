@@ -57,8 +57,19 @@ export const ForkNode = memo(({ id, data, selected }) => {
                         {data.label}
                     </div>
                     {mode === 'edit' && (
-                        <div style={{ fontSize: '11px', opacity: 0.9 }}>
-                            点击添加并行分支 +
+                        <div style={{
+                            marginTop: '8px',
+                            width: '28px',
+                            height: '28px',
+                            fontSize: '18px',
+                            background: 'rgba(255,255,255,0.2)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '8px auto 0'
+                        }}>
+                            +
                         </div>
                     )}
                 </div>

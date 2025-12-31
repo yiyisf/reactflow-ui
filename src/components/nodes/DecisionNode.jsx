@@ -92,10 +92,15 @@ const DecisionNode = ({ id, data, selected }) => {
                         {mode === 'edit' && (
                             <div style={{
                                 marginTop: '8px',
+                                width: '28px',
+                                height: '28px',
                                 fontSize: '18px',
                                 background: 'rgba(255,255,255,0.2)',
-                                borderRadius: '4px',
-                                padding: '2px 8px'
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '8px auto 0'
                             }}>
                                 +
                             </div>
@@ -134,7 +139,20 @@ const DecisionNode = ({ id, data, selected }) => {
                                 <span>{branch}</span>
                                 <button
                                     onClick={(e) => handleRemoveBranch(e, branch)}
-                                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px' }}
+                                    style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        backgroundColor: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '12px',
+                                        padding: 0
+                                    }}
                                 >
                                     ×
                                 </button>
@@ -160,17 +178,17 @@ const DecisionNode = ({ id, data, selected }) => {
                     </div>
                 )}
 
-                {/* 主输出 Handle */}
-                <Handle type="source" position={sourcePosition} style={{ background: '#fff', [layoutDirection === 'LR' ? 'right' : 'bottom']: '-5px' }} />
-                {/* 分支输出 Handles - 保持在所有四个方向以支持多分支 */}
-                {layoutDirection === 'TB' && (
+                {/* 分支输出 Handles - 分配固定 ID 方便解析时映射 */}
+                {layoutDirection === 'TB' ? (
                     <>
+                        {/* 主输出 (通常设为默认或第一个分支) */}
+                        <Handle type="source" position={Position.Bottom} style={{ background: '#fff', bottom: '-5px' }} />
                         <Handle type="source" position={Position.Left} id="left" style={{ background: '#fff', left: '-5px' }} />
                         <Handle type="source" position={Position.Right} id="right" style={{ background: '#fff', right: '-5px' }} />
                     </>
-                )}
-                {layoutDirection === 'LR' && (
+                ) : (
                     <>
+                        <Handle type="source" position={Position.Right} style={{ background: '#fff', right: '-5px' }} />
                         <Handle type="source" position={Position.Top} id="top" style={{ background: '#fff', top: '-5px' }} />
                         <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#fff', bottom: '-5px' }} />
                     </>

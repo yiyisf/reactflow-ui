@@ -115,8 +115,14 @@ export function insertTaskAfter(tasks, sourceRef, newTask) {
 export function insertFirstTaskIntoBranch(tasks, parentRef, branchInfo, newTask) {
     for (const task of tasks || []) {
         if (task.taskReferenceName === parentRef) {
-            if (branchInfo.branchCase !== undefined) {
+            if (branchInfo.branchCase === 'default') {
+                // Default 分支
+                if (!task.defaultCase) task.defaultCase = [];
+                task.defaultCase.unshift(newTask);
+                return true;
+            } else if (branchInfo.branchCase !== undefined) {
                 // Decision 分支
+                if (!task.decisionCases) task.decisionCases = {};
                 if (!task.decisionCases[branchInfo.branchCase]) task.decisionCases[branchInfo.branchCase] = [];
                 task.decisionCases[branchInfo.branchCase].unshift(newTask);
                 return true;

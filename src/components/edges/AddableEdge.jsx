@@ -141,6 +141,7 @@ const AddableEdge = ({
                                 fontSize: '18px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                                 transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                padding: 0
                             }}
                             onClick={onAddClick}
                             onMouseDown={(e) => e.stopPropagation()}

@@ -226,10 +226,24 @@ function parseDecisionTask(task, startId, taskMap, direction = 'TB') {
     // 解析决策映射
     const decisionCases = task.decisionCases || {};
     const defaultCase = task.defaultCase || [];
+    const caseKeys = Object.keys(decisionCases);
+
+    // 分配 Handle 的辅助函数
+    const getSourceHandle = (index, total) => {
+        if (direction === 'TB') {
+            if (index === 0 && total > 1) return 'left';
+            if (index === 1 && total > 2) return 'right';
+        } else {
+            if (index === 0 && total > 1) return 'top';
+            if (index === 1 && total > 2) return 'bottom';
+        }
+        return null; // 默认使用主 Handle
+    };
 
     // 处理每个分支
-    Object.keys(decisionCases).forEach((caseKey) => {
+    caseKeys.forEach((caseKey, index) => {
         const caseTasks = decisionCases[caseKey];
+        const sourceHandle = getSourceHandle(index, caseKeys.length + 1);
 
         if (caseTasks && caseTasks.length > 0) {
             // 解析分支中的任务
@@ -244,6 +258,7 @@ function parseDecisionTask(task, startId, taskMap, direction = 'TB') {
             edges.push({
                 id: `e-${task.taskReferenceName}-${firstTaskRef}`,
                 source: task.taskReferenceName,
+                sourceHandle: sourceHandle,
                 target: firstTaskRef,
                 label: caseKey,
                 animated: true,
@@ -264,6 +279,7 @@ function parseDecisionTask(task, startId, taskMap, direction = 'TB') {
             edges.push({
                 id: `e-${task.taskReferenceName}-${joinNodeId}-${caseKey}`,
                 source: task.taskReferenceName,
+                sourceHandle: sourceHandle,
                 target: joinNodeId,
                 label: caseKey,
                 animated: true,

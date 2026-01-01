@@ -1,36 +1,35 @@
 /**
- * Conductor 工作流生成器
- * 将 React Flow 的图结构还原为 Conductor JSON
- * 
- * 注意：由于我们在 store 中直接维护了 workflowDef，
- * 简单的结构修改可以直接操作 workflowDef 对象。
+ * Conductor 工作流生成器助手函数
+ * 用于操作工作流 JSON 定义
  */
 
-export function findTaskByRef(tasks, refName) {
-    for (const task of tasks || []) {
-        if (task.taskReferenceName === refName) return task;
+/**
+ * 根据 taskReferenceName 在任务列表中查找任务
+ */
+export function findTaskByRef(tasks, taskRef) {
+    if (!tasks) return null;
+    for (const task of tasks) {
+        if (task.taskReferenceName === taskRef) return task;
 
-        // 递归查找分支
+        // 递归查找嵌套任务
         if (task.decisionCases) {
             for (const caseKey of Object.keys(task.decisionCases)) {
-                const found = findTaskByRef(task.decisionCases[caseKey], refName);
+                const found = findTaskByRef(task.decisionCases[caseKey], taskRef);
                 if (found) return found;
             }
-            if (task.defaultCase) {
-                const found = findTaskByRef(task.defaultCase, refName);
-                if (found) return found;
-            }
+            const foundDefault = findTaskByRef(task.defaultCase, taskRef);
+            if (foundDefault) return foundDefault;
         }
 
         if (task.forkTasks) {
             for (const branch of task.forkTasks) {
-                const found = findTaskByRef(branch, refName);
+                const found = findTaskByRef(branch, taskRef);
                 if (found) return found;
             }
         }
 
         if (task.loopOver) {
-            const found = findTaskByRef(task.loopOver, refName);
+            const found = findTaskByRef(task.loopOver, taskRef);
             if (found) return found;
         }
     }
@@ -38,12 +37,12 @@ export function findTaskByRef(tasks, refName) {
 }
 
 /**
- * 在工作流定义中删除一个任务
+ * 从任务列表中删除指定任务
  */
-export function removeTaskFromDef(tasks, refName) {
+export function removeTaskFromDef(tasks, taskRef) {
     if (!tasks) return false;
 
-    const index = tasks.findIndex(t => t.taskReferenceName === refName);
+    const index = tasks.findIndex(t => t.taskReferenceName === taskRef);
     if (index !== -1) {
         tasks.splice(index, 1);
         return true;
@@ -52,19 +51,19 @@ export function removeTaskFromDef(tasks, refName) {
     for (const task of tasks) {
         if (task.decisionCases) {
             for (const caseKey of Object.keys(task.decisionCases)) {
-                if (removeTaskFromDef(task.decisionCases[caseKey], refName)) return true;
+                if (removeTaskFromDef(task.decisionCases[caseKey], taskRef)) return true;
             }
-            if (removeTaskFromDef(task.defaultCase, refName)) return true;
+            if (removeTaskFromDef(task.defaultCase, taskRef)) return true;
         }
 
         if (task.forkTasks) {
             for (const branch of task.forkTasks) {
-                if (removeTaskFromDef(branch, refName)) return true;
+                if (removeTaskFromDef(branch, taskRef)) return true;
             }
         }
 
         if (task.loopOver) {
-            if (removeTaskFromDef(task.loopOver, refName)) return true;
+            if (removeTaskFromDef(task.loopOver, taskRef)) return true;
         }
     }
     return false;
@@ -148,4 +147,40 @@ export function insertFirstTaskIntoBranch(tasks, parentRef, branchInfo, newTask)
         }
     }
     return false;
+}
+
+/**
+ * 同步 FORK_JOIN 与配套 JOIN 任务的 joinOn 字段
+ */
+export function syncForkJoinOn(tasks) {
+    if (!tasks) return;
+
+    for (let i = 0; i < tasks.length; i++) {
+        const task = tasks[i];
+
+        if (task.type === 'FORK_JOIN' && i + 1 < tasks.length) {
+            const nextTask = tasks[i + 1];
+            if (nextTask.type === 'JOIN') {
+                const joinOn = [];
+                (task.forkTasks || []).forEach(branch => {
+                    if (branch && branch.length > 0) {
+                        joinOn.push(branch[branch.length - 1].taskReferenceName);
+                    }
+                });
+                nextTask.joinOn = joinOn;
+            }
+        }
+
+        // 递归同步嵌套结构
+        if (task.decisionCases) {
+            Object.values(task.decisionCases).forEach(branchTasks => syncForkJoinOn(branchTasks));
+            if (task.defaultCase) syncForkJoinOn(task.defaultCase);
+        }
+        if (task.forkTasks) {
+            task.forkTasks.forEach(branchTasks => syncForkJoinOn(branchTasks));
+        }
+        if (task.loopOver) {
+            syncForkJoinOn(task.loopOver);
+        }
+    }
 }

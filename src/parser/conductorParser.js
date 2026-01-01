@@ -50,7 +50,7 @@ export function parseConductorWorkflow(workflowDef, direction = 'TB') {
 
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        const result = parseTask(task, nodeIdCounter, taskMap, direction);
+        const result = parseTask(task, nodeIdCounter, taskMap, direction, tasks);
 
         nodes.push(...result.nodes);
         edges.push(...result.edges);
@@ -66,6 +66,7 @@ export function parseConductorWorkflow(workflowDef, direction = 'TB') {
             });
         } else {
             const prevTask = tasks[i - 1];
+            // 对于并行任务，由 JOIN 逻辑处理多入连线，connectTasks 仅处理顺序流
             connectTasks(prevTask, task, edges);
         }
 
@@ -113,7 +114,7 @@ export function parseConductorWorkflow(workflowDef, direction = 'TB') {
 /**
  * 解析单个任务
  */
-function parseTask(task, startId, taskMap, direction = 'TB') {
+function parseTask(task, startId, taskMap, direction = 'TB', allTasks = []) {
     const nodes = [];
     const edges = [];
     let nextId = startId;
@@ -131,7 +132,7 @@ function parseTask(task, startId, taskMap, direction = 'TB') {
             return parseForkJoinTask(task, startId, taskMap, direction);
 
         case 'JOIN':
-            return parseJoinTask(task, startId, taskMap, direction);
+            return parseJoinTask(task, startId, taskMap, direction, allTasks);
 
         case 'DO_WHILE':
             return parseDoWhileTask(task, startId, taskMap, direction);
@@ -350,11 +351,15 @@ function parseDecisionTask(task, startId, taskMap, direction = 'TB') {
 /**
  * 解析 FORK_JOIN 任务
  */
+/**
+ * 解析 FORK_JOIN 或 FORK_JOIN_DYNAMIC 任务
+ */
 function parseForkJoinTask(task, startId, taskMap, direction = 'TB') {
     const nodes = [];
     const edges = [];
     let nextId = startId;
     const localTaskMap = {};
+    const isDynamic = task.type === 'FORK_JOIN_DYNAMIC';
 
     // 创建 FORK 节点
     const forkNode = {
@@ -365,6 +370,7 @@ function parseForkJoinTask(task, startId, taskMap, direction = 'TB') {
             taskReferenceName: task.taskReferenceName,
             taskType: task.type,
             task: task,
+            isDynamic: isDynamic,
             layoutDirection: direction,
         },
         position: { x: 0, y: 0 },
@@ -374,73 +380,43 @@ function parseForkJoinTask(task, startId, taskMap, direction = 'TB') {
     nodes.push(forkNode);
     localTaskMap[task.taskReferenceName] = task;
 
-    // 创建 JOIN 节点
-    const joinNodeId = `${task.taskReferenceName}_join`;
-    const joinNode = {
-        id: joinNodeId,
-        type: 'joinNode',
-        data: {
-            label: 'JOIN',
-            taskReferenceName: joinNodeId,
-            layoutDirection: direction,
-        },
-        position: { x: 0, y: 0 },
-        sourcePosition: direction === 'LR' ? 'right' : 'bottom',
-        targetPosition: direction === 'LR' ? 'left' : 'top',
-    };
-    nodes.push(joinNode);
+    if (isDynamic) {
+        // 动态并行：在设计期没有确定分支
+        // 我们在解析阶段不创建连线，交给全局 connectTasks 或特定的 JOIN 解析阶段
+    } else {
+        // 静态并行：解析并行分支
+        const forkTasks = task.forkTasks || [];
 
-    // 解析并行分支
-    const forkTasks = task.forkTasks || [];
+        forkTasks.forEach((branch, branchIndex) => {
+            if (branch && branch.length > 0) {
+                const branchResult = parseBranch(branch, nextId, taskMap, `${task.taskReferenceName}_fork_${branchIndex}`, direction);
+                nodes.push(...branchResult.nodes);
+                edges.push(...branchResult.edges);
+                Object.assign(localTaskMap, branchResult.taskMap);
+                nextId = branchResult.nextId;
 
-    forkTasks.forEach((branch, branchIndex) => {
-        if (branch && branch.length > 0) {
-            const branchResult = parseBranch(branch, nextId, taskMap, `${task.taskReferenceName}_fork_${branchIndex}`, direction);
-            nodes.push(...branchResult.nodes);
-            edges.push(...branchResult.edges);
-            Object.assign(localTaskMap, branchResult.taskMap);
-            nextId = branchResult.nextId;
-
-            // 连接 FORK 到分支第一个任务
-            const firstTaskRef = branch[0].taskReferenceName;
-            edges.push({
-                id: `e-${task.taskReferenceName}-${firstTaskRef}`,
-                source: task.taskReferenceName,
-                target: firstTaskRef,
-                label: `分支 ${branchIndex + 1}`,
-                animated: true,
-                data: { forkIndex: branchIndex },
-                style: { stroke: '#10b981' }
-            });
-
-            // 连接分支最后一个任务到 JOIN
-            const lastTaskRef = branch[branch.length - 1].taskReferenceName;
-            edges.push({
-                id: `e-${lastTaskRef}-${joinNodeId}`,
-                source: lastTaskRef,
-                target: joinNodeId,
-                animated: true
-            });
-        } else {
-            // 空分支：直接从 FORK 连到 JOIN
-            edges.push({
-                id: `e-${task.taskReferenceName}-${joinNodeId}-branch-${branchIndex}`,
-                source: task.taskReferenceName,
-                target: joinNodeId,
-                label: `分支 ${branchIndex + 1}`,
-                animated: true,
-                data: { mode: 'edit', forkIndex: branchIndex }, // 记录 fork 索引
-                style: { stroke: '#10b981', strokeDasharray: '5,5' }
-            });
-        }
-    });
+                // 连接 FORK 到分支第一个任务
+                const firstTaskRef = branch[0].taskReferenceName;
+                edges.push({
+                    id: `e-${task.taskReferenceName}-${firstTaskRef}`,
+                    source: task.taskReferenceName,
+                    target: firstTaskRef,
+                    label: `分支 ${branchIndex + 1}`,
+                    animated: true,
+                    data: { forkIndex: branchIndex },
+                    style: { stroke: '#10b981' }
+                });
+            } else {
+                // 空分支处理留给后续 JOIN 任务进行连接
+            }
+        });
+    }
 
     return {
         nodes,
         edges,
         taskMap: localTaskMap,
-        nextId,
-        joinNodeId
+        nextId
     };
 }
 
@@ -524,7 +500,7 @@ function parseSubWorkflowTask(task, startId, taskMap, direction = 'TB') {
 /**
  * 解析 JOIN 任务
  */
-function parseJoinTask(task, startId, taskMap, direction = 'TB') {
+function parseJoinTask(task, startId, taskMap, direction = 'TB', allTasks = []) {
     const node = {
         id: task.taskReferenceName,
         type: 'joinNode',
@@ -544,9 +520,65 @@ function parseJoinTask(task, startId, taskMap, direction = 'TB') {
         [task.taskReferenceName]: task
     };
 
+    const edges = [];
+    const joinOn = task.joinOn || [];
+
+    // 处理显式连接 (joinOn)
+    joinOn.forEach(sourceRef => {
+        // 寻找该引用对应的任务
+        const sourceTask = allTasks.find(t => t.taskReferenceName === sourceRef) || taskMap[sourceRef];
+        if (sourceTask) {
+            const lastNodeId = getLastNodeId(sourceTask);
+            edges.push({
+                id: `e-${lastNodeId}-${task.taskReferenceName}`,
+                source: lastNodeId,
+                target: task.taskReferenceName,
+                animated: true
+            });
+        }
+    });
+
+    // 处理特殊情况：如果 joinOn 为空且前一个任务是 FORK_JOIN_DYNAMIC
+    // 或者需要补齐空分支的连接
+    const taskIdx = allTasks.findIndex(t => t.taskReferenceName === task.taskReferenceName);
+    if (taskIdx > 0) {
+        const prevTask = allTasks[taskIdx - 1];
+        if (prevTask.type === 'FORK_JOIN_DYNAMIC') {
+            edges.push({
+                id: `e-${prevTask.taskReferenceName}-${task.taskReferenceName}-dynamic`,
+                source: prevTask.taskReferenceName,
+                target: task.taskReferenceName,
+                label: '动态分支',
+                animated: true,
+                style: {
+                    stroke: '#10b981',
+                    strokeWidth: 4,
+                    strokeDasharray: '5,5',
+                    opacity: 0.8
+                }
+            });
+        } else if (prevTask.type === 'FORK_JOIN') {
+            // 对于静态 Fork，如果分支中有空分支（即 joinOn 没涵盖的部分），需要直接连过来
+            const forkTasks = prevTask.forkTasks || [];
+            forkTasks.forEach((branch, idx) => {
+                if (!branch || branch.length === 0) {
+                    edges.push({
+                        id: `e-${prevTask.taskReferenceName}-${task.taskReferenceName}-empty-${idx}`,
+                        source: prevTask.taskReferenceName,
+                        target: task.taskReferenceName,
+                        label: `分支 ${idx + 1}`,
+                        animated: true,
+                        style: { stroke: '#10b981', strokeDasharray: '5,5' },
+                        data: { mode: 'edit', forkIndex: idx }
+                    });
+                }
+            });
+        }
+    }
+
     return {
         nodes: [node],
-        edges: [],
+        edges,
         taskMap: localTaskMap,
         nextId: startId + 1
     };
@@ -563,7 +595,9 @@ function parseBranch(tasks, startId, parentTaskMap, branchPrefix, direction = 'T
 
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        const result = parseTask(task, nextId, parentTaskMap, direction);
+        // 传递包含已解析同级任务和上层任务的完整 map
+        const currentTaskMap = { ...parentTaskMap, ...localTaskMap };
+        const result = parseTask(task, nextId, currentTaskMap, direction, tasks);
 
         nodes.push(...result.nodes);
         edges.push(...result.edges);
@@ -589,6 +623,11 @@ function parseBranch(tasks, startId, parentTaskMap, branchPrefix, direction = 'T
  * 连接两个任务
  */
 function connectTasks(fromTask, toTask, edges) {
+    // 并行任务的输出由分支和 JOIN 逻辑控制，不产生直接的顺序连线
+    if (fromTask.type === 'FORK_JOIN' || fromTask.type === 'FORK_JOIN_DYNAMIC') {
+        return;
+    }
+
     const fromId = getLastNodeId(fromTask);
     const toId = toTask.taskReferenceName;
 
@@ -613,9 +652,9 @@ function getLastNodeId(task) {
 
     if (taskType === 'DECISION' || taskType === 'SWITCH') {
         return `${task.taskReferenceName}_join`;
-    } else if (taskType === 'FORK_JOIN' || taskType === 'FORK_JOIN_DYNAMIC') {
-        return `${task.taskReferenceName}_join`;
     } else {
+        // Parallel tasks use the real JOIN task, not a virtual ID here.
+        // Branches connect TO the JOIN task.
         return task.taskReferenceName;
     }
 }

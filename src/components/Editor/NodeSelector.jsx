@@ -5,6 +5,7 @@ const taskTypes = [
     { type: 'HTTP', label: 'HTTP Task', icon: '🌐', color: '#8b5cf6' },
     { type: 'DECISION', label: 'Decision/Switch', icon: '🔀', color: '#f59e0b' },
     { type: 'FORK_JOIN', label: 'Fork/Join', icon: '🔱', color: '#10b981' },
+    { type: 'FORK_JOIN_DYNAMIC', label: 'Dynamic Fork', icon: 'λ', color: '#10b981' },
     { type: 'DO_WHILE', label: 'Do-While Loop', icon: '🔄', color: '#f59e0b' },
     { type: 'SUB_WORKFLOW', label: 'Sub Workflow', icon: '🔗', color: '#6366f1' },
 ];

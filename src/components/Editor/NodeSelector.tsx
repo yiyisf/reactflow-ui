@@ -1,6 +1,12 @@
-import React from 'react';
+import { TaskType } from '../../types/conductor';
 
-const taskTypes = [
+interface NodeSelectorProps {
+    onSelect: (type: TaskType) => void;
+    onCancel: () => void;
+    theme?: 'dark' | 'light';
+}
+
+const taskTypes: { type: TaskType; label: string; icon: string; color: string }[] = [
     { type: 'SIMPLE', label: 'Simple Task', icon: '📝', color: '#3b82f6' },
     { type: 'HTTP', label: 'HTTP Task', icon: '🌐', color: '#8b5cf6' },
     { type: 'DECISION', label: 'Decision/Switch', icon: '🔀', color: '#f59e0b' },
@@ -10,7 +16,7 @@ const taskTypes = [
     { type: 'SUB_WORKFLOW', label: 'Sub Workflow', icon: '🔗', color: '#6366f1' },
 ];
 
-const NodeSelector = ({ onSelect, onCancel, theme = 'dark' }) => {
+const NodeSelector = ({ onSelect, onCancel, theme = 'dark' }: NodeSelectorProps) => {
     return (
         <div style={{
             position: 'fixed',

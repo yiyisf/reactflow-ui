@@ -6,6 +6,9 @@ import ReactFlow, {
     useNodesState,
     useEdgesState,
     MarkerType,
+    Node,
+    Edge,
+    Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -14,6 +17,19 @@ import DecisionNode from './nodes/DecisionNode';
 import { ForkNode, JoinNode } from './nodes/ForkJoinNode';
 import LoopNode from './nodes/LoopNode';
 import SubWorkflowNode from './nodes/SubWorkflowNode';
+import { TaskDef } from '../types/conductor';
+import { LayoutDirection, WorkflowNode } from '../types/workflow';
+
+interface WorkflowViewerProps {
+    nodes: WorkflowNode[];
+    edges: Edge[];
+    onNodeClick?: (task: TaskDef) => void;
+    taskMap?: Record<string, TaskDef>;
+    edgeType?: string;
+    theme?: 'dark' | 'light';
+    nodesLocked?: boolean;
+    layoutDirection?: LayoutDirection;
+}
 
 /**
  * 工作流查看器组件
@@ -27,15 +43,15 @@ const WorkflowViewer = ({
     theme = 'dark',
     nodesLocked = true,
     layoutDirection = 'TB'
-}) => {
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+}: WorkflowViewerProps) => {
+    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes as Node[]);
+    const [, , onEdgesChange] = useEdgesState(initialEdges);
 
     // 当布局方向改变时，更新所有节点的 layoutDirection 数据和 Handle 位置
     useEffect(() => {
-        setNodes((nds) =>
-            nds.map((node) => {
-                const updatedNode = {
+        setNodes((nds: Node[]) =>
+            nds.map((node: Node) => {
+                const updatedNode: Node = {
                     ...node,
                     data: {
                         ...node.data,
@@ -45,9 +61,9 @@ const WorkflowViewer = ({
 
                 // 为开始节点（input）和结束节点（output）设置 Handle 位置
                 if (node.type === 'input') {
-                    updatedNode.sourcePosition = layoutDirection === 'LR' ? 'right' : 'bottom';
+                    updatedNode.sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
                 } else if (node.type === 'output') {
-                    updatedNode.targetPosition = layoutDirection === 'LR' ? 'left' : 'top';
+                    updatedNode.targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
                 }
 
                 return updatedNode;
@@ -70,7 +86,7 @@ const WorkflowViewer = ({
 
     // 处理节点点击
     const handleNodeClick = useCallback(
-        (event, node) => {
+        (_event: React.MouseEvent, node: Node) => {
             if (onNodeClick && taskMap) {
                 const task = taskMap[node.data.taskReferenceName] || node.data.task;
                 if (task) {
@@ -83,7 +99,7 @@ const WorkflowViewer = ({
 
     // 监听循环节点内迷你任务的点击事件
     useEffect(() => {
-        const handleMiniTaskClick = (event) => {
+        const handleMiniTaskClick = (event: any) => {
             if (onNodeClick && event.detail && event.detail.task) {
                 onNodeClick(event.detail.task);
             }
@@ -99,7 +115,7 @@ const WorkflowViewer = ({
     const edgesWithMarkers = useMemo(() => {
         return initialEdges.map(edge => {
             // 检查是否是循环回调边（通过 label 或 style 判断）
-            const isLoopBack = edge.label === '继续' || edge.style?.strokeDasharray;
+            const isLoopBack = edge.label === '继续' || (edge.style as any)?.strokeDasharray;
 
             return {
                 ...edge,
@@ -109,10 +125,10 @@ const WorkflowViewer = ({
                     width: 20,
                     height: 20,
                     color: theme === 'light' ? '#475569' : '#64748b',
-                },
+                } as any,
                 style: {
                     ...edge.style,
-                    stroke: edge.style?.stroke || (theme === 'light' ? '#475569' : '#64748b'),
+                    stroke: (edge.style as any)?.stroke || (theme === 'light' ? '#475569' : '#64748b'),
                     strokeWidth: 2,
                     // 循环回调边使用虚线
                     strokeDasharray: isLoopBack ? '5,5' : undefined,
@@ -131,7 +147,7 @@ const WorkflowViewer = ({
             width: 20,
             height: 20,
             color: theme === 'light' ? '#475569' : '#64748b',
-        },
+        } as any,
         style: {
             stroke: theme === 'light' ? '#475569' : '#64748b',
             strokeWidth: 2

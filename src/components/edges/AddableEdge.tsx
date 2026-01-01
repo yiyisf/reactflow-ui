@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { getBezierPath, EdgeLabelRenderer, BaseEdge } from 'reactflow';
+import { useState, useRef } from 'react';
+import { getBezierPath, EdgeLabelRenderer, BaseEdge, EdgeProps } from 'reactflow';
 
 /**
  * 可添加节点的自定义边
@@ -17,11 +17,10 @@ const AddableEdge = ({
     targetPosition,
     style = {},
     markerEnd,
-    data,
-    animated
-}) => {
+    data
+}: EdgeProps) => {
     const [isHovered, setIsHovered] = useState(false);
-    const hoverTimeoutRef = useRef(null);
+    const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // 计算贝塞尔曲线路径
     const [edgePath, labelX, labelY] = getBezierPath({
@@ -33,7 +32,7 @@ const AddableEdge = ({
         targetPosition,
     });
 
-    const onAddClick = (evt) => {
+    const onAddClick = (evt: React.MouseEvent) => {
         evt.stopPropagation();
         evt.preventDefault();
         const event = new CustomEvent('edgeAddNode', {
@@ -59,7 +58,7 @@ const AddableEdge = ({
 
     const isEditMode = data?.mode === 'edit';
     // 悬停时暂时禁用边上的动画，提高点击稳定性
-    const shouldAnimate = animated && !isHovered;
+    // const shouldAnimate = animated && !isHovered; // BaseEdge doesn't override animated via prop directly efficiently, using style might be better or handled by parent class
 
     return (
         <>
@@ -70,13 +69,10 @@ const AddableEdge = ({
                 style={{
                     ...style,
                     strokeWidth: isHovered ? 4 : 2,
-                    stroke: isHovered ? '#fbbf24' : style.stroke,
+                    stroke: isHovered ? '#fbbf24' : style?.stroke,
                     transition: 'stroke 0.2s, stroke-width 0.2s',
                     pointerEvents: 'none'
                 }}
-                // 虽然设置了 pointerEvents: none，但 React Flow 的 BaseEdge 内部可能处理了动画
-                // 我们通过传递控制后的 animated 状态来确保稳定
-                animated={shouldAnimate}
             />
 
             {/* 交互感知层 */}

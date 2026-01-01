@@ -5,6 +5,8 @@ import ReactFlow, {
     MiniMap,
     MarkerType,
     useReactFlow,
+    Node,
+    Edge
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -16,6 +18,22 @@ import SubWorkflowNode from './nodes/SubWorkflowNode';
 import AddableEdge from './edges/AddableEdge';
 import NodeSelector from './Editor/NodeSelector';
 import useWorkflowStore from '../store/workflowStore';
+import { TaskDef, TaskType } from '../types/conductor';
+
+interface WorkflowDesignerProps {
+    onNodeClick?: (task: TaskDef) => void;
+    edgeType?: string;
+    theme?: 'dark' | 'light';
+    nodesLocked?: boolean;
+    searchQuery?: string;
+}
+
+interface PendingEdge {
+    id: string;
+    source: string;
+    target: string;
+    edgeData?: any;
+}
 
 /**
  * 工作流查看/设计器组件
@@ -26,7 +44,7 @@ const WorkflowDesigner = ({
     theme = 'dark',
     nodesLocked = true,
     searchQuery = '',
-}) => {
+}: WorkflowDesignerProps) => {
     const { fitView } = useReactFlow();
 
     // 从 store 中获取状态和操作
@@ -45,8 +63,8 @@ const WorkflowDesigner = ({
     } = useWorkflowStore();
 
     const [showSelector, setShowSelector] = useState(false);
-    const [pendingEdge, setPendingEdge] = useState(null);
-    const [pendingLoopId, setPendingLoopId] = useState(null);
+    const [pendingEdge, setPendingEdge] = useState<PendingEdge | null>(null);
+    const [pendingLoopId, setPendingLoopId] = useState<string | null>(null);
 
     // 监听自动缩放事件
     useEffect(() => {
@@ -61,7 +79,7 @@ const WorkflowDesigner = ({
     const processedNodes = useMemo(() => {
         const query = searchQuery?.toLowerCase();
 
-        return nodes.map(node => {
+        return nodes.map((node: Node) => {
             const label = node.data?.label?.toLowerCase() || '';
             const refName = node.data?.taskReferenceName || '';
             const isMatch = query ? (label.includes(query) || refName.toLowerCase().includes(query)) : false;
@@ -121,7 +139,7 @@ const WorkflowDesigner = ({
 
     // 处理节点点击
     const handleNodeClick = useCallback(
-        (event, node) => {
+        (_event: React.MouseEvent, node: Node) => {
             if (onNodeClick && taskMap) {
                 const task = taskMap[node.data.taskReferenceName] || node.data.task;
                 if (task) {
@@ -134,8 +152,9 @@ const WorkflowDesigner = ({
 
     // 监听加号按钮点击事件
     useEffect(() => {
-        const handleEdgeAddNode = (event) => {
-            setPendingEdge(event.detail);
+        const handleEdgeAddNode = (event: Event) => {
+            const customEvent = event as CustomEvent;
+            setPendingEdge(customEvent.detail);
             setShowSelector(true);
         };
 
@@ -145,15 +164,17 @@ const WorkflowDesigner = ({
 
     // 监听循环节点内迷你任务的点击事件
     useEffect(() => {
-        const handleMiniTaskClick = (event) => {
-            if (onNodeClick && event.detail && event.detail.task) {
-                onNodeClick(event.detail.task);
+        const handleMiniTaskClick = (event: Event) => {
+            const customEvent = event as CustomEvent;
+            if (onNodeClick && customEvent.detail && customEvent.detail.task) {
+                onNodeClick(customEvent.detail.task);
             }
         };
 
-        const handleLoopAddNode = (event) => {
-            if (event.detail && event.detail.loopId) {
-                setPendingLoopId(event.detail.loopId);
+        const handleLoopAddNode = (event: Event) => {
+            const customEvent = event as CustomEvent;
+            if (customEvent.detail && customEvent.detail.loopId) {
+                setPendingLoopId(customEvent.detail.loopId);
                 setShowSelector(true);
             }
         };
@@ -167,7 +188,7 @@ const WorkflowDesigner = ({
     }, [onNodeClick]);
 
     // 处理节点选择
-    const handleTypeSelect = (type) => {
+    const handleTypeSelect = (type: TaskType) => {
         if (!pendingEdge && !pendingLoopId) return;
 
         const timestamp = Date.now();
@@ -189,7 +210,7 @@ const WorkflowDesigner = ({
         if (pendingEdge) {
             addNode(newNode, pendingEdge.source, pendingEdge.target, pendingEdge.id, pendingEdge.edgeData);
         } else if (pendingLoopId) {
-            addLoopTask(pendingLoopId, type);
+            addLoopTask(pendingLoopId, type as string);
         }
 
         setShowSelector(false);
@@ -199,7 +220,7 @@ const WorkflowDesigner = ({
 
     // 为边添加元数据和箭头标记
     const processedEdges = useMemo(() => {
-        return edges.map(edge => {
+        return edges.map((edge: Edge) => {
             const isLoopBack = edge.label === '继续' || edge.style?.strokeDasharray;
 
             return {

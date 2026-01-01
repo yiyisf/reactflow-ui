@@ -1,16 +1,32 @@
 import { WORKFLOW_RULES, TASK_RULES } from './validationRules';
+import { WorkflowDef, TaskDef } from '../types/conductor';
+import { ValidationItem, ValidationResults } from '../types/workflow';
+
+interface ValidationContext {
+    taskRefs: Set<string>;
+    taskMap: Record<string, TaskDef>;
+}
+
+interface ValidationRule {
+    field: string;
+    type: string;
+    value?: any;
+    message: string;
+    level?: 'error' | 'warning';
+    validate?: (value: any, target: any, context: ValidationContext) => boolean;
+}
 
 /**
  * 获取嵌套对象的值
  */
-const getValue = (obj, path) => {
+const getValue = (obj: any, path: string): any => {
     return path.split('.').reduce((prev, curr) => (prev && prev[curr] !== undefined) ? prev[curr] : undefined, obj);
 };
 
 /**
  * 核心校验执行器
  */
-const executeRules = (target, rules, context, results) => {
+const executeRules = (target: any, rules: ValidationRule[], context: ValidationContext, results: { errors: ValidationItem[]; warnings: ValidationItem[] }) => {
     const { errors, warnings } = results;
     const ref = target.taskReferenceName || 'GLOBAL';
 
@@ -50,7 +66,7 @@ const executeRules = (target, rules, context, results) => {
         }
 
         if (!isValid) {
-            const errorObj = { type: target.taskReferenceName ? 'TASK' : 'GLOBAL', ref, message: rule.message };
+            const errorObj: ValidationItem = { type: target.taskReferenceName ? 'TASK' : 'GLOBAL', ref, message: rule.message };
             if (rule.level === 'warning') {
                 warnings.push(errorObj);
             } else {
@@ -63,18 +79,18 @@ const executeRules = (target, rules, context, results) => {
 /**
  * 校验整个工作流定义
  */
-export const validateWorkflow = (workflowDef) => {
-    const errors = [];
-    const warnings = [];
-    const context = {
+export const validateWorkflow = (workflowDef: WorkflowDef | null): ValidationResults => {
+    const errors: ValidationItem[] = [];
+    const warnings: ValidationItem[] = [];
+    const context: ValidationContext = {
         taskRefs: new Set(),
         taskMap: {}
     };
 
-    if (!workflowDef) return { isValid: false, errors: [{ type: 'GLOBAL', message: '工作流定义为空' }], warnings: [] };
+    if (!workflowDef) return { isValid: false, errors: [{ type: 'GLOBAL', ref: '', message: '工作流定义为空' }], warnings: [] };
 
     // 1. 工作流级别校验
-    executeRules(workflowDef, WORKFLOW_RULES, context, { errors, warnings });
+    executeRules(workflowDef, WORKFLOW_RULES as unknown as ValidationRule[], context, { errors, warnings });
 
     // 如果任务列表为空，提前返回
     if (!workflowDef.tasks || workflowDef.tasks.length === 0) {
@@ -82,21 +98,21 @@ export const validateWorkflow = (workflowDef) => {
     }
 
     // 2. 递归校验任务
-    const validateTasksRecursive = (tasks) => {
+    const validateTasksRecursive = (tasks: TaskDef[]) => {
         tasks.forEach(task => {
             // 执行通用规则
-            executeRules(task, TASK_RULES.common, context, { errors, warnings });
+            executeRules(task, TASK_RULES.common as unknown as ValidationRule[], context, { errors, warnings });
 
             // 执行特定类型规则
-            const typeRules = TASK_RULES.types[task.type];
+            const typeRules = TASK_RULES.types[task.type as keyof typeof TASK_RULES.types];
             if (typeRules) {
-                executeRules(task, typeRules, context, { errors, warnings });
+                executeRules(task, typeRules as unknown as ValidationRule[], context, { errors, warnings });
             }
 
             // 递归处理嵌套结构
             if (task.decisionCases) {
                 Object.keys(task.decisionCases).forEach(key => {
-                    validateTasksRecursive(task.decisionCases[key]);
+                    validateTasksRecursive(task.decisionCases![key]);
                 });
             }
             if (task.defaultCase) {
@@ -114,7 +130,7 @@ export const validateWorkflow = (workflowDef) => {
     validateTasksRecursive(workflowDef.tasks);
 
     // 3. 结构性校验 (如环路检测)
-    detectCycles(workflowDef.tasks, errors);
+    detectCycles();
 
     return {
         isValid: errors.length === 0,
@@ -126,6 +142,7 @@ export const validateWorkflow = (workflowDef) => {
 /**
  * 环路检测 (占位空间，后续可实现拓扑排序)
  */
-const detectCycles = (tasks, errors) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const detectCycles = () => {
     // 基础环路逻辑...
 };

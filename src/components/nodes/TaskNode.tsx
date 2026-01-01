@@ -1,16 +1,38 @@
 import { memo } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
+import { WorkflowNodeData } from '../../types/workflow';
+
+type TaskNodeProps = NodeProps<WorkflowNodeData>;
 
 /**
- * 子工作流节点组件
+ * 常规任务节点组件
  */
-const SubWorkflowNode = ({ id, data, selected }) => {
+const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
+    const taskType = data.taskType || 'SIMPLE';
     const layoutDirection = data.layoutDirection || 'TB';
 
     // 根据布局方向确定 Handle 位置
     const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
+
+    // 根据任务类型设置颜色
+    const getTaskColor = (type: string) => {
+        const colors: Record<string, { bg: string; border: string }> = {
+            SIMPLE: { bg: '#3b82f6', border: '#2563eb' },
+            HTTP: { bg: '#8b5cf6', border: '#7c3aed' },
+            JSON_JQ_TRANSFORM: { bg: '#06b6d4', border: '#0891b2' },
+            EVENT: { bg: '#f59e0b', border: '#d97706' },
+            INLINE: { bg: '#10b981', border: '#059669' },
+            KAFKA_PUBLISH: { bg: '#ec4899', border: '#db2777' },
+            LAMBDA: { bg: '#6366f1', border: '#4f46e5' },
+            TERMINATE: { bg: '#ef4444', border: '#dc2626' },
+            WAIT: { bg: '#64748b', border: '#475569' },
+        };
+        return colors[type] || colors.SIMPLE;
+    };
+
+    const color = getTaskColor(taskType);
 
     return (
         <NodeWrapper
@@ -21,8 +43,8 @@ const SubWorkflowNode = ({ id, data, selected }) => {
         >
             <div
                 style={{
-                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                    border: selected ? '3px solid #fbbf24' : '2px solid #4f46e5',
+                    background: `linear-gradient(135deg, ${color.bg} 0%, ${color.border} 100%)`,
+                    border: selected ? `3px solid #fbbf24` : `2px solid ${color.border}`,
                     borderRadius: '12px',
                     padding: '16px',
                     minWidth: '180px',
@@ -31,7 +53,6 @@ const SubWorkflowNode = ({ id, data, selected }) => {
                         : '0 4px 12px rgba(0,0,0,0.15)',
                     transition: 'all 0.3s ease',
                     cursor: 'pointer',
-                    position: 'relative',
                 }}
             >
                 <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
@@ -43,13 +64,9 @@ const SubWorkflowNode = ({ id, data, selected }) => {
                         marginBottom: '4px',
                         textTransform: 'uppercase',
                         fontWeight: '600',
-                        letterSpacing: '0.5px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
+                        letterSpacing: '0.5px'
                     }}>
-                        <span>📋</span>
-                        {data.taskType}
+                        {taskType}
                     </div>
                     <div style={{
                         fontSize: '14px',
@@ -62,22 +79,10 @@ const SubWorkflowNode = ({ id, data, selected }) => {
                     <div style={{
                         fontSize: '11px',
                         opacity: 0.7,
-                        fontStyle: 'italic',
-                        marginBottom: '6px'
+                        fontStyle: 'italic'
                     }}>
                         {data.taskReferenceName}
                     </div>
-                    {data.subWorkflowName && (
-                        <div style={{
-                            fontSize: '10px',
-                            background: 'rgba(255,255,255,0.2)',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            marginTop: '6px'
-                        }}>
-                            ➜ {data.subWorkflowName}
-                        </div>
-                    )}
                 </div>
 
                 <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
@@ -86,4 +91,4 @@ const SubWorkflowNode = ({ id, data, selected }) => {
     );
 };
 
-export default memo(SubWorkflowNode);
+export default memo(TaskNode);

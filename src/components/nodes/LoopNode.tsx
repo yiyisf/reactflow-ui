@@ -1,15 +1,24 @@
 import { memo, useCallback } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
 import useWorkflowStore from '../../store/workflowStore';
 import NodeWrapper from './NodeWrapper';
+import { WorkflowNodeData } from '../../types/workflow';
+import { TaskDef } from '../../types/conductor';
+
+type LoopNodeProps = NodeProps<WorkflowNodeData>;
+
+interface TaskTypeColors {
+    [key: string]: string;
+}
 
 /**
  * 循环节点组件（DO_WHILE）
  * 在节点内部显示循环体任务的迷你流程图
  */
-const LoopNode = ({ id, data, selected }) => {
+const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const layoutDirection = data.layoutDirection || 'TB';
-    const { mode, addLoopTask, removeLoopTask } = useWorkflowStore();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { mode, removeLoopTask } = useWorkflowStore();
 
     // 根据布局方向确定 Handle 位置
     const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
@@ -20,7 +29,7 @@ const LoopNode = ({ id, data, selected }) => {
     const loopTaskCount = loopOver.length;
 
     // 处理迷你任务节点点击
-    const handleMiniTaskClick = useCallback((task, event) => {
+    const handleMiniTaskClick = useCallback((task: TaskDef, event: React.MouseEvent) => {
         event.stopPropagation(); // 阻止事件冒泡到循环节点
 
         // 触发自定义事件，让 WorkflowViewer 处理
@@ -32,7 +41,7 @@ const LoopNode = ({ id, data, selected }) => {
     }, []);
 
     // 处理删除循环内任务
-    const handleRemoveTask = (e, taskRef) => {
+    const handleRemoveTask = (e: React.MouseEvent, taskRef: string) => {
         e.stopPropagation();
         if (window.confirm('确定要从循环中删除此任务吗？')) {
             removeLoopTask(id, taskRef);
@@ -40,8 +49,8 @@ const LoopNode = ({ id, data, selected }) => {
     };
 
     // 渲染迷你任务节点
-    const renderMiniTask = (task, index) => {
-        const taskTypeColors = {
+    const renderMiniTask = (task: TaskDef, index: number) => {
+        const taskTypeColors: TaskTypeColors = {
             SIMPLE: '#3b82f6',
             HTTP: '#8b5cf6',
             JSON_JQ_TRANSFORM: '#06b6d4',

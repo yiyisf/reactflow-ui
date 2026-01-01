@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { WorkflowDef } from '../types/conductor';
+
+interface WorkflowSettingsPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
+    theme?: 'dark' | 'light';
+}
 
 /**
  * 工作流设置面板 - 编辑名称、版本、描述和全局参数
  */
-const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }) => {
+const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }: WorkflowSettingsPanelProps) => {
     const { workflowDef, updateWorkflowProperties } = useWorkflowStore();
-    const [localDef, setLocalDef] = useState(workflowDef);
+    const [localDef, setLocalDef] = useState<WorkflowDef | (WorkflowDef & Record<string, any>) | null>(workflowDef);
 
     useEffect(() => {
         if (workflowDef) {
@@ -24,13 +31,15 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }) => {
     const inputBg = theme === 'light' ? '#fff' : 'rgba(0,0,0,0.3)';
     const secondaryTextColor = theme === 'light' ? '#64748b' : '#94a3b8';
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: string, value: any) => {
+        if (!localDef) return;
         const updated = { ...localDef, [field]: value };
         setLocalDef(updated);
         updateWorkflowProperties({ [field]: value });
     };
 
-    const handleJsonChange = (field, value) => {
+    const handleJsonChange = (field: string, value: string) => {
+        if (!localDef) return;
         try {
             const parsed = JSON.parse(value);
             const updated = { ...localDef, [field]: parsed };
@@ -38,18 +47,18 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }) => {
             updateWorkflowProperties({ [field]: parsed });
         } catch (e) {
             // Keep local state as string if invalid JSON, but don't sync to store
-            setLocalDef(prev => ({ ...prev, [`_${field}_str`]: value }));
+            setLocalDef(prev => ({ ...prev!, [`_${field}_str`]: value }));
         }
     };
 
-    const renderInput = (label, field, type = 'text') => (
+    const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text') => (
         <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '8px', fontWeight: 'bold' }}>
                 {label.toUpperCase()}
             </label>
             <input
                 type={type}
-                value={localDef[field] || ''}
+                value={(localDef as any)?.[field] || ''}
                 onChange={(e) => handleChange(field, type === 'number' ? parseInt(e.target.value) : e.target.value)}
                 style={{
                     width: '100%',
@@ -66,10 +75,10 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }) => {
         </div>
     );
 
-    const renderTextArea = (label, field, isJson = false) => {
-        const value = localDef[`_${field}_str`] !== undefined
-            ? localDef[`_${field}_str`]
-            : (typeof localDef[field] === 'object' ? JSON.stringify(localDef[field], null, 2) : localDef[field]);
+    const renderTextArea = (label: string, field: string, isJson = false) => {
+        const value = (localDef as any)?.[`_${field}_str`] !== undefined
+            ? (localDef as any)[`_${field}_str`]
+            : (typeof (localDef as any)?.[field] === 'object' ? JSON.stringify((localDef as any)[field], null, 2) : (localDef as any)?.[field]);
 
         return (
             <div style={{ marginBottom: '20px' }}>

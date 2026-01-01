@@ -1,12 +1,19 @@
 import { memo, useState, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { TaskDef } from '../types/conductor';
+
+interface TaskDetailPanelProps {
+    task: TaskDef | null;
+    onClose: () => void;
+    theme?: 'dark' | 'light';
+}
 
 /**
  * 任务配置面板组件 - 抽屉式，支持编辑模式
  */
-const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
+const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
-    const [localTask, setLocalTask] = useState(task);
+    const [localTask, setLocalTask] = useState<TaskDef | null>(task);
 
     // 当选中的任务改变时，同步本地状态
     useEffect(() => {
@@ -29,50 +36,51 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
     const secondaryTextColor = theme === 'light' ? '#64748b' : '#94a3b8';
 
     // 处理字段变更
-    const handleChange = (field, value) => {
-        const updatedTask = { ...displayTask, [field]: value };
+    const handleChange = (field: string, value: any) => {
+        const updatedTask = { ...displayTask, [field]: value } as TaskDef;
         setLocalTask(updatedTask);
         updateTask(task.taskReferenceName, { [field]: value });
     };
 
     // 处理嵌套字段变更（如 httpRequest.url）
-    const handleNestedChange = (parentField, field, value) => {
-        const updatedParent = { ...displayTask[parentField], [field]: value };
-        const updatedTask = { ...displayTask, [parentField]: updatedParent };
+    const handleNestedChange = (parentField: string, field: string, value: any) => {
+        const parentValue = (displayTask as any)[parentField] || {};
+        const updatedParent = { ...parentValue, [field]: value };
+        const updatedTask = { ...displayTask, [parentField]: updatedParent } as TaskDef;
         setLocalTask(updatedTask);
         updateTask(task.taskReferenceName, { [parentField]: updatedParent });
     };
 
     // 专门处理 HTTP 任务的参数变更，确保同步到 inputParameters
-    const handleHttpChange = (field, value) => {
+    const handleHttpChange = (field: string, value: any) => {
         const currentInputs = displayTask.inputParameters || {};
         const currentHttp = currentInputs.http_request || displayTask.httpRequest || {};
 
         const updatedHttp = { ...currentHttp, [field]: value };
         const updatedInputs = { ...currentInputs, http_request: updatedHttp };
 
-        const updates = { inputParameters: updatedInputs };
+        const updates: any = { inputParameters: updatedInputs };
         if (displayTask.httpRequest) {
             updates.httpRequest = updatedHttp;
         }
 
-        const updatedTask = { ...displayTask, ...updates };
+        const updatedTask = { ...displayTask, ...updates } as TaskDef;
         setLocalTask(updatedTask);
         updateTask(task.taskReferenceName, updates);
     };
 
     // 专门处理 inputParameters 内部的参数变更
-    const handleInputParamChange = (key, value) => {
+    const handleInputParamChange = (key: string, value: any) => {
         const updatedInputs = { ...displayTask.inputParameters, [key]: value };
         const updates = { inputParameters: updatedInputs };
 
-        const updatedTask = { ...displayTask, ...updates };
+        const updatedTask = { ...displayTask, ...updates } as TaskDef;
         setLocalTask(updatedTask);
         updateTask(task.taskReferenceName, updates);
     };
 
     // 渲染专项配置区域容器
-    const renderSpecialSection = (title, icon, color, children) => (
+    const renderSpecialSection = (title: string, icon: string, color: string, children: React.ReactNode) => (
         <div style={{
             marginBottom: '24px',
             padding: '16px',
@@ -89,9 +97,9 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
     );
 
     // 渲染通用文本输入框
-    const renderInput = (label, field, type = 'text') => {
+    const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text') => {
         const isRefName = field === 'taskReferenceName';
-        const isDuplicate = isRefName && !checkTaskRefUniqueness(displayTask[field], task.taskReferenceName);
+        const isDuplicate = isRefName && !checkTaskRefUniqueness((displayTask as any)[field], task.taskReferenceName);
 
         return (
             <div style={{ marginBottom: '16px' }}>
@@ -101,7 +109,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
                 </label>
                 <input
                     type={type}
-                    value={displayTask[field] || ''}
+                    value={(displayTask as any)[field] || ''}
                     onChange={(e) => handleChange(field, e.target.value)}
                     disabled={!isEditMode || (isRefName && !isEditMode)}
                     style={{
@@ -122,8 +130,8 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
     };
 
     // 渲染多行文本/JSON 编辑器
-    const renderTextArea = (label, field, isJson = false) => {
-        const value = typeof displayTask[field] === 'object' ? JSON.stringify(displayTask[field], null, 2) : displayTask[field];
+    const renderTextArea = (label: string, field: string, isJson = false) => {
+        const value = typeof (displayTask as any)[field] === 'object' ? JSON.stringify((displayTask as any)[field], null, 2) : (displayTask as any)[field];
 
         return (
             <div style={{ marginBottom: '16px' }}>
@@ -138,7 +146,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }) => {
                             try {
                                 finalValue = JSON.parse(e.target.value);
                             } catch (err) {
-                                setLocalTask(prev => ({ ...prev, [field]: e.target.value }));
+                                setLocalTask(prev => ({ ...prev!, [field]: e.target.value }) as any);
                                 return;
                             }
                         }

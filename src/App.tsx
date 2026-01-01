@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
@@ -27,27 +27,29 @@ function App() {
     setNodesLocked
   } = useWorkflowStore();
 
-  const [error, setError] = useState(null);
-  const [fileName, setFileName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  // const [fileName, setFileName] = useState(''); // Unused
   const [showWorkflowSettings, setShowWorkflowSettings] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [showHealthCheck, setShowHealthCheck] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // 处理文件上传
-  const handleFileUpload = useCallback((event) => {
-    const file = event.target.files[0];
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    setFileName(file.name);
+    // setFileName(file.name);
     setError(null);
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (e: ProgressEvent<FileReader>) => {
       try {
-        const json = JSON.parse(e.target.result);
+        const result = e.target?.result as string;
+        if (!result) return;
+        const json = JSON.parse(result);
         setWorkflow(json, layoutDirection);
-      } catch (err) {
+      } catch (err: any) {
         setError(`解析 JSON 失败: ${err.message}`);
       }
     };
@@ -56,15 +58,16 @@ function App() {
   }, [setWorkflow, layoutDirection]);
 
   // 加载示例工作流
-  const loadSampleWorkflow = useCallback(async (sampleName) => {
+  const loadSampleWorkflow = useCallback(async (sampleName: string) => {
+    if (!sampleName) return;
     try {
       const response = await fetch(`/sample-workflows/${sampleName}.json`);
       if (!response.ok) throw new Error(`加载示例失败: ${response.statusText}`);
       const json = await response.json();
-      setFileName(`${sampleName}.json (示例)`);
+      // setFileName(`${sampleName}.json (示例)`);
       setWorkflow(json, layoutDirection);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       setError(`加载示例工作流失败: ${err.message}`);
     }
   }, [setWorkflow, layoutDirection]);
@@ -82,7 +85,7 @@ function App() {
     setEdgeType(nextType);
   }, [edgeType, setEdgeType]);
 
-  const edgeTypeLabels = {
+  const edgeTypeLabels: Record<string, string> = {
     'default': '曲线',
     'step': '阶梯',
     'smoothstep': '平滑阶梯',

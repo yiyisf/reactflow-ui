@@ -1,9 +1,11 @@
 import dagre from 'dagre';
+import { Edge } from 'reactflow';
+import { WorkflowNode, LayoutDirection } from '../types/workflow';
 
 /**
  * 根据节点类型和布局方向获取节点尺寸
  */
-function getNodeDimensions(node, direction = 'TB') {
+function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB') {
     let width = 180;
     let height = 80;
 
@@ -24,8 +26,8 @@ function getNodeDimensions(node, direction = 'TB') {
             break;
         case 'loopNode':
             // 循环节点需要更大的空间来容纳内部的迷你流程图
-            const loopTaskCount = node.data?.loopOver?.length || 0;
-            const hasCondition = !!node.data?.loopCondition;
+            const loopTaskCount = node.data.loopOver?.length || 0;
+            const hasCondition = !!node.data.loopCondition;
 
             if (direction === 'LR') {
                 // 横向布局：任务水平排列
@@ -54,6 +56,10 @@ function getNodeDimensions(node, direction = 'TB') {
     return { width, height };
 }
 
+interface AutoLayoutOptions {
+    direction?: LayoutDirection;
+}
+
 /**
  * 使用 dagre 算法自动布局节点
  * @param {Array} nodes - React Flow 节点数组
@@ -61,7 +67,7 @@ function getNodeDimensions(node, direction = 'TB') {
  * @param {Object} options - 布局选项
  * @returns {Array} 带有位置信息的节点数组
  */
-export function getLayoutedElements(nodes, edges, options = {}) {
+export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], options: AutoLayoutOptions = {}): { nodes: WorkflowNode[]; edges: Edge[] } {
     const {
         direction = 'TB', // TB (top-bottom), LR (left-right)
     } = options;
@@ -114,7 +120,7 @@ export function getLayoutedElements(nodes, edges, options = {}) {
 
     // 2. 优化边句柄 (Handle) 分配
     // 根据布局后的节点中心点相对位置，动态指定 sourceHandle 避免连线交叉
-    const nodeMap = layoutedNodes.reduce((acc, n) => ({ ...acc, [n.id]: n }), {});
+    const nodeMap = layoutedNodes.reduce((acc, n) => ({ ...acc, [n.id]: n }), {} as Record<string, WorkflowNode>);
 
     const layoutedEdges = edges.map((edge) => {
         const sourceNode = nodeMap[edge.source];
@@ -165,6 +171,6 @@ export function getLayoutedElements(nodes, edges, options = {}) {
  * @param {String} direction - 布局方向 ('TB' 或 'LR')
  * @returns {Array} 重新布局后的节点数组
  */
-export function relayout(nodes, edges, direction = 'TB') {
+export function relayout(nodes: WorkflowNode[], edges: Edge[], direction: LayoutDirection = 'TB'): { nodes: WorkflowNode[]; edges: Edge[] } {
     return getLayoutedElements(nodes, edges, { direction });
 }

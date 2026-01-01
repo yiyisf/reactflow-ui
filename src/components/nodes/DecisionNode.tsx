@@ -1,23 +1,25 @@
 import { memo, useState } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import useWorkflowStore from '../../store/workflowStore';
+import { WorkflowNodeData } from '../../types/workflow';
+
+type DecisionNodeProps = NodeProps<WorkflowNodeData>;
 
 /**
  * 决策/分支节点组件（菱形）
  * 支持在编辑模式下添加/删除分支
  */
-const DecisionNode = ({ id, data, selected }) => {
+const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     const layoutDirection = data.layoutDirection || 'TB';
     const { mode, addDecisionBranch, removeDecisionBranch } = useWorkflowStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     // 根据布局方向确定主要的 Handle 位置
-    const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
+    // const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
 
-    const task = data.task || {};
-    const branches = Object.keys(task.decisionCases || {});
+    const branches = Object.keys(data.decisionCases || {});
 
     const handleAddBranch = () => {
         const branchName = window.prompt('请输入新分支的名称 (case value):', `case_${branches.length + 1}`);
@@ -27,7 +29,7 @@ const DecisionNode = ({ id, data, selected }) => {
         setIsMenuOpen(false);
     };
 
-    const handleRemoveBranch = (e, branch) => {
+    const handleRemoveBranch = (e: React.MouseEvent, branch: string) => {
         e.stopPropagation();
         if (window.confirm(`确定要删除分支 "${branch}" 及其下的所有任务吗？`)) {
             removeDecisionBranch(id, branch);

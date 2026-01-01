@@ -1,12 +1,17 @@
-import { useMemo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+
+interface HealthCheckPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
+    theme?: 'dark' | 'light';
+}
 
 /**
  * 工作流健康检查面板 - 展示错误和警告列表
  */
-const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }) => {
-    const { validationResults, setSelectedTask } = useWorkflowStore();
-    const { isValid, errors, warnings } = validationResults || { isValid: true, errors: [], warnings: [] };
+const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }: HealthCheckPanelProps) => {
+    const { validationResults, setSelectedTask, taskMap } = useWorkflowStore();
+    const { errors, warnings } = validationResults || { isValid: true, errors: [], warnings: [] };
 
     const bgColor = theme === 'light' ? '#fff' : '#1e293b';
     const textColor = theme === 'light' ? '#0f172a' : '#f8fafc';
@@ -74,7 +79,12 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }) => {
                             <div
                                 key={`err-${idx}`}
                                 className="health-item"
-                                onClick={() => err.ref && err.ref !== 'UNKNOWN' && setSelectedTask({ taskReferenceName: err.ref })}
+                                onClick={() => {
+                                    if (err.ref && err.ref !== 'UNKNOWN') {
+                                        const task = taskMap[err.ref];
+                                        if (task) setSelectedTask(task);
+                                    }
+                                }}
                                 style={{
                                     padding: '12px',
                                     borderRadius: '8px',
@@ -95,7 +105,12 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }) => {
                             <div
                                 key={`warn-${idx}`}
                                 className="health-item"
-                                onClick={() => warn.ref && warn.ref !== 'UNKNOWN' && setSelectedTask({ taskReferenceName: warn.ref })}
+                                onClick={() => {
+                                    if (warn.ref && warn.ref !== 'UNKNOWN') {
+                                        const task = taskMap[warn.ref];
+                                        if (task) setSelectedTask(task);
+                                    }
+                                }}
                                 style={{
                                     padding: '12px',
                                     borderRadius: '8px',

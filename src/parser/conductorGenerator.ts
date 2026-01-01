@@ -1,3 +1,5 @@
+import { TaskDef } from '../types/conductor';
+
 /**
  * Conductor 工作流生成器助手函数
  * 用于操作工作流 JSON 定义
@@ -6,7 +8,7 @@
 /**
  * 根据 taskReferenceName 在任务列表中查找任务
  */
-export function findTaskByRef(tasks, taskRef) {
+export function findTaskByRef(tasks: TaskDef[] | undefined, taskRef: string): TaskDef | null {
     if (!tasks) return null;
     for (const task of tasks) {
         if (task.taskReferenceName === taskRef) return task;
@@ -39,7 +41,7 @@ export function findTaskByRef(tasks, taskRef) {
 /**
  * 从任务列表中删除指定任务
  */
-export function removeTaskFromDef(tasks, taskRef) {
+export function removeTaskFromDef(tasks: TaskDef[] | undefined, taskRef: string): boolean {
     if (!tasks) return false;
 
     const index = tasks.findIndex(t => t.taskReferenceName === taskRef);
@@ -72,7 +74,7 @@ export function removeTaskFromDef(tasks, taskRef) {
 /**
  * 在指定的 sourceRef 之后插入一个新任务
  */
-export function insertTaskAfter(tasks, sourceRef, newTask) {
+export function insertTaskAfter(tasks: TaskDef[] | undefined, sourceRef: string, newTask: TaskDef): boolean {
     if (!tasks) return false;
 
     const index = tasks.findIndex(t => t.taskReferenceName === sourceRef);
@@ -82,7 +84,7 @@ export function insertTaskAfter(tasks, sourceRef, newTask) {
     }
 
     // 如果是 'start'，插入到顶层第一个
-    if (sourceRef === 'start' && tasks === arguments[0]) {
+    if (sourceRef === 'start') {
         tasks.unshift(newTask);
         return true;
     }
@@ -111,7 +113,7 @@ export function insertTaskAfter(tasks, sourceRef, newTask) {
 /**
  * 专门用于向分支（Decision Case 或 Fork Branch）的首部插入第一个任务
  */
-export function insertFirstTaskIntoBranch(tasks, parentRef, branchInfo, newTask) {
+export function insertFirstTaskIntoBranch(tasks: TaskDef[] | undefined, parentRef: string, branchInfo: { branchCase?: string; forkIndex?: number }, newTask: TaskDef): boolean {
     for (const task of tasks || []) {
         if (task.taskReferenceName === parentRef) {
             if (branchInfo.branchCase === 'default') {
@@ -127,6 +129,7 @@ export function insertFirstTaskIntoBranch(tasks, parentRef, branchInfo, newTask)
                 return true;
             } else if (branchInfo.forkIndex !== undefined) {
                 // Fork 分支
+                if (!task.forkTasks) task.forkTasks = [];
                 if (!task.forkTasks[branchInfo.forkIndex]) task.forkTasks[branchInfo.forkIndex] = [];
                 task.forkTasks[branchInfo.forkIndex].unshift(newTask);
                 return true;
@@ -152,7 +155,7 @@ export function insertFirstTaskIntoBranch(tasks, parentRef, branchInfo, newTask)
 /**
  * 同步 FORK_JOIN 与配套 JOIN 任务的 joinOn 字段
  */
-export function syncForkJoinOn(tasks) {
+export function syncForkJoinOn(tasks: TaskDef[] | undefined): void {
     if (!tasks) return;
 
     for (let i = 0; i < tasks.length; i++) {
@@ -161,7 +164,7 @@ export function syncForkJoinOn(tasks) {
         if (task.type === 'FORK_JOIN' && i + 1 < tasks.length) {
             const nextTask = tasks[i + 1];
             if (nextTask.type === 'JOIN') {
-                const joinOn = [];
+                const joinOn: string[] = [];
                 (task.forkTasks || []).forEach(branch => {
                     if (branch && branch.length > 0) {
                         joinOn.push(branch[branch.length - 1].taskReferenceName);

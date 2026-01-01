@@ -1,12 +1,15 @@
-import { memo, useState } from 'react';
-import { Handle, Position } from 'reactflow';
+import { memo } from 'react';
+import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import useWorkflowStore from '../../store/workflowStore';
+import { WorkflowNodeData } from '../../types/workflow';
+
+type ForkJoinNodeProps = NodeProps<WorkflowNodeData>;
 
 /**
  * FORK 节点组件
  */
-export const ForkNode = memo(({ id, data, selected }) => {
+export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const layoutDirection = data.layoutDirection || 'TB';
     const { mode, addForkBranch } = useWorkflowStore();
 
@@ -109,7 +112,7 @@ ForkNode.displayName = 'ForkNode';
 /**
  * JOIN 节点组件
  */
-export const JoinNode = memo(({ id, data, selected }) => {
+export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const layoutDirection = data.layoutDirection || 'TB';
 
     // 根据布局方向确定 Handle 位置

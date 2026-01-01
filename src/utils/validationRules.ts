@@ -40,18 +40,18 @@ export const TASK_RULES = {
             { field: 'loopCondition', type: 'required', message: '循环任务缺少退出条件 (loopCondition)' }
         ],
         'DECISION': [
-            { field: 'decisionCases', type: 'custom', validate: (val) => Object.keys(val || {}).length > 0, message: '决策任务必须至少包含一个分支 (decisionCases)' },
+            { field: 'decisionCases', type: 'custom', validate: (val: any) => Object.keys(val || {}).length > 0, message: '决策任务必须至少包含一个分支 (decisionCases)' },
             // Conductor 中 decisionCases 本身是 Object，Key 本身不能重复。
             // 但如果用户通过非标方式构造代码，此处可以校验
             {
-                field: 'decisionCases', type: 'custom', validate: (val) => {
+                field: 'decisionCases', type: 'custom', validate: (val: any) => {
                     const keys = Object.keys(val || {});
                     return new Set(keys).size === keys.length;
                 }, message: '决策分支条件不能重复'
             }
         ],
         'SWITCH': [
-            { field: 'decisionCases', type: 'custom', validate: (val) => Object.keys(val || {}).length > 0, message: 'Switch 任务必须至少包含一个分支' }
+            { field: 'decisionCases', type: 'custom', validate: (val: any) => Object.keys(val || {}).length > 0, message: 'Switch 任务必须至少包含一个分支' }
         ]
     }
 };

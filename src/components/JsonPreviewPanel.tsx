@@ -1,10 +1,16 @@
 import { memo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 
+interface JsonPreviewPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
+    theme?: 'dark' | 'light';
+}
+
 /**
  * 全局 JSON 预览面板 - 实时展示当前工作流定义
  */
-const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }) => {
+const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelProps) => {
     const { workflowDef } = useWorkflowStore();
 
     if (!isOpen) return null;

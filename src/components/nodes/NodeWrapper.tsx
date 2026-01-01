@@ -1,10 +1,19 @@
 import React from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 
-const NodeWrapper = ({ children, nodeId, selected, isStartOrEnd = false, isError = false, hasWarning = false }) => {
+interface NodeWrapperProps {
+    children: React.ReactNode;
+    nodeId: string;
+    selected?: boolean;
+    isStartOrEnd?: boolean;
+    isError?: boolean;
+    hasWarning?: boolean;
+}
+
+const NodeWrapper = ({ children, nodeId, isStartOrEnd = false, isError = false, hasWarning = false }: NodeWrapperProps) => {
     const { mode, removeNode } = useWorkflowStore();
 
-    const onDelete = (e) => {
+    const onDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (window.confirm('确定要删除此任务吗？')) {
             removeNode(nodeId);

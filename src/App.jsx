@@ -18,14 +18,17 @@ function App() {
     setLayoutDirection,
     selectedTask,
     setSelectedTask,
-    validationResults
+    validationResults,
+    theme,
+    setTheme,
+    edgeType,
+    setEdgeType,
+    nodesLocked,
+    setNodesLocked
   } = useWorkflowStore();
 
   const [error, setError] = useState(null);
   const [fileName, setFileName] = useState('');
-  const [theme, setTheme] = useState('dark');
-  const [edgeType, setEdgeType] = useState('default');
-  const [nodesLocked, setNodesLocked] = useState(true);
   const [showWorkflowSettings, setShowWorkflowSettings] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [showHealthCheck, setShowHealthCheck] = useState(false);
@@ -68,17 +71,16 @@ function App() {
 
   // 切换主题
   const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  }, []);
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  }, [theme, setTheme]);
 
   // 切换边类型
   const cycleEdgeType = useCallback(() => {
-    setEdgeType(prev => {
-      const types = ['default', 'step', 'smoothstep', 'straight'];
-      const currentIndex = types.indexOf(prev);
-      return types[(currentIndex + 1) % types.length];
-    });
-  }, []);
+    const types = ['default', 'step', 'smoothstep', 'straight'];
+    const currentIndex = types.indexOf(edgeType);
+    const nextType = types[(currentIndex + 1) % types.length];
+    setEdgeType(nextType);
+  }, [edgeType, setEdgeType]);
 
   const edgeTypeLabels = {
     'default': '曲线',

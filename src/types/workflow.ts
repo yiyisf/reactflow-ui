@@ -114,6 +114,7 @@ export interface WorkflowActions {
     addDecisionBranch: (taskRef: string, caseName: string) => void;
     removeDecisionBranch: (taskRef: string, caseName: string) => void;
     addForkBranch: (taskRef: string) => void;
+    pasteTask: (task: TaskDef) => void;
     setTheme: (theme: ThemeMode) => void;
     setThemeColor: (color: ThemeColor) => void;
     setEdgeType: (edgeType: string) => void;

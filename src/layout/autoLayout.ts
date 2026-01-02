@@ -16,13 +16,14 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
             height = 60;
             break;
         case 'decisionNode':
-            width = 150;
-            height = 150;
+            // 150x150 旋转 45度后的外接矩形宽度/高度为 150 * sqrt(2) ≈ 212
+            width = 212;
+            height = 212;
             break;
         case 'forkNode':
         case 'joinNode':
-            width = 120;
-            height = 80;
+            width = 140;
+            height = 60;
             break;
         case 'loopNode':
             // 循环节点需要更大的空间来容纳内部的迷你流程图

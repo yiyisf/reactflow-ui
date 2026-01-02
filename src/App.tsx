@@ -35,6 +35,7 @@ function App() {
   const [showWorkflowSettings, setShowWorkflowSettings] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [showHealthCheck, setShowHealthCheck] = useState(false);
+  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // 处理文件上传
@@ -102,6 +103,12 @@ function App() {
   const zoomToFit = useCallback(() => {
     window.dispatchEvent(new CustomEvent('workflow-zoom-to-fit'));
   }, []);
+
+  // 选中任务并打开面板
+  const handleNodeClick = useCallback((task: any) => {
+    setSelectedTask(task);
+    setIsDetailPanelOpen(true);
+  }, [setSelectedTask]);
 
   // 保存/下载工作流
   const handleSave = useCallback(() => {
@@ -285,7 +292,7 @@ function App() {
             <div className="workflow-viewer">
               <ReactFlowProvider>
                 <WorkflowDesigner
-                  onNodeClick={setSelectedTask}
+                  onNodeClick={handleNodeClick}
                   edgeType={edgeType}
                   theme={themeMode}
                   nodesLocked={nodesLocked}
@@ -295,8 +302,8 @@ function App() {
             </div>
 
             <TaskDetailPanel
-              task={selectedTask}
-              onClose={() => setSelectedTask(null)}
+              task={isDetailPanelOpen ? selectedTask : null}
+              onClose={() => setIsDetailPanelOpen(false)}
               theme={themeMode}
             />
 

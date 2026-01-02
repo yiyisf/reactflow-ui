@@ -35,7 +35,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     border: selected ? '3px solid #fbbf24' : (isDynamic ? '2px dashed var(--color-accent)' : '2px solid var(--color-accent)'),
                     borderRadius: '8px',
                     padding: '12px 20px',
-                    minWidth: '130px',
+                    width: '140px', // 统一宽度以确保对齐
                     boxShadow: selected
                         ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
                         : '0 4px 12px rgba(0,0,0,0.15)',
@@ -132,7 +132,7 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     border: selected ? '3px solid #fbbf24' : '2px solid var(--color-accent)',
                     borderRadius: '8px',
                     padding: '12px 20px',
-                    minWidth: '120px',
+                    width: '140px', // 统一宽度以确保对齐
                     boxShadow: selected
                         ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
                         : '0 4px 12px rgba(0,0,0,0.15)',

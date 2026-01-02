@@ -47,12 +47,13 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                     border: selected ? `3px solid #fbbf24` : `2px solid ${color.border}`,
                     borderRadius: '12px',
                     padding: '16px',
-                    minWidth: '180px',
+                    width: '180px', // 从 minWidth 更改为固定 width，确保布局对齐
                     boxShadow: selected
                         ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
                         : '0 4px 12px rgba(0,0,0,0.15)',
                     transition: 'all 0.3s ease',
                     cursor: 'pointer',
+                    overflow: 'hidden' // 防止内容溢出
                 }}
             >
                 <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
@@ -72,14 +73,20 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                         fontSize: '14px',
                         fontWeight: 'bold',
                         marginBottom: '4px',
-                        lineHeight: '1.3'
+                        lineHeight: '1.3',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                     }}>
                         {data.label}
                     </div>
                     <div style={{
                         fontSize: '11px',
                         opacity: 0.7,
-                        fontStyle: 'italic'
+                        fontStyle: 'italic',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                     }}>
                         {data.taskReferenceName}
                     </div>

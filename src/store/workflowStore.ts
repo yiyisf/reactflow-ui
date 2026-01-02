@@ -399,6 +399,76 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 }
             },
+
+            pasteTask: (task: TaskDef) => {
+                const { workflowDef, layoutDirection, selectedTask, taskMap } = get();
+                if (!workflowDef) return;
+                const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
+
+                const timestamp = Date.now();
+                const suffix = `_copy_${timestamp}`;
+                const newTask = JSON.parse(JSON.stringify(task)) as TaskDef;
+
+                const deepRename = (t: TaskDef) => {
+                    t.taskReferenceName = `${t.taskReferenceName}${suffix}`;
+                    if (t.decisionCases) {
+                        Object.values(t.decisionCases).forEach(branch => branch.forEach(deepRename));
+                    }
+                    if (t.defaultCase) {
+                        t.defaultCase.forEach(deepRename);
+                    }
+                    if (t.forkTasks) {
+                        t.forkTasks.forEach(branch => branch.forEach(deepRename));
+                    }
+                    if (t.loopOver) {
+                        t.loopOver.forEach(deepRename);
+                    }
+                };
+
+                deepRename(newTask);
+
+                const sourceRef = selectedTask ? selectedTask.taskReferenceName : (
+                    newDef.tasks.length > 0 ? newDef.tasks[newDef.tasks.length - 1].taskReferenceName : 'start'
+                );
+
+                if (newTask.type === 'FORK_JOIN') {
+                    if (!newTask.forkTasks) newTask.forkTasks = [[], []];
+                    const joinTask: TaskDef = {
+                        name: `${newTask.name}_join`,
+                        taskReferenceName: `${newTask.taskReferenceName}_join`,
+                        type: 'JOIN',
+                        joinOn: []
+                    };
+
+                    if (sourceRef === 'start' && newDef.tasks.length === 0) {
+                        newDef.tasks.push(newTask, joinTask);
+                    } else {
+                        insertTaskAfter(newDef.tasks, sourceRef, newTask);
+                        insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
+                    }
+                } else {
+                    if (sourceRef === 'start' && newDef.tasks.length === 0) {
+                        newDef.tasks.push(newTask);
+                    } else {
+                        insertTaskAfter(newDef.tasks, sourceRef, newTask);
+                    }
+                }
+
+                syncForkJoinOn(newDef.tasks);
+
+                const { nodes, edges, taskMap: newTaskMap } = parseWorkflow(newDef, layoutDirection);
+                const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                const validationResults = validateWorkflow(newDef);
+
+                set({
+                    workflowDef: newDef,
+                    nodes: layoutedNodes,
+                    edges: layoutedEdges,
+                    taskMap: newTaskMap,
+                    validationResults,
+                });
+            },
+
             setTheme: (theme: 'dark' | 'light') => set({ theme }),
             setThemeColor: (themeColor: ThemeColor) => set({ themeColor }),
             setEdgeType: (edgeType: string) => set({ edgeType }),

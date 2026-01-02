@@ -19,7 +19,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     // const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
 
-    const branches = Object.keys(data.decisionCases || {});
+    const branches = Object.keys(data.decisionCases || data.task?.decisionCases || {});
 
     const handleAddBranch = () => {
         const branchName = window.prompt('请输入新分支的名称 (case value):', `case_${branches.length + 1}`);

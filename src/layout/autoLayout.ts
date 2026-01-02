@@ -26,8 +26,9 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
             break;
         case 'loopNode':
             // 循环节点需要更大的空间来容纳内部的迷你流程图
-            const loopTaskCount = node.data.loopOver?.length || 0;
-            const hasCondition = !!node.data.loopCondition;
+            const loopOver = node.data.loopOver || node.data.task?.loopOver || [];
+            const loopTaskCount = loopOver.length;
+            const hasCondition = !!(node.data.loopCondition || node.data.task?.loopCondition);
 
             if (direction === 'LR') {
                 // 横向布局：任务水平排列

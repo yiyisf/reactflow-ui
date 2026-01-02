@@ -7,9 +7,7 @@ import { TaskDef } from '../../types/conductor';
 
 type LoopNodeProps = NodeProps<WorkflowNodeData>;
 
-interface TaskTypeColors {
-    [key: string]: string;
-}
+
 
 /**
  * 循环节点组件（DO_WHILE）
@@ -25,7 +23,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
 
     // 获取循环体任务信息
-    const loopOver = data.loopOver || [];
+    const loopOver = data.loopOver || data.task?.loopOver || [];
     const loopTaskCount = loopOver.length;
 
     // 处理迷你任务节点点击
@@ -50,20 +48,12 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
 
     // 渲染迷你任务节点
     const renderMiniTask = (task: TaskDef, index: number) => {
-        const taskTypeColors: TaskTypeColors = {
-            SIMPLE: 'var(--color-accent)',
-            HTTP: 'var(--color-accent)',
-            JSON_JQ_TRANSFORM: 'var(--color-accent)',
-            EVENT: 'var(--color-accent)',
-            INLINE: 'var(--color-accent)',
-            KAFKA_PUBLISH: 'var(--color-accent)',
-            LAMBDA: 'var(--color-accent)',
-            TERMINATE: 'var(--color-accent)',
-            WAIT: 'var(--color-accent)',
-        };
-
-        const color = taskTypeColors[task.type] || 'var(--color-accent)';
         const isHorizontal = layoutDirection === 'LR';
+
+        // Fix: Use surface color with brand border for high contrast against the brand-colored container
+        const bgColor = 'var(--bg-secondary)';
+        const borderColor = 'var(--color-accent)';
+        const textColor = 'var(--text-primary)';
 
         return (
             <div key={index} style={{
@@ -75,13 +65,13 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 <div
                     onClick={(e) => handleMiniTaskClick(task, e)}
                     style={{
-                        background: color,
+                        background: bgColor,
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '10px',
-                        color: '#fff',
+                        color: textColor,
                         boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        border: '1px solid rgba(255,255,255,0.2)',
+                        border: `1px solid ${borderColor}`,
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         minWidth: isHorizontal ? '80px' : 'auto',
@@ -362,7 +352,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     )}
 
                     {/* 循环条件 */}
-                    {data.loopCondition && (
+                    {(data.loopCondition || data.task?.loopCondition) && (
                         <div style={{
                             marginTop: '8px',
                             fontSize: '9px',
@@ -381,7 +371,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                 textOverflow: 'ellipsis',
                                 wordBreak: 'break-all'
                             }}>
-                                {data.loopCondition.substring(0, 80)}{data.loopCondition.length > 80 ? '...' : ''}
+                                {(data.loopCondition || data.task?.loopCondition || '').substring(0, 80)}{(data.loopCondition || data.task?.loopCondition || '').length > 80 ? '...' : ''}
                             </div>
                         </div>
                     )}

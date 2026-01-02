@@ -15,10 +15,13 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
 
     if (!isOpen) return null;
 
-    const bgColor = theme === 'light' ? '#fff' : '#1e293b';
-    const textColor = theme === 'light' ? '#334155' : '#e2e8f0';
-    const borderColor = theme === 'light' ? '#e2e8f0' : '#334155';
-    const codeBg = theme === 'light' ? '#f8fafc' : '#0f172a';
+    if (!isOpen) return null;
+
+    // Using CSS tokens
+    const bgColor = 'var(--glass-surface)';
+    const textColor = 'var(--text-primary)';
+    const borderColor = 'var(--glass-border)';
+    const codeBg = 'var(--bg-tertiary)';
 
     return (
         <div style={{

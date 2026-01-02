@@ -6,9 +6,14 @@ import WorkflowSettingsPanel from './components/WorkflowSettingsPanel';
 import JsonPreviewPanel from './components/JsonPreviewPanel';
 import HealthCheckPanel from './components/HealthCheckPanel';
 import useWorkflowStore from './store/workflowStore';
+import { useTheme } from './hooks/useTheme';
+import { ThemeControls } from './components/ThemeControls';
+import './styles/tokens.css'; // Import Design Tokens
 import './App.css';
 
 function App() {
+  const { mode: themeMode, color: themeColor } = useTheme();
+
   const {
     workflowDef,
     mode,
@@ -19,8 +24,6 @@ function App() {
     selectedTask,
     setSelectedTask,
     validationResults,
-    theme,
-    setTheme,
     edgeType,
     setEdgeType,
     nodesLocked,
@@ -72,10 +75,7 @@ function App() {
     }
   }, [setWorkflow, layoutDirection]);
 
-  // 切换主题
-  const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [theme, setTheme]);
+  // toggleTheme removed - used toggleMode directly
 
   // 切换边类型
   const cycleEdgeType = useCallback(() => {
@@ -120,7 +120,11 @@ function App() {
   }, [workflowDef]);
 
   return (
-    <div className={`app ${theme === 'light' ? 'light-theme' : ''}`}>
+    <div
+      className={`app ${themeMode === 'light' ? 'light-theme' : ''}`}
+      data-mode={themeMode}
+      data-brand={themeColor}
+    >
       <header className="app-header">
         <div className="header-content">
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -186,9 +190,7 @@ function App() {
 
             {/* 功能设置 */}
             <div className="settings-buttons">
-              <button className="settings-btn" onClick={toggleTheme} title="切换主题">
-                {theme === 'dark' ? '🌙' : '☀️'}
-              </button>
+              <ThemeControls />
               <button
                 className={`settings-btn ${showJsonPreview ? 'active' : ''}`}
                 onClick={() => setShowJsonPreview(!showJsonPreview)}
@@ -277,7 +279,7 @@ function App() {
             <JsonPreviewPanel
               isOpen={showJsonPreview}
               onClose={() => setShowJsonPreview(false)}
-              theme={theme}
+              theme={themeMode}
             />
 
             <div className="workflow-viewer">
@@ -285,7 +287,7 @@ function App() {
                 <WorkflowDesigner
                   onNodeClick={setSelectedTask}
                   edgeType={edgeType}
-                  theme={theme}
+                  theme={themeMode}
                   nodesLocked={nodesLocked}
                   searchQuery={searchQuery}
                 />
@@ -295,19 +297,19 @@ function App() {
             <TaskDetailPanel
               task={selectedTask}
               onClose={() => setSelectedTask(null)}
-              theme={theme}
+              theme={themeMode}
             />
 
             <WorkflowSettingsPanel
               isOpen={showWorkflowSettings}
               onClose={() => setShowWorkflowSettings(false)}
-              theme={theme}
+              theme={themeMode}
             />
 
             <HealthCheckPanel
               isOpen={showHealthCheck}
               onClose={() => setShowHealthCheck(false)}
-              theme={theme}
+              theme={themeMode}
             />
           </div>
         )}

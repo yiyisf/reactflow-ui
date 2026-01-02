@@ -5,7 +5,7 @@ import { parseWorkflow } from '../parser/conductorParser';
 import { getLayoutedElements } from '../layout/autoLayout';
 import { removeTaskFromDef, insertTaskAfter, findTaskByRef, insertFirstTaskIntoBranch, syncForkJoinOn } from '../parser/conductorGenerator';
 import { validateWorkflow } from '../utils/validator';
-import { WorkflowStore, LayoutDirection, EditorMode } from '../types/workflow';
+import { WorkflowStore, LayoutDirection, EditorMode, ThemeColor } from '../types/workflow';
 import { WorkflowDef, TaskDef } from '../types/conductor';
 
 const useWorkflowStore = create<WorkflowStore>()(
@@ -23,6 +23,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
             // 用户喜好配置
             theme: 'dark',
+            themeColor: 'blue',
             edgeType: 'default',
             nodesLocked: true,
 
@@ -399,6 +400,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 }
             },
             setTheme: (theme: 'dark' | 'light') => set({ theme }),
+            setThemeColor: (themeColor: ThemeColor) => set({ themeColor }),
             setEdgeType: (edgeType: string) => set({ edgeType }),
             setNodesLocked: (nodesLocked: boolean) => set({ nodesLocked }),
         }),
@@ -407,6 +409,7 @@ const useWorkflowStore = create<WorkflowStore>()(
             storage: createJSONStorage(() => localStorage),
             partialize: (state: WorkflowStore) => ({
                 theme: state.theme,
+                themeColor: state.themeColor,
                 layoutDirection: state.layoutDirection,
                 edgeType: state.edgeType,
                 nodesLocked: state.nodesLocked

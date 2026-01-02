@@ -1,12 +1,10 @@
 :root {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --accent-primary: #3b82f6;
-  --accent-secondary: #8b5cf6;
-  --border-color: rgba(255, 255, 255, 0.1);
+  /* Inherit from tokens.css or map to them */
+  /* --bg-primary etc are handled by tokens.css now, but we can keep aliases if needed. */
+  /* For brand, we MUST use the token */
+  --accent-primary: var(--color-accent);
+  --accent-secondary: var(--color-accent-hover);
+  --border-color: var(--glass-border);
 }
 
 * {
@@ -51,7 +49,7 @@ body {
 .app-title {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -62,7 +60,10 @@ body {
 
 .title-icon {
   font-size: 28px;
-  filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+  filter: drop-shadow(0 0 10px rgba(var(--color-accent-rgb), 0.5));
+  /* Assumes we might need RGB, but for now let's use the hex token if supported by browser filters or just keep generic */
+  /* Actually, CSS vars in filter drop-shadow work if the var is a color. */
+  filter: drop-shadow(0 0 10px var(--color-accent));
 }
 
 .header-actions {
@@ -122,7 +123,7 @@ body {
 }
 
 .upload-btn {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
   border: none;
   color: white;
   padding: 10px 20px;
@@ -131,12 +132,12 @@ body {
   font-size: 14px;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .upload-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 .file-info {
@@ -144,9 +145,9 @@ body {
   color: var(--text-secondary);
   margin-top: 8px;
   padding: 8px 12px;
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--color-accent-bg);
   border-radius: 6px;
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid var(--color-accent);
 }
 
 .file-name {
@@ -247,7 +248,7 @@ body {
 .welcome-message h2 {
   font-size: 32px;
   margin-bottom: 12px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -279,8 +280,8 @@ body {
 }
 
 .feature:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
   transform: translateY(-2px);
 }
 
@@ -468,9 +469,9 @@ body {
 }
 
 .mode-btn.active {
-  background: var(--accent-primary);
+  background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .divider {
@@ -514,8 +515,15 @@ body {
 }
 
 @keyframes popIn {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* Light theme overrides for new elements */
@@ -528,7 +536,7 @@ body {
 }
 
 .app.light-theme .mode-btn.active {
-  background: #3b82f6;
+  background: var(--color-accent);
   color: white;
 }
 
@@ -536,6 +544,7 @@ body {
   background: white;
   border-color: #cbd5e1;
 }
+
 .settings-btn.active {
   background: var(--accent-primary);
   color: white;

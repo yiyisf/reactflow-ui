@@ -244,9 +244,9 @@ const WorkflowDesigner = ({
         });
     }, [edges, edgeType, theme, mode]);
 
-    // 背景颜色
-    const backgroundColor = theme === 'light' ? '#f1f5f9' : '#0f172a';
-    const gridColor = theme === 'light' ? '#cbd5e1' : '#475569';
+    // 背景颜色 - 使用 CSS变量
+    const backgroundColor = 'var(--bg-secondary)';
+    const gridColor = 'var(--border-primary)';
 
     return (
         <div style={{ width: '100%', height: '100%' }}>
@@ -275,9 +275,10 @@ const WorkflowDesigner = ({
                 />
                 <Controls
                     style={{
-                        background: theme === 'light' ? 'rgba(241, 245, 249, 0.9)' : 'rgba(30, 41, 59, 0.9)',
-                        border: `1px solid ${theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'} `,
+                        background: 'var(--glass-surface)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '8px',
+                        backdropFilter: 'blur(10px)',
                     }}
                 />
                 <MiniMap
@@ -290,15 +291,16 @@ const WorkflowDesigner = ({
                             case 'joinNode': return '#a78bfa';
                             case 'loopNode': return '#f59e0b';
                             case 'subWorkflowNode': return '#6366f1';
-                            default: return '#3b82f6';
+                            default: return '#3b82f6'; // Could use var(--color-accent) if MiniMap supports it? Probably needs hex.
                         }
                     }}
                     style={{
-                        background: theme === 'light' ? 'rgba(241, 245, 249, 0.9)' : 'rgba(30, 41, 59, 0.9)',
-                        border: `1px solid ${theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'} `,
+                        background: 'var(--glass-surface)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '8px',
+                        backdropFilter: 'blur(10px)',
                     }}
-                    maskColor={theme === 'light' ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.6)'}
+                    maskColor="rgba(0,0,0,0.2)" // Use a semi-transparent dark mask for better contrast in both modes
                 />
             </ReactFlow>
 

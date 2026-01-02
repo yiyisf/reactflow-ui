@@ -19,15 +19,15 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     // 根据任务类型设置颜色
     const getTaskColor = (type: string) => {
         const colors: Record<string, { bg: string; border: string }> = {
-            SIMPLE: { bg: '#3b82f6', border: '#2563eb' },
-            HTTP: { bg: '#8b5cf6', border: '#7c3aed' },
-            JSON_JQ_TRANSFORM: { bg: '#06b6d4', border: '#0891b2' },
-            EVENT: { bg: '#f59e0b', border: '#d97706' },
-            INLINE: { bg: '#10b981', border: '#059669' },
-            KAFKA_PUBLISH: { bg: '#ec4899', border: '#db2777' },
-            LAMBDA: { bg: '#6366f1', border: '#4f46e5' },
-            TERMINATE: { bg: '#ef4444', border: '#dc2626' },
-            WAIT: { bg: '#64748b', border: '#475569' },
+            SIMPLE: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            HTTP: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            JSON_JQ_TRANSFORM: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            EVENT: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            INLINE: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            KAFKA_PUBLISH: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            LAMBDA: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            TERMINATE: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
+            WAIT: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
         };
         return colors[type] || colors.SIMPLE;
     };

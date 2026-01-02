@@ -51,18 +51,18 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     // 渲染迷你任务节点
     const renderMiniTask = (task: TaskDef, index: number) => {
         const taskTypeColors: TaskTypeColors = {
-            SIMPLE: '#3b82f6',
-            HTTP: '#8b5cf6',
-            JSON_JQ_TRANSFORM: '#06b6d4',
-            EVENT: '#f59e0b',
-            INLINE: '#10b981',
-            KAFKA_PUBLISH: '#ec4899',
-            LAMBDA: '#6366f1',
-            TERMINATE: '#ef4444',
-            WAIT: '#64748b',
+            SIMPLE: 'var(--color-accent)',
+            HTTP: 'var(--color-accent)',
+            JSON_JQ_TRANSFORM: 'var(--color-accent)',
+            EVENT: 'var(--color-accent)',
+            INLINE: 'var(--color-accent)',
+            KAFKA_PUBLISH: 'var(--color-accent)',
+            LAMBDA: 'var(--color-accent)',
+            TERMINATE: 'var(--color-accent)',
+            WAIT: 'var(--color-accent)',
         };
 
-        const color = taskTypeColors[task.type] || '#3b82f6';
+        const color = taskTypeColors[task.type] || 'var(--color-accent)';
         const isHorizontal = layoutDirection === 'LR';
 
         return (
@@ -237,8 +237,8 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
         >
             <div
                 style={{
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    border: selected ? '3px solid #fbbf24' : '2px solid #d97706',
+                    background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
+                    border: selected ? '3px solid #fbbf24' : '2px solid var(--color-accent)',
                     borderRadius: '16px',
                     padding: '16px',
                     minWidth: isHorizontal ? '300px' : '240px',

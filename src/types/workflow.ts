@@ -65,6 +65,16 @@ export interface WorkflowNodeData {
 export type WorkflowNode = Node<WorkflowNodeData>;
 
 /**
+ * 应用主题模式
+ */
+export type ThemeMode = 'dark' | 'light';
+
+/**
+ * 品牌主色调
+ */
+export type ThemeColor = 'blue' | 'orange';
+
+/**
  * 工作流存储状态
  */
 export interface WorkflowState {
@@ -77,7 +87,8 @@ export interface WorkflowState {
     selectedTask: TaskDef | null;
     executionData: any | null;
     validationResults: ValidationResults;
-    theme: 'dark' | 'light';
+    theme: ThemeMode;
+    themeColor: ThemeColor;
     edgeType: string;
     nodesLocked: boolean;
 }
@@ -103,7 +114,8 @@ export interface WorkflowActions {
     addDecisionBranch: (taskRef: string, caseName: string) => void;
     removeDecisionBranch: (taskRef: string, caseName: string) => void;
     addForkBranch: (taskRef: string) => void;
-    setTheme: (theme: 'dark' | 'light') => void;
+    setTheme: (theme: ThemeMode) => void;
+    setThemeColor: (color: ThemeColor) => void;
     setEdgeType: (edgeType: string) => void;
     setNodesLocked: (nodesLocked: boolean) => void;
 }

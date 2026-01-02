@@ -13,10 +13,12 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }: HealthCheckPanelP
     const { validationResults, setSelectedTask, taskMap } = useWorkflowStore();
     const { errors, warnings } = validationResults || { isValid: true, errors: [], warnings: [] };
 
-    const bgColor = theme === 'light' ? '#fff' : '#1e293b';
-    const textColor = theme === 'light' ? '#0f172a' : '#f8fafc';
-    const borderColor = theme === 'light' ? '#e2e8f0' : '#334155';
-    const secondaryTextColor = theme === 'light' ? '#64748b' : '#94a3b8';
+
+
+    const bgColor = 'var(--glass-surface)';
+    const textColor = 'var(--text-primary)';
+    const borderColor = 'var(--glass-border)';
+    const secondaryTextColor = 'var(--text-secondary)';
 
     if (!isOpen) return null;
 

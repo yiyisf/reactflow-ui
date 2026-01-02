@@ -50,8 +50,8 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     style={{
                         width: '150px',
                         height: '150px',
-                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                        border: selected ? '3px solid #fbbf24' : '2px solid #d97706',
+                        background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
+                        border: selected ? '3px solid #fbbf24' : '2px solid var(--color-accent-hover)',
                         transform: 'rotate(45deg)',
                         display: 'flex',
                         alignItems: 'center',
@@ -112,21 +112,22 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
 
                 {/* 分支控制菜单 (仅编辑模式) */}
                 {mode === 'edit' && isMenuOpen && (
-                    <div style={{
+                    <div className="glass-panel" style={{
                         position: 'absolute',
                         top: '160px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        backgroundColor: '#1e293b',
-                        border: '1px solid #334155',
+                        backgroundColor: 'var(--glass-surface)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: '8px',
                         padding: '8px',
                         zIndex: 1000,
                         minWidth: '180px',
                         boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-                        animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                        animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        backdropFilter: 'blur(12px)'
                     }}>
-                        <div style={{ padding: '4px 8px', fontSize: '11px', color: '#94a3b8', borderBottom: '1px solid #334155', marginBottom: '4px' }}>
+                        <div style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)', marginBottom: '4px' }}>
                             分支管理
                         </div>
                         {branches.map(branch => (
@@ -136,7 +137,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                 alignItems: 'center',
                                 padding: '6px 8px',
                                 fontSize: '12px',
-                                color: '#fff'
+                                color: 'var(--text-primary)'
                             }}>
                                 <span>{branch}</span>
                                 <button
@@ -166,7 +167,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                 width: '100%',
                                 marginTop: '4px',
                                 padding: '8px',
-                                backgroundColor: '#3b82f6',
+                                backgroundColor: 'var(--color-accent)',
                                 border: 'none',
                                 borderRadius: '4px',
                                 color: '#fff',

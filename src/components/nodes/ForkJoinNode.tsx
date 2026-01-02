@@ -30,9 +30,9 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                 className={`fork-node ${isDynamic ? 'dynamic' : 'static'}`}
                 style={{
                     background: isDynamic
-                        ? 'linear-gradient(135deg, #065f46 0%, #064e3b 100%)'
-                        : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    border: selected ? '3px solid #fbbf24' : (isDynamic ? '2px dashed #34d399' : '2px solid #059669'),
+                        ? 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)'
+                        : 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
+                    border: selected ? '3px solid #fbbf24' : (isDynamic ? '2px dashed var(--color-accent)' : '2px solid var(--color-accent)'),
                     borderRadius: '8px',
                     padding: '12px 20px',
                     minWidth: '130px',
@@ -50,7 +50,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                 <div style={{ color: '#fff', textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
                         {isDynamic && (
-                            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#34d399' }}>λ</span>
+                            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>λ</span>
                         )}
                         <span style={{
                             fontSize: '10px',
@@ -128,8 +128,8 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
         >
             <div
                 style={{
-                    background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
-                    border: selected ? '3px solid #fbbf24' : '2px solid #8b5cf6',
+                    background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
+                    border: selected ? '3px solid #fbbf24' : '2px solid var(--color-accent)',
                     borderRadius: '8px',
                     padding: '12px 20px',
                     minWidth: '120px',

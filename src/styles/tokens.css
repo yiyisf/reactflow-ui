@@ -1,0 +1,152 @@
+:root {
+    /* ----------------------------------------------------
+       Theme: Brand Colors (Global)
+       ---------------------------------------------------- */
+    --color-brand-blue: #3b82f6;
+    /* Tech Blue */
+    --color-brand-orange: #E75213;
+    /* Molten Core */
+
+    /* ----------------------------------------------------
+       Theme: Functional Colors (Global)
+       ---------------------------------------------------- */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #3b82f6;
+
+    /* ----------------------------------------------------
+       Layer: Base Tokens (Mode Agnostic Defaults)
+       ---------------------------------------------------- */
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+
+    --z-dropdown: 1000;
+    --z-sticky: 1100;
+    --z-modal: 1300;
+    --z-popover: 1500;
+}
+
+/* ------------------------------------------------------------------
+   MODE: DARK (Default)
+   ------------------------------------------------------------------ */
+[data-mode='dark'] {
+    /* Backgrounds */
+    --bg-primary: #0f172a;
+    /* Dark Blue/Black */
+    --bg-secondary: #1e293b;
+    /* Slate 800 */
+    --bg-tertiary: #334155;
+    /* Slate 700 */
+    --bg-highlight: rgba(255, 255, 255, 0.05);
+
+    /* Glass Effect */
+    --glass-surface: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+
+    /* Typography */
+    --text-primary: #f8fafc;
+    /* Slate 50 */
+    --text-secondary: #94a3b8;
+    /* Slate 400 */
+    --text-muted: #64748b;
+    /* Slate 500 */
+    --text-inverse: #0f172a;
+
+    /* Borders */
+    --border-primary: rgba(255, 255, 255, 0.1);
+    --border-secondary: rgba(255, 255, 255, 0.2);
+}
+
+/* ------------------------------------------------------------------
+   MODE: LIGHT
+   ------------------------------------------------------------------ */
+[data-mode='light'] {
+    /* Backgrounds */
+    --bg-primary: #f8fafc;
+    /* Slate 50 */
+    --bg-secondary: #ffffff;
+    /* White */
+    --bg-tertiary: #f1f5f9;
+    /* Slate 100 */
+    --bg-highlight: rgba(0, 0, 0, 0.05);
+
+    /* Glass Effect */
+    --glass-surface: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(0, 0, 0, 0.1);
+
+    /* Typography */
+    --text-primary: #0f172a;
+    /* Slate 900 */
+    --text-secondary: #64748b;
+    /* Slate 500 */
+    --text-muted: #94a3b8;
+    /* Slate 400 */
+    --text-inverse: #ffffff;
+
+    /* Borders */
+    --border-primary: rgba(0, 0, 0, 0.1);
+    --border-secondary: rgba(0, 0, 0, 0.2);
+}
+
+/* ------------------------------------------------------------------
+   BRAND: BLUE (Tech Blue)
+   ------------------------------------------------------------------ */
+[data-brand='blue'] {
+    /* Mode-Aware Branding */
+
+    /* Dark Mode Defaults */
+    --color-accent: #3b82f6;
+    /* Blue 500 */
+    --color-accent-hover: #60a5fa;
+    /* Blue 400 */
+    --color-accent-text: #93c5fd;
+    /* Blue 300 */
+    --color-accent-bg: rgba(59, 130, 246, 0.15);
+}
+
+[data-brand='blue'][data-mode='light'] {
+    --color-accent: #2563eb;
+    /* Blue 600 - Darker for Light Mode */
+    --color-accent-hover: #1d4ed8;
+    /* Blue 700 */
+    --color-accent-text: #1e40af;
+    /* Blue 800 */
+}
+
+/* ------------------------------------------------------------------
+   BRAND: ORANGE (Molten Core)
+   ------------------------------------------------------------------ */
+[data-brand='orange'] {
+    /* Dark Mode Defaults */
+    --color-accent: #E75213;
+    /* Custom Orange */
+    --color-accent-hover: #fb923c;
+    /* Orange 400 */
+    --color-accent-text: #fdba74;
+    /* Orange 300 */
+    --color-accent-bg: rgba(231, 82, 19, 0.15);
+}
+
+[data-brand='orange'][data-mode='light'] {
+    --color-accent: #ea580c;
+    /* Orange 600 */
+    --color-accent-hover: #c2410c;
+    /* Orange 700 */
+    --color-accent-text: #9a3412;
+    /* Orange 800 */
+}
+
+/* ------------------------------------------------------------------
+   UTILITIES
+   ------------------------------------------------------------------ */
+.glass-panel {
+    background: var(--glass-surface);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+}

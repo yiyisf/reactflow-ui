@@ -27,13 +27,12 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
 
     const isEditMode = mode === 'edit';
 
-    const bgColor = theme === 'light'
-        ? 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
-        : 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
-    const textColor = theme === 'light' ? '#0f172a' : '#fff';
-    const borderColor = theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)';
-    const inputBg = theme === 'light' ? '#fff' : 'rgba(0,0,0,0.3)';
-    const secondaryTextColor = theme === 'light' ? '#64748b' : '#94a3b8';
+    const bgColor = 'var(--glass-surface)';
+    // const bgGradient = 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%)'; // Optional if we want gradient
+    const textColor = 'var(--text-primary)';
+    const borderColor = 'var(--glass-border)';
+    const inputBg = 'var(--bg-tertiary)';
+    const secondaryTextColor = 'var(--text-secondary)';
 
     // 处理字段变更
     const handleChange = (field: string, value: any) => {
@@ -186,11 +185,30 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
             boxShadow: '-10px 0 30px rgba(0,0,0,0.2)',
             zIndex: 1000,
             animation: 'slideInFromRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            backdropFilter: 'blur(20px)'
         }}>
             <style>{`
                 @keyframes slideInFromRight {
                   from { transform: translateX(100%); opacity: 0; }
                   to { transform: translateX(0); opacity: 1; }
+                }
+                .tab-btn:hover {
+                    background-color: var(--bg-highlight);
+                    color: var(--text-primary);
+                }
+                .tab-btn.active {
+                    color: var(--color-accent);
+                    border-bottom: 2px solid var(--color-accent);
+                }
+                .form-input {
+                    background-color: var(--bg-tertiary);
+                    border: 1px solid var(--glass-border);
+                    color: var(--text-primary);
+                }
+                .form-input:focus {
+                    border-color: var(--color-accent);
+                    outline: none;
+                    box-shadow: 0 0 0 2px var(--color-accent-bg);
                 }
             `}</style>
 
@@ -198,11 +216,11 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
             <div style={{
                 padding: '24px',
                 borderBottom: `1px solid ${borderColor}`,
-                background: 'rgba(0,0,0,0.05)'
+                background: 'var(--bg-highlight)'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div style={{
-                        background: '#3b82f6',
+                        background: 'var(--color-accent)',
                         color: '#fff',
                         padding: '2px 8px',
                         borderRadius: '4px',
@@ -229,7 +247,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                             border: 'none',
                             color: textColor,
                             outline: 'none',
-                            borderBottom: '2px dashed #3b82f6'
+                            borderBottom: '2px dashed var(--color-accent)'
                         }}
                     />
                 ) : (
@@ -245,7 +263,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
 
                 {/* 1. HTTP 任务专项 UI */}
-                {displayTask.type === 'HTTP' && renderSpecialSection('HTTP 请求配置', '🌐', '#3b82f6', (
+                {displayTask.type === 'HTTP' && renderSpecialSection('HTTP 请求配置', '🌐', 'var(--color-accent)', (
                     <>
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                             <select
@@ -294,7 +312,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                 ))}
 
                 {/* 2. LAMBDA 任务专项 UI */}
-                {displayTask.type === 'LAMBDA' && renderSpecialSection('Lambda 脚本配置', '📜', '#10b981', (
+                {displayTask.type === 'LAMBDA' && renderSpecialSection('Lambda 脚本配置', '📜', 'var(--color-accent)', (
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>SCRIPT EXPRESSION (JS)</label>
                         <textarea
@@ -302,7 +320,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                             onChange={(e) => handleInputParamChange('scriptExpression', e.target.value)}
                             disabled={!isEditMode}
                             rows={10}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: '#000', color: '#10b981', border: '1px solid #10b98150', fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.5' }}
+                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: '#000', color: 'var(--color-accent)', border: '1px solid var(--color-accent)', fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.5' }}
                         />
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor, fontStyle: 'italic' }}>
                             提示: 使用 `$.input.key` 访问参数，返回值为节点输出。
@@ -311,7 +329,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                 ))}
 
                 {/* 3. JQ_TRANSFORM 专项 UI */}
-                {displayTask.type === 'JSON_JQ_TRANSFORM' && renderSpecialSection('JQ 数据转换', '🔍', '#a78bfa', (
+                {displayTask.type === 'JSON_JQ_TRANSFORM' && renderSpecialSection('JQ 数据转换', '🔍', 'var(--color-accent)', (
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>JQ QUERY</label>
                         <textarea
@@ -319,13 +337,13 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                             onChange={(e) => handleInputParamChange('queryExpression', e.target.value)}
                             disabled={!isEditMode}
                             rows={6}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: inputBg, color: '#a78bfa', border: `1px solid ${borderColor}`, fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.5' }}
+                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: inputBg, color: 'var(--color-accent)', border: `1px solid ${borderColor}`, fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.5' }}
                         />
                     </>
                 ))}
 
                 {/* 4. SUB_WORKFLOW 专项 UI */}
-                {displayTask.type === 'SUB_WORKFLOW' && renderSpecialSection('子工作流配置', '🏗️', '#6366f1', (
+                {displayTask.type === 'SUB_WORKFLOW' && renderSpecialSection('子工作流配置', '🏗️', 'var(--color-accent)', (
                     <>
                         <div style={{ marginBottom: '12px' }}>
                             <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>WORKFLOW NAME</label>
@@ -348,7 +366,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                 ))}
 
                 {/* 5. TERMINATE 专项 UI */}
-                {displayTask.type === 'TERMINATE' && renderSpecialSection('终止状态配置', '⏹️', '#ef4444', (
+                {displayTask.type === 'TERMINATE' && renderSpecialSection('终止状态配置', '⏹️', 'var(--color-accent)', (
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>TERMINATION STATUS</label>
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -359,7 +377,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                                     disabled={!isEditMode}
                                     style={{
                                         flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer',
-                                        background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? '#ef4444' : inputBg,
+                                        background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg,
                                         color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? '#fff' : textColor,
                                         border: `1px solid ${borderColor}`,
                                         fontWeight: 'bold', fontSize: '11px'
@@ -381,7 +399,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                 ))}
 
                 {/* 6. EVENT 专项 UI */}
-                {displayTask.type === 'EVENT' && renderSpecialSection('事件发送配置', '✉️', '#ec4899', (
+                {displayTask.type === 'EVENT' && renderSpecialSection('事件发送配置', '✉️', 'var(--color-accent)', (
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>EVENT SINK (地址/队列名)</label>
                         <input
@@ -395,7 +413,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                 ))}
 
                 {/* 7. WAIT 专项 UI */}
-                {displayTask.type === 'WAIT' && renderSpecialSection('等待状态配置', '⏳', '#06b6d4', (
+                {displayTask.type === 'WAIT' && renderSpecialSection('等待状态配置', '⏳', 'var(--color-accent)', (
                     <div style={{ fontSize: '12px', color: secondaryTextColor, lineHeight: '1.6' }}>
                         此任务将使工作流进入 <b>IN_PROGRESS</b> 状态，直到外部信号触发更新或达到超时时间。
                         <br /><br />
@@ -404,14 +422,14 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                 ))}
 
                 {/* 8. Decision & Loop 专项 UI */}
-                {(displayTask.type === 'DECISION' || displayTask.type === 'SWITCH') && renderSpecialSection('决策条件配置', '⚖️', '#f59e0b', (
+                {(displayTask.type === 'DECISION' || displayTask.type === 'SWITCH') && renderSpecialSection('决策条件配置', '⚖️', 'var(--color-accent)', (
                     <>
                         {renderInput('判断参数名', 'caseValueParam')}
                         {renderTextArea('JS 表达式', 'caseExpression')}
                     </>
                 ))}
 
-                {displayTask.type === 'DO_WHILE' && renderSpecialSection('循环逻辑配置', '🔄', '#d97706', (
+                {displayTask.type === 'DO_WHILE' && renderSpecialSection('循环逻辑配置', '🔄', 'var(--color-accent)', (
                     <>
                         {renderTextArea('循环结束条件 (JS)', 'loopCondition')}
                     </>
@@ -455,8 +473,8 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
                     <button
                         onClick={onClose}
                         style={{
-                            padding: '10px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px',
-                            fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                            padding: '10px 24px', background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: '8px',
+                            fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px var(--color-accent-bg)'
                         }}
                     >
                         完成退出

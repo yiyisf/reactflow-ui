@@ -7,7 +7,7 @@ interface NodeSelectorProps {
 }
 
 const taskTypes: { type: TaskType; label: string; icon: string; color: string }[] = [
-    { type: 'SIMPLE', label: 'Simple Task', icon: '📝', color: '#3b82f6' },
+    { type: 'SIMPLE', label: 'Simple Task', icon: '📝', color: 'var(--color-accent)' },
     { type: 'HTTP', label: 'HTTP Task', icon: '🌐', color: '#8b5cf6' },
     { type: 'DECISION', label: 'Decision/Switch', icon: '🔀', color: '#f59e0b' },
     { type: 'FORK_JOIN', label: 'Fork/Join', icon: '🔱', color: '#10b981' },
@@ -33,20 +33,21 @@ const NodeSelector = ({ onSelect, onCancel, theme = 'dark' }: NodeSelectorProps)
             animation: 'fadeIn 0.2s ease-out'
         }} onClick={onCancel}>
             <div
+                className="glass-panel"
                 style={{
-                    backgroundColor: theme === 'light' ? '#fff' : '#1e293b',
+                    backgroundColor: 'var(--glass-surface)',
                     borderRadius: '16px',
                     padding: '24px',
                     width: '400px',
                     boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
-                    border: `1px solid ${theme === 'light' ? '#e2e8f0' : '#334155'}`,
+                    border: '1px solid var(--glass-border)',
                 }}
                 onClick={e => e.stopPropagation()}
             >
                 <h3 style={{
                     marginTop: 0,
                     marginBottom: '20px',
-                    color: theme === 'light' ? '#1e293b' : '#fff',
+                    color: 'var(--text-primary)',
                     textAlign: 'center'
                 }}>
                     选择任务类型
@@ -66,22 +67,22 @@ const NodeSelector = ({ onSelect, onCancel, theme = 'dark' }: NodeSelectorProps)
                                 alignItems: 'center',
                                 gap: '12px',
                                 padding: '16px',
-                                backgroundColor: theme === 'light' ? '#f8fafc' : '#334155',
+                                backgroundColor: 'var(--bg-tertiary)',
                                 border: `2px solid transparent`,
                                 borderRadius: '12px',
                                 cursor: 'pointer',
                                 textAlign: 'left',
                                 transition: 'all 0.2s',
-                                color: theme === 'light' ? '#1e293b' : '#fff'
+                                color: 'var(--text-primary)'
                             }}
                             onMouseEnter={e => {
                                 e.currentTarget.style.borderColor = task.color;
-                                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#3f4e63';
+                                e.currentTarget.style.backgroundColor = 'var(--bg-highlight)';
                                 e.currentTarget.style.transform = 'translateY(-2px)';
                             }}
                             onMouseLeave={e => {
                                 e.currentTarget.style.borderColor = 'transparent';
-                                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f8fafc' : '#334155';
+                                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
                                 e.currentTarget.style.transform = 'translateY(0)';
                             }}
                         >
@@ -101,9 +102,9 @@ const NodeSelector = ({ onSelect, onCancel, theme = 'dark' }: NodeSelectorProps)
                         width: '100%',
                         padding: '12px',
                         backgroundColor: 'transparent',
-                        border: `1px solid ${theme === 'light' ? '#e2e8f0' : '#475569'}`,
+                        border: '1px solid var(--border-primary)',
                         borderRadius: '8px',
-                        color: theme === 'light' ? '#64748b' : '#94a3b8',
+                        color: 'var(--text-muted)',
                         cursor: 'pointer',
                         fontSize: '14px'
                     }}

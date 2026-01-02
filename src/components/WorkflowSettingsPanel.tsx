@@ -23,13 +23,11 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }: WorkflowSett
 
     if (!isOpen || !localDef) return null;
 
-    const bgColor = theme === 'light'
-        ? 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
-        : 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
-    const textColor = theme === 'light' ? '#0f172a' : '#fff';
-    const borderColor = theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)';
-    const inputBg = theme === 'light' ? '#fff' : 'rgba(0,0,0,0.3)';
-    const secondaryTextColor = theme === 'light' ? '#64748b' : '#94a3b8';
+    const bgColor = 'var(--glass-surface)';
+    const textColor = 'var(--text-primary)';
+    const borderColor = 'var(--glass-border)';
+    const inputBg = 'var(--bg-tertiary)';
+    const secondaryTextColor = 'var(--text-secondary)';
 
     const handleChange = (field: string, value: any) => {
         if (!localDef) return;
@@ -137,7 +135,8 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }: WorkflowSett
                 flexDirection: 'column',
                 overflow: 'hidden',
                 animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                border: `1px solid ${borderColor}`
+                border: `1px solid ${borderColor}`,
+                backdropFilter: 'blur(20px)'
             }}>
                 {/* Header */}
                 <div style={{
@@ -146,7 +145,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }: WorkflowSett
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    background: 'rgba(0,0,0,0.05)'
+                    background: 'var(--bg-highlight)'
                 }}>
                     <div>
                         <h2 style={{ margin: 0, fontSize: '20px', color: textColor }}>工作流全局配置</h2>
@@ -172,8 +171,8 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }: WorkflowSett
                         {renderTextArea('输出参数映射 (Output Mapping)', 'outputParameters', true)}
                     </div>
 
-                    <div style={{ marginTop: '12px', padding: '16px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                        <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 'bold', marginBottom: '8px' }}>💡 提示</div>
+                    <div style={{ marginTop: '12px', padding: '16px', background: 'var(--color-accent-bg)', borderRadius: '12px', border: '1px solid var(--color-accent-bg)' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--color-accent)', fontWeight: 'bold', marginBottom: '8px' }}>💡 提示</div>
                         <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '11px', color: secondaryTextColor, lineHeight: '1.6' }}>
                             <li>工作流名称建议使用英文和下划线，例如：<code>order_fulfillment_flow</code></li>
                             <li>修改名称或版本不会影响已部署的工作流实例。</li>
@@ -188,13 +187,13 @@ const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }: WorkflowSett
                         onClick={onClose}
                         style={{
                             padding: '12px 32px',
-                            background: '#3b82f6',
+                            background: 'var(--color-accent)',
                             color: '#fff',
                             border: 'none',
                             borderRadius: '10px',
                             fontWeight: 'bold',
                             cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                            boxShadow: '0 4px 12px var(--color-accent-bg)'
                         }}
                     >
                         完成并关闭

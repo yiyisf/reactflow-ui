@@ -35,6 +35,8 @@ interface PendingEdge {
     edgeData?: any;
 }
 
+import { useShortcuts } from '../hooks/useShortcuts';
+
 /**
  * 工作流查看/设计器组件
  */
@@ -42,9 +44,11 @@ const WorkflowDesigner = ({
     onNodeClick,
     edgeType = 'default',
     theme = 'dark',
-    nodesLocked = true,
     searchQuery = '',
 }: WorkflowDesignerProps) => {
+    // 激活快捷键
+    useShortcuts();
+
     const { fitView } = useReactFlow();
 
     // 从 store 中获取状态和操作
@@ -58,6 +62,7 @@ const WorkflowDesigner = ({
         layoutDirection,
         addNode,
         addLoopTask,
+        nodesLocked,
         taskMap,
         validationResults
     } = useWorkflowStore();

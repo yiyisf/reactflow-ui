@@ -15,15 +15,19 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
 
-    // 当选中的任务改变时，同步本地状态
+    // 当选中的任务改变时，同步本地状态。如果任务变为 null，保留上一个任务以便执行退出动画。
     useEffect(() => {
-        setLocalTask(task);
+        if (task) {
+            setLocalTask(task);
+        }
     }, [task]);
 
-    if (!task) return null;
+    // 如果两个都为空，则彻底不渲染
+    if (!task && !localTask) return null;
 
-    // 确定当前展示的任务状态
-    const displayTask = (localTask && localTask.taskReferenceName === task.taskReferenceName) ? localTask : task;
+    // 确定当前展示的任务状态：如果 task 为空，回退到 localTask（用于滑出动效期间展示）
+    const effectiveTask = task || localTask;
+    const displayTask = (localTask && task && localTask.taskReferenceName === task.taskReferenceName) ? localTask : effectiveTask!;
 
     const isEditMode = mode === 'edit';
 
@@ -38,7 +42,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
     const handleChange = (field: string, value: any) => {
         const updatedTask = { ...displayTask, [field]: value } as TaskDef;
         setLocalTask(updatedTask);
-        updateTask(task.taskReferenceName, { [field]: value });
+        updateTask(displayTask.taskReferenceName, { [field]: value });
     };
 
     // 处理嵌套字段变更（如 httpRequest.url）
@@ -47,7 +51,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
         const updatedParent = { ...parentValue, [field]: value };
         const updatedTask = { ...displayTask, [parentField]: updatedParent } as TaskDef;
         setLocalTask(updatedTask);
-        updateTask(task.taskReferenceName, { [parentField]: updatedParent });
+        updateTask(displayTask.taskReferenceName, { [parentField]: updatedParent });
     };
 
     // 专门处理 HTTP 任务的参数变更，确保同步到 inputParameters
@@ -65,7 +69,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
 
         const updatedTask = { ...displayTask, ...updates } as TaskDef;
         setLocalTask(updatedTask);
-        updateTask(task.taskReferenceName, updates);
+        updateTask(displayTask.taskReferenceName, updates);
     };
 
     // 专门处理 inputParameters 内部的参数变更
@@ -75,7 +79,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
 
         const updatedTask = { ...displayTask, ...updates } as TaskDef;
         setLocalTask(updatedTask);
-        updateTask(task.taskReferenceName, updates);
+        updateTask(displayTask.taskReferenceName, updates);
     };
 
     // 渲染专项配置区域容器
@@ -98,7 +102,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
     // 渲染通用文本输入框
     const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text') => {
         const isRefName = field === 'taskReferenceName';
-        const isDuplicate = isRefName && !checkTaskRefUniqueness((displayTask as any)[field], task.taskReferenceName);
+        const isDuplicate = isRefName && !checkTaskRefUniqueness((displayTask as any)[field], displayTask.taskReferenceName);
 
         return (
             <div style={{ marginBottom: '16px' }}>
@@ -171,46 +175,16 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            right: 0,
-            top: 0,
-            width: '450px',
-            height: '100vh',
-            background: bgColor,
-            borderLeft: `1px solid ${borderColor}`,
-            color: textColor,
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '-10px 0 30px rgba(0,0,0,0.2)',
-            zIndex: 1000,
-            animation: 'slideInFromRight 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            backdropFilter: 'blur(20px)'
-        }}>
-            <style>{`
-                @keyframes slideInFromRight {
-                  from { transform: translateX(100%); opacity: 0; }
-                  to { transform: translateX(0); opacity: 1; }
-                }
-                .tab-btn:hover {
-                    background-color: var(--bg-highlight);
-                    color: var(--text-primary);
-                }
-                .tab-btn.active {
-                    color: var(--color-accent);
-                    border-bottom: 2px solid var(--color-accent);
-                }
-                .form-input {
-                    background-color: var(--bg-tertiary);
-                    border: 1px solid var(--glass-border);
-                    color: var(--text-primary);
-                }
-                .form-input:focus {
-                    border-color: var(--color-accent);
-                    outline: none;
-                    box-shadow: 0 0 0 2px var(--color-accent-bg);
-                }
-            `}</style>
+        <div
+            className={`detail-panel-container ${!task ? 'panel-exit' : 'panel-enter-active'}`}
+            style={{
+                position: 'fixed',
+                right: 0,
+                top: 0,
+                width: '450px',
+            }}
+        >
+            {/* Header */}
 
             {/* Header */}
             <div style={{

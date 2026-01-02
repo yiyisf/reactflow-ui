@@ -106,16 +106,18 @@ const AddableEdge = ({
                         {/* 显示连线标签 (如 Case 键名) */}
                         {data?.label && (
                             <div style={{
-                                background: '#1e293b',
-                                color: '#fbbf24',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
+                                background: 'var(--glass-bg-accent)',
+                                backdropFilter: 'var(--glass-blur)',
+                                color: 'var(--color-accent)',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
                                 fontSize: '11px',
-                                fontWeight: 'bold',
-                                marginBottom: '6px',
-                                border: '1px solid #fbbf24',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                whiteSpace: 'nowrap'
+                                fontWeight: '700',
+                                marginBottom: '8px',
+                                border: '1px solid var(--color-accent)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                whiteSpace: 'nowrap',
+                                letterSpacing: '0.5px'
                             }}>
                                 {data.label}
                             </div>
@@ -123,22 +125,23 @@ const AddableEdge = ({
 
                         <button
                             style={{
-                                width: '28px',
-                                height: '28px',
-                                backgroundColor: '#fbbf24',
-                                color: '#1e293b',
-                                border: '2px solid #fff',
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: 'var(--color-accent)',
+                                color: '#fff',
+                                border: '2px solid rgba(255,255,255,0.8)',
                                 borderRadius: '50%',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontWeight: '900',
-                                fontSize: '18px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                                transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                fontWeight: '700',
+                                fontSize: '20px',
+                                boxShadow: '0 4px 15px rgba(var(--color-accent-rgb), 0.5)',
+                                transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                                 padding: 0
                             }}
+                            className="edge-add-button"
                             onClick={onAddClick}
                             onMouseDown={(e) => e.stopPropagation()}
                             title="在此处添加任务"

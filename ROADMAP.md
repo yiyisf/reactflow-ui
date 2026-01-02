@@ -19,14 +19,17 @@
 - [x] **UI Token 引入**：建立统一的色彩、边距、阴影、层级规范体系。
 - [x] **主题架构**：支持 Dark/Light 模式与品牌色切换。
 
-#### P2.2: 交互基建 (Core Interaction) [当前阶段]
-- [ ] **撤销/重做**：引入 History 栈 (Undo/Redo)。
-- [ ] **快捷键不一致修复**：统一 Delete 键与 UI 删除按钮的行为 (使用 store.removeNode)。
-- [ ] **智能剪贴板**：跨层级复制粘贴与自动连线。
+#### P2.2: 交互基建 (Core Interaction) (完成)
+- [x] **撤销/重做**：引入 History 栈 (Undo/Redo)。
+- [x] **快捷键统一**：统一 Delete 键与 UI 删除按钮的行为。
+- [x] **智能剪贴板**：跨层级复制粘贴与自动连线。
 
-#### P2.3: 视觉升级 (Visual Polish)
+#### P2.3: 组件级视觉升级 (Component Visual Polish) [当前阶段]
 - [ ] **节点组件 2.0**：重构 `NodeWrapper`，支持玻璃拟态、呼吸动效、边缘 Glow transition。
 - [ ] **交互动效**：优化连线时的吸附感、点击反馈以及面板弹出的动效衔接。
+
+#### P2.4: 整体页面重塑 (Layout Redesign)
+- [ ] **全站 UI 布局重绘**：基于设计规范重绘侧边栏、顶部菜单及背景纹理，建立系统级视觉一致性。
 
 ### P3: 库化交付 (Library Mode & Distribution)
 - [ ] **解耦业务逻辑**：将项目重构为内聚的 UI 组件，支持 Props 注入和 Event 回调。

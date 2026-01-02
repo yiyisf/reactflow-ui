@@ -24,8 +24,8 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
         >
             <div
                 style={{
-                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                    border: selected ? '3px solid #fbbf24' : '2px solid #4f46e5',
+                    background: 'var(--color-accent)',
+                    border: 'var(--color-accent-hover)',
                     borderRadius: '12px',
                     padding: '16px',
                     minWidth: '180px',

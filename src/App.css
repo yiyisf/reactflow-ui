@@ -5,6 +5,14 @@
   --accent-primary: var(--color-accent);
   --accent-secondary: var(--color-accent-hover);
   --border-color: var(--glass-border);
+
+  /* P2.3 视觉升级变量 */
+  --glass-bg: rgba(30, 41, 59, 0.4);
+  --glass-bg-accent: rgba(30, 41, 59, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(16px);
+  --node-glow-color: rgba(6, 182, 212, 0.4);
+  --node-radius: 12px;
 }
 
 * {
@@ -323,6 +331,51 @@ body {
   }
 }
 
+/* 视觉升级 2.0: 呼吸灯动效 */
+@keyframes breathing-glow {
+  0% {
+    box-shadow: 0 0 5px var(--node-glow-color), 0 0 10px var(--node-glow-color);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--node-glow-color), 0 0 35px var(--node-glow-color);
+  }
+
+  100% {
+    box-shadow: 0 0 5px var(--node-glow-color), 0 0 10px var(--node-glow-color);
+  }
+}
+
+.node-wrapper-glass {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 2px solid rgba(var(--color-accent-rgb), 0.4) !important;
+  /* 增强边框可见性 */
+  border-radius: var(--node-radius);
+  overflow: visible;
+  /* 修复：确保错误指示器和删除按钮不被裁剪 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Light 模式增强对比度 */
+.app.light-theme .node-wrapper-glass {
+  border: 2px solid rgba(var(--color-accent-rgb), 0.6) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(var(--color-accent-rgb), 0.2);
+}
+
+.node-wrapper-selected {
+  outline: 2px solid var(--node-glow-color) !important;
+  outline-offset: 2px;
+  animation: breathing-glow 2.5s infinite ease-in-out;
+  border-color: var(--node-glow-color) !important;
+}
+
+.node-content-modern {
+  padding: 12px;
+  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.05));
+}
+
 .react-flow__controls {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -369,6 +422,12 @@ body {
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --border-color: rgba(0, 0, 0, 0.1);
+
+  /* P2.3 亮色模式变量 */
+  --glass-bg: rgba(255, 255, 255, 0.4);
+  --glass-bg-accent: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --node-glow-color: rgba(3, 105, 161, 0.3);
 }
 
 .app.light-theme .app-header {
@@ -679,4 +738,74 @@ body {
 
 .app.light-theme .toolbar-btn.disabled svg {
   stroke: #cbd5e1;
+}
+
+/* --- P2.3 Visual Polish --- */
+
+/* 详情面板侧滑转场 2.0 */
+.detail-panel-container {
+  height: 100%;
+  border-left: 1px solid var(--glass-border);
+  background: var(--glass-bg-accent);
+  backdrop-filter: var(--glass-blur);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
+  /* 基础隐藏状态 */
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.panel-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.panel-exit {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* 连线优化 */
+.react-flow__connection-path {
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 5, 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.react-flow__edge-path {
+  stroke-width: 2.5;
+  transition: stroke-width 0.2s, stroke 0.2s;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-accent) !important;
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 5px var(--color-accent));
+}
+
+.edge-add-button:hover {
+  transform: scale(1.2) rotate(90deg);
+  background-color: var(--color-accent-hover) !important;
+}
+
+/* Decision 节点特殊处理：移除背景和圆角以显示菱形 */
+.decision-node-wrapper {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }

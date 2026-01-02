@@ -16,8 +16,8 @@ import {
 import { WorkflowDef, TaskDef } from '../types/conductor';
 
 const useWorkflowStore = create<WorkflowStore>()(
-    temporal(
-        persist(
+    persist(
+        temporal(
             (set, get) => ({
                 mode: 'view',
                 workflowDef: null as WorkflowDef | null,
@@ -69,15 +69,18 @@ const useWorkflowStore = create<WorkflowStore>()(
                 },
 
                 onNodesChange: (changes: NodeChange[]) => {
-                    set({
-                        nodes: applyNodeChanges(changes, get().nodes),
-                    });
+                    const newNodes = applyNodeChanges(changes, get().nodes);
+                    // 仅当节点真的发生变化时才更新，减少噪音
+                    if (JSON.stringify(newNodes) !== JSON.stringify(get().nodes)) {
+                        set({ nodes: newNodes });
+                    }
                 },
 
                 onEdgesChange: (changes: EdgeChange[]) => {
-                    set({
-                        edges: applyEdgeChanges(changes, get().edges),
-                    });
+                    const newEdges = applyEdgeChanges(changes, get().edges);
+                    if (JSON.stringify(newEdges) !== JSON.stringify(get().edges)) {
+                        set({ edges: newEdges });
+                    }
                 },
 
                 onConnect: (connection: Connection) => {
@@ -89,14 +92,12 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 setSelectedTask: (task: TaskDef | null) => set({ selectedTask: task }),
 
-                // 检查任务引用名是否唯一
                 checkTaskRefUniqueness: (newRef: string, currentRef: string) => {
                     if (newRef === currentRef) return true;
                     const { taskMap } = get();
                     return !taskMap[newRef];
                 },
 
-                // 更新任务属性，同步更新 workflowDef
                 updateTask: (taskRef: string, field: string | Record<string, any>, value?: any) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
@@ -126,14 +127,12 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
                 },
 
-                // 更新工作流全局属性
                 updateWorkflowProperties: (properties: Partial<WorkflowDef>) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
                     Object.assign(newDef, properties);
-
                     syncForkJoinOn(newDef.tasks);
 
                     const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
@@ -149,13 +148,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 },
 
-                // 添加任务，同步更新 workflowDef
                 addNode: (newNode: any, sourceId: string, _targetId: string, _edgeId: string, edgeData: any = {}) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
-                    // 创建 Conductor 格式的任务
                     const newTask: TaskDef = {
                         name: newNode.data.label,
                         taskReferenceName: newNode.data.taskReferenceName,
@@ -163,7 +160,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                         inputParameters: {}
                     };
 
-                    // 如果插入的是并行节点，需要联动创建 JOIN 节点
                     if (newTask.type === 'FORK_JOIN' || newTask.type === 'FORK_JOIN_DYNAMIC') {
                         if (newTask.type === 'FORK_JOIN') {
                             newTask.forkTasks = [[], []];
@@ -171,15 +167,12 @@ const useWorkflowStore = create<WorkflowStore>()(
                             newTask.dynamicForkTasksParam = 'dynamic_tasks';
                             newTask.dynamicForkTasksInputParamName = 'input';
                         }
-
                         const joinTask: TaskDef = {
                             name: `${newTask.name}_join`,
                             taskReferenceName: `${newTask.taskReferenceName}_join`,
                             type: 'JOIN',
-                            joinOn: [] // 初始为空，由子任务添加后同步
+                            joinOn: []
                         };
-
-                        // 更新 JSON 定义
                         if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
@@ -188,7 +181,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
                         }
                     } else {
-                        // 普通节点插入
                         if (newTask.type === 'DECISION') {
                             newTask.caseValueParam = 'case_param';
                             newTask.decisionCases = { "case1": [] };
@@ -196,18 +188,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                         } else if (newTask.type === 'DO_WHILE') {
                             newTask.loopCondition = "$.taskReferenceName.output.value < 10";
                             newTask.loopOver = [];
-                        } else if (newTask.type === 'HTTP') {
-                            newTask.inputParameters = {
-                                http_request: {
-                                    method: 'GET',
-                                    url: 'http://localhost:8080/api',
-                                    headers: { "Content-Type": "application/json" }
-                                }
-                            };
-                        } else if (newTask.type === 'LAMBDA') {
-                            newTask.inputParameters = {
-                                scriptExpression: "if ($.input.value > 10) { return true; } else { return false; }"
-                            };
                         }
 
                         if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined) {
@@ -218,8 +198,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
 
                     syncForkJoinOn(newDef.tasks);
-
-                    // 重新解析整个工作流以确保所有内部连接正确
                     const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
                     const validationResults = validateWorkflow(newDef);
@@ -233,14 +211,12 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 },
 
-                // 删除节点，同步更新 workflowDef
                 removeNode: (nodeId: string) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef || nodeId === 'start' || nodeId === 'end') return;
 
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
                     removeTaskFromDef(newDef.tasks, nodeId);
-
                     syncForkJoinOn(newDef.tasks);
 
                     const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
@@ -256,7 +232,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 },
 
-                // 快捷方式：为循环添加任务
                 addLoopTask: (loopRef: string, taskType: string) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
@@ -265,33 +240,20 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const loopTask = findTaskByRef(newDef.tasks, loopRef);
                     if (loopTask && loopTask.type === 'DO_WHILE') {
                         if (!loopTask.loopOver) loopTask.loopOver = [];
-
                         const newTask: TaskDef = {
                             name: `new_${taskType.toLowerCase()}`,
                             taskReferenceName: `${loopRef}_sub_${Date.now()}`,
                             type: taskType as any,
                             inputParameters: {}
                         };
-
                         loopTask.loopOver.push(newTask);
-
                         syncForkJoinOn(newDef.tasks);
-
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        const validationResults = validateWorkflow(newDef);
-
-                        set({
-                            workflowDef: newDef,
-                            nodes: layoutedNodes,
-                            edges: layoutedEdges,
-                            taskMap,
-                            validationResults
-                        });
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
                     }
                 },
 
-                // 快捷方式：删除循环内的任务
                 removeLoopTask: (loopRef: string, taskRef: string) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
@@ -300,24 +262,13 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const loopTask = findTaskByRef(newDef.tasks, loopRef);
                     if (loopTask && loopTask.type === 'DO_WHILE' && loopTask.loopOver) {
                         loopTask.loopOver = loopTask.loopOver.filter(t => t.taskReferenceName !== taskRef);
-
                         syncForkJoinOn(newDef.tasks);
-
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        const validationResults = validateWorkflow(newDef);
-
-                        set({
-                            workflowDef: newDef,
-                            nodes: layoutedNodes,
-                            edges: layoutedEdges,
-                            taskMap,
-                            validationResults
-                        });
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
                     }
                 },
 
-                // 添加决策分支
                 addDecisionBranch: (taskRef: string, caseName: string) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
@@ -329,28 +280,15 @@ const useWorkflowStore = create<WorkflowStore>()(
                             if (!task.defaultCase) task.defaultCase = [];
                         } else {
                             if (!task.decisionCases) task.decisionCases = {};
-                            if (!task.decisionCases[caseName]) {
-                                task.decisionCases[caseName] = [];
-                            }
+                            if (!task.decisionCases[caseName]) task.decisionCases[caseName] = [];
                         }
-
                         syncForkJoinOn(newDef.tasks);
-
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        const validationResults = validateWorkflow(newDef);
-
-                        set({
-                            workflowDef: newDef,
-                            nodes: layoutedNodes,
-                            edges: layoutedEdges,
-                            taskMap,
-                            validationResults
-                        });
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
                     }
                 },
 
-                // 删除决策分支
                 removeDecisionBranch: (taskRef: string, caseName: string) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
@@ -363,24 +301,13 @@ const useWorkflowStore = create<WorkflowStore>()(
                         } else if (task.decisionCases) {
                             delete task.decisionCases[caseName];
                         }
-
                         syncForkJoinOn(newDef.tasks);
-
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        const validationResults = validateWorkflow(newDef);
-
-                        set({
-                            workflowDef: newDef,
-                            nodes: layoutedNodes,
-                            edges: layoutedEdges,
-                            taskMap,
-                            validationResults
-                        });
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
                     }
                 },
 
-                // 添加并行分支
                 addForkBranch: (taskRef: string) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
@@ -390,20 +317,10 @@ const useWorkflowStore = create<WorkflowStore>()(
                     if (task && task.type === 'FORK_JOIN') {
                         if (!task.forkTasks) task.forkTasks = [];
                         task.forkTasks.push([]);
-
                         syncForkJoinOn(newDef.tasks);
-
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        const validationResults = validateWorkflow(newDef);
-
-                        set({
-                            workflowDef: newDef,
-                            nodes: layoutedNodes,
-                            edges: layoutedEdges,
-                            taskMap,
-                            validationResults
-                        });
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
                     }
                 },
 
@@ -411,29 +328,19 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const { workflowDef, layoutDirection, selectedTask } = get();
                     if (!workflowDef) return;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
-
                     const timestamp = Date.now();
                     const suffix = `_copy_${timestamp}`;
                     const newTask = JSON.parse(JSON.stringify(task)) as TaskDef;
 
                     const deepRename = (t: TaskDef) => {
                         t.taskReferenceName = `${t.taskReferenceName}${suffix}`;
-                        if (t.decisionCases) {
-                            Object.values(t.decisionCases).forEach(branch => branch.forEach(deepRename));
-                        }
-                        if (t.defaultCase) {
-                            t.defaultCase.forEach(deepRename);
-                        }
-                        if (t.forkTasks) {
-                            t.forkTasks.forEach(branch => branch.forEach(deepRename));
-                        }
-                        if (t.loopOver) {
-                            t.loopOver.forEach(deepRename);
-                        }
+                        if (t.decisionCases) Object.values(t.decisionCases).forEach(branch => branch.forEach(deepRename));
+                        if (t.defaultCase) t.defaultCase.forEach(deepRename);
+                        if (t.forkTasks) t.forkTasks.forEach(branch => branch.forEach(deepRename));
+                        if (t.loopOver) t.loopOver.forEach(deepRename);
                     };
 
                     deepRename(newTask);
-
                     const sourceRef = selectedTask ? selectedTask.taskReferenceName : (
                         newDef.tasks.length > 0 ? newDef.tasks[newDef.tasks.length - 1].taskReferenceName : 'start'
                     );
@@ -446,7 +353,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                             type: 'JOIN',
                             joinOn: []
                         };
-
                         if (sourceRef === 'start' && newDef.tasks.length === 0) {
                             newDef.tasks.push(newTask, joinTask);
                         } else {
@@ -462,7 +368,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
 
                     syncForkJoinOn(newDef.tasks);
-
                     const { nodes, edges, taskMap: newTaskMap } = parseWorkflow(newDef, layoutDirection);
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
                     const validationResults = validateWorkflow(newDef);
@@ -482,25 +387,47 @@ const useWorkflowStore = create<WorkflowStore>()(
                 setNodesLocked: (nodesLocked: boolean) => set({ nodesLocked }),
             }),
             {
-                name: 'conductor-ui-prefs',
-                storage: createJSONStorage(() => localStorage),
+                limit: 50,
+                // 只记录业务定义相关的状态，过滤掉运行时的 UI 状态（如 selected, dragging）
+                // 重点：排除 width 和 height，因为它们在 undo 时会重新测量，可能导致 zundo 误判为新状态
                 partialize: (state: WorkflowStore) => ({
-                    theme: state.theme,
-                    themeColor: state.themeColor,
+                    workflowDef: state.workflowDef,
                     layoutDirection: state.layoutDirection,
-                    edgeType: state.edgeType,
-                    nodesLocked: state.nodesLocked
+                    nodes: state.nodes.map(n => {
+                        const {
+                            selected,
+                            dragging,
+                            width,
+                            height,
+                            draggingHandle,
+                            // @ts-ignore
+                            measured,
+                            ...rest
+                        } = n as any;
+                        return {
+                            ...rest,
+                            data: {
+                                ...rest.data,
+                                layoutDirection: rest.data.layoutDirection || state.layoutDirection
+                            }
+                        };
+                    }),
+                    edges: state.edges,
+                    taskMap: state.taskMap,
                 }),
+                // 等值检查：只有当核心业务结构变化时才记录
+                equality: (a, b) => JSON.stringify(a) === JSON.stringify(b)
             }
         ),
         {
-            limit: 50,
+            name: 'conductor-ui-prefs',
+            storage: createJSONStorage(() => localStorage),
             partialize: (state: WorkflowStore) => ({
-                workflowDef: state.workflowDef,
-                nodes: state.nodes,
-                edges: state.edges,
-                taskMap: state.taskMap,
-                validationResults: state.validationResults,
+                theme: state.theme,
+                themeColor: state.themeColor,
+                layoutDirection: state.layoutDirection,
+                edgeType: state.edgeType,
+                nodesLocked: state.nodesLocked
             }),
         }
     )

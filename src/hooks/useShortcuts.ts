@@ -10,7 +10,10 @@ export const useShortcuts = () => {
     const { mode, removeNode, selectedTask, pasteTask } = useWorkflowStore();
 
     // 使用 zundo 提供的 temporal store
-    const { undo, redo } = useStore((useWorkflowStore as any).temporal, (state) => state);
+    const temporalStore = (useWorkflowStore as any).temporal;
+    const { undo, redo } = useStore(temporalStore, (state: any) => state);
+
+
 
     // 辅助函数：判断当前是否正在输入
     const isTyping = (e: KeyboardEvent) => {

@@ -9,6 +9,7 @@ import ReactFlow, {
     Edge
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { Panel } from 'reactflow';
 
 import TaskNode from './nodes/TaskNode';
 import DecisionNode from './nodes/DecisionNode';
@@ -17,6 +18,7 @@ import LoopNode from './nodes/LoopNode';
 import SubWorkflowNode from './nodes/SubWorkflowNode';
 import AddableEdge from './edges/AddableEdge';
 import NodeSelector from './Editor/NodeSelector';
+import UndoRedoControls from './UndoRedoControls';
 import useWorkflowStore from '../store/workflowStore';
 import { TaskDef, TaskType } from '../types/conductor';
 
@@ -307,6 +309,12 @@ const WorkflowDesigner = ({
                     }}
                     maskColor="rgba(0,0,0,0.2)" // Use a semi-transparent dark mask for better contrast in both modes
                 />
+
+                {mode === 'edit' && (
+                    <Panel position="bottom-left">
+                        <UndoRedoControls />
+                    </Panel>
+                )}
             </ReactFlow>
 
             {showSelector && (

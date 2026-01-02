@@ -598,3 +598,63 @@ body {
 .search-clear:hover {
   opacity: 1;
 }
+
+/* Undo/Redo Toolbar */
+.undo-redo-toolbar {
+  display: flex;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  pointer-events: all;
+  margin-bottom: 20px;
+}
+
+.toolbar-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.toolbar-btn:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-accent);
+  transform: translateY(-2px);
+}
+
+.toolbar-btn:active:not(.disabled) {
+  transform: translateY(0);
+}
+
+.toolbar-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.app.light-theme .undo-redo-toolbar {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.app.light-theme .toolbar-btn {
+  color: #0f172a;
+}
+
+.app.light-theme .toolbar-btn:hover:not(.disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--color-accent);
+}

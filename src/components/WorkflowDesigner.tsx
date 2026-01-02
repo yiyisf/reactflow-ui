@@ -311,7 +311,7 @@ const WorkflowDesigner = ({
                 />
 
                 {mode === 'edit' && (
-                    <Panel position="bottom-left">
+                    <Panel position="top-center">
                         <UndoRedoControls />
                     </Panel>
                 )}

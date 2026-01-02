@@ -53,6 +53,8 @@ function App() {
         if (!result) return;
         const json = JSON.parse(result);
         setWorkflow(json, layoutDirection);
+        // 清除初始加载产生的历史记录，防止撤销导致返回首页
+        (useWorkflowStore as any).temporal.getState().clear();
       } catch (err: any) {
         setError(`解析 JSON 失败: ${err.message}`);
       }
@@ -70,6 +72,8 @@ function App() {
       const json = await response.json();
       // setFileName(`${sampleName}.json (示例)`);
       setWorkflow(json, layoutDirection);
+      // 清除初始加载产生的历史记录
+      (useWorkflowStore as any).temporal.getState().clear();
       setError(null);
     } catch (err: any) {
       setError(`加载示例工作流失败: ${err.message}`);

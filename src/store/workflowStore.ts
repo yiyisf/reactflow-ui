@@ -80,55 +80,76 @@ const useWorkflowStore = create<WorkflowStore>()(
                 },
 
                 simulateExecution: () => {
-                    const { taskMap, workflowDef } = get();
-                    if (!workflowDef) return;
+                    const { taskMap, workflowDef, nodes, edges } = get();
+                    if (!workflowDef || nodes.length === 0) return;
 
-                    // 创建初始模拟数据
                     const simulationData: Record<string, TaskExecutionData> = {};
-                    const refs = Object.keys(taskMap);
+                    const adj: Record<string, string[]> = {};
 
-                    // 1. 设置一些已完成的任务
-                    const completedCount = Math.floor(refs.length * 0.4);
-                    for (let i = 0; i < completedCount; i++) {
-                        simulationData[refs[i]] = {
-                            taskId: `sim_${refs[i]}`,
-                            taskReferenceName: refs[i],
-                            status: 'COMPLETED',
-                            startTime: Date.now() - 10000,
-                            endTime: Date.now() - 5000
-                        };
+                    // 构建邻接表
+                    edges.forEach(edge => {
+                        if (!adj[edge.source]) adj[edge.source] = [];
+                        adj[edge.source].push(edge.target);
+                    });
+
+                    // BFS 模拟执行路径
+                    const queue: string[] = ['start'];
+                    const visited = new Set<string>();
+                    let step = 0;
+                    const maxSteps = Math.floor(Object.keys(taskMap).length * 0.7) + 1; // 模拟执行到约 70%
+
+                    while (queue.length > 0 && step < maxSteps) {
+                        const currentId = queue.shift()!;
+                        if (visited.has(currentId)) continue;
+                        visited.add(currentId);
+
+                        if (currentId !== 'start' && currentId !== 'end' && taskMap[currentId]) {
+                            const isLastStep = step === maxSteps - 1;
+
+                            simulationData[currentId] = {
+                                taskId: `sim_${currentId}_${Date.now()}`,
+                                taskReferenceName: currentId,
+                                status: isLastStep ? 'IN_PROGRESS' : 'COMPLETED',
+                                startTime: Date.now() - (maxSteps - step) * 2000,
+                                endTime: isLastStep ? undefined : Date.now() - (maxSteps - step - 0.5) * 2000
+                            };
+                            step++;
+                        }
+
+                        const neighbors = adj[currentId] || [];
+                        // 如果是决策节点，模拟随机分支选择（简单演示：走第一个分支）
+                        // 在实际解析中，决策节点会有多个 sourceHandle
+                        queue.push(...neighbors);
                     }
 
-                    // 2. 设置一个正在执行的任务
-                    if (refs.length > completedCount) {
-                        const runningRef = refs[completedCount];
-                        simulationData[runningRef] = {
-                            taskId: `sim_${runningRef}`,
-                            taskReferenceName: runningRef,
-                            status: 'IN_PROGRESS',
-                            startTime: Date.now() - 2000
-                        };
-                    }
-
-                    // 3. 设置一个失败的任务（可选）
-                    if (refs.length > completedCount + 2) {
-                        const failedRef = refs[completedCount + 1];
-                        simulationData[failedRef] = {
-                            taskId: `sim_${failedRef}`,
-                            taskReferenceName: failedRef,
-                            status: 'FAILED',
-                            startTime: Date.now() - 5000,
-                            endTime: Date.now() - 4000
-                        };
-                    }
-
-                    // 4. 其余设为 SCHEDULED
-                    refs.forEach(ref => {
+                    // 其余未访问或未执行的节点设为 SCHEDULED
+                    Object.keys(taskMap).forEach(ref => {
                         if (!simulationData[ref]) {
                             simulationData[ref] = {
                                 taskId: `sim_${ref}`,
                                 taskReferenceName: ref,
                                 status: 'SCHEDULED'
+                            };
+                        }
+                    });
+
+                    set({ executionData: simulationData, mode: 'run' });
+                },
+
+                importExecutionJSON: (json: any) => {
+                    if (!json || !json.tasks) return;
+
+                    const simulationData: Record<string, TaskExecutionData> = {};
+                    json.tasks.forEach((task: any) => {
+                        const ref = task.referenceTaskName;
+                        if (ref) {
+                            simulationData[ref] = {
+                                taskId: task.taskId,
+                                taskReferenceName: ref,
+                                status: task.status as ExecutionStatus,
+                                startTime: task.startTime,
+                                endTime: task.endTime,
+                                output: task.outputData
                             };
                         }
                     });

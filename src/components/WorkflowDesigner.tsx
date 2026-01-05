@@ -66,7 +66,8 @@ const WorkflowDesigner = ({
         addLoopTask,
         nodesLocked,
         taskMap,
-        validationResults
+        validationResults,
+        executionData,
     } = useWorkflowStore();
 
     const [showSelector, setShowSelector] = useState(false);
@@ -227,29 +228,59 @@ const WorkflowDesigner = ({
 
     // 为边添加元数据和箭头标记
     const processedEdges = useMemo(() => {
-        return edges.map((edge: Edge) => {
-            const isLoopBack = edge.label === '继续' || edge.style?.strokeDasharray;
+        return edges.map((edge) => {
+            const isLoopBack = edge.id.includes('loop-back');
+            const baseStyle = {
+                ...edge.style,
+                stroke: theme === 'light' ? '#475569' : '#64748b',
+                strokeWidth: 2,
+                strokeDasharray: isLoopBack ? '5,5' : undefined,
+            };
+
+            // 如果是运行模式且有执行数据，应用动态样式
+            if (mode === 'run' && executionData) {
+                const sourceStatus = executionData[edge.source]?.status;
+                const targetStatus = executionData[edge.target]?.status;
+
+                // 规则：
+                // 1. 已完成路径：源和目标都已完成 -> 绿色/蓝色常亮
+                // 2. 活动路径：源已完成，目标正在执行 -> 蓝色加粗动画
+                // 3. 开始节点特殊处理
+                const isSourceCompleted = sourceStatus === 'COMPLETED' || edge.source === 'start';
+                const isTargetCompleted = targetStatus === 'COMPLETED';
+                const isTargetInProgress = targetStatus === 'IN_PROGRESS';
+
+                if (isSourceCompleted && isTargetCompleted) {
+                    return {
+                        ...edge,
+                        style: { ...baseStyle, stroke: 'var(--status-completed)', strokeWidth: 4 },
+                        animated: false,
+                    };
+                }
+
+                if (isSourceCompleted && isTargetInProgress) {
+                    return {
+                        ...edge,
+                        style: { ...baseStyle, stroke: 'var(--status-in-progress)', strokeWidth: 4 },
+                        animated: true,
+                    };
+                }
+            }
 
             return {
                 ...edge,
-                type: mode === 'edit' ? 'addable' : edgeType,
-                data: { ...edge.data, mode, label: edge.label },
+                type: edgeType === 'step' ? 'step' : 'default',
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
                     width: 20,
                     height: 20,
                     color: theme === 'light' ? '#475569' : '#64748b',
                 },
-                style: {
-                    ...edge.style,
-                    stroke: edge.style?.stroke || (theme === 'light' ? '#475569' : '#64748b'),
-                    strokeWidth: 2,
-                    strokeDasharray: isLoopBack ? '5,5' : undefined,
-                },
+                style: baseStyle,
                 animated: true,
             };
         });
-    }, [edges, edgeType, theme, mode]);
+    }, [edges, edgeType, theme, mode, executionData]);
 
     // 背景颜色 - 使用 CSS变量
     const backgroundColor = 'var(--bg-secondary)';
@@ -339,32 +370,75 @@ const WorkflowDesigner = ({
  * 内部组件：运行态状态栏
  */
 const ExecutionStatusBar = () => {
-    const { executionData, simulateExecution, workflowDef } = useWorkflowStore();
+    const { executionData, simulateExecution, importExecutionJSON, workflowDef } = useWorkflowStore();
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const json = JSON.parse(e.target?.result as string);
+                    importExecutionJSON(json);
+                } catch (err) {
+                    console.error('Failed to parse execution JSON:', err);
+                    alert('JSON 解析失败，请检查格式是否正确');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
 
     // 如果没有执行数据，显示启动模拟按钮
     if (!executionData) {
         return (
             <div className="execution-status-bar">
+                <input
+                    type="file"
+                    id="execution-json-upload"
+                    accept=".json"
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                />
                 <div className="status-item">
                     <span className="status-label">准备就绪</span>
                 </div>
-                <button
-                    onClick={simulateExecution}
-                    style={{
-                        background: 'var(--color-accent)',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '6px 14px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    ▶ 启动模拟运行
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        onClick={simulateExecution}
+                        style={{
+                            background: 'var(--color-accent)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        ▶ 启动模拟运行
+                    </button>
+                    <button
+                        onClick={() => document.getElementById('execution-json-upload')?.click()}
+                        title="上传 Conductor 运行态 JSON"
+                        style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            color: 'var(--text-primary)',
+                            border: '1px solid var(--border-primary)',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        📁 导入执行 JSON
+                    </button>
+                </div>
             </div>
         );
     }
@@ -416,6 +490,22 @@ const ExecutionStatusBar = () => {
                 }}
             >
                 ↻
+            </button>
+            <button
+                onClick={() => document.getElementById('execution-json-upload')?.click()}
+                title="导入新执行 JSON"
+                style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    marginLeft: '4px'
+                }}
+            >
+                📁
             </button>
         </div>
     );

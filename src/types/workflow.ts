@@ -128,6 +128,7 @@ export interface WorkflowActions {
     setExecutionData: (data: Record<string, TaskExecutionData> | null) => void;
     updateTaskStatus: (taskRef: string, status: ExecutionStatus) => void;
     simulateExecution: () => void;
+    importExecutionJSON: (json: any) => void;
     setLayoutDirection: (direction: LayoutDirection) => void;
     onNodesChange: (changes: any) => void;
     onEdgesChange: (changes: any) => void;

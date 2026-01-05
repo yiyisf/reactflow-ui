@@ -4,10 +4,9 @@ import useWorkflowStore from '../../store/workflowStore';
 import NodeWrapper from './NodeWrapper';
 import { WorkflowNodeData } from '../../types/workflow';
 import { TaskDef } from '../../types/conductor';
+import ExecutionStatusBadge from './ExecutionStatusBadge';
 
 type LoopNodeProps = NodeProps<WorkflowNodeData>;
-
-
 
 /**
  * 循环节点组件（DO_WHILE）
@@ -15,8 +14,11 @@ type LoopNodeProps = NodeProps<WorkflowNodeData>;
  */
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const layoutDirection = data.layoutDirection || 'TB';
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { mode, removeLoopTask } = useWorkflowStore();
+    const { mode, removeLoopTask, executionData } = useWorkflowStore();
+
+    // 获取运行态信息
+    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
+    const isRunning = mode === 'run';
 
     // 根据布局方向确定 Handle 位置
     const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
@@ -28,9 +30,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
 
     // 处理迷你任务节点点击
     const handleMiniTaskClick = useCallback((task: TaskDef, event: React.MouseEvent) => {
-        event.stopPropagation(); // 阻止事件冒泡到循环节点
-
-        // 触发自定义事件，让 WorkflowViewer 处理
+        event.stopPropagation();
         const customEvent = new CustomEvent('miniTaskClick', {
             detail: { task },
             bubbles: true
@@ -46,11 +46,28 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
         }
     };
 
+    // 运行态 CSS 类名映射
+    const getExecutionClassName = (status: string | undefined) => {
+        if (!status) return '';
+        const mapping: Record<string, string> = {
+            'SCHEDULED': 'execution-node-scheduled',
+            'IN_PROGRESS': 'execution-node-in-progress',
+            'COMPLETED': 'execution-node-completed',
+            'COMPLETED_WITH_ERRORS': 'execution-node-completed-with-errors',
+            'FAILED': 'execution-node-failed',
+            'FAILED_WITH_TERMINAL_ERROR': 'execution-node-failed-terminal',
+            'TIMED_OUT': 'execution-node-timed-out',
+            'SKIPPED': 'execution-node-skipped',
+            'CANCELED': 'execution-node-canceled',
+        };
+        return mapping[status] || '';
+    };
+
+    const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
+
     // 渲染迷你任务节点
     const renderMiniTask = (task: TaskDef, index: number) => {
         const isHorizontal = layoutDirection === 'LR';
-
-        // Fix: Use surface color with brand border for high contrast against the brand-colored container
         const bgColor = 'var(--bg-secondary)';
         const borderColor = 'var(--color-accent)';
         const textColor = 'var(--text-primary)';
@@ -77,14 +94,6 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                         minWidth: isHorizontal ? '80px' : 'auto',
                         textAlign: 'center',
                         position: 'relative'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.05)';
-                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
                     }}
                 >
                     {mode === 'edit' && (
@@ -183,13 +192,11 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     // 渲染循环回路箭头
     const renderLoopBackArrow = () => {
         if (loopTaskCount === 0) return null;
-
         const isHorizontal = layoutDirection === 'LR';
 
         return (
             <div style={{
-                marginTop: isHorizontal ? '8px' : '8px',
-                marginLeft: isHorizontal ? '0' : '0',
+                marginTop: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -199,19 +206,9 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 pointerEvents: 'none',
                 width: '100%'
             }}>
-                <div style={{
-                    flex: 1,
-                    height: '1px',
-                    background: 'rgba(255,255,255,0.5)',
-                    borderTop: '1px dashed rgba(255,255,255,0.5)'
-                }} />
+                <div style={{ flex: 1, height: '1px', borderTop: '1px dashed rgba(255,255,255,0.5)' }} />
                 <span>🔄</span>
-                <div style={{
-                    flex: 1,
-                    height: '1px',
-                    background: 'rgba(255,255,255,0.5)',
-                    borderTop: '1px dashed rgba(255,255,255,0.5)'
-                }} />
+                <div style={{ flex: 1, height: '1px', borderTop: '1px dashed rgba(255,255,255,0.5)' }} />
             </div>
         );
     };
@@ -226,155 +223,104 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             hasWarning={data.hasWarning}
         >
             <div
+                className={`loop-container ${executionClass}`}
                 style={{
-                    background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
-                    border: selected ? '3px solid #fbbf24' : '2px solid var(--color-accent)',
+                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px dashed rgba(139, 92, 246, 0.4)'),
+                    background: isRunning && execution?.status
+                        ? undefined
+                        : 'rgba(139, 92, 246, 0.05)',
                     borderRadius: '16px',
                     padding: '16px',
                     minWidth: isHorizontal ? '300px' : '240px',
-                    maxWidth: isHorizontal ? '600px' : '320px',
-                    boxShadow: selected
-                        ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                        : '0 4px 12px rgba(0,0,0,0.15)',
                     transition: 'all 0.3s ease',
-                    cursor: 'pointer',
                     position: 'relative',
                 }}
             >
                 <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
 
-                <div style={{ color: '#fff' }}>
-                    {/* 循环节点标题 */}
+                {/* 运行态徽章 */}
+                {isRunning && execution?.status && (
+                    <ExecutionStatusBadge status={execution.status} />
+                )}
+
+                <div style={{ color: isRunning && execution?.status ? '#fff' : 'inherit' }}>
                     <div style={{
                         fontSize: '10px',
                         opacity: 0.8,
                         marginBottom: '4px',
                         textTransform: 'uppercase',
                         fontWeight: '600',
-                        letterSpacing: '0.5px',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px'
                     }}>
-                        <span>🔄</span>
-                        {data.taskType}
+                        <span>🔄</span> {data.taskType}
                     </div>
-                    <div style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        marginBottom: '4px',
-                        lineHeight: '1.3'
-                    }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>
                         {data.label}
                     </div>
-                    <div style={{
-                        fontSize: '11px',
-                        opacity: 0.7,
-                        fontStyle: 'italic',
-                        marginBottom: '12px'
-                    }}>
-                        {data.taskReferenceName}
-                    </div>
+
+                    {/* 运行态迭代信息 */}
+                    {isRunning && execution?.retryCount !== undefined && (
+                        <div style={{ fontSize: '11px', color: '#fbbf24', marginBottom: '8px', fontWeight: 'bold' }}>
+                            Iteration: {execution.retryCount}
+                        </div>
+                    )}
 
                     {/* 循环体迷你流程图 */}
                     {(loopTaskCount > 0 || mode === 'edit') && (
                         <div style={{
-                            background: 'rgba(0,0,0,0.2)',
+                            background: 'rgba(0,0,0,0.15)',
                             borderRadius: '8px',
                             padding: '10px',
                             marginTop: '8px',
-                            border: '1px dashed rgba(255,255,255,0.3)'
+                            border: '1px solid rgba(255,255,255,0.1)'
                         }}>
                             <div style={{
-                                fontWeight: '600',
-                                marginBottom: '8px',
-                                opacity: 0.9,
-                                fontSize: '10px',
-                                textAlign: 'center',
-                                pointerEvents: 'none'
-                            }}>
-                                循环体 ({loopTaskCount} 个任务)
-                            </div>
-
-                            {/* 迷你流程图容器 */}
-                            <div style={{
-                                maxHeight: isHorizontal ? '150px' : '250px',
-                                maxWidth: isHorizontal ? '100%' : 'auto',
-                                overflowY: isHorizontal ? 'hidden' : 'auto',
-                                overflowX: isHorizontal ? 'auto' : 'hidden',
-                                padding: '4px',
                                 display: isHorizontal ? 'flex' : 'block',
-                                flexDirection: isHorizontal ? 'column' : 'row',
-                                alignItems: isHorizontal ? 'flex-start' : 'stretch'
+                                alignItems: isHorizontal ? 'center' : 'stretch'
                             }}>
-                                <div style={{
-                                    display: isHorizontal ? 'flex' : 'block',
-                                    flexDirection: isHorizontal ? 'row' : 'column',
-                                    alignItems: isHorizontal ? 'center' : 'stretch'
-                                }}>
-                                    {loopOver.map((task, index) => renderMiniTask(task, index))}
+                                {loopOver.map((task, index) => renderMiniTask(task, index))}
 
-                                    {mode === 'edit' && (
-                                        <div
-                                            onClick={() => {
-                                                const event = new CustomEvent('loopAddNodeRequested', {
-                                                    detail: { loopId: id }
-                                                });
-                                                document.dispatchEvent(event);
-                                            }}
-                                            style={{
-                                                border: '2px dashed rgba(255,255,255,0.4)',
-                                                borderRadius: '6px',
-                                                padding: '6px 10px',
-                                                fontSize: '12px',
-                                                color: '#fff',
-                                                cursor: 'pointer',
-                                                textAlign: 'center',
-                                                minWidth: isHorizontal ? '40px' : 'auto',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                                e.currentTarget.style.borderColor = '#fbbf24';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'transparent';
-                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
-                                            }}
-                                            title="向循环体添加任务"
-                                        >
-                                            +
-                                        </div>
-                                    )}
-                                </div>
-                                {renderLoopBackArrow()}
+                                {mode === 'edit' && (
+                                    <div
+                                        onClick={() => {
+                                            const event = new CustomEvent('loopAddNodeRequested', {
+                                                detail: { loopId: id }
+                                            });
+                                            document.dispatchEvent(event);
+                                        }}
+                                        style={{
+                                            border: '2px dashed rgba(255,255,255,0.4)',
+                                            borderRadius: '6px',
+                                            padding: '6px 10px',
+                                            fontSize: '12px',
+                                            color: '#fff',
+                                            cursor: 'pointer',
+                                            textAlign: 'center',
+                                            minWidth: isHorizontal ? '40px' : 'auto',
+                                        }}
+                                    >
+                                        +
+                                    </div>
+                                )}
                             </div>
+                            {renderLoopBackArrow()}
                         </div>
                     )}
 
                     {/* 循环条件 */}
-                    {(data.loopCondition || data.task?.loopCondition) && (
-                        <div style={{
-                            marginTop: '8px',
-                            fontSize: '9px',
-                            opacity: 0.7,
-                            fontStyle: 'italic',
-                            background: 'rgba(0,0,0,0.2)',
-                            padding: '6px 8px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(255,255,255,0.2)',
-                            pointerEvents: 'none'
-                        }}>
-                            <div style={{ fontWeight: '600', marginBottom: '2px' }}>条件:</div>
-                            <div style={{
-                                maxHeight: '40px',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                wordBreak: 'break-all'
-                            }}>
-                                {(data.loopCondition || data.task?.loopCondition || '').substring(0, 80)}{(data.loopCondition || data.task?.loopCondition || '').length > 80 ? '...' : ''}
-                            </div>
-                        </div>
-                    )}
+                    <div style={{
+                        marginTop: '8px',
+                        fontSize: '9px',
+                        opacity: 0.7,
+                        fontStyle: 'italic',
+                        background: 'rgba(0,0,0,0.1)',
+                        padding: '4px 6px',
+                        borderRadius: '4px'
+                    }}>
+                        {data.loopCondition || 'No condition'}
+                    </div>
                 </div>
 
                 <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />

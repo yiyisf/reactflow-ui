@@ -3,6 +3,7 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import useWorkflowStore from '../../store/workflowStore';
 import { WorkflowNodeData } from '../../types/workflow';
+import ExecutionStatusBadge from './ExecutionStatusBadge';
 
 type DecisionNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -12,11 +13,14 @@ type DecisionNodeProps = NodeProps<WorkflowNodeData>;
  */
 const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     const layoutDirection = data.layoutDirection || 'TB';
-    const { mode, addDecisionBranch, removeDecisionBranch } = useWorkflowStore();
+    const { mode, addDecisionBranch, removeDecisionBranch, executionData } = useWorkflowStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+    // 获取运行态信息
+    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
+    const isRunning = mode === 'run';
+
     // 根据布局方向确定主要的 Handle 位置
-    // const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
 
     const branches = Object.keys(data.decisionCases || data.task?.decisionCases || {});
@@ -36,6 +40,25 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
         }
     };
 
+    // 运行态 CSS 类名映射
+    const getExecutionClassName = (status: string | undefined) => {
+        if (!status) return '';
+        const mapping: Record<string, string> = {
+            'SCHEDULED': 'execution-node-scheduled',
+            'IN_PROGRESS': 'execution-node-in-progress',
+            'COMPLETED': 'execution-node-completed',
+            'COMPLETED_WITH_ERRORS': 'execution-node-completed-with-errors',
+            'FAILED': 'execution-node-failed',
+            'FAILED_WITH_TERMINAL_ERROR': 'execution-node-failed-terminal',
+            'TIMED_OUT': 'execution-node-timed-out',
+            'SKIPPED': 'execution-node-skipped',
+            'CANCELED': 'execution-node-canceled',
+        };
+        return mapping[status] || '';
+    };
+
+    const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
+
     return (
         <NodeWrapper
             nodeId={id}
@@ -46,19 +69,29 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
             <div style={{ position: 'relative' }}>
                 <Handle type="target" position={targetPosition} style={{ background: '#fff', [layoutDirection === 'LR' ? 'left' : 'top']: '-5px' }} />
 
+                {/* 运行态徽章 */}
+                {isRunning && execution?.status && (
+                    <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20 }}>
+                        <ExecutionStatusBadge status={execution.status} />
+                    </div>
+                )}
+
                 <div
+                    className={executionClass}
                     style={{
                         width: '150px',
                         height: '150px',
-                        background: 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
-                        border: selected ? '3px solid #fbbf24' : '2px solid var(--color-accent-hover)',
+                        background: isRunning && execution?.status
+                            ? undefined
+                            : 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
+                        border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px solid var(--color-accent-hover)'),
                         transform: 'rotate(45deg)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         boxShadow: selected
                             ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                            : '0 4px 12px rgba(0,0,0,0.15)',
+                            : (isRunning && execution?.status ? undefined : '0 4px 12px rgba(0,0,0,0.15)'),
                         transition: 'all 0.3s ease',
                         cursor: 'pointer',
                     }}
@@ -70,6 +103,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                             color: '#fff',
                             textAlign: 'center',
                             padding: '10px',
+                            width: '100%'
                         }}
                     >
                         <div style={{
@@ -86,7 +120,10 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                             fontSize: '13px',
                             fontWeight: 'bold',
                             marginBottom: '4px',
-                            lineHeight: '1.2'
+                            lineHeight: '1.2',
+                            wordBreak: 'break-word',
+                            maxHeight: '40px',
+                            overflow: 'hidden'
                         }}>
                             {data.label}
                         </div>
@@ -105,6 +142,15 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                 margin: '8px auto 0'
                             }}>
                                 +
+                            </div>
+                        )}
+
+                        {/* 运行态时间 */}
+                        {isRunning && execution?.startTime && (
+                            <div style={{ fontSize: '9px', opacity: 0.7, marginTop: '8px' }}>
+                                {execution.endTime
+                                    ? `${((execution.endTime - execution.startTime) / 1000).toFixed(1)}s`
+                                    : '◌'}
                             </div>
                         )}
                     </div>
@@ -181,10 +227,9 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     </div>
                 )}
 
-                {/* 分支输出 Handles - 分配固定 ID 方便解析时映射 */}
+                {/* 分支输出 Handles */}
                 {layoutDirection === 'TB' ? (
                     <>
-                        {/* 主输出 (通常设为默认或第一个分支) */}
                         <Handle type="source" position={Position.Bottom} style={{ background: '#fff', bottom: '-5px' }} />
                         <Handle type="source" position={Position.Left} id="left" style={{ background: '#fff', left: '-5px' }} />
                         <Handle type="source" position={Position.Right} id="right" style={{ background: '#fff', right: '-5px' }} />

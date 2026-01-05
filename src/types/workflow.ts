@@ -12,6 +12,32 @@ export type LayoutDirection = 'TB' | 'LR';
 export type EditorMode = 'view' | 'edit' | 'run';
 
 /**
+ * 执行状态（Conductor OSS TaskStatus）
+ */
+export type ExecutionStatus =
+    | 'SCHEDULED'
+    | 'IN_PROGRESS'
+    | 'COMPLETED'
+    | 'COMPLETED_WITH_ERRORS'
+    | 'FAILED'
+    | 'FAILED_WITH_TERMINAL_ERROR'
+    | 'TIMED_OUT'
+    | 'SKIPPED'
+    | 'CANCELED';
+
+/**
+ * 任务执行数据
+ */
+export interface TaskExecutionData {
+    taskId: string;
+    taskReferenceName: string;
+    status: ExecutionStatus;
+    startTime?: number;
+    endTime?: number;
+    retryCount?: number;
+    output?: any;
+}
+/**
  * 解析结果
  */
 export interface ParserResult {
@@ -85,7 +111,7 @@ export interface WorkflowState {
     taskMap: Record<string, TaskDef>;
     layoutDirection: LayoutDirection;
     selectedTask: TaskDef | null;
-    executionData: any | null;
+    executionData: Record<string, TaskExecutionData> | null;
     validationResults: ValidationResults;
     theme: ThemeMode;
     themeColor: ThemeColor;
@@ -99,6 +125,9 @@ export interface WorkflowState {
 export interface WorkflowActions {
     setWorkflow: (workflowJson: any, direction?: LayoutDirection) => void;
     setMode: (mode: EditorMode) => void;
+    setExecutionData: (data: Record<string, TaskExecutionData> | null) => void;
+    updateTaskStatus: (taskRef: string, status: ExecutionStatus) => void;
+    simulateExecution: () => void;
     setLayoutDirection: (direction: LayoutDirection) => void;
     onNodesChange: (changes: any) => void;
     onEdgesChange: (changes: any) => void;

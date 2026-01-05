@@ -1,0 +1,239 @@
+/* ============================================
+   Execution Status Styles for Runtime Mode
+   Based on Conductor OSS TaskStatus
+   ============================================ */
+
+:root {
+    /* Execution Status Colors */
+    --status-scheduled: #64748B;
+    --status-in-progress: #3B82F6;
+    --status-completed: #0aad76;
+    --status-completed-with-errors: #FBBF24;
+    --status-failed: #EF4444;
+    --status-failed-terminal: #991B1B;
+    --status-timed-out: #F97316;
+    --status-skipped: #A1A1AA;
+    --status-canceled: #6B7280;
+}
+
+/* ---- Status Animations ---- */
+
+/* IN_PROGRESS: Border pulse animation */
+@keyframes status-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+    }
+}
+
+/* IN_PROGRESS: Icon rotation */
+@keyframes status-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* COMPLETED: Green flash once */
+@keyframes status-flash-success {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 4px rgba(4, 125, 85, 0.8);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+/* FAILED: Red shake */
+@keyframes status-shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    20%,
+    60% {
+        transform: translateX(-3px);
+    }
+
+    40%,
+    80% {
+        transform: translateX(3px);
+    }
+}
+
+/* ---- Status Node Classes ---- */
+
+.execution-node-scheduled {
+    border-color: var(--status-scheduled) !important;
+    background: var(--status-scheduled) !important;
+    /* Solid dark slate */
+}
+
+.execution-node-in-progress {
+    border-color: var(--status-in-progress) !important;
+    background: var(--status-in-progress) !important;
+    /* Solid vibrant blue */
+    animation: status-pulse 1.5s ease-in-out infinite;
+}
+
+.execution-node-completed {
+    border-color: var(--status-completed) !important;
+    background: var(--status-completed) !important;
+    /* Solid dark emerald */
+}
+
+.execution-node-completed-with-errors {
+    border-color: var(--status-completed-with-errors) !important;
+    background: var(--status-completed-with-errors) !important;
+    /* Solid dark amber */
+}
+
+.execution-node-failed {
+    border-color: var(--status-failed) !important;
+    background: var(--status-failed) !important;
+    /* Solid dark red */
+}
+
+.execution-node-failed-terminal {
+    border-color: var(--status-failed-terminal) !important;
+    background: var(--status-failed-terminal) !important;
+    /* Solid very dark red */
+}
+
+.execution-node-timed-out {
+    border-color: var(--status-timed-out) !important;
+    background: var(--status-timed-out) !important;
+    /* Solid dark orange */
+}
+
+.execution-node-skipped {
+    border-color: var(--status-skipped) !important;
+    background: var(--status-skipped) !important;
+    /* Solid dark gray */
+    opacity: 1;
+    /* Ensure no opacity is applied */
+}
+
+.execution-node-canceled {
+    border-color: var(--status-canceled) !important;
+    background: var(--status-canceled) !important;
+    /* Solid dark slate */
+    opacity: 1;
+}
+
+/* ---- Status Badge ---- */
+
+.execution-status-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    border: 2px solid var(--bg-secondary);
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.execution-status-badge.in-progress {
+    background: var(--status-in-progress);
+}
+
+.execution-status-badge.in-progress .badge-icon {
+    animation: status-spin 1.5s linear infinite;
+}
+
+.execution-status-badge.completed {
+    background: var(--status-completed);
+}
+
+.execution-status-badge.failed {
+    background: var(--status-failed);
+}
+
+/* ---- Execution Status Bar ---- */
+
+.execution-status-bar {
+    background: var(--glass-surface, rgba(15, 23, 42, 0.8));
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+    border-radius: 12px;
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: row;
+    /* Ensure row alignment */
+    flex-wrap: nowrap;
+    /* Prevent wrapping */
+    gap: 32px;
+    align-items: center;
+    font-size: 14px;
+    color: var(--text-primary);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+    /* Ensure clicks work */
+    width: max-content;
+    /* Shrink to fit content */
+}
+
+.execution-status-bar .status-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    /* Prevent vertical stacking of text */
+}
+
+.execution-status-bar .status-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.execution-status-bar .status-value {
+    font-weight: 700;
+}
+
+.execution-status-bar .status-running {
+    color: var(--status-in-progress);
+}
+
+.execution-status-bar .status-completed {
+    color: var(--status-completed);
+}
+
+.execution-status-bar .status-failed {
+    color: var(--status-failed);
+}
+
+/* Adjust Panel helper container if needed */
+.execution-status-bar-container {
+    margin-bottom: 20px;
+}
+
+/* ---- Light Theme Adjustments ---- */
+
+[data-mode='light'] .execution-status-bar {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}

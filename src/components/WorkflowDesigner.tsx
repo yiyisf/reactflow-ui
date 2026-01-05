@@ -298,7 +298,7 @@ const WorkflowDesigner = ({
                             case 'joinNode': return '#a78bfa';
                             case 'loopNode': return '#f59e0b';
                             case 'subWorkflowNode': return '#6366f1';
-                            default: return '#3b82f6'; // Could use var(--color-accent) if MiniMap supports it? Probably needs hex.
+                            default: return '#3b82f6';
                         }
                     }}
                     style={{
@@ -307,12 +307,19 @@ const WorkflowDesigner = ({
                         borderRadius: '8px',
                         backdropFilter: 'blur(10px)',
                     }}
-                    maskColor="rgba(0,0,0,0.2)" // Use a semi-transparent dark mask for better contrast in both modes
+                    maskColor="rgba(0,0,0,0.2)"
                 />
 
                 {mode === 'edit' && (
                     <Panel position="top-center">
                         <UndoRedoControls />
+                    </Panel>
+                )}
+
+                {/* 运行态状态栏 */}
+                {mode === 'run' && (
+                    <Panel position="bottom-center">
+                        <ExecutionStatusBar />
                     </Panel>
                 )}
             </ReactFlow>
@@ -324,6 +331,92 @@ const WorkflowDesigner = ({
                     onCancel={() => setShowSelector(false)}
                 />
             )}
+        </div>
+    );
+};
+
+/**
+ * 内部组件：运行态状态栏
+ */
+const ExecutionStatusBar = () => {
+    const { executionData, simulateExecution, workflowDef } = useWorkflowStore();
+
+    // 如果没有执行数据，显示启动模拟按钮
+    if (!executionData) {
+        return (
+            <div className="execution-status-bar">
+                <div className="status-item">
+                    <span className="status-label">准备就绪</span>
+                </div>
+                <button
+                    onClick={simulateExecution}
+                    style={{
+                        background: 'var(--color-accent)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    ▶ 启动模拟运行
+                </button>
+            </div>
+        );
+    }
+
+    // 统计状态
+    const statsArr = Object.values(executionData);
+    const completed = statsArr.filter(t => t.status === 'COMPLETED').length;
+    const failed = statsArr.filter(t => t.status === 'FAILED' || t.status === 'FAILED_WITH_TERMINAL_ERROR' || t.status === 'TIMED_OUT').length;
+    const inProgress = statsArr.filter(t => t.status === 'IN_PROGRESS' || t.status === 'SCHEDULED').length;
+
+    return (
+        <div className="execution-status-bar">
+            <div className="status-item">
+                <span className="status-label">执行 ID:</span>
+                <span className="status-value">RUN_{workflowDef?.name?.toUpperCase() || 'WORKFLOW'}_001</span>
+            </div>
+
+            <div className="status-item">
+                <span className="status-label">总体状态:</span>
+                <span className="status-value status-running">IN_PROGRESS</span>
+            </div>
+
+            <div className="status-item">
+                <span className="status-label">统计:</span>
+                <span className="status-value">
+                    <span style={{ color: '#10b981' }}>{completed}</span> 完成 /
+                    <span style={{ color: '#ef4444' }}> {failed}</span> 失败 /
+                    <span style={{ color: '#3b82f6' }}> {inProgress}</span> 进行中
+                </span>
+            </div>
+
+            <div className="status-item">
+                <span className="status-label">持续时间:</span>
+                <span className="status-value">00:05:23</span>
+            </div>
+
+            <button
+                onClick={simulateExecution}
+                title="重新模拟"
+                style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    marginLeft: '8px'
+                }}
+            >
+                ↻
+            </button>
         </div>
     );
 };

@@ -11,7 +11,9 @@ import {
     LayoutDirection,
     EditorMode,
     ThemeMode,
-    ThemeColor
+    ThemeColor,
+    ExecutionStatus,
+    TaskExecutionData
 } from '../types/workflow';
 import { WorkflowDef, TaskDef } from '../types/conductor';
 
@@ -55,7 +57,84 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 },
 
-                setMode: (mode: EditorMode) => set({ mode }),
+                setMode: (mode: EditorMode) => {
+                    const currentMode = get().mode;
+                    // 如果从运行模式退出，清空执行数据
+                    if (currentMode === 'run' && mode !== 'run') {
+                        set({ executionData: null });
+                    }
+                    set({ mode });
+                },
+
+                setExecutionData: (data: Record<string, TaskExecutionData> | null) => set({ executionData: data }),
+
+                updateTaskStatus: (taskRef: string, status: ExecutionStatus) => {
+                    const { executionData } = get();
+                    if (!executionData) return;
+
+                    const newData = { ...executionData };
+                    if (newData[taskRef]) {
+                        newData[taskRef] = { ...newData[taskRef], status };
+                        set({ executionData: newData });
+                    }
+                },
+
+                simulateExecution: () => {
+                    const { taskMap, workflowDef } = get();
+                    if (!workflowDef) return;
+
+                    // 创建初始模拟数据
+                    const simulationData: Record<string, TaskExecutionData> = {};
+                    const refs = Object.keys(taskMap);
+
+                    // 1. 设置一些已完成的任务
+                    const completedCount = Math.floor(refs.length * 0.4);
+                    for (let i = 0; i < completedCount; i++) {
+                        simulationData[refs[i]] = {
+                            taskId: `sim_${refs[i]}`,
+                            taskReferenceName: refs[i],
+                            status: 'COMPLETED',
+                            startTime: Date.now() - 10000,
+                            endTime: Date.now() - 5000
+                        };
+                    }
+
+                    // 2. 设置一个正在执行的任务
+                    if (refs.length > completedCount) {
+                        const runningRef = refs[completedCount];
+                        simulationData[runningRef] = {
+                            taskId: `sim_${runningRef}`,
+                            taskReferenceName: runningRef,
+                            status: 'IN_PROGRESS',
+                            startTime: Date.now() - 2000
+                        };
+                    }
+
+                    // 3. 设置一个失败的任务（可选）
+                    if (refs.length > completedCount + 2) {
+                        const failedRef = refs[completedCount + 1];
+                        simulationData[failedRef] = {
+                            taskId: `sim_${failedRef}`,
+                            taskReferenceName: failedRef,
+                            status: 'FAILED',
+                            startTime: Date.now() - 5000,
+                            endTime: Date.now() - 4000
+                        };
+                    }
+
+                    // 4. 其余设为 SCHEDULED
+                    refs.forEach(ref => {
+                        if (!simulationData[ref]) {
+                            simulationData[ref] = {
+                                taskId: `sim_${ref}`,
+                                taskReferenceName: ref,
+                                status: 'SCHEDULED'
+                            };
+                        }
+                    });
+
+                    set({ executionData: simulationData, mode: 'run' });
+                },
 
                 setLayoutDirection: (direction: LayoutDirection) => {
                     const { workflowDef } = get();

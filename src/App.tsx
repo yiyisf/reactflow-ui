@@ -10,6 +10,7 @@ import { useTheme } from './hooks/useTheme';
 import { ThemeControls } from './components/ThemeControls';
 import './styles/tokens.css'; // Import Design Tokens
 import './App.css';
+import './styles/executionStyles.css';
 
 function App() {
   const { mode: themeMode, color: themeColor } = useTheme();

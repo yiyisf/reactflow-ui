@@ -121,6 +121,7 @@ export interface WorkflowState {
     themeColor: ThemeColor;
     edgeType: string;
     nodesLocked: boolean;
+    copiedTask: TaskDef | null;
 }
 
 /**
@@ -149,6 +150,7 @@ export interface WorkflowActions {
     addDecisionBranch: (taskRef: string, caseName: string) => void;
     removeDecisionBranch: (taskRef: string, caseName: string) => void;
     addForkBranch: (taskRef: string) => void;
+    copyTask: (task: TaskDef) => void;
     pasteTask: (task: TaskDef) => void;
     setTheme: (theme: ThemeMode) => void;
     setThemeColor: (color: ThemeColor) => void;

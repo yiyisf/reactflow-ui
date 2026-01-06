@@ -9,9 +9,19 @@ interface NodeWrapperProps {
     isError?: boolean;
     hasWarning?: boolean;
     isDecision?: boolean;
+    isHighlighted?: boolean;
 }
 
-const NodeWrapper = ({ children, nodeId, selected = false, isStartOrEnd = false, isError = false, hasWarning = false, isDecision = false }: NodeWrapperProps) => {
+const NodeWrapper = ({
+    children,
+    nodeId,
+    selected = false,
+    isStartOrEnd = false,
+    isError = false,
+    hasWarning = false,
+    isDecision = false,
+    isHighlighted = false
+}: NodeWrapperProps) => {
     const { mode, removeNode } = useWorkflowStore();
 
     const onDelete = (e: React.MouseEvent) => {
@@ -24,8 +34,8 @@ const NodeWrapper = ({ children, nodeId, selected = false, isStartOrEnd = false,
     const showDelete = mode === 'edit' && !isStartOrEnd;
 
     const wrapperClass = isDecision
-        ? `decision-node-wrapper ${selected ? 'node-wrapper-selected' : ''}`
-        : `node-wrapper-glass ${selected ? 'node-wrapper-selected' : ''}`;
+        ? `decision-node-wrapper ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`
+        : `node-wrapper-glass ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`;
 
     return (
         <div className={wrapperClass} style={{ position: 'relative' }}>

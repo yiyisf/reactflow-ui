@@ -38,6 +38,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 themeColor: 'blue' as ThemeColor,
                 edgeType: 'default',
                 nodesLocked: true,
+                copiedTask: null as TaskDef | null,
 
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
@@ -281,7 +282,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                             type: 'JOIN',
                             joinOn: []
                         };
-                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined) {
+                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
                         } else {
@@ -298,7 +299,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                             newTask.loopOver = [];
                         }
 
-                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined) {
+                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                         } else {
                             insertTaskAfter(newDef.tasks, sourceId, newTask);
@@ -358,7 +359,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
+                        const validationResults = validateWorkflow(newDef);
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
                 },
 
@@ -373,7 +375,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
+                        const validationResults = validateWorkflow(newDef);
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
                 },
 
@@ -393,7 +396,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
+                        const validationResults = validateWorkflow(newDef);
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
                 },
 
@@ -412,7 +416,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
+                        const validationResults = validateWorkflow(newDef);
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
                 },
 
@@ -428,9 +433,12 @@ const useWorkflowStore = create<WorkflowStore>()(
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap });
+                        const validationResults = validateWorkflow(newDef);
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
                 },
+
+                copyTask: (task: TaskDef) => set({ copiedTask: task }),
 
                 pasteTask: (task: TaskDef) => {
                     const { workflowDef, layoutDirection, selectedTask } = get();
@@ -535,7 +543,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                 themeColor: state.themeColor,
                 layoutDirection: state.layoutDirection,
                 edgeType: state.edgeType,
-                nodesLocked: state.nodesLocked
+                nodesLocked: state.nodesLocked,
+                copiedTask: state.copiedTask
             }),
         }
     )

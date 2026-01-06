@@ -47,14 +47,15 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
             selected={selected}
             isError={data.isError}
             hasWarning={data.hasWarning}
+            isHighlighted={data.isHighlighted}
         >
             <div
                 className={executionClass}
                 style={{
                     background: isRunning && execution?.status
                         ? undefined
-                        : 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px solid rgba(255,255,255,0.2)'),
+                        : 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
+                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px solid var(--color-accent-hover)'),
                     borderRadius: '12px',
                     padding: '4px', // 给双边框留出的空间
                     width: '180px',
@@ -63,11 +64,12 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
                         : (isRunning && execution?.status ? undefined : '0 4px 12px rgba(0,0,0,0.15)'),
                     transition: 'all 0.3s ease',
                     cursor: 'pointer',
-                    position: 'relative'
+                    position: 'relative',
+                    overflow: 'visible'
                 }}
             >
                 <div style={{
-                    border: isRunning && execution?.status ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.4)',
+                    border: isRunning && execution?.status ? '1px solid var(--border-secondary)' : '1px solid var(--border-primary)',
                     borderRadius: '8px',
                     padding: '12px'
                 }}>

@@ -130,8 +130,12 @@ export function insertFirstTaskIntoBranch(tasks: TaskDef[] | undefined, parentRe
             } else if (branchInfo.forkIndex !== undefined) {
                 // Fork 分支
                 if (!task.forkTasks) task.forkTasks = [];
-                if (!task.forkTasks[branchInfo.forkIndex]) task.forkTasks[branchInfo.forkIndex] = [];
                 task.forkTasks[branchInfo.forkIndex].unshift(newTask);
+                return true;
+            } else if ((branchInfo as any).isLoopAdd) {
+                // Loop 内部添加
+                if (!task.loopOver) task.loopOver = [];
+                task.loopOver.unshift(newTask);
                 return true;
             }
         }

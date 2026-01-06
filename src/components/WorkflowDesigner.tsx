@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import ReactFlow, {
     Background,
     Controls,
     MiniMap,
     Panel,
     MarkerType,
+    useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -16,6 +17,9 @@ import LoopNode from './nodes/LoopNode';
 import SubWorkflowNode from './nodes/SubWorkflowNode';
 import NodeSelector from './Editor/NodeSelector';
 import ExecutionTaskPanel from './ExecutionTaskPanel';
+import AddableEdge from './edges/AddableEdge';
+import UndoRedoControls from './UndoRedoControls';
+import { useStore } from 'zustand';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -27,7 +31,23 @@ const nodeTypes = {
     subWorkflowNode: SubWorkflowNode,
 };
 
-const WorkflowDesigner: React.FC = () => {
+const edgeTypes = {
+    addableEdge: AddableEdge,
+};
+
+interface WorkflowDesignerProps {
+    onNodeClick?: (task: any) => void;
+    searchQuery?: string;
+    // 以下通过 store 获取的其实可以不用，但 App.tsx 既然传了，我们兼容一下
+    edgeType?: string;
+    theme?: 'dark' | 'light';
+    nodesLocked?: boolean;
+}
+
+const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
+    onNodeClick: onNodeClickProp,
+    searchQuery = ''
+}) => {
     const {
         nodes,
         edges,
@@ -35,16 +55,113 @@ const WorkflowDesigner: React.FC = () => {
         onEdgesChange,
         onConnect,
         mode,
+        selectedTask,
         setSelectedTask,
         theme,
         edgeType,
         addNode,
+        removeNode,
+        copyTask,
+        pasteTask,
+        copiedTask,
         nodesLocked,
         executionData,
+        validationResults,
     } = useWorkflowStore();
 
+    const { fitView } = useReactFlow();
     const [showSelector, setShowSelector] = useState(false);
     const [activeEdgeData, setActiveEdgeData] = useState<any>(null);
+
+    const { undo, redo } = useStore((useWorkflowStore as any).temporal, (state: any) => state);
+
+    // 监听来自 Header 的自动缩放事件
+    useEffect(() => {
+        const handleZoomToFit = () => {
+            fitView({ duration: 800 });
+        };
+        window.addEventListener('workflow-zoom-to-fit', handleZoomToFit);
+        return () => window.removeEventListener('workflow-zoom-to-fit', handleZoomToFit);
+    }, [fitView]);
+
+    // 监听各种自定义交互事件
+    useEffect(() => {
+        const handleMiniTaskClick = (event: any) => {
+            if (onNodeClickProp && event.detail && event.detail.task) {
+                onNodeClickProp(event.detail.task);
+            }
+        };
+
+        const handleLoopAddNode = (event: any) => {
+            if (mode === 'edit') {
+                setActiveEdgeData({
+                    sourceId: event.detail.loopId,
+                    edgeData: { isLoopAdd: true }
+                });
+                setShowSelector(true);
+            }
+        };
+
+        const handleEdgeAddNode = (event: any) => {
+            if (mode === 'edit') {
+                setActiveEdgeData({
+                    sourceId: event.detail.source,
+                    targetId: event.detail.target,
+                    edgeId: event.detail.id,
+                    edgeData: event.detail.edgeData
+                });
+                setShowSelector(true);
+            }
+        };
+
+        document.addEventListener('miniTaskClick', handleMiniTaskClick);
+        document.addEventListener('loopAddNodeRequested', handleLoopAddNode);
+        window.addEventListener('edgeAddNode', handleEdgeAddNode as any);
+
+        return () => {
+            document.removeEventListener('miniTaskClick', handleMiniTaskClick);
+            document.removeEventListener('loopAddNodeRequested', handleLoopAddNode);
+            window.removeEventListener('edgeAddNode', handleEdgeAddNode as any);
+        };
+    }, [mode, onNodeClickProp]);
+
+    // 全局快捷键监听
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const isApple = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            const ctrlKey = isApple ? e.metaKey : e.ctrlKey;
+
+            if (ctrlKey && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    redo();
+                } else {
+                    undo();
+                }
+            } else if (ctrlKey && e.key.toLowerCase() === 'c') {
+                if (selectedTask && mode === 'edit') {
+                    copyTask(selectedTask);
+                    // 可选：添加一些视觉反馈，比如一个小提示
+                }
+            } else if (ctrlKey && e.key.toLowerCase() === 'v') {
+                if (copiedTask && mode === 'edit') {
+                    pasteTask(copiedTask);
+                }
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (mode === 'edit' && selectedTask &&
+                    document.activeElement?.tagName !== 'INPUT' &&
+                    document.activeElement?.tagName !== 'TEXTAREA') {
+                    if (window.confirm('确定要删除选中的任务吗？')) {
+                        removeNode(selectedTask.taskReferenceName);
+                        setSelectedTask(null);
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo, selectedTask, copiedTask, mode, copyTask, pasteTask, removeNode, setSelectedTask]);
 
     // 处理新节点选择
     const handleTypeSelect = useCallback((type: string) => {
@@ -99,9 +216,17 @@ const WorkflowDesigner: React.FC = () => {
                 }
             }
 
+            // 编辑模式下使用自定义边以显示 "+" 按钮
+            const isAddable = mode === 'edit' && !isLoopBack;
+
             return {
                 ...edge,
-                type: edgeType === 'step' ? 'step' : 'default',
+                type: isAddable ? 'addableEdge' : (edgeType === 'step' ? 'step' : 'default'),
+                data: {
+                    ...edge.data,
+                    mode,
+                    label: edge.label
+                },
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
                     width: 20,
@@ -120,17 +245,38 @@ const WorkflowDesigner: React.FC = () => {
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', background: backgroundColor }}>
             <ReactFlow
-                nodes={nodes}
+                nodes={useMemo(() => {
+                    const errorRefs = new Set(validationResults.errors.filter(e => e.type === 'TASK').map(e => e.ref));
+                    const warningRefs = new Set(validationResults.warnings.filter(w => w.type === 'TASK').map(w => w.ref));
+                    const query = searchQuery.toLowerCase();
+
+                    return nodes.map(node => {
+                        const ref = node.data.taskReferenceName;
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                isError: errorRefs.has(ref),
+                                hasWarning: warningRefs.has(ref),
+                                isHighlighted: searchQuery ? (
+                                    node.data.label.toLowerCase().includes(query) ||
+                                    node.data.taskReferenceName.toLowerCase().includes(query)
+                                ) : false
+                            }
+                        };
+                    });
+                }, [nodes, validationResults, searchQuery])}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 onNodeClick={(_: any, node: any) => {
-                    if (mode === 'run') {
-                        setSelectedTask(node.data.task || null);
-                    } else {
-                        setSelectedTask(node.data.task || null);
+                    const task = node.data.task || null;
+                    setSelectedTask(task);
+                    if (onNodeClickProp) {
+                        onNodeClickProp(task);
                     }
                 }}
                 fitView
@@ -163,6 +309,13 @@ const WorkflowDesigner: React.FC = () => {
 
                 {/* 运行态详情面板 */}
                 {mode === 'run' && <ExecutionTaskPanel />}
+
+                {/* 撤销重放工具栏 */}
+                {mode === 'edit' && (
+                    <Panel position="bottom-right" style={{ marginBottom: '160px', marginRight: '20px', zIndex: 1000 }}>
+                        <UndoRedoControls />
+                    </Panel>
+                )}
             </ReactFlow>
 
             {showSelector && (

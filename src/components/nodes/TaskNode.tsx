@@ -66,6 +66,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
             selected={selected}
             isError={data.isError}
             hasWarning={data.hasWarning}
+            isHighlighted={data.isHighlighted}
         >
             <div
                 className={executionClass}

@@ -145,7 +145,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                             transform: 'translateY(-50%)',
                             width: '8px',
                             height: '2px',
-                            background: 'rgba(255,255,255,0.5)',
+                            background: 'var(--border-secondary)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'flex-end',
@@ -156,7 +156,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                 height: '0',
                                 borderTop: '3px solid transparent',
                                 borderBottom: '3px solid transparent',
-                                borderLeft: '4px solid rgba(255,255,255,0.5)',
+                                borderLeft: '4px solid var(--text-muted)',
                                 marginRight: '-2px'
                             }} />
                         </div>
@@ -168,7 +168,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                             transform: 'translateX(-50%)',
                             width: '2px',
                             height: '8px',
-                            background: 'rgba(255,255,255,0.5)',
+                            background: 'var(--border-secondary)',
                             display: 'flex',
                             alignItems: 'flex-end',
                             justifyContent: 'center',
@@ -179,7 +179,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                 height: '0',
                                 borderLeft: '3px solid transparent',
                                 borderRight: '3px solid transparent',
-                                borderTop: '4px solid rgba(255,255,255,0.5)',
+                                borderTop: '4px solid var(--text-muted)',
                                 marginBottom: '-2px'
                             }} />
                         </div>
@@ -192,7 +192,6 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     // 渲染循环回路箭头
     const renderLoopBackArrow = () => {
         if (loopTaskCount === 0) return null;
-        const isHorizontal = layoutDirection === 'LR';
 
         return (
             <div style={{
@@ -206,9 +205,9 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 pointerEvents: 'none',
                 width: '100%'
             }}>
-                <div style={{ flex: 1, height: '1px', borderTop: '1px dashed rgba(255,255,255,0.5)' }} />
+                <div style={{ flex: 1, height: '1px', borderTop: '1px dashed var(--border-secondary)' }} />
                 <span>🔄</span>
-                <div style={{ flex: 1, height: '1px', borderTop: '1px dashed rgba(255,255,255,0.5)' }} />
+                <div style={{ flex: 1, height: '1px', borderTop: '1px dashed var(--border-secondary)' }} />
             </div>
         );
     };
@@ -221,19 +220,21 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             selected={selected}
             isError={data.isError}
             hasWarning={data.hasWarning}
+            isHighlighted={data.isHighlighted}
         >
             <div
                 className={`loop-container ${executionClass}`}
                 style={{
-                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px dashed rgba(139, 92, 246, 0.4)'),
+                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px dashed var(--color-accent)'),
                     background: isRunning && execution?.status
                         ? undefined
-                        : 'rgba(139, 92, 246, 0.05)',
+                        : 'var(--color-accent-bg)',
                     borderRadius: '16px',
                     padding: '16px',
                     minWidth: isHorizontal ? '300px' : '240px',
                     transition: 'all 0.3s ease',
                     position: 'relative',
+                    overflow: 'visible',
                 }}
             >
                 <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
@@ -261,20 +262,20 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     </div>
 
                     {/* 运行态迭代信息 */}
-                    {isRunning && execution?.retryCount !== undefined && (
+                    {isRunning && (execution as any)?.iteration !== undefined && (
                         <div style={{ fontSize: '11px', color: '#fbbf24', marginBottom: '8px', fontWeight: 'bold' }}>
-                            Iteration: {execution.retryCount}
+                            Iteration: {(execution as any).iteration}
                         </div>
                     )}
 
                     {/* 循环体迷你流程图 */}
                     {(loopTaskCount > 0 || mode === 'edit') && (
                         <div style={{
-                            background: 'rgba(0,0,0,0.15)',
-                            borderRadius: '8px',
-                            padding: '10px',
+                            background: 'var(--bg-tertiary)',
+                            borderRadius: '12px',
+                            padding: '12px',
                             marginTop: '8px',
-                            border: '1px solid rgba(255,255,255,0.1)'
+                            border: '1px solid var(--border-primary)'
                         }}>
                             <div style={{
                                 display: isHorizontal ? 'flex' : 'block',
@@ -291,14 +292,21 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                             document.dispatchEvent(event);
                                         }}
                                         style={{
-                                            border: '2px dashed rgba(255,255,255,0.4)',
-                                            borderRadius: '6px',
-                                            padding: '6px 10px',
-                                            fontSize: '12px',
+                                            background: 'var(--color-accent)',
                                             color: '#fff',
+                                            border: '2px solid #fff',
+                                            borderRadius: '50%',
+                                            width: '28px',
+                                            height: '28px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
                                             cursor: 'pointer',
-                                            textAlign: 'center',
-                                            minWidth: isHorizontal ? '40px' : 'auto',
+                                            fontSize: '18px',
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                            transition: 'all 0.2s ease',
+                                            zIndex: 10
                                         }}
                                     >
                                         +
@@ -311,13 +319,16 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
 
                     {/* 循环条件 */}
                     <div style={{
-                        marginTop: '8px',
+                        marginTop: '12px',
                         fontSize: '9px',
-                        opacity: 0.7,
+                        opacity: 0.8,
                         fontStyle: 'italic',
-                        background: 'rgba(0,0,0,0.1)',
-                        padding: '4px 6px',
-                        borderRadius: '4px'
+                        color: 'var(--text-muted)',
+                        background: 'var(--bg-highlight)',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        borderLeft: '2px solid var(--color-accent)',
+                        wordBreak: 'break-all'
                     }}>
                         {data.loopCondition || 'No condition'}
                     </div>

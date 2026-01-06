@@ -371,6 +371,14 @@ body {
   border-color: var(--node-glow-color) !important;
 }
 
+.node-wrapper-highlighted {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 40px rgba(251, 191, 36, 0.4) !important;
+  border-color: #fbbf24 !important;
+  transform: scale(1.02);
+  z-index: 50;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
 .node-content-modern {
   padding: 12px;
   background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.05));
@@ -808,4 +816,5 @@ body {
   border-radius: 0 !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
+  overflow: visible !important;
 }

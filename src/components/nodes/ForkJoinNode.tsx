@@ -44,7 +44,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
 
     return (
-        <NodeWrapper
+        <NodeWrapper isHighlighted={data.isHighlighted}
             nodeId={id}
             selected={selected}
             isError={data.isError}
@@ -173,7 +173,7 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
 
     return (
-        <NodeWrapper
+        <NodeWrapper isHighlighted={data.isHighlighted}
             nodeId={id}
             selected={selected}
             isError={data.isError}

@@ -1,5 +1,5 @@
 import { Node, Edge } from 'reactflow';
-import { WorkflowDef, TaskDef } from './conductor';
+import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from './conductor';
 
 /**
  * 布局方向
@@ -29,13 +29,15 @@ export type ExecutionStatus =
  * 任务执行数据
  */
 export interface TaskExecutionData {
-    taskId: string;
     taskReferenceName: string;
     status: ExecutionStatus;
+    attempts: TaskInstance[]; // 存储所有尝试 (计算 retries)
     startTime?: number;
     endTime?: number;
-    retryCount?: number;
     output?: any;
+    input?: any;
+    reasonForIncompletion?: string;
+    iteration?: number;
 }
 /**
  * 解析结果
@@ -106,11 +108,13 @@ export type ThemeColor = 'blue' | 'orange';
 export interface WorkflowState {
     mode: EditorMode;
     workflowDef: WorkflowDef | null;
+    workflowInstance: WorkflowInstance | null;
     nodes: WorkflowNode[];
     edges: Edge[];
     taskMap: Record<string, TaskDef>;
     layoutDirection: LayoutDirection;
     selectedTask: TaskDef | null;
+    selectedTaskInstance: TaskInstance | null; // 当前选中的运行时任务实例
     executionData: Record<string, TaskExecutionData> | null;
     validationResults: ValidationResults;
     theme: ThemeMode;
@@ -127,13 +131,14 @@ export interface WorkflowActions {
     setMode: (mode: EditorMode) => void;
     setExecutionData: (data: Record<string, TaskExecutionData> | null) => void;
     updateTaskStatus: (taskRef: string, status: ExecutionStatus) => void;
-    simulateExecution: () => void;
+    loadSampleExecution: () => Promise<void>;
     importExecutionJSON: (json: any) => void;
     setLayoutDirection: (direction: LayoutDirection) => void;
     onNodesChange: (changes: any) => void;
     onEdgesChange: (changes: any) => void;
     onConnect: (connection: any) => void;
     setSelectedTask: (task: TaskDef | null) => void;
+    setSelectedTaskInstance: (instance: TaskInstance | null) => void;
     checkTaskRefUniqueness: (newRef: string, currentRef: string) => boolean;
     updateTask: (taskRef: string, field: string | Record<string, any>, value?: any) => void;
     updateWorkflowProperties: (properties: Partial<WorkflowDef>) => void;

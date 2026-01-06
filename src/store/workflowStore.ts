@@ -15,7 +15,7 @@ import {
     ExecutionStatus,
     TaskExecutionData
 } from '../types/workflow';
-import { WorkflowDef, TaskDef } from '../types/conductor';
+import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from '../types/conductor';
 
 const useWorkflowStore = create<WorkflowStore>()(
     persist(
@@ -23,11 +23,13 @@ const useWorkflowStore = create<WorkflowStore>()(
             (set, get) => ({
                 mode: 'view',
                 workflowDef: null as WorkflowDef | null,
+                workflowInstance: null as WorkflowInstance | null,
                 nodes: [],
                 edges: [],
                 taskMap: {},
                 layoutDirection: 'TB',
                 selectedTask: null as TaskDef | null,
+                selectedTaskInstance: null as TaskInstance | null,
                 executionData: null,
                 validationResults: { isValid: true, errors: [], warnings: [] },
 
@@ -61,7 +63,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const currentMode = get().mode;
                     // 如果从运行模式退出，清空执行数据
                     if (currentMode === 'run' && mode !== 'run') {
-                        set({ executionData: null });
+                        set({ executionData: null, workflowInstance: null });
                     }
                     set({ mode });
                 },
@@ -79,83 +81,91 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
                 },
 
-                simulateExecution: () => {
-                    const { taskMap, workflowDef, nodes, edges } = get();
-                    if (!workflowDef || nodes.length === 0) return;
-
-                    const simulationData: Record<string, TaskExecutionData> = {};
-                    const adj: Record<string, string[]> = {};
-
-                    // 构建邻接表
-                    edges.forEach(edge => {
-                        if (!adj[edge.source]) adj[edge.source] = [];
-                        adj[edge.source].push(edge.target);
-                    });
-
-                    // BFS 模拟执行路径
-                    const queue: string[] = ['start'];
-                    const visited = new Set<string>();
-                    let step = 0;
-                    const maxSteps = Math.floor(Object.keys(taskMap).length * 0.7) + 1; // 模拟执行到约 70%
-
-                    while (queue.length > 0 && step < maxSteps) {
-                        const currentId = queue.shift()!;
-                        if (visited.has(currentId)) continue;
-                        visited.add(currentId);
-
-                        if (currentId !== 'start' && currentId !== 'end' && taskMap[currentId]) {
-                            const isLastStep = step === maxSteps - 1;
-
-                            simulationData[currentId] = {
-                                taskId: `sim_${currentId}_${Date.now()}`,
-                                taskReferenceName: currentId,
-                                status: isLastStep ? 'IN_PROGRESS' : 'COMPLETED',
-                                startTime: Date.now() - (maxSteps - step) * 2000,
-                                endTime: isLastStep ? undefined : Date.now() - (maxSteps - step - 0.5) * 2000
-                            };
-                            step++;
-                        }
-
-                        const neighbors = adj[currentId] || [];
-                        // 如果是决策节点，模拟随机分支选择（简单演示：走第一个分支）
-                        // 在实际解析中，决策节点会有多个 sourceHandle
-                        queue.push(...neighbors);
+                loadSampleExecution: async () => {
+                    try {
+                        const response = await fetch('/sample-workflows/sample-execution.json');
+                        const data = await response.json();
+                        get().importExecutionJSON(data);
+                    } catch (err) {
+                        console.error('Failed to load sample execution:', err);
+                        alert('加载示例运行数据失败');
                     }
-
-                    // 其余未访问或未执行的节点设为 SCHEDULED
-                    Object.keys(taskMap).forEach(ref => {
-                        if (!simulationData[ref]) {
-                            simulationData[ref] = {
-                                taskId: `sim_${ref}`,
-                                taskReferenceName: ref,
-                                status: 'SCHEDULED'
-                            };
-                        }
-                    });
-
-                    set({ executionData: simulationData, mode: 'run' });
                 },
 
                 importExecutionJSON: (json: any) => {
-                    if (!json || !json.tasks) return;
+                    if (!json) return;
 
-                    const simulationData: Record<string, TaskExecutionData> = {};
-                    json.tasks.forEach((task: any) => {
+                    // 处理两种情况：
+                    // 1. 直传 tasks 数组 (旧兼容模式)
+                    // 2. 传完整 Workflow 实例 (Conductor OSS 标准)
+
+                    let tasks: any[] = [];
+                    let workflowInstance: WorkflowInstance | null = null;
+                    let workflowDef: WorkflowDef | null = get().workflowDef;
+
+                    if (Array.isArray(json.tasks)) {
+                        tasks = json.tasks;
+                        // 如果是完整实例，提取元数据
+                        if (json.workflowId && json.status) {
+                            workflowInstance = json as WorkflowInstance;
+                            // 如果 JSON 里带了定义，优先使用它渲染图表
+                            if (json.workflowDefinition) {
+                                workflowDef = json.workflowDefinition;
+                            }
+                        }
+                    } else if (Array.isArray(json)) {
+                        tasks = json; // 直接是任务数组
+                    }
+
+                    if (tasks.length === 0) return;
+
+                    const executionData: Record<string, TaskExecutionData> = {};
+                    tasks.forEach((task: any) => {
                         const ref = task.referenceTaskName;
                         if (ref) {
-                            simulationData[ref] = {
-                                taskId: task.taskId,
-                                taskReferenceName: ref,
-                                status: task.status as ExecutionStatus,
-                                startTime: task.startTime,
-                                endTime: task.endTime,
-                                output: task.outputData
-                            };
+                            if (!executionData[ref]) {
+                                executionData[ref] = {
+                                    taskReferenceName: ref,
+                                    status: task.status as ExecutionStatus,
+                                    attempts: [],
+                                    startTime: task.startTime,
+                                    endTime: task.endTime,
+                                    output: task.outputData,
+                                    input: task.inputData,
+                                    reasonForIncompletion: task.reasonForIncompletion,
+                                    iteration: task.iteration
+                                };
+                            }
+
+                            // 保存所有实例到 attempts
+                            executionData[ref].attempts.push(task as TaskInstance);
+
+                            // 更新状态为最后一次尝试的状态
+                            executionData[ref].status = task.status as ExecutionStatus;
+                            executionData[ref].startTime = task.startTime;
+                            executionData[ref].endTime = task.endTime;
+                            executionData[ref].output = task.outputData;
+                            executionData[ref].input = task.inputData;
+                            executionData[ref].reasonForIncompletion = task.reasonForIncompletion;
+                            executionData[ref].iteration = task.iteration;
                         }
                     });
 
-                    set({ executionData: simulationData, mode: 'run' });
+                    // 如果探测到新的定义，先更新图表 (使用字符串化比较)
+                    if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(get().workflowDef)) {
+                        get().setWorkflow(workflowDef);
+                    }
+
+                    set({
+                        executionData,
+                        workflowInstance,
+                        mode: 'run'
+                    });
                 },
+
+                setSelectedTask: (task: TaskDef | null) => set({ selectedTask: task }),
+
+                setSelectedTaskInstance: (instance: TaskInstance | null) => set({ selectedTaskInstance: instance }),
 
                 setLayoutDirection: (direction: LayoutDirection) => {
                     const { workflowDef } = get();
@@ -189,8 +199,6 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(get().nodes, updatedEdges, { direction: layoutDirection });
                     set({ edges: layoutedEdges, nodes: layoutedNodes });
                 },
-
-                setSelectedTask: (task: TaskDef | null) => set({ selectedTask: task }),
 
                 checkTaskRefUniqueness: (newRef: string, currentRef: string) => {
                     if (newRef === currentRef) return true;

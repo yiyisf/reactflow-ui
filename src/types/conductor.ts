@@ -89,3 +89,78 @@ export interface WorkflowDef {
     timeoutSeconds?: number;
     variables?: Record<string, any>;
 }
+
+/**
+ * Conductor 任务实例 (运行时)
+ */
+export interface TaskInstance {
+    taskType: string;
+    status:
+    | 'IN_PROGRESS'
+    | 'CANCELED'
+    | 'FAILED'
+    | 'FAILED_WITH_TERMINAL_ERROR'
+    | 'COMPLETED'
+    | 'COMPLETED_WITH_ERRORS'
+    | 'SCHEDULED'
+    | 'TIMED_OUT'
+    | 'SKIPPED';
+    inputData?: Record<string, any>;
+    outputData?: Record<string, any>;
+    referenceTaskName: string;
+    retryCount?: number;
+    iteration?: number;
+    seq?: number;
+    correlationId?: string;
+    pollCount?: number;
+    taskDefName?: string;
+    scheduledTime?: number;
+    startTime?: number;
+    endTime?: number;
+    updateTime?: number;
+    startDelayInSeconds?: number;
+    retriedTaskId?: string;
+    retried?: boolean;
+    executed?: boolean;
+    callbackFromWorker?: boolean;
+    responseTimeoutSeconds?: number;
+    workflowInstanceId: string;
+    workflowType?: string;
+    taskId: string;
+    reasonForIncompletion?: string;
+    callbackAfterSeconds?: number;
+    workerId?: string;
+    externalInputPayloadStoragePath?: string;
+    externalOutputPayloadStoragePath?: string;
+}
+
+/**
+ * Conductor 工作流实例 (运行时)
+ */
+export interface WorkflowInstance {
+    status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'TIMED_OUT' | 'TERMINATED' | 'PAUSED';
+    endTime?: number;
+    workflowId: string;
+    parentWorkflowId?: string;
+    parentWorkflowTaskId?: string;
+    tasks: TaskInstance[];
+    input?: Record<string, any>;
+    output?: Record<string, any>;
+    correlationId?: string;
+    reRunFromWorkflowId?: string;
+    reasonForIncompletion?: string;
+    event?: string;
+    taskToDomain?: Record<string, string>;
+    failedReferenceTaskNames?: string[];
+    failedTaskNames?: string[];
+    workflowDefinition: WorkflowDef;
+    externalInputPayloadStoragePath?: string;
+    externalOutputPayloadStoragePath?: string;
+    priority?: number;
+    variables?: Record<string, any>;
+    lastRetriedTime?: number;
+    createTime: number;
+    updateTime?: number;
+    createdBy?: string;
+    updatedBy?: string;
+}

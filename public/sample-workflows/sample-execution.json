@@ -1,0 +1,327 @@
+{
+    "workflowId": "wf_1234567890",
+    "status": "COMPLETED",
+    "startTime": 1704546000000,
+    "endTime": 1704546060000,
+    "workflowDefinition": {
+        "name": "complex_workflow",
+        "description": "综合示例：包含多种任务类型和嵌套结构",
+        "version": 1,
+        "tasks": [
+            {
+                "name": "initialize",
+                "taskReferenceName": "init_ref",
+                "type": "SIMPLE",
+                "inputParameters": {
+                    "workflowId": "${workflow.workflowId}"
+                }
+            },
+            {
+                "name": "check_environment",
+                "taskReferenceName": "env_check_ref",
+                "type": "DECISION",
+                "inputParameters": {
+                    "environment": "${workflow.input.environment}"
+                },
+                "caseValueParam": "environment",
+                "decisionCases": {
+                    "production": [
+                        {
+                            "name": "prod_validation",
+                            "taskReferenceName": "prod_valid_ref",
+                            "type": "SIMPLE",
+                            "inputParameters": {
+                                "strict": true
+                            }
+                        },
+                        {
+                            "name": "prod_parallel_tasks",
+                            "taskReferenceName": "prod_fork_ref",
+                            "type": "FORK_JOIN",
+                            "forkTasks": [
+                                [
+                                    {
+                                        "name": "security_check",
+                                        "taskReferenceName": "security_ref",
+                                        "type": "HTTP",
+                                        "inputParameters": {
+                                            "uri": "https://api.example.com/security/check"
+                                        }
+                                    }
+                                ],
+                                [
+                                    {
+                                        "name": "compliance_check",
+                                        "taskReferenceName": "compliance_ref",
+                                        "type": "SIMPLE",
+                                        "inputParameters": {
+                                            "level": "strict"
+                                        }
+                                    }
+                                ]
+                            ]
+                        },
+                        {
+                            "name": "join_prod_checks",
+                            "taskReferenceName": "prod_join_ref",
+                            "type": "JOIN",
+                            "joinOn": [
+                                "security_ref",
+                                "compliance_ref"
+                            ]
+                        }
+                    ],
+                    "staging": [
+                        {
+                            "name": "staging_validation",
+                            "taskReferenceName": "staging_valid_ref",
+                            "type": "SIMPLE"
+                        }
+                    ]
+                },
+                "defaultCase": [
+                    {
+                        "name": "dev_validation",
+                        "taskReferenceName": "dev_valid_ref",
+                        "type": "SIMPLE"
+                    }
+                ]
+            },
+            {
+                "name": "process_data_loop",
+                "taskReferenceName": "loop_ref",
+                "type": "DO_WHILE",
+                "loopOver": [
+                    {
+                        "name": "process_item",
+                        "taskReferenceName": "process_item_ref",
+                        "type": "SIMPLE"
+                    },
+                    {
+                        "name": "transform_item",
+                        "taskReferenceName": "transform_item_ref",
+                        "type": "JSON_JQ_TRANSFORM"
+                    }
+                ]
+            },
+            {
+                "name": "invoke_sub_workflow",
+                "taskReferenceName": "sub_wf_ref",
+                "type": "SUB_WORKFLOW",
+                "subWorkflowParam": {
+                    "name": "data_aggregation_workflow",
+                    "version": 1
+                }
+            },
+            {
+                "name": "final_processing",
+                "taskReferenceName": "final_ref",
+                "type": "FORK_JOIN",
+                "forkTasks": [
+                    [
+                        {
+                            "name": "save_to_database",
+                            "taskReferenceName": "db_save_ref",
+                            "type": "SIMPLE"
+                        }
+                    ],
+                    [
+                        {
+                            "name": "publish_event",
+                            "taskReferenceName": "event_ref",
+                            "type": "EVENT"
+                        }
+                    ],
+                    [
+                        {
+                            "name": "send_notification",
+                            "taskReferenceName": "notify_ref",
+                            "type": "KAFKA_PUBLISH"
+                        }
+                    ]
+                ]
+            },
+            {
+                "name": "join_final_tasks",
+                "taskReferenceName": "final_join_ref",
+                "type": "JOIN",
+                "joinOn": [
+                    "db_save_ref",
+                    "event_ref",
+                    "notify_ref"
+                ]
+            },
+            {
+                "name": "cleanup",
+                "taskReferenceName": "cleanup_ref",
+                "type": "SIMPLE"
+            }
+        ],
+        "inputParameters": [
+            "environment",
+            "items"
+        ],
+        "outputParameters": {
+            "result": "${cleanup_ref.output}"
+        },
+        "schemaVersion": 2
+    },
+    "tasks": [
+        {
+            "taskId": "task_init",
+            "referenceTaskName": "init_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546000000,
+            "endTime": 1704546002000,
+            "inputData": {
+                "workflowId": "wf_1234567890"
+            },
+            "outputData": {
+                "items": [
+                    "Task A"
+                ]
+            }
+        },
+        {
+            "taskId": "task_decision",
+            "referenceTaskName": "env_check_ref",
+            "status": "COMPLETED",
+            "taskType": "DECISION",
+            "startTime": 1704546003000,
+            "endTime": 1704546004000,
+            "inputData": {
+                "environment": "production"
+            },
+            "outputData": {
+                "case": "production"
+            }
+        },
+        {
+            "taskId": "task_prod_valid",
+            "referenceTaskName": "prod_valid_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546005000,
+            "endTime": 1704546007000
+        },
+        {
+            "taskId": "task_prod_fork",
+            "referenceTaskName": "prod_fork_ref",
+            "status": "COMPLETED",
+            "taskType": "FORK",
+            "startTime": 1704546008000,
+            "endTime": 1704546008100
+        },
+        {
+            "taskId": "task_security",
+            "referenceTaskName": "security_ref",
+            "status": "COMPLETED",
+            "taskType": "HTTP",
+            "startTime": 1704546009000,
+            "endTime": 1704546012000
+        },
+        {
+            "taskId": "task_compliance",
+            "referenceTaskName": "compliance_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546009000,
+            "endTime": 1704546011000
+        },
+        {
+            "taskId": "task_prod_join",
+            "referenceTaskName": "prod_join_ref",
+            "status": "COMPLETED",
+            "taskType": "JOIN",
+            "startTime": 1704546013000,
+            "endTime": 1704546013500
+        },
+        {
+            "taskId": "task_loop",
+            "referenceTaskName": "loop_ref",
+            "status": "COMPLETED",
+            "taskType": "DO_WHILE",
+            "startTime": 1704546014000,
+            "endTime": 1704546025000
+        },
+        {
+            "taskId": "task_process_item",
+            "referenceTaskName": "process_item_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546015000,
+            "endTime": 1704546018000
+        },
+        {
+            "taskId": "task_transform",
+            "referenceTaskName": "transform_item_ref",
+            "status": "COMPLETED",
+            "taskType": "JSON_JQ_TRANSFORM",
+            "startTime": 1704546019000,
+            "endTime": 1704546020000
+        },
+        {
+            "taskId": "task_subwf",
+            "referenceTaskName": "sub_wf_ref",
+            "status": "COMPLETED",
+            "taskType": "SUB_WORKFLOW",
+            "startTime": 1704546026000,
+            "endTime": 1704546035000
+        },
+        {
+            "taskId": "task_final_fork",
+            "referenceTaskName": "final_ref",
+            "status": "COMPLETED",
+            "taskType": "FORK",
+            "startTime": 1704546036000,
+            "endTime": 1704546036100
+        },
+        {
+            "taskId": "task_db_save",
+            "referenceTaskName": "db_save_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546037000,
+            "endTime": 1704546042000
+        },
+        {
+            "taskId": "task_event",
+            "referenceTaskName": "event_ref",
+            "status": "COMPLETED",
+            "taskType": "EVENT",
+            "startTime": 1704546037000,
+            "endTime": 1704546039000
+        },
+        {
+            "taskId": "task_notify",
+            "referenceTaskName": "notify_ref",
+            "status": "COMPLETED",
+            "taskType": "KAFKA_PUBLISH",
+            "startTime": 1704546037000,
+            "endTime": 1704546040000
+        },
+        {
+            "taskId": "task_final_join",
+            "referenceTaskName": "final_join_ref",
+            "status": "COMPLETED",
+            "taskType": "JOIN",
+            "startTime": 1704546043000,
+            "endTime": 1704546043500
+        },
+        {
+            "taskId": "task_cleanup",
+            "referenceTaskName": "cleanup_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546044000,
+            "endTime": 1704546050000
+        }
+    ],
+    "input": {
+        "environment": "production"
+    },
+    "output": {
+        "status": "Finished"
+    }
+}

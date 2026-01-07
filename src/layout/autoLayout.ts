@@ -16,14 +16,20 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
             height = 60;
             break;
         case 'decisionNode':
-            // 150x150 旋转 45度后的外接矩形宽度/高度为 150 * sqrt(2) ≈ 212
+            // [布局补偿] 菱形节点虽然旋转后外接矩形高度为 212px，
+            // 但 React Flow 的 Handle 是基于容器高度 (150px) 的 50% 定位的。
             width = 212;
-            height = 212;
+            height = 150;
             break;
         case 'forkNode':
-        case 'joinNode':
+            // [布局补偿] Fork 节点高度补偿
             width = 140;
-            height = 60;
+            height = 65;
+            break;
+        case 'joinNode':
+            // [布局补偿] Join 节点高度补偿
+            width = 140;
+            height = 50;
             break;
         case 'loopNode':
             // 循环节点需要更大的空间来容纳内部的迷你流程图
@@ -32,27 +38,29 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
             const hasCondition = !!(node.data.loopCondition || node.data.task?.loopCondition);
 
             if (direction === 'LR') {
-                // 横向布局：任务水平排列
-                // 宽度 = 基础宽度 + (任务数 * 任务宽度) + 间距
                 width = 300 + (loopTaskCount * 100);
-                width = Math.min(width, 700); // 限制最大宽度
-                // 高度相对固定
-                height = 200 + (hasCondition ? 60 : 0);
+                width = Math.min(width, 700);
+                height = 200 + (hasCondition ? 10 : 0);
             } else {
-                // 纵向布局：任务垂直排列
                 width = 280;
-                // 高度 = 基础高度 + (任务数 * 任务高度) + 条件区域
                 height = 180 + (loopTaskCount * 45) + (hasCondition ? 60 : 0);
-                height = Math.min(height, 500); // 限制最大高度
+                height = Math.min(height, 500);
             }
             break;
         case 'subWorkflowNode':
+            // [布局补偿] 子工作流节点高度补偿
             width = 200;
-            height = 100;
+            height = 92;
             break;
         default:
-            width = 180;
-            height = 80;
+            // [布局补偿] 处理虚拟合并节点 (DECISION_JOIN) 或常规 TaskNode
+            if (node.data.taskType === 'DECISION_JOIN') {
+                width = 80;
+                height = 40;
+            } else {
+                width = 180;
+                height = 92;
+            }
     }
 
     return { width, height };

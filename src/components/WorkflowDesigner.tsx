@@ -190,6 +190,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 strokeDasharray: isLoopBack ? '5,5' : undefined,
             };
 
+            let currentStyle = { ...baseStyle };
+            let isAnimated = !isLoopBack; // 默认循环回退线不动画，其他动画
+
             // 如果是运行模式且有执行数据，应用动态样式
             if (mode === 'run' && executionData) {
                 const sourceStatus = executionData[edge.source]?.status;
@@ -200,19 +203,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 const isTargetInProgress = targetStatus === 'IN_PROGRESS';
 
                 if (isSourceCompleted && isTargetCompleted) {
-                    return {
-                        ...edge,
-                        style: { ...baseStyle, stroke: 'var(--status-completed)', strokeWidth: 4 },
-                        animated: false,
-                    };
-                }
-
-                if (isSourceCompleted && isTargetInProgress) {
-                    return {
-                        ...edge,
-                        style: { ...baseStyle, stroke: 'var(--status-in-progress)', strokeWidth: 4 },
-                        animated: true,
-                    };
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-completed)', strokeWidth: 4 };
+                    isAnimated = false;
+                } else if (isSourceCompleted && isTargetInProgress) {
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-in-progress)', strokeWidth: 4 };
+                    isAnimated = true;
                 }
             }
 
@@ -232,10 +227,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     type: MarkerType.ArrowClosed,
                     width: 20,
                     height: 20,
-                    color: theme === 'light' ? '#475569' : '#64748b',
+                    color: currentStyle.stroke, // 使用当前线条颜色确保箭头颜色匹配
                 },
-                style: baseStyle,
-                animated: true,
+                style: currentStyle,
+                animated: isAnimated,
             };
         });
     }, [edges, edgeType, theme, mode, executionData]);

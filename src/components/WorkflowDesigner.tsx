@@ -221,10 +221,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
             return {
                 ...edge,
-                type: isAddable ? 'addableEdge' : (edgeType === 'step' ? 'step' : 'default'),
+                type: isAddable ? 'addableEdge' : edgeType,
                 data: {
                     ...edge.data,
                     mode,
+                    edgeType, // 传入全局样式设置
                     label: edge.label
                 },
                 markerEnd: {

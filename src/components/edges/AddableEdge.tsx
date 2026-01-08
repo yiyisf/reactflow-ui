@@ -1,9 +1,17 @@
 import { useState, useRef } from 'react';
-import { getBezierPath, EdgeLabelRenderer, BaseEdge, EdgeProps } from 'reactflow';
+import {
+    getBezierPath,
+    getSmoothStepPath,
+    getStraightPath,
+    EdgeLabelRenderer,
+    BaseEdge,
+    EdgeProps
+} from 'reactflow';
 
 /**
  * 可添加节点的自定义边
  * 优化了悬停稳定性，防止因动画和组件切换导致的闪烁
+ * 支持动态切换连线样式 (曲线、阶梯、直线等)
  */
 const AddableEdge = ({
     id,
@@ -22,15 +30,31 @@ const AddableEdge = ({
     const [isHovered, setIsHovered] = useState(false);
     const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // 计算贝塞尔曲线路径
-    const [edgePath, labelX, labelY] = getBezierPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-    });
+    // 根据全局设置选择路径计算函数
+    const getPath = () => {
+        const edgeType = data?.edgeType || 'default';
+        const params = {
+            sourceX,
+            sourceY,
+            sourcePosition,
+            targetX,
+            targetY,
+            targetPosition,
+        };
+
+        switch (edgeType) {
+            case 'step':
+            case 'smoothstep':
+                return getSmoothStepPath(params);
+            case 'straight':
+                return getStraightPath(params);
+            case 'default':
+            default:
+                return getBezierPath(params);
+        }
+    };
+
+    const [edgePath, labelX, labelY] = getPath();
 
     const onAddClick = (evt: React.MouseEvent) => {
         evt.stopPropagation();

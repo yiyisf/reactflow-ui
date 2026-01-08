@@ -1,6 +1,6 @@
 import dagre from 'dagre';
 import { Edge } from 'reactflow';
-import { WorkflowNode, LayoutDirection } from '../types/workflow';
+import { WorkflowNode, LayoutDirection, EditorMode } from '../types/workflow';
 
 /**
  * 根据节点类型和布局方向获取节点尺寸
@@ -68,6 +68,7 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
 
 interface AutoLayoutOptions {
     direction?: LayoutDirection;
+    mode?: EditorMode;
 }
 
 /**
@@ -80,11 +81,35 @@ interface AutoLayoutOptions {
 export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], options: AutoLayoutOptions = {}): { nodes: WorkflowNode[]; edges: Edge[] } {
     const {
         direction = 'TB', // TB (top-bottom), LR (left-right)
+        mode = 'view'
     } = options;
 
-    // 根据布局方向调整间距
-    const rankSep = direction === 'LR' ? 150 : 120;
-    const nodeSep = direction === 'LR' ? 120 : 100;
+    const nodeCount = nodes.length;
+
+    // 基准间距
+    let baseRankSep = direction === 'LR' ? 150 : 120;
+    let baseNodeSep = direction === 'LR' ? 120 : 100;
+
+    // 非编辑模式且节点较多时，开启自适应压缩
+    let rankSep = baseRankSep;
+    let nodeSep = baseNodeSep;
+
+    if (nodeCount > 15) {
+        // 计算压缩系数 (节点越多压缩越厉害)
+        // N=15 -> 1.0, N=40 -> 0.5
+        let rankFactor = Math.max(0.5, 1 - (nodeCount - 15) / 50);
+        // N=15 -> 1.0, N=40 -> 0.4
+        let nodeFactor = Math.max(0.4, 1 - (nodeCount - 15) / 40);
+
+        // 编辑模式下压缩力度减半，保留操作空间
+        if (mode === 'edit') {
+            rankFactor = 1 - (1 - rankFactor) * 0.5;
+            nodeFactor = 1 - (1 - nodeFactor) * 0.5;
+        }
+
+        rankSep = Math.round(baseRankSep * rankFactor);
+        nodeSep = Math.round(baseNodeSep * nodeFactor);
+    }
 
     // 创建 dagre 图
     const dagreGraph = new dagre.graphlib.Graph();
@@ -181,6 +206,6 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
  * @param {String} direction - 布局方向 ('TB' 或 'LR')
  * @returns {Array} 重新布局后的节点数组
  */
-export function relayout(nodes: WorkflowNode[], edges: Edge[], direction: LayoutDirection = 'TB'): { nodes: WorkflowNode[]; edges: Edge[] } {
-    return getLayoutedElements(nodes, edges, { direction });
+export function relayout(nodes: WorkflowNode[], edges: Edge[], direction: LayoutDirection = 'TB', mode: EditorMode = 'view'): { nodes: WorkflowNode[]; edges: Edge[] } {
+    return getLayoutedElements(nodes, edges, { direction, mode });
 }

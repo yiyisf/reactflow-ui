@@ -47,7 +47,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     syncForkJoinOn(workflowWithSync.tasks);
 
                     const { nodes, edges, taskMap } = parseWorkflow(workflowWithSync, dir);
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: dir });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: dir, mode: get().mode });
                     const validationResults = validateWorkflow(workflowWithSync);
 
                     set({
@@ -172,7 +172,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const { workflowDef } = get();
                     if (workflowDef) {
                         const { nodes, edges, taskMap } = parseWorkflow(workflowDef, direction);
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction, mode: get().mode });
                         set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap, layoutDirection: direction });
                     } else {
                         set({ layoutDirection: direction });
@@ -197,7 +197,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 onConnect: (connection: Connection) => {
                     const { edges, layoutDirection } = get();
                     const updatedEdges = addEdge(connection, edges);
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(get().nodes, updatedEdges, { direction: layoutDirection });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(get().nodes, updatedEdges, { direction: layoutDirection, mode: get().mode });
                     set({ edges: layoutedEdges, nodes: layoutedNodes });
                 },
 
@@ -223,7 +223,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         syncForkJoinOn(newDef.tasks);
 
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
 
                         set({
@@ -245,7 +245,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     syncForkJoinOn(newDef.tasks);
 
                     const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
                     set({
@@ -308,7 +308,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     syncForkJoinOn(newDef.tasks);
                     const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
                     set({
@@ -329,7 +329,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     syncForkJoinOn(newDef.tasks);
 
                     const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
                     set({
@@ -358,7 +358,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         loopTask.loopOver.push(newTask);
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
@@ -374,7 +374,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         loopTask.loopOver = loopTask.loopOver.filter(t => t.taskReferenceName !== taskRef);
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
@@ -395,7 +395,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         }
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
@@ -415,7 +415,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         }
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
@@ -432,7 +432,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         task.forkTasks.push([]);
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
                     }
@@ -485,7 +485,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     syncForkJoinOn(newDef.tasks);
                     const { nodes, edges, taskMap: newTaskMap } = parseWorkflow(newDef, layoutDirection);
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
                     set({

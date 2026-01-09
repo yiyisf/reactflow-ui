@@ -19,8 +19,8 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
     const isRunning = mode === 'run';
 
     // 根据布局方向确定 Handle 位置
-    const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
-    const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
+    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
+    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
 
     // 运行态 CSS 类名映射
     const getExecutionClassName = (status: string | undefined) => {

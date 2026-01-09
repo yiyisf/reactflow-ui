@@ -1,4 +1,4 @@
-import { Node, Edge } from 'reactflow';
+import { Node, Edge, Position } from 'reactflow';
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from './conductor';
 
 /**
@@ -85,6 +85,8 @@ export interface WorkflowNodeData {
     loopOver?: TaskDef[]; // Loop 任务专用
     loopCondition?: string; // Loop 任务专用
     decisionCases?: Record<string, TaskDef[]>; // Decision 任务专用
+    sourcePosition?: Position; // 动态布局专用 (如蛇形布局)
+    targetPosition?: Position; // 动态布局专用 (如蛇形布局)
 }
 
 /**

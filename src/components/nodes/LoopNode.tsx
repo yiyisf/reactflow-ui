@@ -21,8 +21,8 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const isRunning = mode === 'run';
 
     // 根据布局方向确定 Handle 位置
-    const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
-    const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
+    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
+    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
 
     // 获取循环体任务信息
     const loopOver = data.loopOver || data.task?.loopOver || [];

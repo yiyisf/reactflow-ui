@@ -20,8 +20,8 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     const isRunning = mode === 'run';
 
     // 根据布局方向确定 Handle 位置
-    const sourcePosition = layoutDirection === 'LR' ? Position.Right : Position.Bottom;
-    const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
+    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
+    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
 
     // 根据任务类型设置颜色 (定义模式)
     const getTaskColor = (type: string) => {

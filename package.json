@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "dagre": "^0.8.5",
+    "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hotkeys-hook": "^5.2.1",

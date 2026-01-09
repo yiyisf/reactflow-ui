@@ -269,6 +269,57 @@ const useWorkflowStore = create<WorkflowStore>()(
                         inputParameters: {}
                     };
 
+                    // 初始化不同类型任务的默认参数
+                    switch (newTask.type) {
+                        case 'HTTP':
+                            newTask.httpRequest = {
+                                method: 'GET',
+                                url: 'https://example.com/api',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: {}
+                            };
+                            break;
+                        case 'KAFKA_PUBLISH':
+                            newTask.inputParameters = {
+                                topic: 'my_topic',
+                                value: '${workflow.input.value}',
+                                bootStrapServers: 'localhost:9092',
+                                headers: {},
+                                key: 'msg_key'
+                            };
+                            break;
+                        case 'JSON_JQ_TRANSFORM':
+                            newTask.inputParameters = {
+                                queryExpression: '.name',
+                                input: {}
+                            };
+                            break;
+                        case 'SET_VARIABLE':
+                            newTask.inputParameters = {
+                                variableName: 'variableValue'
+                            };
+                            break;
+                        case 'SUB_WORKFLOW':
+                            newTask.subWorkflowParam = {
+                                name: 'execution_workflow',
+                                version: 1
+                            };
+                            break;
+                        case 'EVENT':
+                            newTask.sink = 'conductor';
+                            break;
+                        case 'WAIT':
+                            // 默认等待 30秒
+                            newTask.inputParameters = { duration: '30s' };
+                            break;
+                        case 'TERMINATE':
+                            newTask.inputParameters = {
+                                terminationStatus: 'COMPLETED',
+                                workflowOutput: {}
+                            };
+                            break;
+                    }
+
                     if (newTask.type === 'FORK_JOIN' || newTask.type === 'FORK_JOIN_DYNAMIC') {
                         if (newTask.type === 'FORK_JOIN') {
                             newTask.forkTasks = [[], []];

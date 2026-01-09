@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { TaskType } from '../../types/conductor';
+import { TASK_TYPES, TASK_CATEGORIES, TaskCategory } from '../../config/taskTypes';
 
 interface NodeSelectorProps {
     onSelect: (type: TaskType) => void;
@@ -6,17 +8,12 @@ interface NodeSelectorProps {
     theme?: 'dark' | 'light';
 }
 
-const taskTypes: { type: TaskType; label: string; icon: string; color: string }[] = [
-    { type: 'SIMPLE', label: 'Simple Task', icon: '📝', color: 'var(--color-accent)' },
-    { type: 'HTTP', label: 'HTTP Task', icon: '🌐', color: '#8b5cf6' },
-    { type: 'DECISION', label: 'Decision/Switch', icon: '🔀', color: '#f59e0b' },
-    { type: 'FORK_JOIN', label: 'Fork/Join', icon: '🔱', color: '#10b981' },
-    { type: 'FORK_JOIN_DYNAMIC', label: 'Dynamic Fork', icon: 'λ', color: '#10b981' },
-    { type: 'DO_WHILE', label: 'Do-While Loop', icon: '🔄', color: '#f59e0b' },
-    { type: 'SUB_WORKFLOW', label: 'Sub Workflow', icon: '🔗', color: '#6366f1' },
-];
+const NodeSelector = ({ onSelect, onCancel }: NodeSelectorProps) => {
+    const [activeCategory, setActiveCategory] = useState<TaskCategory>('CORE');
 
-const NodeSelector = ({ onSelect, onCancel, theme = 'dark' }: NodeSelectorProps) => {
+    // 过滤当前分类的任务
+    const currentTasks = TASK_TYPES.filter(task => task.category === activeCategory);
+
     return (
         <div style={{
             position: 'fixed',
@@ -37,90 +34,156 @@ const NodeSelector = ({ onSelect, onCancel, theme = 'dark' }: NodeSelectorProps)
                 style={{
                     backgroundColor: 'var(--glass-surface)',
                     borderRadius: '16px',
-                    padding: '24px',
-                    width: '400px',
+                    padding: '0',
+                    width: '600px',
+                    height: '500px',
                     boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
                     border: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
                 }}
                 onClick={e => e.stopPropagation()}
             >
-                <h3 style={{
-                    marginTop: 0,
-                    marginBottom: '20px',
-                    color: 'var(--text-primary)',
-                    textAlign: 'center'
-                }}>
-                    选择任务类型
-                </h3>
-
+                {/* Header & Tabs */}
                 <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '12px'
+                    padding: '20px 24px 0',
+                    borderBottom: '1px solid var(--border-primary)',
+                    backgroundColor: 'var(--bg-secondary)'
                 }}>
-                    {taskTypes.map(task => (
-                        <button
-                            key={task.type}
-                            onClick={() => onSelect(task.type)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '16px',
-                                backgroundColor: 'var(--bg-tertiary)',
-                                border: `2px solid transparent`,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s',
-                                color: 'var(--text-primary)'
-                            }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.borderColor = task.color;
-                                e.currentTarget.style.backgroundColor = 'var(--bg-highlight)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.borderColor = 'transparent';
-                                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
-                            <span style={{ fontSize: '24px' }}>{task.icon}</span>
-                            <div>
-                                <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{task.label}</div>
-                                <div style={{ fontSize: '10px', opacity: 0.6 }}>{task.type}</div>
-                            </div>
-                        </button>
-                    ))}
+                    <h3 style={{
+                        marginTop: 0,
+                        marginBottom: '16px',
+                        color: 'var(--text-primary)',
+                        fontSize: '18px',
+                        fontWeight: '600'
+                    }}>
+                        添加任务
+                    </h3>
+
+                    <div style={{ display: 'flex', gap: '24px' }}>
+                        {TASK_CATEGORIES.map(cat => (
+                            <button
+                                key={cat.key}
+                                onClick={() => setActiveCategory(cat.key)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '0 0 12px 0',
+                                    fontSize: '14px',
+                                    fontWeight: activeCategory === cat.key ? '600' : '500',
+                                    color: activeCategory === cat.key ? 'var(--color-accent)' : 'var(--text-secondary)',
+                                    borderBottom: activeCategory === cat.key ? '2px solid var(--color-accent)' : '2px solid transparent',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {cat.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <button
-                    onClick={onCancel}
-                    style={{
-                        marginTop: '24px',
-                        width: '100%',
-                        padding: '12px',
-                        backgroundColor: 'transparent',
-                        border: '1px solid var(--border-primary)',
-                        borderRadius: '8px',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                    }}
-                >
-                    取消
-                </button>
+                {/* Content Area */}
+                <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '24px',
+                    backgroundColor: 'var(--bg-primary)'
+                }}>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gap: '12px'
+                    }}>
+                        {currentTasks.map(task => {
+                            const Icon = task.icon;
+                            return (
+                                <button
+                                    key={task.type}
+                                    onClick={() => onSelect(task.type as TaskType)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '16px',
+                                        padding: '16px',
+                                        backgroundColor: 'var(--bg-tertiary)',
+                                        border: '1px solid var(--border-primary)',
+                                        borderRadius: '12px',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        transition: 'all 0.2s',
+                                        color: 'var(--text-primary)',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.borderColor = 'var(--color-accent)';
+                                        e.currentTarget.style.backgroundColor = 'var(--bg-highlight)';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.borderColor = 'var(--border-primary)';
+                                        e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{
+                                        padding: '10px',
+                                        borderRadius: '8px',
+                                        backgroundColor: 'var(--bg-secondary)',
+                                        color: 'var(--color-accent)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <Icon size={24} strokeWidth={1.5} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>{task.label}</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>{task.description}</div>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                    padding: '16px 24px',
+                    borderTop: '1px solid var(--border-primary)',
+                    backgroundColor: 'var(--bg-secondary)',
+                    display: 'flex',
+                    justifyContent: 'flex-end'
+                }}>
+                    <button
+                        onClick={onCancel}
+                        style={{
+                            padding: '8px 24px',
+                            backgroundColor: 'transparent',
+                            border: '1px solid var(--border-primary)',
+                            borderRadius: '6px',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                        取消
+                    </button>
+                </div>
             </div>
 
             <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
-        }
-        @keyframes popIn {
-          from { transform: scale(0); }
-          to { transform: scale(1); }
         }
       `}</style>
         </div>

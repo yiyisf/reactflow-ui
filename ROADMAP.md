@@ -30,6 +30,13 @@
 
 #### P2.4: 整体页面重塑 (Layout Redesign)
 - [ ] **全站 UI 布局重绘**：基于设计规范重绘侧边栏、顶部菜单及背景纹理，建立系统级视觉一致性。
+- [x] **超大流程布局优化**：实现智能蛇形布局 (Snake Layout)，支持 TB/LR 双向折行，解决 >30 节点的大图展示难题。
+- [x] **布局间距自适应**：基于节点数量动态调整 Dagre RankSep/NodeSep。
+
+#### P2.5: 运行态能力 (Runtime Capabilities) (完成)
+- [x] **执行可视化**：支持加载 Conductor 运行态 JSON，显示节点状态（成功/失败/运行中）。
+- [x] **路径高亮**：动态高亮实际执行路径。
+- [x] **详情面板**：运行态下支持查看 Input/Output 及重试记录。
 
 ### P3: 库化交付 (Library Mode & Distribution)
 - [ ] **解耦业务逻辑**：将项目重构为内聚的 UI 组件，支持 Props 注入和 Event 回调。

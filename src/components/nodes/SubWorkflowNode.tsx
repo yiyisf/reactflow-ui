@@ -1,11 +1,16 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
+import NodeLayout from './NodeLayout';
 import useWorkflowStore from '../../store/workflowStore';
 import { WorkflowNodeData } from '../../types/workflow';
-import ExecutionStatusBadge from './ExecutionStatusBadge';
+import { TASK_TYPES } from '../../config/taskTypes';
+import { GitMerge } from 'lucide-react';
 
 type SubWorkflowNodeProps = NodeProps<WorkflowNodeData>;
+
+// 使用 CSS 变量以支持主题切换
+const SUB_WORKFLOW_COLOR = 'var(--color-accent)';
 
 /**
  * 子工作流节点组件
@@ -22,24 +27,11 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
     const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
     const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
 
-    // 运行态 CSS 类名映射
-    const getExecutionClassName = (status: string | undefined) => {
-        if (!status) return '';
-        const mapping: Record<string, string> = {
-            'SCHEDULED': 'execution-node-scheduled',
-            'IN_PROGRESS': 'execution-node-in-progress',
-            'COMPLETED': 'execution-node-completed',
-            'COMPLETED_WITH_ERRORS': 'execution-node-completed-with-errors',
-            'FAILED': 'execution-node-failed',
-            'FAILED_WITH_TERMINAL_ERROR': 'execution-node-failed-terminal',
-            'TIMED_OUT': 'execution-node-timed-out',
-            'SKIPPED': 'execution-node-skipped',
-            'CANCELED': 'execution-node-canceled',
-        };
-        return mapping[status] || '';
-    };
+    const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'SUB_WORKFLOW'), []);
+    const IconComponent = taskConfig?.icon || GitMerge;
 
-    const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
+    const subWorkflowName = data.task?.subWorkflowParam?.name || data.subWorkflowName || 'Unknown';
+    const version = data.task?.subWorkflowParam?.version;
 
     return (
         <NodeWrapper
@@ -50,69 +42,25 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
             isHighlighted={data.isHighlighted}
         >
             <div
-                className={executionClass}
                 style={{
-                    background: isRunning && execution?.status
-                        ? undefined
-                        : 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
-                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px solid var(--color-accent-hover)'),
-                    borderRadius: '12px',
-                    padding: '4px', // 给双边框留出的空间
-                    width: '180px',
-                    boxShadow: selected
-                        ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                        : (isRunning && execution?.status ? undefined : '0 4px 12px rgba(0,0,0,0.15)'),
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    overflow: 'visible'
+                    borderRadius: '8px',
+                    background: 'var(--bg-secondary)',
+                    position: 'relative'
                 }}
             >
-                <div style={{
-                    border: isRunning && execution?.status ? '1px solid var(--border-secondary)' : '1px solid var(--border-primary)',
-                    borderRadius: '8px',
-                    padding: '12px'
-                }}>
-                    <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
+                <NodeLayout
+                    icon={IconComponent}
+                    header="SUB WORKFLOW"
+                    title={data.taskReferenceName}
+                    meta={`Flow: ${subWorkflowName} (v${version})`}
+                    color={SUB_WORKFLOW_COLOR}
+                    status={execution?.status}
+                    isRunning={isRunning}
+                />
 
-                    {/* 运行态徽章 */}
-                    {isRunning && execution?.status && (
-                        <ExecutionStatusBadge status={execution.status} />
-                    )}
+                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
 
-                    <div style={{ color: '#fff' }}>
-                        <div style={{
-                            fontSize: '9px',
-                            opacity: 0.8,
-                            marginBottom: '2px',
-                            textTransform: 'uppercase',
-                            fontWeight: '600'
-                        }}>
-                            Sub Workflow
-                        </div>
-                        <div style={{
-                            fontSize: '13px',
-                            fontWeight: 'bold',
-                            marginBottom: '4px',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                        }}>
-                            {data.label}
-                        </div>
-                        <div style={{
-                            fontSize: '11px',
-                            opacity: 0.7,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}>
-                            🔗 {data.subWorkflowName || 'None'}
-                        </div>
-                    </div>
-
-                    <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
-                </div>
+                <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
             </div>
         </NodeWrapper>
     );

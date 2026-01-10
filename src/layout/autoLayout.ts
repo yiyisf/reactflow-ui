@@ -5,55 +5,71 @@ import { WorkflowNode, LayoutDirection, EditorMode } from '../types/workflow';
 /**
  * 根据节点类型和布局方向获取节点尺寸
  */
+/**
+ * 获取节点尺寸（用于布局计算）
+ * 重构后所有节点都使用 NodeLayout，统一为横向卡片
+ */
 function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB') {
-    let width = 180;
-    let height = 80;
+    let width = 240; // NodeLayout 的 min-width
+    let height = 80;  // NodeLayout 的标准高度
 
     switch (node.type) {
         case 'input':
         case 'output':
             width = 60;
-            height = 60;
+            height = 70;
             break;
         case 'decisionNode':
+            // 菱形 DecisionNode (150x150 旋转后的边界框约为 212x212)
             width = 212;
-            height = 150;
+            height = 160;
             break;
         case 'forkNode':
-            width = 140;
-            height = 65;
+            // ForkJoinNode 使用 NodeLayout
+            width = 240;
+            height = 95;
             break;
         case 'joinNode':
-            width = 140;
-            height = 50;
+            // ForkJoinNode 使用 NodeLayout
+            width = 240;
+            height = 95;
             break;
         case 'loopNode':
+            // LoopNode 宽度更大，高度取决于子任务数量
             const loopOver = node.data.loopOver || node.data.task?.loopOver || [];
             const loopTaskCount = loopOver.length;
             const hasCondition = !!(node.data.loopCondition || node.data.task?.loopCondition);
 
             if (direction === 'LR') {
-                width = 300 + (loopTaskCount * 100);
-                width = Math.min(width, 700);
-                height = 200 + (hasCondition ? 10 : 0);
+                width = 320 + (loopTaskCount * 50); // 横向布局时宽度更大
+                width = Math.min(width, 600);
+                height = 145 + (hasCondition ? 20 : 0);
             } else {
-                width = 280;
-                height = 180 + (loopTaskCount * 45) + (hasCondition ? 60 : 0);
-                height = Math.min(height, 500);
+                width = 320; // 纵向布局时固定宽度
+                height = 120 + (loopTaskCount * 40) + (hasCondition ? 30 : 0);
+                height = Math.min(height, 400);
             }
             break;
         case 'subWorkflowNode':
-            width = 200;
-            height = 92;
+            // SubWorkflowNode 使用 NodeLayout
+            width = 240;
+            height = 95;
+            break;
+        case 'eventNode':
+            // EventNode 使用 NodeLayout
+            width = 240;
+            height = 85;
+            break;
+        case 'default':
+            // DefaultNode 使用 NodeLayout
+            width = 240;
+            height = 40;
             break;
         default:
-            if (node.data.taskType === 'DECISION_JOIN') {
-                width = 80;
-                height = 40;
-            } else {
-                width = 180;
-                height = 92;
-            }
+            // 默认 TaskNode 尺寸
+            width = 240;
+            height = 95;
+            break;
     }
 
     return { width, height };

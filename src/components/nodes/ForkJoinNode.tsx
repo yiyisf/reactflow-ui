@@ -1,11 +1,16 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
+import NodeLayout from './NodeLayout';
 import useWorkflowStore from '../../store/workflowStore';
 import { WorkflowNodeData } from '../../types/workflow';
-import ExecutionStatusBadge from './ExecutionStatusBadge';
+import { TASK_TYPES } from '../../config/taskTypes';
+import { GitBranch, GitMerge } from 'lucide-react';
 
 type ForkJoinNodeProps = NodeProps<WorkflowNodeData>;
+
+// 使用 CSS 变量以支持主题切换
+const FORK_JOIN_COLOR = 'var(--color-accent)';
 
 /**
  * FORK 节点组件
@@ -24,24 +29,8 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
 
     const isDynamic = data.isDynamic || data.taskType === 'FORK_JOIN_DYNAMIC';
 
-    // 运行态 CSS 类名映射
-    const getExecutionClassName = (status: string | undefined) => {
-        if (!status) return '';
-        const mapping: Record<string, string> = {
-            'SCHEDULED': 'execution-node-scheduled',
-            'IN_PROGRESS': 'execution-node-in-progress',
-            'COMPLETED': 'execution-node-completed',
-            'COMPLETED_WITH_ERRORS': 'execution-node-completed-with-errors',
-            'FAILED': 'execution-node-failed',
-            'FAILED_WITH_TERMINAL_ERROR': 'execution-node-failed-terminal',
-            'TIMED_OUT': 'execution-node-timed-out',
-            'SKIPPED': 'execution-node-skipped',
-            'CANCELED': 'execution-node-canceled',
-        };
-        return mapping[status] || '';
-    };
-
-    const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
+    const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'FORK_JOIN'), []);
+    const IconComponent = taskConfig?.icon || GitBranch;
 
     return (
         <NodeWrapper isHighlighted={data.isHighlighted}
@@ -51,70 +40,40 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             hasWarning={data.hasWarning}
         >
             <div
-                className={`fork-node ${isDynamic ? 'dynamic' : 'static'} ${executionClass}`}
+                className={`fork-node ${isDynamic ? 'dynamic' : 'static'}`}
                 style={{
-                    background: isRunning && execution?.status
-                        ? undefined
-                        : 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
-                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : (isDynamic ? '2px dashed var(--color-accent)' : '2px solid var(--color-accent)')),
                     borderRadius: '8px',
-                    padding: '12px 20px',
-                    width: '140px',
-                    boxShadow: selected
-                        ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                        : (isRunning && execution?.status ? undefined : '0 4px 12px rgba(0,0,0,0.15)'),
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
+                    background: 'var(--bg-secondary)',
                     position: 'relative'
                 }}
                 onClick={() => !isDynamic && mode === 'edit' && addForkBranch(id)}
             >
-                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
+                <NodeLayout
+                    icon={IconComponent}
+                    header={isDynamic ? "DYNAMIC FORK" : "FORK"}
+                    title={data.taskReferenceName}
+                    meta={isDynamic ? 'Dynamic Parallel Execution' : 'Parallel Execution'}
+                    color={FORK_JOIN_COLOR}
+                    status={execution?.status}
+                    isRunning={isRunning}
+                />
 
-                {/* 运行态徽章 */}
-                {isRunning && execution?.status && (
-                    <ExecutionStatusBadge status={execution.status} />
+                {/* Edit Mode Add Branch Button (Overlay) */}
+                {mode === 'edit' && !isDynamic && (
+                    <div style={{
+                        position: 'absolute',
+                        top: -8, right: -8,
+                        width: 16, height: 16,
+                        background: 'var(--color-accent)',
+                        borderRadius: '50%',
+                        color: '#fff',
+                        fontSize: '12px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer'
+                    }}>+</div>
                 )}
 
-                <div style={{ color: '#fff', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '4px' }}>
-                        {isDynamic && (
-                            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff' }}>λ</span>
-                        )}
-                        <span style={{
-                            fontSize: '10px',
-                            opacity: 0.8,
-                            textTransform: 'uppercase',
-                            fontWeight: '600',
-                            letterSpacing: '0.5px'
-                        }}>
-                            {data.taskType}
-                        </span>
-                    </div>
-                    <div style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        marginBottom: mode === 'edit' && !isDynamic ? '4px' : '0'
-                    }}>
-                        {data.label}
-                    </div>
-                    {mode === 'edit' && !isDynamic && (
-                        <div style={{
-                            marginTop: '8px',
-                            width: '24px',
-                            height: '24px',
-                            fontSize: '16px',
-                            background: 'rgba(255,255,255,0.2)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '8px auto 0'
-                        }}>
-                            +
-                        </div>
-                    )}
-                </div>
+                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
 
                 <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
 
@@ -153,24 +112,8 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
     const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
 
-    // 运行态 CSS 类名映射
-    const getExecutionClassName = (status: string | undefined) => {
-        if (!status) return '';
-        const mapping: Record<string, string> = {
-            'SCHEDULED': 'execution-node-scheduled',
-            'IN_PROGRESS': 'execution-node-in-progress',
-            'COMPLETED': 'execution-node-completed',
-            'COMPLETED_WITH_ERRORS': 'execution-node-completed-with-errors',
-            'FAILED': 'execution-node-failed',
-            'FAILED_WITH_TERMINAL_ERROR': 'execution-node-failed-terminal',
-            'TIMED_OUT': 'execution-node-timed-out',
-            'SKIPPED': 'execution-node-skipped',
-            'CANCELED': 'execution-node-canceled',
-        };
-        return mapping[status] || '';
-    };
-
-    const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
+    const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'JOIN'), []);
+    const IconComponent = taskConfig?.icon || GitMerge;
 
     return (
         <NodeWrapper isHighlighted={data.isHighlighted}
@@ -180,29 +123,23 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             hasWarning={data.hasWarning}
         >
             <div
-                className={executionClass}
                 style={{
-                    background: isRunning && execution?.status
-                        ? undefined
-                        : 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
-                    border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px solid var(--color-accent)'),
                     borderRadius: '8px',
-                    padding: '12px 20px',
-                    width: '140px',
-                    boxShadow: selected
-                        ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                        : (isRunning && execution?.status ? undefined : '0 4px 12px rgba(0,0,0,0.15)'),
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
+                    background: 'var(--bg-secondary)',
                     position: 'relative'
                 }}
             >
-                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
+                <NodeLayout
+                    icon={IconComponent}
+                    header="JOIN"
+                    title={data.taskReferenceName}
+                    meta="Wait for tasks"
+                    color={FORK_JOIN_COLOR}
+                    status={execution?.status}
+                    isRunning={isRunning}
+                />
 
-                {/* 运行态徽章 */}
-                {isRunning && execution?.status && (
-                    <ExecutionStatusBadge status={execution.status} />
-                )}
+                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
 
                 {/* 侧边输入 Handles */}
                 {layoutDirection === 'TB' && (
@@ -217,15 +154,6 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                         <Handle type="target" position={Position.Bottom} id="bottom" style={{ background: '#fff' }} />
                     </>
                 )}
-
-                <div style={{ color: '#fff', textAlign: 'center' }}>
-                    <div style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold'
-                    }}>
-                        {data.label}
-                    </div>
-                </div>
 
                 <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
             </div>

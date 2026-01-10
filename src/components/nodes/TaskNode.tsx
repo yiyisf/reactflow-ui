@@ -1,9 +1,11 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
+import NodeLayout from './NodeLayout';
 import { WorkflowNodeData } from '../../types/workflow';
 import useWorkflowStore from '../../store/workflowStore';
-import ExecutionStatusBadge from './ExecutionStatusBadge';
+import { TASK_TYPES } from '../../config/taskTypes';
+import { Activity } from 'lucide-react';
 
 type TaskNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -23,42 +25,20 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
     const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
 
-    // 根据任务类型设置颜色 (定义模式)
-    const getTaskColor = (type: string) => {
-        const colors: Record<string, { bg: string; border: string }> = {
-            SIMPLE: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            HTTP: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            JSON_JQ_TRANSFORM: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            EVENT: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            INLINE: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            KAFKA_PUBLISH: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            LAMBDA: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            TERMINATE: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-            WAIT: { bg: 'var(--color-accent)', border: 'var(--color-accent-hover)' },
-        };
-        return colors[type] || colors.SIMPLE;
-    };
+    // 获取图标和标签
+    const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === taskType), [taskType]);
+    const IconComponent = taskConfig?.icon || Activity;
 
-    const color = getTaskColor(taskType);
+    // 使用 CSS 变量以支持主题切换
+    const color = 'var(--color-accent)';
 
-    // 运行态 CSS 类名映射
-    const getExecutionClassName = (status: string | undefined) => {
-        if (!status) return '';
-        const mapping: Record<string, string> = {
-            'SCHEDULED': 'execution-node-scheduled',
-            'IN_PROGRESS': 'execution-node-in-progress',
-            'COMPLETED': 'execution-node-completed',
-            'COMPLETED_WITH_ERRORS': 'execution-node-completed-with-errors',
-            'FAILED': 'execution-node-failed',
-            'FAILED_WITH_TERMINAL_ERROR': 'execution-node-failed-terminal',
-            'TIMED_OUT': 'execution-node-timed-out',
-            'SKIPPED': 'execution-node-skipped',
-            'CANCELED': 'execution-node-canceled',
-        };
-        return mapping[status] || '';
-    };
-
-    const executionClass = isRunning ? getExecutionClassName(execution?.status) : '';
+    // 生成 Meta 信息 (Description 或 表达式)
+    const meta = useMemo(() => {
+        if (taskType === 'SIMPLE') return data.label === 'Worker Task' ? 'Execute on Worker' : 'Worker Task';
+        if (taskType === 'HTTP') return 'REST API Call';
+        if (taskType === 'JSON_JQ_TRANSFORM') return 'JQ Expression';
+        return taskConfig?.label || taskType;
+    }, [taskType, taskConfig, data.label]);
 
     return (
         <NodeWrapper
@@ -68,81 +48,22 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
             hasWarning={data.hasWarning}
             isHighlighted={data.isHighlighted}
         >
-            <div
-                className={executionClass}
-                style={{
-                    background: isRunning && execution?.status
-                        ? undefined // 使用 CSS 类定义的背景
-                        : `linear-gradient(135deg, ${color.bg} 0%, ${color.border} 100%)`,
-                    border: selected ? `3px solid #fbbf24` : (isRunning && execution?.status ? undefined : `2px solid ${color.border}`),
-                    borderRadius: '12px',
-                    padding: '16px',
-                    width: '180px',
-                    boxShadow: selected
-                        ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                        : (isRunning && execution?.status ? undefined : '0 4px 12px rgba(0,0,0,0.15)'),
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                    overflow: 'visible', // 允许徽章溢出
-                    position: 'relative'
-                }}
-            >
+            <div style={{
+                borderRadius: '8px',
+                background: 'var(--bg-secondary)', // 使用 NodeWrapper 的 Glass 效果叠加，或者这里设置基础色
+                // 注意：NodeWrapper 已经提供了 border 和 glass 背景，这里主要处理尺寸
+            }}>
+                <NodeLayout
+                    icon={IconComponent}
+                    header={taskType}
+                    title={data.taskReferenceName} // 引用名作为主标题
+                    meta={meta} // 描述作为副标题
+                    color={color}
+                    status={execution?.status}
+                    isRunning={isRunning}
+                />
+
                 <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
-
-                {/* 运行态徽章 */}
-                {isRunning && execution?.status && (
-                    <ExecutionStatusBadge status={execution.status} />
-                )}
-
-                <div style={{ color: '#fff' }}>
-                    <div style={{
-                        fontSize: '10px',
-                        opacity: 0.8,
-                        marginBottom: '4px',
-                        textTransform: 'uppercase',
-                        fontWeight: '600',
-                        letterSpacing: '0.5px'
-                    }}>
-                        {taskType}
-                    </div>
-                    <div style={{
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        marginBottom: '4px',
-                        lineHeight: '1.3',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                    }}>
-                        {data.label}
-                    </div>
-                    <div style={{
-                        fontSize: '11px',
-                        opacity: 0.7,
-                        fontStyle: 'italic',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                    }}>
-                        {data.taskReferenceName}
-                    </div>
-
-                    {/* 运行态时间统计 */}
-                    {isRunning && execution?.startTime && (
-                        <div style={{
-                            fontSize: '9px',
-                            marginTop: '4px',
-                            paddingTop: '4px',
-                            borderTop: '1px solid rgba(255,255,255,0.1)',
-                            opacity: 0.6
-                        }}>
-                            {execution.endTime
-                                ? `耗时: ${((execution.endTime - execution.startTime) / 1000).toFixed(2)}s`
-                                : '运行中...'}
-                        </div>
-                    )}
-                </div>
-
                 <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
             </div>
         </NodeWrapper>

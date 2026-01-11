@@ -568,6 +568,7 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
                     edges.push({
                         id: `e-${prevTask.taskReferenceName}-${task.taskReferenceName}-empty-${idx}`,
                         source: prevTask.taskReferenceName,
+                        sourceHandle: `branch_${idx}`,
                         target: task.taskReferenceName,
                         label: `分支 ${idx + 1}`,
                         animated: true,

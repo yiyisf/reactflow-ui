@@ -222,6 +222,7 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({
         rankdir: direction,
+        ranker: 'network-simplex', // Default, centers nodes well
         ranksep: rankSep,
         nodesep: nodeSep,
         edgesep: 50,

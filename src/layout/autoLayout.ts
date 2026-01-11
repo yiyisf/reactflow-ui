@@ -17,7 +17,7 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
         case 'input':
         case 'output':
             width = 60;
-            height = 70;
+            height = 60;
             break;
         case 'decisionNode':
             // 菱形 DecisionNode (150x150 旋转后的边界框约为 212x212)
@@ -397,8 +397,8 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
             return edge;
         }
 
-        // 仅对非蛇形链的 Decision/Fork 节点做优化
-        if (sourceNode.type !== 'decisionNode' && sourceNode.type !== 'forkNode') {
+        // 仅对非蛇形链的 Decision 节点做优化 (ForkNode 使用固定分支 Handle，不应被由于位置而改变)
+        if (sourceNode.type !== 'decisionNode') {
             return edge;
         }
 

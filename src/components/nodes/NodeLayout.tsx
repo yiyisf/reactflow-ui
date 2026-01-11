@@ -27,9 +27,8 @@ const NodeLayout = ({
         <div style={{
             display: 'flex',
             flexDirection: 'row',
-            width: '100%',
+            width: '240px',
             height: '100%',
-            minWidth: '240px',
             position: 'relative',
             overflow: 'hidden',
             border: '4px solid var(--border-primary)',

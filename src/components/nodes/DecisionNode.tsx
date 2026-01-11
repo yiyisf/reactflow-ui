@@ -85,8 +85,10 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                         height: '150px',
                         background: isRunning && execution?.status
                             ? undefined
-                            : 'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%)',
-                        border: selected ? '3px solid #fbbf24' : (isRunning && execution?.status ? undefined : '2px solid var(--color-accent-hover)'),
+                            : 'var(--bg-secondary)', // 使用与 NodeLayout 一致的背景
+                        border: selected
+                            ? '4px solid #fbbf24'
+                            : (isRunning && execution?.status ? undefined : '4px solid var(--border-primary)'), // 使用一致的边框宽度及颜色
                         transform: 'rotate(45deg)',
                         display: 'flex',
                         alignItems: 'center',
@@ -105,43 +107,53 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                             color: '#fff',
                             textAlign: 'center',
                             padding: '10px',
-                            width: '100%'
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                         }}
                     >
+                        {/* Header (Task Type) - 样式对齐 NodeLayout */}
                         <div style={{
-                            fontSize: '10px',
-                            opacity: 0.9,
-                            marginBottom: '4px',
+                            fontSize: '14px',
+                            fontWeight: 700,
                             textTransform: 'uppercase',
-                            fontWeight: '600',
-                            letterSpacing: '0.5px'
+                            letterSpacing: '0.5px',
+                            opacity: 0.7,
+                            marginBottom: '4px',
+                            color: 'var(--color-accent)'
                         }}>
                             {data.taskType}
                         </div>
+
+                        {/* Title (Label) - 样式对齐 NodeLayout */}
                         <div style={{
-                            fontSize: '13px',
-                            fontWeight: 'bold',
-                            marginBottom: '4px',
+                            fontSize: '18px',
+                            fontWeight: 600,
+                            color: 'var(--text-primary)',
                             lineHeight: '1.2',
                             wordBreak: 'break-word',
-                            maxHeight: '40px',
-                            overflow: 'hidden'
+                            maxHeight: '60px',
+                            overflow: 'hidden',
+                            marginBottom: '4px'
                         }}>
                             {data.label}
                         </div>
 
                         {mode === 'edit' && (
                             <div style={{
-                                marginTop: '8px',
-                                width: '28px',
-                                height: '28px',
-                                fontSize: '18px',
-                                background: 'rgba(255,255,255,0.2)',
+                                marginTop: '4px',
+                                width: '24px',
+                                height: '24px',
+                                fontSize: '16px',
+                                background: 'rgba(255,255,255,0.1)',
                                 borderRadius: '50%',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                margin: '8px auto 0'
+                                margin: '4px auto 0',
+                                color: 'var(--text-secondary)'
                             }}>
                                 +
                             </div>

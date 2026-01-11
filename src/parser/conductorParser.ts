@@ -410,6 +410,7 @@ function parseForkJoinTask(task: TaskDef, startId: number, taskMap: Record<strin
                 edges.push({
                     id: `e-${task.taskReferenceName}-${firstTaskRef}`,
                     source: task.taskReferenceName,
+                    sourceHandle: `branch_${branchIndex}`, // 分配唯一的 Handle ID
                     target: firstTaskRef,
                     label: `分支 ${branchIndex + 1}`,
                     animated: true,

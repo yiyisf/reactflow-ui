@@ -128,6 +128,7 @@ export interface WorkflowState {
     edgeType: string;
     nodesLocked: boolean;
     copiedTask: TaskDef | null;
+    isDetailPanelOpen: boolean;
 }
 
 /**
@@ -163,6 +164,7 @@ export interface WorkflowActions {
     setEdgeType: (edgeType: string) => void;
     setNodesLocked: (nodesLocked: boolean) => void;
     applyAIGeneratedWorkflow: (workflowJson: any) => void;
+    setIsDetailPanelOpen: (isOpen: boolean) => void;
 }
 
 /**

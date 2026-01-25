@@ -77,6 +77,18 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
     const { undo, redo } = useStore((useWorkflowStore as any).temporal, (state: any) => state);
 
+    // 监听选中任务变化，自动定位 (Locate)
+    useEffect(() => {
+        if (selectedTask) {
+            const node = nodes.find(n => n.data.taskReferenceName === selectedTask.taskReferenceName);
+            if (node) {
+                // 如果是外部触发（比如通过错误面板），则自动居中
+                // 这里可以通过标记位或简单判断
+                fitView({ nodes: [node], duration: 800, padding: 0.5 });
+            }
+        }
+    }, [selectedTask?.taskReferenceName, fitView]); // 仅在引用名变化时触发定位，避免频繁跳动
+
     // 监听来自 Header 的自动缩放事件
     useEffect(() => {
         const handleZoomToFit = () => {

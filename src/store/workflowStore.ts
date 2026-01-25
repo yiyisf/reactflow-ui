@@ -30,6 +30,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 layoutDirection: 'TB',
                 selectedTask: null as TaskDef | null,
                 selectedTaskInstance: null as TaskInstance | null,
+                isDetailPanelOpen: false,
                 executionData: null,
                 validationResults: { isValid: true, errors: [], warnings: [] },
 
@@ -164,7 +165,9 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 },
 
-                setSelectedTask: (task: TaskDef | null) => set({ selectedTask: task }),
+                setSelectedTask: (task: TaskDef | null) => set({ selectedTask: task ? { ...task } : null }),
+
+                setIsDetailPanelOpen: (isOpen: boolean) => set({ isDetailPanelOpen: isOpen }),
 
                 setSelectedTaskInstance: (instance: TaskInstance | null) => set({ selectedTaskInstance: instance }),
 

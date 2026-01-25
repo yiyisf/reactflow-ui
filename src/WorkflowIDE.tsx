@@ -118,10 +118,11 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         setSelectedTask,
         edgeType,
         importExecutionJSON,
-        setMode
+        setMode,
+        isDetailPanelOpen,
+        setIsDetailPanelOpen
     } = useWorkflowStore();
 
-    const [isDetailPanelOpen, setIsDetailPanelOpen] = React.useState(false);
     const [showHealthCheck, setShowHealthCheck] = React.useState(false);
 
     // Initialize Store from Props

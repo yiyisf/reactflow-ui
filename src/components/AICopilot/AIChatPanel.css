@@ -1,7 +1,7 @@
 .ai-chat-panel {
     position: fixed;
     bottom: 20px;
-    left: 20px;
+    right: 20px;
     width: 380px;
     height: 600px;
     max-height: calc(80vh - 40px);

@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import ReactFlow, {
     Background,
-    Controls,
-    MiniMap,
     Panel,
     MarkerType,
     useReactFlow,
@@ -17,8 +15,10 @@ import LoopNode from './nodes/LoopNode';
 import SubWorkflowNode from './nodes/SubWorkflowNode';
 import NodeSelector from './Editor/NodeSelector';
 import ExecutionTaskPanel from './ExecutionTaskPanel';
+import HealthCheckPanel from './HealthCheckPanel';
 import AddableEdge from './edges/AddableEdge';
-import UndoRedoControls from './UndoRedoControls';
+import ControlHub from './Controls/ControlHub';
+import ActionBar from './Controls/ActionBar';
 import { useStore } from 'zustand';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
@@ -72,6 +72,8 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     const { fitView } = useReactFlow();
     const [showSelector, setShowSelector] = useState(false);
     const [activeEdgeData, setActiveEdgeData] = useState<any>(null);
+
+    const [showHealthCheck, setShowHealthCheck] = React.useState(false);
 
     const { undo, redo } = useStore((useWorkflowStore as any).temporal, (state: any) => state);
 
@@ -250,6 +252,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         const ref = node.data.taskReferenceName;
                         return {
                             ...node,
+                            selected: selectedTask?.taskReferenceName === ref,
                             data: {
                                 ...node.data,
                                 isError: errorRefs.has(ref),
@@ -261,7 +264,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             }
                         };
                     });
-                }, [nodes, validationResults, searchQuery])}
+                }, [nodes, validationResults, searchQuery, selectedTask])}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
@@ -283,18 +286,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 maxZoom={2}
             >
                 <Background color="var(--border-primary)" gap={20} />
-                <Controls showInteractive={false} />
-                <MiniMap
-                    style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-primary)' }}
-                    maskColor="rgba(0, 0, 0, 0.1)"
-                    nodeColor={(node: any) => {
-                        if (node.type === 'taskNode') return 'var(--color-accent)';
-                        if (node.type === 'decisionNode') return 'var(--status-failed)';
-                        if (node.type === 'forkNode') return 'var(--color-accent)';
-                        if (node.type === 'joinNode') return 'var(--status-completed)';
-                        return '#ccc';
-                    }}
-                />
+
+                {/* Navigation Hub: Zoom (Moved to Bottom-Left) */}
+                <Panel position="bottom-left" style={{ marginBottom: '20px', marginLeft: '20px', zIndex: 1000 }}>
+                    <ControlHub />
+                </Panel>
 
                 {/* 运行态状态栏 */}
                 {mode === 'run' && (
@@ -306,12 +302,23 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 {/* 运行态详情面板 */}
                 {mode === 'run' && <ExecutionTaskPanel />}
 
-                {/* 撤销重放工具栏 */}
-                {mode === 'edit' && (
-                    <Panel position="bottom-right" style={{ marginBottom: '160px', marginRight: '20px', zIndex: 1000 }}>
-                        <UndoRedoControls />
-                    </Panel>
-                )}
+                <HealthCheckPanel
+                    isOpen={showHealthCheck}
+                    onClose={() => setShowHealthCheck(false)}
+                    theme={theme}
+                    onTaskSelect={(task) => {
+                        setSelectedTask(task);
+                        // setIsDetailPanelOpen(true); // You may need to expose this state if HealthCheckPanel needs to open it
+                    }}
+                />
+
+                {/* Action Bar (Top Right) */}
+                <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+                    <ActionBar
+                        onShowHealthCheck={() => setShowHealthCheck(!showHealthCheck)}
+                        showHealthCheck={showHealthCheck}
+                    />
+                </div>
             </ReactFlow>
 
             {showSelector && (

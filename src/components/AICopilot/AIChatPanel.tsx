@@ -136,7 +136,7 @@ const AIChatPanel: React.FC = () => {
                 <div className="ai-header" style={{ borderBottom: 'none' }}>
                     <div className="ai-title">
                         <span className="ai-sparkles">✨</span>
-                        AI Copilot
+                        AI 助手
                     </div>
                 </div>
             </div>
@@ -148,7 +148,7 @@ const AIChatPanel: React.FC = () => {
             <div className="ai-header">
                 <div className="ai-title">
                     <span className="ai-sparkles">✨</span>
-                    AI Assistant
+                    AI 助手
                 </div>
                 <button className="ai-close" onClick={() => setIsOpen(false)}>×</button>
             </div>
@@ -159,10 +159,10 @@ const AIChatPanel: React.FC = () => {
                         {msg.content}
                         {msg.type === 'change_suggestion' && msg.payload && (
                             <div className="change-card">
-                                <div className="card-header">Workflow Suggestion</div>
+                                <div className="card-header">工作流修改建议</div>
                                 <div className="card-actions">
-                                    <button className="card-btn">Preview</button>
-                                    <button className="card-btn apply" onClick={() => applySuggestion(msg.payload)}>Apply</button>
+                                    <button className="card-btn">预览</button>
+                                    <button className="card-btn apply" onClick={() => applySuggestion(msg.payload)}>应用</button>
                                 </div>
                             </div>
                         )}

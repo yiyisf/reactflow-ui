@@ -114,8 +114,8 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         setLayoutDirection,
         setNodesLocked,
         selectedTask,
+
         setSelectedTask,
-        validationResults,
         edgeType,
         importExecutionJSON,
         setMode
@@ -136,8 +136,10 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
     useEffect(() => {
         if (workflowDef) {
             setWorkflow(workflowDef, layoutDirection);
+            // Clear history after loading a new workflow to prevent undoing to empty state
+            useWorkflowStore.temporal.getState().clear();
         }
-    }, [workflowDef, setWorkflow]);
+    }, [workflowDef, setWorkflow, layoutDirection]);
 
     // Handle Execution Data Injection
     useEffect(() => {
@@ -176,24 +178,14 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
 
                 {/* Internal Controls overlay if needed, or exposed via Slots later */}
                 <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', gap: 8 }}>
-                    <button
-                        onClick={() => setShowHealthCheck(!showHealthCheck)}
-                        style={{
-                            background: 'var(--bg-tertiary)',
-                            border: '1px solid var(--border-primary)',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            color: 'var(--text-primary)'
-                        }}
-                    >
-                        🩺 {(validationResults?.errors?.length || 0) > 0 ? 'Errors' : 'Check'}
-                    </button>
+                    {/* Redundant button removed as it is now in ActionBar */}
+                    {/* <button ... /> */}
                 </div>
             </div>
 
             <TaskDetailPanel
-                task={isDetailPanelOpen ? selectedTask : null}
+                task={selectedTask}
+                isOpen={isDetailPanelOpen}
                 onClose={() => setIsDetailPanelOpen(false)}
                 theme={theme}
             />
@@ -208,11 +200,13 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
                 }}
             />
 
-            {workflowExecution && (
-                <ExecutionTaskPanel />
-            )}
+            {
+                workflowExecution && (
+                    <ExecutionTaskPanel />
+                )
+            }
 
             <AIChatPanel />
-        </div>
+        </div >
     );
 };

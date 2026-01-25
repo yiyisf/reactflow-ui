@@ -5,6 +5,7 @@ import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
+    isOpen?: boolean; // 新增控制属性
     onClose: () => void;
     theme?: 'dark' | 'light';
 }
@@ -12,7 +13,7 @@ interface TaskDetailPanelProps {
 /**
  * 任务配置面板组件 - 抽屉式，支持编辑模式
  */
-const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
+const TaskDetailPanel = ({ task, isOpen = true, onClose }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
 
@@ -47,9 +48,14 @@ const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
     // 如果两个都为空，则彻底不渲染
     if (!task && !localTask) return null;
 
-    // 确定当前展示的任务状态：如果 task 为空，回退到 localTask（用于滑出动效期间展示）
+    // 确定当前展示的任务状态
+    // 如果 isOpen 为 false，我们希望保持当前的 localTask 显示并执行退出动画
+    // 如果 isOpen 为 true，优先显示传入的 task
     const effectiveTask = task || localTask;
     const displayTask = (localTask && task && localTask.taskReferenceName === task.taskReferenceName) ? localTask : effectiveTask!;
+
+    // 控制面板显隐的类名逻辑调整
+    const panelClass = (isOpen && task) ? 'panel-enter-active' : 'panel-exit';
 
     const isEditMode = mode === 'edit';
 
@@ -220,12 +226,13 @@ const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
 
     return (
         <div
-            className={`detail-panel-container ${!task ? 'panel-exit' : 'panel-enter-active'}`}
+            className={`detail-panel-container ${panelClass}`}
             style={{
                 position: 'fixed',
                 right: 0,
                 top: 0,
                 width: '450px',
+                zIndex: 1200,
             }}
         >
             {/* Header */}

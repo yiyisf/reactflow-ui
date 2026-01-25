@@ -17,7 +17,8 @@ function DemoApp() {
   const [isReadOnly, setIsReadOnly] = useState(false);
 
   // Access store for Mode switching if needed by Header (optional, or pass via props)
-  const { workflowDef } = useWorkflowStore();
+  const storeState = useWorkflowStore();
+  const workflowDef = storeState?.workflowDef;
 
   // 处理文件上传
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +94,7 @@ function DemoApp() {
             <button
               className={`mode-btn ${isReadOnly ? 'active' : ''}`}
               onClick={() => setIsReadOnly(!isReadOnly)}
-              title={isReadOnly ? "Switch to Edit Mode" : "Switch to Read-Only Mode"}
+              title={isReadOnly ? "切换到编辑模式" : "切换到只读模式"}
               style={{
                 background: 'var(--bg-tertiary)',
                 border: '1px solid var(--border-primary)',
@@ -108,7 +109,7 @@ function DemoApp() {
                 fontWeight: 500
               }}
             >
-              {isReadOnly ? '👁️ View Only' : '✏️ Editing'}
+              {isReadOnly ? '👁️ 仅查看' : '✏️ 编辑中'}
             </button>
 
             <div className="divider"></div>
@@ -136,7 +137,7 @@ function DemoApp() {
 
         {!workflowJson && !error && !workflowDef && (
           <div className="welcome-message">
-            <h2>Select a sample or upload a workflow to start</h2>
+            <h2>请选择示例或上传工作流以开始</h2>
           </div>
         )}
 

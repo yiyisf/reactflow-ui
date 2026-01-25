@@ -566,36 +566,27 @@ const useWorkflowStore = create<WorkflowStore>()(
                 }
             }),
             {
-                limit: 50,
                 // 只记录业务定义相关的状态，过滤掉运行时的 UI 状态（如 selected, dragging）
                 // 重点：排除 width 和 height，因为它们在 undo 时会重新测量，可能导致 zundo 误判为新状态
+                // 修正：必须包含 theme/mode 等全局状态，否则 undo 时会因字段缺失导致 crash
                 partialize: (state: WorkflowStore) => ({
                     workflowDef: state.workflowDef,
                     layoutDirection: state.layoutDirection,
-                    nodes: state.nodes.map(n => {
-                        const {
-                            selected,
-                            dragging,
-                            width,
-                            height,
-                            draggingHandle,
-                            // @ts-ignore
-                            measured,
-                            ...rest
-                        } = n as any;
-                        return {
-                            ...rest,
-                            data: {
-                                ...rest.data,
-                                layoutDirection: rest.data.layoutDirection || state.layoutDirection
-                            }
-                        };
-                    }),
+                    nodes: state.nodes,
                     edges: state.edges,
                     taskMap: state.taskMap,
+                    theme: state.theme,
+                    themeColor: state.themeColor,
+                    mode: state.mode,
+                    edgeType: state.edgeType,
+                    nodesLocked: state.nodesLocked,
+                    copiedTask: state.copiedTask
                 }),
-                // 等值检查：只有当核心业务结构变化时才记录
-                equality: (a, b) => JSON.stringify(a) === JSON.stringify(b)
+                // 等值检查：只有当核心业务逻辑 (workflowDef) 发生变化时才记录 Undo
+                // 这样可以忽略 节点拖拽(仅坐标变化)、缩放、主题切换等非业务操作
+                equality: (a, b) => {
+                    return JSON.stringify(a.workflowDef) === JSON.stringify(b.workflowDef);
+                }
             }
         ),
         {

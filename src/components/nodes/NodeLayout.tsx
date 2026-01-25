@@ -11,6 +11,8 @@ interface NodeLayoutProps {
     status?: ExecutionStatus;
     isRunning?: boolean;
     children?: React.ReactNode;
+    width?: string | number; // 允许自定义宽度
+    border?: boolean;        // 允许控制是否显示边框
 }
 
 const NodeLayout = ({
@@ -21,17 +23,19 @@ const NodeLayout = ({
     color,
     status,
     isRunning,
-    children
+    children,
+    width = '240px',
+    border = true
 }: NodeLayoutProps) => {
     return (
         <div style={{
             display: 'flex',
             flexDirection: 'row',
-            width: '240px',
+            width: width,
             height: '100%',
             position: 'relative',
             overflow: 'hidden',
-            border: '4px solid var(--border-primary)',
+            border: border ? '4px solid var(--border-primary)' : 'none',
             borderRadius: '8px'
         }}>
             {/* Left Column: Icon */}

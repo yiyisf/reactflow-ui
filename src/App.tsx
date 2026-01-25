@@ -56,6 +56,11 @@ function App() {
         setWorkflow(json, layoutDirection);
         // 清除初始加载产生的历史记录，防止撤销导致返回首页
         (useWorkflowStore as any).temporal.getState().clear();
+
+        // 自动缩放适应屏幕
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('workflow-zoom-to-fit'));
+        }, 100);
       } catch (err: any) {
         setError(`解析 JSON 失败: ${err.message}`);
       }
@@ -76,6 +81,11 @@ function App() {
       // 清除初始加载产生的历史记录
       (useWorkflowStore as any).temporal.getState().clear();
       setError(null);
+
+      // 自动缩放适应屏幕
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('workflow-zoom-to-fit'));
+      }, 100);
     } catch (err: any) {
       setError(`加载示例工作流失败: ${err.message}`);
     }

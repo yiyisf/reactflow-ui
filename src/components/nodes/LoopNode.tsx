@@ -178,6 +178,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     color={LOOP_COLOR}
                     status={execution?.status}
                     isRunning={isRunning}
+                    width="100%"
                 >
                     {/* 循环体迷你流程图 (作为 Children 传入) */}
                     {(loopTaskCount > 0 || mode === 'edit') && (
@@ -190,8 +191,8 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                             display: 'flex',
                             flexDirection: isHorizontal ? 'row' : 'column',
                             alignItems: isHorizontal ? 'center' : 'stretch',
-                            flexWrap: isHorizontal ? 'wrap' : 'nowrap',
-                            gap: '4px',
+                            flexWrap: isHorizontal ? 'nowrap' : 'nowrap', // 修复：LR 模式下不换行，保持横向
+                            gap: '8px',
                             justifyContent: 'flex-start'
                         }}>
                             {loopOver.map((task, index) => renderMiniTask(task, index))}
@@ -216,9 +217,9 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                         cursor: 'pointer',
                                         fontSize: '16px',
                                         fontWeight: 'bold',
-                                        marginLeft: isHorizontal ? '8px' : 'auto',
-                                        marginRight: isHorizontal ? '0' : 'auto',
-                                        marginTop: isHorizontal ? '0' : '8px'
+                                        marginLeft: '0',
+                                        marginRight: '0',
+                                        flexShrink: 0 // 防止按钮被压缩
                                     }}
                                 >
                                     +

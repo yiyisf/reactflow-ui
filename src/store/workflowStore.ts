@@ -552,6 +552,18 @@ const useWorkflowStore = create<WorkflowStore>()(
                 setThemeColor: (themeColor: ThemeColor) => set({ themeColor }),
                 setEdgeType: (edgeType: string) => set({ edgeType }),
                 setNodesLocked: (nodesLocked: boolean) => set({ nodesLocked }),
+
+                applyAIGeneratedWorkflow: (workflowJson: any) => {
+                    // 深度拷贝并确保基础结构完整
+                    const newDef = {
+                        name: workflowJson.name || 'AI_Generated_Workflow',
+                        tasks: workflowJson.tasks || [],
+                        version: workflowJson.version || 1,
+                        schemaVersion: 2
+                    } as WorkflowDef;
+
+                    get().setWorkflow(newDef);
+                }
             }),
             {
                 limit: 50,

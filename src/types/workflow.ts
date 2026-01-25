@@ -162,6 +162,7 @@ export interface WorkflowActions {
     setThemeColor: (color: ThemeColor) => void;
     setEdgeType: (edgeType: string) => void;
     setNodesLocked: (nodesLocked: boolean) => void;
+    applyAIGeneratedWorkflow: (workflowJson: any) => void;
 }
 
 /**

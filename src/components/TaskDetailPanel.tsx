@@ -1,6 +1,7 @@
 import { memo, useState, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { TaskDef } from '../types/conductor';
+import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
@@ -14,6 +15,27 @@ interface TaskDetailPanelProps {
 const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
+
+    // AI Hint State
+    const [suggesterOpen, setSuggesterOpen] = useState(false);
+    const [suggesterAnchor, setSuggesterAnchor] = useState<DOMRect | undefined>();
+    const [currentSuggestions, setCurrentSuggestions] = useState<Suggestion[]>([]);
+    const [onSelectSuggestion, setOnSelectSuggestion] = useState<(val: string) => void>(() => () => { });
+
+    const handleAiHintClick = (e: React.MouseEvent, onSelect: (val: string) => void) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setSuggesterAnchor(rect);
+        setOnSelectSuggestion(() => onSelect);
+
+        // Mock Suggestions based on context (In real world, fetch from LLM)
+        setCurrentSuggestions([
+            { label: '引用工作流输入', value: '${workflow.input.data}', description: '引用工作流启动时传入的原始数据' },
+            { label: '引用前序任务输出', value: '${previous_task.output.result}', description: '引用上一个节点的计算结果' },
+            { label: '环境变量', value: '${workflow.variables.api_key}', description: '引用工作流定义的全局变量' }
+        ]);
+
+        setSuggesterOpen(true);
+    };
 
     // 当选中的任务改变时，同步本地状态。如果任务变为 null，保留上一个任务以便执行退出动画。
     useEffect(() => {
@@ -31,8 +53,6 @@ const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
 
     const isEditMode = mode === 'edit';
 
-    // const bgColor = 'var(--glass-surface)';
-    // const bgGradient = 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%)'; // Optional if we want gradient
     const textColor = 'var(--text-primary)';
     const borderColor = 'var(--glass-border)';
     const inputBg = 'var(--bg-tertiary)';
@@ -110,24 +130,48 @@ const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
                     {label}
                     {isRefName && isDuplicate && <span style={{ color: '#ef4444', marginLeft: '8px', textTransform: 'none' }}>⚠️ 已存在相同引用名</span>}
                 </label>
-                <input
-                    type={type}
-                    value={(displayTask as any)[field] || ''}
-                    onChange={(e) => handleChange(field, e.target.value)}
-                    disabled={!isEditMode || (isRefName && !isEditMode)}
-                    style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        border: `1px solid ${isDuplicate ? '#ef4444' : borderColor}`,
-                        background: inputBg,
-                        color: textColor,
-                        fontSize: '13px',
-                        outline: 'none',
-                        opacity: isEditMode ? 1 : 0.8,
-                        fontFamily: isRefName ? 'monospace' : 'inherit'
-                    }}
-                />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                        type={type}
+                        value={(displayTask as any)[field] || ''}
+                        onChange={(e) => handleChange(field, e.target.value)}
+                        disabled={!isEditMode || (isRefName && !isEditMode)}
+                        style={{
+                            width: '100%',
+                            padding: `8px ${isEditMode && !isRefName ? '32px' : '12px'} 8px 12px`,
+                            borderRadius: '6px',
+                            border: `1px solid ${isDuplicate ? '#ef4444' : borderColor}`,
+                            background: inputBg,
+                            color: textColor,
+                            fontSize: '13px',
+                            outline: 'none',
+                            opacity: isEditMode ? 1 : 0.8,
+                            fontFamily: isRefName ? 'monospace' : 'inherit'
+                        }}
+                    />
+                    {isEditMode && !isRefName && (
+                        <button
+                            className="ai-hint-trigger"
+                            onClick={(e) => handleAiHintClick(e, (val) => handleChange(field, val))}
+                            title="AI 智能提示"
+                            style={{
+                                position: 'absolute',
+                                right: '8px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                padding: '4px',
+                                opacity: 0.6,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            ✨
+                        </button>
+                    )}
+                </div>
             </div>
         );
     };
@@ -184,8 +228,6 @@ const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
                 width: '450px',
             }}
         >
-            {/* Header */}
-
             {/* Header */}
             <div style={{
                 padding: '24px',
@@ -455,6 +497,14 @@ const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
                     </button>
                 </div>
             )}
+
+            <ParameterSuggester
+                isOpen={suggesterOpen}
+                onClose={() => setSuggesterOpen(false)}
+                onSelect={onSelectSuggestion}
+                suggestions={currentSuggestions}
+                anchorRect={suggesterAnchor}
+            />
         </div>
     );
 };

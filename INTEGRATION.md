@@ -84,6 +84,29 @@ const executionData = await fetch('/api/workflow/execution/123').then(res => res
 - 连线会高亮实际执行路径。
 - 点击节点将展示输入/输出详情面板。
 
+## 🤖 AI Copilot (智能辅助)
+
+`reactflow-ui` 集成了基于大模型的智能助手，可帮助用户快速建模和配置参数。
+
+### 启用 AI 服务
+
+组件默认使用 OpenAI 标准接口。您可以通过以下几种方式配置：
+
+1. **环境变量/本地存储**: 
+   在应用启动前设置 `localStorage`：
+   ```js
+   localStorage.setItem('AI_API_KEY', 'your-openai-api-key');
+   localStorage.setItem('AI_BASE_URL', 'https://api.your-proxy.com/v1'); // 可选
+   localStorage.setItem('AI_MODEL', 'gpt-4o'); // 可选，默认为 gpt-4o
+   ```
+
+2. **Props 注入 (即将支持)**: 计划在下个版本支持通过 `aiConfig` 属性直接传入配置。
+
+### 核心能力
+
+- **自然语言建模**: 点击右下角 ✨ 图标展开对话框，输入需求即可生成 JSON 建议。
+- **参数智能提示**: 在节点编辑面板中，点击输入框右侧的 ✨ 图标，获取基于上下文的 JSONPath 建议。
+
 ## 🛠️ TypeScript 支持
 
 本库提供完整的 TypeScript 定义。您可以直接导入核心类型：

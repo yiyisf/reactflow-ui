@@ -4,6 +4,7 @@ import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
 import HealthCheckPanel from './components/HealthCheckPanel';
 import ExecutionTaskPanel from './components/ExecutionTaskPanel';
+import AIChatPanel from './components/AICopilot/AIChatPanel';
 import useWorkflowStore from './store/workflowStore';
 import { ThemeMode, ThemeColor, LayoutDirection } from './types/workflow';
 import { WorkflowDef } from './types/conductor';
@@ -210,6 +211,8 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
             {workflowExecution && (
                 <ExecutionTaskPanel />
             )}
+
+            <AIChatPanel />
         </div>
     );
 };

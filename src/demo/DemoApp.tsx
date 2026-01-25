@@ -14,6 +14,7 @@ function DemoApp() {
   const [workflowJson, setWorkflowJson] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   // Access store for Mode switching if needed by Header (optional, or pass via props)
   const { workflowDef } = useWorkflowStore();
@@ -89,6 +90,29 @@ function DemoApp() {
           </div>
 
           <div className="header-actions">
+            <button
+              className={`mode-btn ${isReadOnly ? 'active' : ''}`}
+              onClick={() => setIsReadOnly(!isReadOnly)}
+              title={isReadOnly ? "Switch to Edit Mode" : "Switch to Read-Only Mode"}
+              style={{
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-primary)',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '13px',
+                fontWeight: 500
+              }}
+            >
+              {isReadOnly ? '👁️ View Only' : '✏️ Editing'}
+            </button>
+
+            <div className="divider"></div>
+
             <ThemeControls />
 
             <select className="sample-select" onChange={(e) => loadSampleWorkflow(e.target.value)}>
@@ -118,9 +142,11 @@ function DemoApp() {
 
         <WorkflowIDE
           workflowDef={workflowJson}
+          readOnly={isReadOnly}
           theme={themeMode}
           themeColor={themeColor}
           layoutDirection="LR"
+          searchQuery={searchQuery}
         />
       </div>
     </div>

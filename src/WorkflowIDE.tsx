@@ -3,6 +3,7 @@ import { ReactFlowProvider } from 'reactflow';
 import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
 import HealthCheckPanel from './components/HealthCheckPanel';
+import ExecutionTaskPanel from './components/ExecutionTaskPanel';
 import useWorkflowStore from './store/workflowStore';
 import { ThemeMode, ThemeColor, LayoutDirection } from './types/workflow';
 import { WorkflowDef } from './types/conductor';
@@ -15,6 +16,8 @@ export interface WorkflowIDEProps {
     theme?: ThemeMode;
     themeColor?: ThemeColor;
     layoutDirection?: LayoutDirection;
+    searchQuery?: string;
+    workflowExecution?: any; // Workflow Instance or Task List
     onSave?: (def: WorkflowDef) => void;
     onWorkflowChange?: (def: WorkflowDef) => void;
     height?: string | number;
@@ -26,6 +29,8 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
     theme = 'dark',
     themeColor = 'blue',
     layoutDirection = 'LR', // Default per user request
+    searchQuery = '',
+    workflowExecution,
     // onSave,
     // onWorkflowChange,
     height = '100%'
@@ -39,7 +44,9 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         selectedTask,
         setSelectedTask,
         validationResults,
-        edgeType
+        edgeType,
+        importExecutionJSON,
+        setMode
     } = useWorkflowStore();
 
     const [isDetailPanelOpen, setIsDetailPanelOpen] = React.useState(false);
@@ -50,20 +57,31 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         setTheme(theme);
         setThemeColor(themeColor);
         setLayoutDirection(layoutDirection);
-        setNodesLocked(readOnly);
-    }, [theme, themeColor, layoutDirection, readOnly, setTheme, setThemeColor, setLayoutDirection, setNodesLocked]);
+        setNodesLocked(readOnly || !!workflowExecution);
+    }, [theme, themeColor, layoutDirection, readOnly, workflowExecution, setTheme, setThemeColor, setLayoutDirection, setNodesLocked]);
 
     // Handle initial workflow load
     useEffect(() => {
         if (workflowDef) {
             setWorkflow(workflowDef, layoutDirection);
         }
-    }, [workflowDef, setWorkflow]); // Only re-run if workflowDef object reference changes substantially (store handles diffing)
+    }, [workflowDef, setWorkflow]);
+
+    // Handle Execution Data Injection
+    useEffect(() => {
+        if (workflowExecution) {
+            importExecutionJSON(workflowExecution);
+        } else {
+            setMode(readOnly ? 'view' : 'edit');
+        }
+    }, [workflowExecution, importExecutionJSON, setMode, readOnly]);
 
     // Handle node click
     const handleNodeClick = (task: any) => {
         setSelectedTask(task);
-        setIsDetailPanelOpen(true);
+        if (!workflowExecution) {
+            setIsDetailPanelOpen(true);
+        }
     };
 
     return (
@@ -79,7 +97,8 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
                         onNodeClick={handleNodeClick}
                         edgeType={edgeType}
                         theme={theme}
-                        nodesLocked={readOnly}
+                        nodesLocked={readOnly || !!workflowExecution}
+                        searchQuery={searchQuery}
                     />
                 </ReactFlowProvider>
 
@@ -116,6 +135,10 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
                     setIsDetailPanelOpen(true);
                 }}
             />
+
+            {workflowExecution && (
+                <ExecutionTaskPanel />
+            )}
         </div>
     );
 };

@@ -169,6 +169,14 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 setIsDetailPanelOpen: (isOpen: boolean) => set({ isDetailPanelOpen: isOpen }),
 
+                selectTaskAction: (task: TaskDef | null, openPanel: boolean = true) => {
+                    set({
+                        selectedTask: task ? { ...task } : null,
+                        isDetailPanelOpen: task ? openPanel : false,
+                        selectedTaskInstance: null // 清除运行时实例选中
+                    });
+                },
+
                 setSelectedTaskInstance: (instance: TaskInstance | null) => set({ selectedTaskInstance: instance }),
 
                 setLayoutDirection: (direction: LayoutDirection) => {

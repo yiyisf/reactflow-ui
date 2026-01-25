@@ -67,6 +67,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         nodesLocked,
         executionData,
         validationResults,
+        setIsDetailPanelOpen,
     } = useWorkflowStore();
 
     const { fitView } = useReactFlow();
@@ -289,6 +290,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     if (onNodeClickProp) {
                         onNodeClickProp(task);
                     }
+                }}
+                onPaneClick={() => {
+                    setSelectedTask(null);
+                    if (mode !== 'run') setIsDetailPanelOpen(false);
                 }}
                 fitView
                 nodesDraggable={!nodesLocked}

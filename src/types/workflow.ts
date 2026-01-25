@@ -165,6 +165,7 @@ export interface WorkflowActions {
     setNodesLocked: (nodesLocked: boolean) => void;
     applyAIGeneratedWorkflow: (workflowJson: any) => void;
     setIsDetailPanelOpen: (isOpen: boolean) => void;
+    selectTaskAction: (task: TaskDef | null, openPanel?: boolean) => void;
 }
 
 /**

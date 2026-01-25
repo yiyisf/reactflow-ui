@@ -120,7 +120,8 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         importExecutionJSON,
         setMode,
         isDetailPanelOpen,
-        setIsDetailPanelOpen
+        setIsDetailPanelOpen,
+        selectTaskAction
     } = useWorkflowStore();
 
     const [showHealthCheck, setShowHealthCheck] = React.useState(false);
@@ -153,9 +154,10 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
 
     // Handle node click
     const handleNodeClick = (task: any) => {
-        setSelectedTask(task);
         if (!workflowExecution) {
-            setIsDetailPanelOpen(true);
+            selectTaskAction(task, true);
+        } else {
+            setSelectedTask(task);
         }
     };
 
@@ -196,8 +198,7 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
                 onClose={() => setShowHealthCheck(false)}
                 theme={theme}
                 onTaskSelect={(task) => {
-                    setSelectedTask(task);
-                    setIsDetailPanelOpen(true);
+                    selectTaskAction(task, true);
                 }}
             />
 

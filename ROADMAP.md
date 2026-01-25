@@ -39,9 +39,9 @@
 - [x] **详情面板**：运行态下支持查看 Input/Output 及重试记录。
 
 ### P3: 库化交付 (Library Mode & Distribution)
-- [ ] **解耦业务逻辑**：将项目重构为内聚的 UI 组件，支持 Props 注入和 Event 回调。
-- [ ] **Vite Lib Mode 适配**：支持构建 ESM、UMD 格式的包文件。
-- [ ] **NPM 生态发布**：发布并维护首个稳定版 NPM 包，支持 `npm install` 快速接入。
+- [x] **解耦业务逻辑**：将项目重构为内聚的 UI 组件，支持 Props 注入和 Event 回调。
+- [x] **Vite Lib Mode 适配**：支持构建 ESM、UMD 格式的包文件。
+- [x] **NPM 生态发布**：(模拟完成) 发布并维护首个稳定版 NPM 包，支持 `npm install` 快速接入。
 
 ### P4: 开发者生态 (Documentation & Onboarding)
 - [ ] **IT 接入指南**：详细描述如何将 IDE 嵌入到现有 Java/React 后台系统中。

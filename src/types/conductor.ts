@@ -26,31 +26,53 @@ export type TaskType =
 /**
  * Conductor 任务定义
  */
+/**
+ * Conductor 任务定义
+ */
 export interface TaskDef {
+    /** 任务名称 (必须唯一) */
     name: string;
+    /** 任务引用名称 (在工作流内必须唯一) */
     taskReferenceName: string;
+    /** 任务类型 */
     type: TaskType;
+    /** 任务描述 */
     description?: string;
+    /** 
+     * 输入参数映射
+     * 支持 JSONPath 表达式 (e.g. `${workflow.input.value}`)
+     */
     inputParameters?: Record<string, any>;
+
     // Decision 任务特有
+    /** Decision case key 参数名 */
     caseValueParam?: string;
+    /** 分支定义映射 (caseValue -> Task List) */
     decisionCases?: Record<string, TaskDef[]>;
+    /** 默认分支 */
     defaultCase?: TaskDef[];
+
     // Fork 任务特有
+    /** 并行分支列表 */
     forkTasks?: TaskDef[][];
+
     // Dynamic Fork 特有
     dynamicForkTasksParam?: string;
     dynamicForkTasksInputParamName?: string;
+
     // Join 任务特有
     joinOn?: string[];
+
     // Loop 任务特有
     loopCondition?: string;
     loopOver?: TaskDef[];
+
     // Sub Workflow 特有
     subWorkflowParam?: {
         name: string;
         version?: number;
     };
+
     // 其他属性...
     optional?: boolean;
     asyncComplete?: boolean;
@@ -74,12 +96,21 @@ export interface TaskDef {
 /**
  * Conductor 工作流定义
  */
+/**
+ * Conductor 工作流定义
+ */
 export interface WorkflowDef {
+    /** 工作流名称 */
     name: string;
+    /** 工作流描述 */
     description?: string;
+    /** 版本号 */
     version?: number;
+    /** 任务列表 (DAG 定义) */
     tasks: TaskDef[];
+    /** 输入参数定义 (用于文档生成) */
     inputParameters?: any[];
+    /** 输出参数映射 */
     outputParameters?: Record<string, any>;
     schemaVersion?: number;
     restartable?: boolean;

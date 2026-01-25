@@ -96,11 +96,15 @@ export type WorkflowNode = Node<WorkflowNodeData>;
 
 /**
  * 应用主题模式
+ * - `dark`: 暗色模式
+ * - `light`: 亮色模式
  */
 export type ThemeMode = 'dark' | 'light';
 
 /**
  * 品牌主色调
+ * - `blue`: 科技蓝
+ * - `orange`: 活力橙
  */
 export type ThemeColor = 'blue' | 'orange';
 

@@ -161,6 +161,7 @@ export interface WorkflowInstance {
     lastRetriedTime?: number;
     createTime: number;
     updateTime?: number;
+    startTime?: number; // Added missing property
     createdBy?: string;
     updatedBy?: string;
 }

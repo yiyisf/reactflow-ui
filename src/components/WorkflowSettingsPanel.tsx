@@ -11,7 +11,7 @@ interface WorkflowSettingsPanelProps {
 /**
  * 工作流设置面板 - 编辑名称、版本、描述和全局参数
  */
-const WorkflowSettingsPanel = ({ isOpen, onClose, theme = 'dark' }: WorkflowSettingsPanelProps) => {
+const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) => {
     const { workflowDef, updateWorkflowProperties } = useWorkflowStore();
     const [localDef, setLocalDef] = useState<WorkflowDef | (WorkflowDef & Record<string, any>) | null>(workflowDef);
 

@@ -11,7 +11,7 @@ interface TaskDetailPanelProps {
 /**
  * 任务配置面板组件 - 抽屉式，支持编辑模式
  */
-const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps) => {
+const TaskDetailPanel = ({ task, onClose }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
 
@@ -31,7 +31,7 @@ const TaskDetailPanel = ({ task, onClose, theme = 'dark' }: TaskDetailPanelProps
 
     const isEditMode = mode === 'edit';
 
-    const bgColor = 'var(--glass-surface)';
+    // const bgColor = 'var(--glass-surface)';
     // const bgGradient = 'linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%)'; // Optional if we want gradient
     const textColor = 'var(--text-primary)';
     const borderColor = 'var(--glass-border)';

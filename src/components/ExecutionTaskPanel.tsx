@@ -297,13 +297,13 @@ const ExecutionTaskPanel: React.FC = () => {
                             <div className="info-item">
                                 <label>开始时间</label>
                                 <span style={{ fontSize: '12px' }}>
-                                    {(isGlobal ? workflowInstance?.startTime : currentInstance?.startTime) ? new Date(isGlobal ? workflowInstance!.startTime : currentInstance!.startTime!).toLocaleTimeString() : '-'}
+                                    {(isGlobal ? workflowInstance?.startTime : currentInstance?.startTime) ? new Date((isGlobal ? workflowInstance?.startTime : currentInstance?.startTime) || 0).toLocaleTimeString() : '-'}
                                 </span>
                             </div>
                             <div className="info-item">
                                 <label>结束时间</label>
                                 <span style={{ fontSize: '12px' }}>
-                                    {(isGlobal ? workflowInstance?.endTime : currentInstance?.endTime) ? new Date(isGlobal ? workflowInstance!.endTime! : currentInstance!.endTime!).toLocaleTimeString() : '-'}
+                                    {(isGlobal ? workflowInstance?.endTime : currentInstance?.endTime) ? new Date((isGlobal ? workflowInstance?.endTime : currentInstance?.endTime) || 0).toLocaleTimeString() : '-'}
                                 </span>
                             </div>
                         </div>

@@ -322,6 +322,10 @@ function App() {
               isOpen={showHealthCheck}
               onClose={() => setShowHealthCheck(false)}
               theme={themeMode}
+              onTaskSelect={(task) => {
+                setSelectedTask(task);
+                setIsDetailPanelOpen(true);
+              }}
             />
           </div>
         )}

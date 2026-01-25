@@ -1,19 +1,32 @@
 import useWorkflowStore from '../store/workflowStore';
+import { TaskDef } from '../types/conductor';
 
 interface HealthCheckPanelProps {
     isOpen: boolean;
     onClose: () => void;
     theme?: 'dark' | 'light';
+    onTaskSelect?: (task: TaskDef) => void;
 }
 
 /**
  * 工作流健康检查面板 - 展示错误和警告列表
  */
-const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }: HealthCheckPanelProps) => {
+const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: HealthCheckPanelProps) => {
     const { validationResults, setSelectedTask, taskMap } = useWorkflowStore();
     const { errors, warnings } = validationResults || { isValid: true, errors: [], warnings: [] };
 
-
+    const handleTaskClick = (ref: string) => {
+        if (ref && ref !== 'UNKNOWN') {
+            const task = taskMap[ref];
+            if (task) {
+                if (onTaskSelect) {
+                    onTaskSelect(task);
+                } else {
+                    setSelectedTask(task);
+                }
+            }
+        }
+    };
 
     const bgColor = 'var(--glass-surface)';
     const textColor = 'var(--text-primary)';
@@ -81,12 +94,7 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }: HealthCheckPanelP
                             <div
                                 key={`err-${idx}`}
                                 className="health-item"
-                                onClick={() => {
-                                    if (err.ref && err.ref !== 'UNKNOWN') {
-                                        const task = taskMap[err.ref];
-                                        if (task) setSelectedTask(task);
-                                    }
-                                }}
+                                onClick={() => handleTaskClick(err.ref)}
                                 style={{
                                     padding: '12px',
                                     borderRadius: '8px',
@@ -107,12 +115,7 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark' }: HealthCheckPanelP
                             <div
                                 key={`warn-${idx}`}
                                 className="health-item"
-                                onClick={() => {
-                                    if (warn.ref && warn.ref !== 'UNKNOWN') {
-                                        const task = taskMap[warn.ref];
-                                        if (task) setSelectedTask(task);
-                                    }
-                                }}
+                                onClick={() => handleTaskClick(warn.ref)}
                                 style={{
                                     padding: '12px',
                                     borderRadius: '8px',

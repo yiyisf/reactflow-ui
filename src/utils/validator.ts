@@ -129,8 +129,9 @@ export const validateWorkflow = (workflowDef: WorkflowDef | null): ValidationRes
 
     validateTasksRecursive(workflowDef.tasks);
 
-    // 3. 结构性校验 (如环路检测)
-    detectCycles();
+    // 3. 结构性校验 (环路检测)
+    const cycleErrors = detectCycles(workflowDef.tasks);
+    errors.push(...cycleErrors);
 
     return {
         isValid: errors.length === 0,
@@ -140,9 +141,108 @@ export const validateWorkflow = (workflowDef: WorkflowDef | null): ValidationRes
 };
 
 /**
- * 环路检测 (占位空间，后续可实现拓扑排序)
+ * 基于 DFS 的环路检测
+ * 构建任务间的依赖图，检测是否存在非法环路（排除 DO_WHILE 合法循环）
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const detectCycles = () => {
-    // 基础环路逻辑...
+const detectCycles = (tasks: TaskDef[]): ValidationItem[] => {
+    const errors: ValidationItem[] = [];
+
+    // 构建邻接表：taskRef -> 后继 taskRef 列表
+    const adjacency = new Map<string, string[]>();
+    const allRefs = new Set<string>();
+
+    const buildGraph = (taskList: TaskDef[]) => {
+        for (let i = 0; i < taskList.length; i++) {
+            const task = taskList[i];
+            const ref = task.taskReferenceName;
+            allRefs.add(ref);
+
+            if (!adjacency.has(ref)) adjacency.set(ref, []);
+
+            // 顺序连接：当前任务 -> 下一个任务
+            if (i < taskList.length - 1) {
+                const nextRef = taskList[i + 1].taskReferenceName;
+                // FORK_JOIN 的后继由 JOIN 处理，跳过顺序连线
+                if (task.type !== 'FORK_JOIN' && task.type !== 'FORK_JOIN_DYNAMIC') {
+                    adjacency.get(ref)!.push(nextRef);
+                }
+            }
+
+            // DECISION/SWITCH 分支
+            if (task.decisionCases) {
+                for (const branch of Object.values(task.decisionCases)) {
+                    if (branch.length > 0) {
+                        adjacency.get(ref)!.push(branch[0].taskReferenceName);
+                        buildGraph(branch);
+                    }
+                }
+            }
+            if (task.defaultCase && task.defaultCase.length > 0) {
+                adjacency.get(ref)!.push(task.defaultCase[0].taskReferenceName);
+                buildGraph(task.defaultCase);
+            }
+
+            // FORK_JOIN 分支
+            if (task.forkTasks) {
+                for (const branch of task.forkTasks) {
+                    if (branch.length > 0) {
+                        adjacency.get(ref)!.push(branch[0].taskReferenceName);
+                        buildGraph(branch);
+                    }
+                }
+            }
+
+            // DO_WHILE 内部任务不参与外部图的环路检测（合法循环）
+            // 但仍需注册到 allRefs 中
+            if (task.loopOver) {
+                for (const loopTask of task.loopOver) {
+                    allRefs.add(loopTask.taskReferenceName);
+                }
+            }
+
+            // JOIN 的 joinOn 引用
+            if (task.joinOn) {
+                for (const sourceRef of task.joinOn) {
+                    if (!adjacency.has(sourceRef)) adjacency.set(sourceRef, []);
+                    adjacency.get(sourceRef)!.push(ref);
+                }
+            }
+        }
+    };
+
+    buildGraph(tasks);
+
+    // DFS 环路检测
+    const WHITE = 0, GRAY = 1, BLACK = 2;
+    const color = new Map<string, number>();
+    for (const ref of allRefs) color.set(ref, WHITE);
+
+    const dfs = (node: string): boolean => {
+        color.set(node, GRAY);
+        const neighbors = adjacency.get(node) || [];
+        for (const neighbor of neighbors) {
+            if (!color.has(neighbor)) continue; // 节点不在图中，跳过
+            if (color.get(neighbor) === GRAY) {
+                errors.push({
+                    type: 'GLOBAL',
+                    ref: neighbor,
+                    message: `检测到环路：任务 "${node}" → "${neighbor}" 形成了循环依赖`
+                });
+                return true;
+            }
+            if (color.get(neighbor) === WHITE) {
+                if (dfs(neighbor)) return true;
+            }
+        }
+        color.set(node, BLACK);
+        return false;
+    };
+
+    for (const ref of allRefs) {
+        if (color.get(ref) === WHITE) {
+            dfs(ref);
+        }
+    }
+
+    return errors;
 };

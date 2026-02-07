@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './AIChatPanel.css';
 
 interface Message {
@@ -10,7 +10,7 @@ interface Message {
 }
 
 import useWorkflowStore from '../../store/workflowStore';
-import { callAICopilot, CONDUCTOR_SYSTEM_PROMPT } from '../../services/aiService';
+import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage } from '../../services/aiService';
 import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates';
 
 const AIChatPanel: React.FC = () => {
@@ -26,6 +26,7 @@ const AIChatPanel: React.FC = () => {
             type: 'text'
         }
     ]);
+    const [streamingContent, setStreamingContent] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -36,7 +37,29 @@ const AIChatPanel: React.FC = () => {
         if (isOpen) {
             scrollToBottom();
         }
-    }, [messages, isOpen]);
+    }, [messages, isOpen, streamingContent]);
+
+    // 构建多轮对话的完整消息历史
+    const buildChatHistory = useCallback((userInput: string): ChatMessage[] => {
+        const history: ChatMessage[] = [
+            { role: 'system', content: CONDUCTOR_SYSTEM_PROMPT }
+        ];
+
+        // 将已有对话历史加入上下文
+        for (const msg of messages) {
+            if (msg.role === 'user') {
+                history.push({ role: 'user', content: msg.content });
+            } else if (msg.role === 'ai') {
+                history.push({ role: 'assistant', content: msg.content });
+            }
+        }
+
+        // 加入当前用户输入（使用 prompt 模板增强）
+        const prompt = generateWorkflowSuggestionPrompt(userInput, workflowDef);
+        history.push({ role: 'user', content: prompt });
+
+        return history;
+    }, [messages, workflowDef]);
 
     const handleSend = async () => {
         if (!inputValue.trim() || isLoading) return;
@@ -51,12 +74,9 @@ const AIChatPanel: React.FC = () => {
         setMessages(prev => [...prev, userMsg]);
         setInputValue('');
         setIsLoading(true);
+        setStreamingContent('');
 
         try {
-            const prompt = generateWorkflowSuggestionPrompt(inputValue, workflowDef);
-
-            // In a real environment, you'd have the key from a secure source or user input
-            // For this demo prototype, we'll try to find an 'AI_API_KEY' in storage or just use a mock if fails
             const apiKey = localStorage.getItem('AI_API_KEY') || '';
             const baseUrl = localStorage.getItem('AI_BASE_URL') || '';
             const model = localStorage.getItem('AI_MODEL') || '';
@@ -83,28 +103,38 @@ const AIChatPanel: React.FC = () => {
                 return;
             }
 
-            const apiConfig: any = { apiKey };
+            const apiConfig: Record<string, string> = { apiKey };
             if (baseUrl) apiConfig.baseUrl = baseUrl;
             if (model) apiConfig.model = model;
 
-            const response = await callAICopilot([
-                { role: 'system', content: CONDUCTOR_SYSTEM_PROMPT },
-                { role: 'user', content: prompt }
-            ], apiConfig);
+            const chatHistory = buildChatHistory(inputValue);
 
-            // Parse JSON from MD blocks
-            const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
+            // 使用流式 API
+            const fullResponse = await callAICopilotStream(
+                chatHistory,
+                apiConfig,
+                (token) => {
+                    setStreamingContent(prev => prev + token);
+                },
+                () => {
+                    // streaming done
+                }
+            );
+
+            // 流结束后，解析完整响应
+            const jsonMatch = fullResponse.match(/```json\n([\s\S]*?)\n```/);
             const suggestedJson = jsonMatch ? JSON.parse(jsonMatch[1]) : null;
 
             const aiMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                content: response.replace(/```json[\s\S]*?```/, ''),
+                content: fullResponse.replace(/```json[\s\S]*?```/, ''),
                 type: suggestedJson ? 'change_suggestion' : 'text',
                 payload: suggestedJson
             };
 
             setMessages(prev => [...prev, aiMsg]);
+            setStreamingContent('');
         } catch (err: any) {
             const errorMsg: Message = {
                 id: Date.now().toString(),
@@ -112,15 +142,14 @@ const AIChatPanel: React.FC = () => {
                 content: `抱歉，目前无法连接到 AI 服务: ${err.message}`,
             };
             setMessages(prev => [...prev, errorMsg]);
+            setStreamingContent('');
         } finally {
             setIsLoading(false);
         }
     };
 
     const applySuggestion = (payload: any) => {
-        if (window.confirm('确定要将此建议应用到当前工作流吗？这可能会覆盖现有部分。')) {
-            applyAIGeneratedWorkflow(payload);
-        }
+        applyAIGeneratedWorkflow(payload);
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -168,7 +197,14 @@ const AIChatPanel: React.FC = () => {
                         )}
                     </div>
                 ))}
-                {isLoading && (
+                {/* 流式输出中显示正在生成的内容 */}
+                {isLoading && streamingContent && (
+                    <div className="message ai" style={{ opacity: 0.9 }}>
+                        {streamingContent}
+                        <span style={{ animation: 'blink 1s infinite' }}>▊</span>
+                    </div>
+                )}
+                {isLoading && !streamingContent && (
                     <div className="message ai" style={{ opacity: 0.7 }}>
                         正在思考中...
                     </div>

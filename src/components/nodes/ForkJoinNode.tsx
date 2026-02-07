@@ -4,6 +4,8 @@ import NodeWrapper from './NodeWrapper';
 import NodeLayout from './NodeLayout';
 import useWorkflowStore from '../../store/workflowStore';
 import { WorkflowNodeData } from '../../types/workflow';
+import { useNodeLayout } from '../../hooks/useNodeLayout';
+import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { GitBranch, GitMerge } from 'lucide-react';
 
@@ -16,8 +18,9 @@ const FORK_JOIN_COLOR = 'var(--color-accent)';
  * FORK 节点组件
  */
 export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
-    const layoutDirection = data.layoutDirection || 'TB';
-    const { mode, addForkBranch, executionData } = useWorkflowStore();
+    const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
+    const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { addForkBranch } = useWorkflowStore();
     const updateNodeInternals = useUpdateNodeInternals();
 
     // 监听分支数量变化，更新 Handle
@@ -25,14 +28,6 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     useEffect(() => {
         updateNodeInternals(id);
     }, [branchCount, id, updateNodeInternals]);
-
-    // 获取运行态信息
-    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
-    const isRunning = mode === 'run';
-
-    // 根据布局方向确定 Handle 位置
-    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
-    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
 
     const isDynamic = data.isDynamic || data.taskType === 'FORK_JOIN_DYNAMIC';
 
@@ -144,16 +139,8 @@ ForkNode.displayName = 'ForkNode';
  * JOIN 节点组件
  */
 export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
-    const layoutDirection = data.layoutDirection || 'TB';
-    const { mode, executionData } = useWorkflowStore();
-
-    // 获取运行态信息
-    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
-    const isRunning = mode === 'run';
-
-    // 根据布局方向确定 Handle 位置
-    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
-    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
+    const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
+    const { execution, isRunning } = useNodeExecution(data.taskReferenceName);
 
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'JOIN'), []);
     const IconComponent = taskConfig?.icon || GitMerge;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TaskType } from '../../types/conductor';
 import { TASK_TYPES, TASK_CATEGORIES, TaskCategory } from '../../config/taskTypes';
 
@@ -10,6 +10,15 @@ interface NodeSelectorProps {
 
 const NodeSelector = ({ onSelect, onCancel }: NodeSelectorProps) => {
     const [activeCategory, setActiveCategory] = useState<TaskCategory>('CORE');
+
+    // Esc 键关闭
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onCancel();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onCancel]);
 
     // 过滤当前分类的任务
     const currentTasks = TASK_TYPES.filter(task => task.category === activeCategory);

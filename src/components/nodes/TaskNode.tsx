@@ -1,9 +1,10 @@
 import { memo, useMemo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import NodeLayout from './NodeLayout';
 import { WorkflowNodeData } from '../../types/workflow';
-import useWorkflowStore from '../../store/workflowStore';
+import { useNodeLayout } from '../../hooks/useNodeLayout';
+import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { Activity } from 'lucide-react';
 
@@ -14,16 +15,8 @@ type TaskNodeProps = NodeProps<WorkflowNodeData>;
  */
 const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     const taskType = data.taskType || 'SIMPLE';
-    const layoutDirection = data.layoutDirection || 'TB';
-
-    // 获取运行态信息
-    const { mode, executionData } = useWorkflowStore();
-    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
-    const isRunning = mode === 'run';
-
-    // 根据布局方向确定 Handle 位置
-    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
-    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
+    const { sourcePosition, targetPosition } = useNodeLayout(data);
+    const { execution, isRunning } = useNodeExecution(data.taskReferenceName);
 
     // 获取图标和标签
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === taskType), [taskType]);

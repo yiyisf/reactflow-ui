@@ -8,6 +8,7 @@ import AIChatPanel from './components/AICopilot/AIChatPanel';
 import useWorkflowStore from './store/workflowStore';
 import { ThemeMode, ThemeColor, LayoutDirection } from './types/workflow';
 import { WorkflowDef } from './types/conductor';
+import { AIServiceConfig } from './services/aiService';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
 
@@ -74,6 +75,11 @@ export interface WorkflowIDEProps {
     onWorkflowChange?: (def: WorkflowDef) => void;
 
     /**
+     * AI 配置。通过 Props 注入优先于 localStorage 配置。
+     */
+    aiConfig?: Partial<AIServiceConfig>;
+
+    /**
      * 组件容器高度。
      * @default '100%'
      */
@@ -103,6 +109,7 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
     layoutDirection = 'LR', // Default per user request
     searchQuery = '',
     workflowExecution,
+    aiConfig,
     // onSave,
     // onWorkflowChange,
     height = '100%'
@@ -133,6 +140,13 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         setLayoutDirection(layoutDirection);
         setNodesLocked(readOnly || !!workflowExecution);
     }, [theme, themeColor, layoutDirection, readOnly, workflowExecution, setTheme, setThemeColor, setLayoutDirection, setNodesLocked]);
+
+    // Sync AI config from Props to localStorage (Props take priority)
+    useEffect(() => {
+        if (aiConfig?.apiKey) localStorage.setItem('AI_API_KEY', aiConfig.apiKey);
+        if (aiConfig?.baseUrl) localStorage.setItem('AI_BASE_URL', aiConfig.baseUrl);
+        if (aiConfig?.model) localStorage.setItem('AI_MODEL', aiConfig.model);
+    }, [aiConfig]);
 
     // Handle initial workflow load
     useEffect(() => {

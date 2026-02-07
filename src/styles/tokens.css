@@ -52,10 +52,10 @@
     /* Typography */
     --text-primary: #f8fafc;
     /* Slate 50 */
-    --text-secondary: #94a3b8;
-    /* Slate 400 */
-    --text-muted: #64748b;
-    /* Slate 500 */
+    --text-secondary: #b0bec5;
+    /* Improved contrast: ~5.2:1 on dark bg */
+    --text-muted: #8896a3;
+    /* Improved contrast: ~4.5:1 on dark bg */
     --text-inverse: #0f172a;
 
     /* Borders */
@@ -149,4 +149,19 @@
     background: var(--glass-surface);
     backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
+}
+
+@keyframes toastSlideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

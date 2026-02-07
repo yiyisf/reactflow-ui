@@ -15,11 +15,16 @@ import LoopNode from './nodes/LoopNode';
 import SubWorkflowNode from './nodes/SubWorkflowNode';
 import NodeSelector from './Editor/NodeSelector';
 import ExecutionTaskPanel from './ExecutionTaskPanel';
+import ExecutionStatusBar from './ExecutionStatusBar';
 import HealthCheckPanel from './HealthCheckPanel';
 import AddableEdge from './edges/AddableEdge';
 import ControlHub from './Controls/ControlHub';
 import ActionBar from './Controls/ActionBar';
-import { useStore } from 'zustand';
+import ConfirmDialog from './ConfirmDialog';
+import Toast from './Toast';
+import { useShortcuts } from '../hooks/useShortcuts';
+import { useConfirm } from '../hooks/useConfirm';
+import { useToast } from '../hooks/useToast';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -60,10 +65,6 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         theme,
         edgeType,
         addNode,
-        removeNode,
-        copyTask,
-        pasteTask,
-        copiedTask,
         nodesLocked,
         executionData,
         validationResults,
@@ -76,7 +77,12 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
     const [showHealthCheck, setShowHealthCheck] = React.useState(false);
 
-    const { undo, redo } = useStore((useWorkflowStore as any).temporal, (state: any) => state);
+    // ConfirmDialog 和 Toast
+    const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
+    const { toasts, showToast, dismissToast } = useToast();
+
+    // 使用统一的快捷键 Hook（唯一入口）
+    useShortcuts({ confirm, showToast });
 
     // 监听选中任务变化，自动定位 (Locate)
     useEffect(() => {
@@ -139,44 +145,6 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             window.removeEventListener('edgeAddNode', handleEdgeAddNode as any);
         };
     }, [mode, onNodeClickProp]);
-
-    // 全局快捷键监听
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const isApple = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-            const ctrlKey = isApple ? e.metaKey : e.ctrlKey;
-
-            if (ctrlKey && e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                if (e.shiftKey) {
-                    redo();
-                } else {
-                    undo();
-                }
-            } else if (ctrlKey && e.key.toLowerCase() === 'c') {
-                if (selectedTask && mode === 'edit') {
-                    copyTask(selectedTask);
-                    // 可选：添加一些视觉反馈，比如一个小提示
-                }
-            } else if (ctrlKey && e.key.toLowerCase() === 'v') {
-                if (copiedTask && mode === 'edit') {
-                    pasteTask(copiedTask);
-                }
-            } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (mode === 'edit' && selectedTask &&
-                    document.activeElement?.tagName !== 'INPUT' &&
-                    document.activeElement?.tagName !== 'TEXTAREA') {
-                    if (window.confirm('确定要删除选中的任务吗？')) {
-                        removeNode(selectedTask.taskReferenceName);
-                        setSelectedTask(null);
-                    }
-                }
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [undo, redo, selectedTask, copiedTask, mode, copyTask, pasteTask, removeNode, setSelectedTask]);
 
     // 处理新节点选择
     const handleTypeSelect = useCallback((type: string) => {
@@ -345,155 +313,16 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     onCancel={() => setShowSelector(false)}
                 />
             )}
-        </div>
-    );
-};
 
-/**
- * 内部组件：运行态状态栏
- */
-const ExecutionStatusBar = () => {
-    const {
-        executionData,
-        loadSampleExecution,
-        importExecutionJSON,
-        workflowInstance,
-        setSelectedTask
-    } = useWorkflowStore();
-
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const json = JSON.parse(e.target?.result as string);
-                    importExecutionJSON(json);
-                } catch (err) {
-                    console.error('Failed to parse execution JSON:', err);
-                    alert('JSON 解析失败，请检查格式是否正确');
-                }
-            };
-            reader.readAsText(file);
-        }
-    };
-
-    // 如果没有执行数据，显示启动按钮
-    if (!executionData) {
-        return (
-            <div className="execution-status-bar">
-                <input
-                    type="file"
-                    id="execution-json-upload"
-                    accept=".json"
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
+            {confirmState && (
+                <ConfirmDialog
+                    message={confirmState.message}
+                    onConfirm={handleConfirm}
+                    onCancel={handleCancel}
                 />
-                <div className="status-item">
-                    <span className="status-label">准备就绪</span>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                        onClick={loadSampleExecution}
-                        style={{
-                            background: 'var(--color-accent)',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                            transition: 'all 0.2s ease'
-                        }}
-                    >
-                        🚀 加载示例运行
-                    </button>
-                    <button
-                        onClick={() => document.getElementById('execution-json-upload')?.click()}
-                        title="上传 Conductor 运行态 JSON"
-                        style={{
-                            background: 'rgba(255,255,255,0.1)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--border-primary)',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                        }}
-                    >
-                        📁 导入执行 JSON
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    // 统计状态
-    const statsArr = Object.values(executionData);
-    const completedCount = statsArr.filter(t => t.status === 'COMPLETED').length;
-    const failedCount = statsArr.filter(t => t.status === 'FAILED' || t.status === 'FAILED_WITH_TERMINAL_ERROR' || t.status === 'TIMED_OUT').length;
-    const inProgressCount = statsArr.filter(t => t.status === 'IN_PROGRESS' || t.status === 'SCHEDULED').length;
-
-
-    return (
-        <div className="execution-status-bar">
-            {workflowInstance && (
-                <>
-                    <div className="status-item">
-                        <span className="status-label"> Workflow ID:</span>
-                        <span className="status-value highlight" style={{ color: 'var(--text-primary)', opacity: 0.8 }}>{workflowInstance.workflowId}</span>
-                    </div>
-                    <div className="status-divider" />
-                </>
             )}
-            <div className="status-item">
-                <span className="status-label">状态:</span>
-                <span className="status-value highlight" style={{
-                    color: workflowInstance?.status === 'COMPLETED' ? 'var(--status-completed)' : 'var(--status-in-progress)'
-                }}>{workflowInstance?.status || '运行中'}</span>
-            </div>
-            <div className="status-divider" />
-            <div className="status-item">
-                <span className="status-label">已完成:</span>
-                <span className="status-value">{completedCount}</span>
-            </div>
-            <div className="status-item">
-                <span className="status-label" style={{ color: 'var(--status-failed)' }}>失败:</span>
-                <span className="status-value" style={{ color: 'var(--status-failed)' }}>{failedCount}</span>
-            </div>
-            <div className="status-item">
-                <span className="status-label" style={{ color: 'var(--status-in-progress)' }}>处理中:</span>
-                <span className="status-value" style={{ color: 'var(--status-in-progress)' }}>{inProgressCount}</span>
-            </div>
-            <div className="status-divider" />
-            <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                    onClick={() => {
-                        // 特殊处理：将 selectedTask 设为一个具有 workflow input/output 的虚拟对象
-                        setSelectedTask({
-                            name: 'Workflow Global Data',
-                            taskReferenceName: '__workflow_global__',
-                            type: 'SIMPLE'
-                        } as any);
-                    }}
-                    style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        color: 'var(--text-primary)',
-                        border: '1px solid var(--border-primary)',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        fontWeight: '600'
-                    }}
-                >
-                    🔍 全局 I/O
-                </button>
-            </div>
+
+            <Toast messages={toasts} onDismiss={dismissToast} />
         </div>
     );
 };

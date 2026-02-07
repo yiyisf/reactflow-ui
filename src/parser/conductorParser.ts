@@ -1,4 +1,3 @@
-import dagre from 'dagre';
 import { Edge, Position } from 'reactflow';
 import { WorkflowDef, TaskDef } from '../types/conductor';
 import { WorkflowNode, LayoutDirection, ParserResult } from '../types/workflow';
@@ -119,10 +118,6 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
             animated: true
         });
     }
-
-    // Use dagre for layout if needed, though we seem to use autoLayout.ts elsewhere.
-    // dagre is imported but not used in this file directly.
-    console.log('Parsed workflow with dagre loaded:', !!dagre);
 
     return { nodes, edges, taskMap };
 }

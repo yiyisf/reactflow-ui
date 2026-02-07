@@ -1,10 +1,12 @@
 import { memo, useCallback, useMemo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, NodeProps } from 'reactflow';
 import useWorkflowStore from '../../store/workflowStore';
 import NodeWrapper from './NodeWrapper';
 import NodeLayout from './NodeLayout';
 import { WorkflowNodeData } from '../../types/workflow';
 import { TaskDef } from '../../types/conductor';
+import { useNodeLayout } from '../../hooks/useNodeLayout';
+import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { Repeat } from 'lucide-react';
 
@@ -17,16 +19,9 @@ const LOOP_COLOR = 'var(--color-accent)';
  * 循环节点组件（DO_WHILE）
  */
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
-    const layoutDirection = data.layoutDirection || 'TB';
-    const { mode, removeLoopTask, executionData } = useWorkflowStore();
-
-    // 获取运行态信息
-    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
-    const isRunning = mode === 'run';
-
-    // 根据布局方向确定 Handle 位置
-    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
-    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
+    const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
+    const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { removeLoopTask } = useWorkflowStore();
 
     // 获取循环体任务信息
     const loopOver = data.loopOver || data.task?.loopOver || [];

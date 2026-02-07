@@ -3,6 +3,8 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import useWorkflowStore from '../../store/workflowStore';
 import { WorkflowNodeData } from '../../types/workflow';
+import { useNodeLayout } from '../../hooks/useNodeLayout';
+import { useNodeExecution } from '../../hooks/useNodeExecution';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
 
 type DecisionNodeProps = NodeProps<WorkflowNodeData>;
@@ -12,13 +14,10 @@ type DecisionNodeProps = NodeProps<WorkflowNodeData>;
  * 支持在编辑模式下添加/删除分支
  */
 const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
-    const layoutDirection = data.layoutDirection || 'TB';
-    const { mode, addDecisionBranch, removeDecisionBranch, executionData } = useWorkflowStore();
+    const { layoutDirection } = useNodeLayout(data);
+    const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { addDecisionBranch, removeDecisionBranch } = useWorkflowStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-    // 获取运行态信息
-    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
-    const isRunning = mode === 'run';
 
     // 根据布局方向确定主要的 Handle 位置
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;

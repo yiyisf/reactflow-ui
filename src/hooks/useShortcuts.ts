@@ -2,18 +2,24 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore } from 'zustand';
 import useWorkflowStore from '../store/workflowStore';
 
+interface ShortcutCallbacks {
+    confirm?: (message: string) => Promise<boolean>;
+    showToast?: (text: string, type?: 'success' | 'error' | 'info') => void;
+}
+
 /**
  * useShortcuts Hook
  * 管理流程图编辑器的全局键盘快捷键
  */
-export const useShortcuts = () => {
+export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
     const { mode, removeNode, selectedTask, pasteTask } = useWorkflowStore();
 
     // 使用 zundo 提供的 temporal store
     const temporalStore = (useWorkflowStore as any).temporal;
     const { undo, redo } = useStore(temporalStore, (state: any) => state);
 
-
+    const confirmFn = callbacks?.confirm || ((msg: string) => Promise.resolve(window.confirm(msg)));
+    const toastFn = callbacks?.showToast;
 
     // 辅助函数：判断当前是否正在输入
     const isTyping = (e: KeyboardEvent) => {
@@ -28,11 +34,10 @@ export const useShortcuts = () => {
     // 绑定撤销: mod+z
     useHotkeys('mod+z', (e) => {
         if (mode !== 'edit') return;
-        if (isTyping(e as any)) return; // 文字输入时使用系统原始撤销
+        if (isTyping(e as any)) return;
 
         e.preventDefault();
         undo();
-        console.log('撤销操作');
     }, [mode, undo]);
 
     // 绑定重做: mod+shift+z, mod+y
@@ -42,7 +47,6 @@ export const useShortcuts = () => {
 
         e.preventDefault();
         redo();
-        console.log('重做操作');
     }, [mode, redo]);
 
     // 绑定删除键: delete, backspace
@@ -51,10 +55,10 @@ export const useShortcuts = () => {
         if (isTyping(e as any)) return;
 
         e.preventDefault();
-        if (window.confirm('确定要删除此任务吗？')) {
-            removeNode(selectedTask.taskReferenceName);
-        }
-    }, [mode, selectedTask, removeNode]);
+        confirmFn('确定要删除此任务吗？').then(ok => {
+            if (ok) removeNode(selectedTask.taskReferenceName);
+        });
+    }, [mode, selectedTask, removeNode, confirmFn]);
 
     // 绑定复制键: mod+c
     useHotkeys('mod+c', (e) => {
@@ -62,18 +66,18 @@ export const useShortcuts = () => {
         if (isTyping(e as any)) return;
 
         if (selectedTask.type === 'JOIN') {
-            console.warn("JOIN 任务不能独立复制");
+            toastFn?.('JOIN 任务不能独立复制', 'error');
             return;
         }
 
         e.preventDefault();
         try {
             localStorage.setItem('conductor-clipboard', JSON.stringify(selectedTask));
-            console.log('任务已复制');
-        } catch (err) {
-            console.error('复制失败:', err);
+            toastFn?.('任务已复制', 'success');
+        } catch {
+            toastFn?.('复制失败', 'error');
         }
-    }, [mode, selectedTask]);
+    }, [mode, selectedTask, toastFn]);
 
     // 绑定粘贴键: mod+v
     useHotkeys('mod+v', (e) => {
@@ -86,14 +90,12 @@ export const useShortcuts = () => {
             if (data) {
                 const task = JSON.parse(data);
                 pasteTask(task);
-                console.log('任务已粘贴');
+                toastFn?.('任务已粘贴', 'success');
             }
-        } catch (err) {
-            console.error('粘贴失败:', err);
+        } catch {
+            toastFn?.('粘贴失败', 'error');
         }
-    }, [mode, pasteTask]);
+    }, [mode, pasteTask, toastFn]);
 
-    return {
-        // 可以返回一些状态供 UI 使用，例如能否撤销/重做
-    };
+    return {};
 };

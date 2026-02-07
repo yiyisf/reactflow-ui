@@ -44,6 +44,9 @@ const ControlButton: React.FC<ControlButtonProps> = ({
             onClick={onClick}
             disabled={disabled}
             title={title}
+            aria-label={title || label}
+            aria-pressed={active}
+            aria-disabled={disabled}
             style={{
                 display: 'flex',
                 alignItems: 'center',

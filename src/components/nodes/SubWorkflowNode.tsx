@@ -1,9 +1,10 @@
 import { memo, useMemo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import NodeLayout from './NodeLayout';
-import useWorkflowStore from '../../store/workflowStore';
 import { WorkflowNodeData } from '../../types/workflow';
+import { useNodeLayout } from '../../hooks/useNodeLayout';
+import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { GitMerge } from 'lucide-react';
 
@@ -16,16 +17,8 @@ const SUB_WORKFLOW_COLOR = 'var(--color-accent)';
  * 子工作流节点组件
  */
 const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
-    const layoutDirection = data.layoutDirection || 'TB';
-    const { mode, executionData } = useWorkflowStore();
-
-    // 获取运行态信息
-    const execution = mode === 'run' ? executionData?.[data.taskReferenceName] : null;
-    const isRunning = mode === 'run';
-
-    // 根据布局方向确定 Handle 位置
-    const sourcePosition = data.sourcePosition || (layoutDirection === 'LR' ? Position.Right : Position.Bottom);
-    const targetPosition = data.targetPosition || (layoutDirection === 'LR' ? Position.Left : Position.Top);
+    const { sourcePosition, targetPosition } = useNodeLayout(data);
+    const { execution, isRunning } = useNodeExecution(data.taskReferenceName);
 
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'SUB_WORKFLOW'), []);
     const IconComponent = taskConfig?.icon || GitMerge;

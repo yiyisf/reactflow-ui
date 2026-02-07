@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
+import ConfirmDialog from '../ConfirmDialog';
 
 interface NodeWrapperProps {
     children: React.ReactNode;
@@ -23,12 +24,11 @@ const NodeWrapper = ({
     isHighlighted = false
 }: NodeWrapperProps) => {
     const { mode, removeNode } = useWorkflowStore();
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const onDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm('确定要删除此任务吗？')) {
-            removeNode(nodeId);
-        }
+        setShowConfirm(true);
     };
 
     const showDelete = mode === 'edit' && !isStartOrEnd;
@@ -42,6 +42,7 @@ const NodeWrapper = ({
             {showDelete && (
                 <button
                     onClick={onDelete}
+                    aria-label="删除任务"
                     style={{
                         position: 'absolute',
                         top: '-10px',
@@ -118,6 +119,17 @@ const NodeWrapper = ({
                 </div>
             )}
             {children}
+
+            {showConfirm && (
+                <ConfirmDialog
+                    message="确定要删除此任务吗？"
+                    onConfirm={() => {
+                        removeNode(nodeId);
+                        setShowConfirm(false);
+                    }}
+                    onCancel={() => setShowConfirm(false)}
+                />
+            )}
         </div>
     );
 };

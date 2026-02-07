@@ -19,6 +19,9 @@ const DEFAULT_CONFIG: AIServiceConfig = {
     model: 'gpt-4o' // Default model
 };
 
+/**
+ * 非流式调用（兼容旧逻辑）
+ */
 export const callAICopilot = async (
     messages: ChatMessage[],
     config: Partial<AIServiceConfig> = {}
@@ -29,32 +32,100 @@ export const callAICopilot = async (
         throw new Error('Please configure AI API Key in settings.');
     }
 
-    try {
-        const response = await fetch(`${finalConfig.baseUrl}/chat/completions`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${finalConfig.apiKey}`
-            },
-            body: JSON.stringify({
-                model: finalConfig.model,
-                messages,
-                temperature: 0.7,
-                stream: false // Simplified for prototype, but implementation plan mentioned SSE
-            })
-        });
+    const response = await fetch(`${finalConfig.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${finalConfig.apiKey}`
+        },
+        body: JSON.stringify({
+            model: finalConfig.model,
+            messages,
+            temperature: 0.7,
+            stream: false
+        })
+    });
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'AI request failed');
-        }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
-    } catch (err: any) {
-        console.error('AI Service Error:', err);
-        throw err;
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'AI request failed');
     }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+};
+
+/**
+ * 流式调用 - 通过 onToken 回调逐 token 返回内容
+ */
+export const callAICopilotStream = async (
+    messages: ChatMessage[],
+    config: Partial<AIServiceConfig> = {},
+    onToken: (token: string) => void,
+    onDone?: () => void
+) => {
+    const finalConfig = { ...DEFAULT_CONFIG, ...config };
+
+    if (!finalConfig.apiKey) {
+        throw new Error('Please configure AI API Key in settings.');
+    }
+
+    const response = await fetch(`${finalConfig.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${finalConfig.apiKey}`
+        },
+        body: JSON.stringify({
+            model: finalConfig.model,
+            messages,
+            temperature: 0.7,
+            stream: true
+        })
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'AI request failed');
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('ReadableStream not supported');
+
+    const decoder = new TextDecoder();
+    let fullContent = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') {
+                    onDone?.();
+                    return fullContent;
+                }
+
+                try {
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices?.[0]?.delta?.content;
+                    if (content) {
+                        fullContent += content;
+                        onToken(content);
+                    }
+                } catch {
+                    // Skip malformed SSE chunks
+                }
+            }
+        }
+    }
+
+    onDone?.();
+    return fullContent;
 };
 
 /**

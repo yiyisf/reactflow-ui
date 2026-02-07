@@ -94,6 +94,9 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                             <div
                                 key={`err-${idx}`}
                                 className="health-item"
+                                role="button"
+                                tabIndex={err.ref ? 0 : undefined}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTaskClick(err.ref); }}
                                 onClick={() => handleTaskClick(err.ref)}
                                 style={{
                                     padding: '12px',
@@ -115,6 +118,9 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                             <div
                                 key={`warn-${idx}`}
                                 className="health-item"
+                                role="button"
+                                tabIndex={warn.ref ? 0 : undefined}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleTaskClick(warn.ref); }}
                                 onClick={() => handleTaskClick(warn.ref)}
                                 style={{
                                     padding: '12px',

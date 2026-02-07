@@ -294,8 +294,10 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
                 x: pos.x - width / 2,
                 y: pos.y - height / 2
             };
-            // 清理旧 Handle 数据
+            // 清理旧 Handle 数据，同步节点级属性
             refNode.data = { ...refNode.data, sourcePosition: undefined, targetPosition: undefined };
+            refNode.sourcePosition = direction === 'LR' ? Position.Right : Position.Bottom;
+            refNode.targetPosition = direction === 'LR' ? Position.Left : Position.Top;
             finalNodes.push(refNode);
         } else {
             snakeNodeIds.add(node.id);
@@ -383,6 +385,8 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
 
             node.position = { x, y };
             node.data = { ...node.data, sourcePosition: srcPos, targetPosition: tgtPos };
+            node.sourcePosition = srcPos;
+            node.targetPosition = tgtPos;
             finalNodes.push(node);
         });
     });

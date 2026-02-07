@@ -1,6 +1,7 @@
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore } from 'zustand';
 import useWorkflowStore from '../store/workflowStore';
+import { getLayoutedElements } from '../layout/autoLayout';
 
 interface ShortcutCallbacks {
     confirm?: (message: string) => Promise<boolean>;
@@ -31,6 +32,15 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
         );
     };
 
+    // undo/redo 后重新 relayout，确保蛇形布局 Handle 方向一致
+    const relayoutAfterUndoRedo = () => {
+        requestAnimationFrame(() => {
+            const s = useWorkflowStore.getState();
+            const { nodes: ln, edges: le } = getLayoutedElements(s.nodes, s.edges, { direction: s.layoutDirection, mode: s.mode });
+            useWorkflowStore.setState({ nodes: ln, edges: le });
+        });
+    };
+
     // 绑定撤销: mod+z
     useHotkeys('mod+z', (e) => {
         if (mode !== 'edit') return;
@@ -38,6 +48,7 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
 
         e.preventDefault();
         undo();
+        relayoutAfterUndoRedo();
     }, [mode, undo]);
 
     // 绑定重做: mod+shift+z, mod+y
@@ -47,6 +58,7 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
 
         e.preventDefault();
         redo();
+        relayoutAfterUndoRedo();
     }, [mode, redo]);
 
     // 绑定删除键: delete, backspace

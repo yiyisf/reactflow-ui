@@ -586,13 +586,14 @@ const useWorkflowStore = create<WorkflowStore>()(
                 },
 
                 applyAIGeneratedWorkflow: (workflowJson: any) => {
-                    // 深度拷贝并确保基础结构完整
-                    const newDef = {
+                    const { tasks: rawTasks, ...rest } = workflowJson;
+                    const newDef: WorkflowDef = {
+                        ...rest,
                         name: workflowJson.name || 'AI_Generated_Workflow',
-                        tasks: workflowJson.tasks || [],
+                        tasks: rawTasks || [],
                         version: workflowJson.version || 1,
                         schemaVersion: 2
-                    } as WorkflowDef;
+                    };
 
                     get().setWorkflow(newDef);
                 }

@@ -47,11 +47,13 @@ interface WorkflowDesignerProps {
     edgeType?: string;
     theme?: 'dark' | 'light';
     nodesLocked?: boolean;
+    onSave?: (def: any) => void;
 }
 
 const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     onNodeClick: onNodeClickProp,
-    searchQuery = ''
+    searchQuery = '',
+    onSave,
 }) => {
     const {
         nodes,
@@ -82,7 +84,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     const { toasts, showToast, dismissToast } = useToast();
 
     // 使用统一的快捷键 Hook（唯一入口）
-    useShortcuts({ confirm, showToast });
+    useShortcuts({ confirm, showToast, onSave });
 
     // 监听选中任务变化，自动定位 (Locate)
     useEffect(() => {

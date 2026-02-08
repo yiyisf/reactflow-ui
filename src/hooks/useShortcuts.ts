@@ -6,6 +6,7 @@ import { getLayoutedElements } from '../layout/autoLayout';
 interface ShortcutCallbacks {
     confirm?: (message: string) => Promise<boolean>;
     showToast?: (text: string, type?: 'success' | 'error' | 'info') => void;
+    onSave?: (def: any) => void;
 }
 
 /**
@@ -108,6 +109,15 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
             toastFn?.('粘贴失败', 'error');
         }
     }, [mode, pasteTask, toastFn]);
+
+    // 绑定保存: mod+s
+    useHotkeys('mod+s', (e) => {
+        e.preventDefault();
+        const def = useWorkflowStore.getState().workflowDef;
+        if (def && callbacks?.onSave) {
+            callbacks.onSave(def);
+        }
+    }, [callbacks?.onSave]);
 
     return {};
 };

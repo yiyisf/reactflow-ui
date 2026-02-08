@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { WorkflowIDE } from '../WorkflowIDE';
-import useWorkflowStore from '../store/workflowStore'; // Still used for some global state in demo
+import type { WorkflowIDERef } from '../WorkflowIDE';
+import type { WorkflowDef } from '../types/conductor';
 import { useTheme } from '../hooks/useTheme';
 import { ThemeControls } from '../components/ThemeControls';
 import '../styles/tokens.css';
@@ -46,9 +47,31 @@ function DemoApp() {
     setShowAiConfig(false);
   };
 
-  // Access store for Mode switching if needed by Header (optional, or pass via props)
-  const storeState = useWorkflowStore();
-  const workflowDef = storeState?.workflowDef;
+  // Ref for imperative access to WorkflowIDE
+  const ideRef = useRef<WorkflowIDERef>(null);
+
+  // Track current workflow def from onWorkflowChange (replaces direct store access)
+  const [currentDef, setCurrentDef] = useState<WorkflowDef | null>(null);
+
+  const handleWorkflowChange = useCallback((def: WorkflowDef) => {
+    setCurrentDef(def);
+  }, []);
+
+  const handleSave = useCallback((def: WorkflowDef) => {
+    console.log('[DemoApp] onSave:', def.name, `(${def.tasks?.length ?? 0} tasks)`);
+  }, []);
+
+  const handleExport = useCallback(() => {
+    const def = ideRef.current?.getWorkflowDef();
+    if (!def) return;
+    const blob = new Blob([JSON.stringify(def, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${def.name || 'workflow'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   // 处理文件上传
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +126,7 @@ function DemoApp() {
             </h1>
 
             {/* 搜索框 */}
-            {workflowDef && (
+            {(currentDef || workflowJson) && (
               <div className="search-container">
                 <span className="search-icon">🔍</span>
                 <input
@@ -158,6 +181,26 @@ function DemoApp() {
               <input type="file" accept=".json" onChange={handleFileUpload} style={{ display: 'none' }} />
               📤 上传
             </label>
+
+            {(currentDef || workflowJson) && (
+              <button
+                className="mode-btn"
+                onClick={handleExport}
+                title="导出当前工作流 JSON"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-primary)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  fontWeight: 500
+                }}
+              >
+                📥 导出
+              </button>
+            )}
 
             <div className="divider"></div>
 
@@ -227,13 +270,14 @@ function DemoApp() {
       <div className="app-content" style={{ flex: 1, position: 'relative' }}>
         {error && <div className="error-message">⚠️ {error}</div>}
 
-        {!workflowJson && !error && !workflowDef && (
+        {!workflowJson && !error && !currentDef && (
           <div className="welcome-message">
             <h2>请选择示例或上传工作流以开始</h2>
           </div>
         )}
 
         <WorkflowIDE
+          ref={ideRef}
           workflowDef={workflowJson}
           readOnly={isReadOnly}
           theme={themeMode}
@@ -241,6 +285,8 @@ function DemoApp() {
           layoutDirection="LR"
           searchQuery={searchQuery}
           aiConfig={aiConfig}
+          onSave={handleSave}
+          onWorkflowChange={handleWorkflowChange}
         />
       </div>
     </div>

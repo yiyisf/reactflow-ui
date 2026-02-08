@@ -60,8 +60,8 @@ const MyWorkflowApp = () => {
 
 | 属性名 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `onSave` | `(def: WorkflowDef) => void` | 点击保存按钮时的回调。 |
-| `onWorkflowChange` | `(def: WorkflowDef) => void` | (可选) 工作流定义发生变更时的实时回调。 |
+| `onSave` | `(def: WorkflowDef) => void` | 保存回调，通过 Ctrl+S / Cmd+S 快捷键或 `ref.save()` 触发。 |
+| `onWorkflowChange` | `(def: WorkflowDef) => void` | 工作流定义变更时的实时回调。仅在任务增删改、属性修改等数据变化时触发；拖拽、缩放、选中等纯 UI 操作不触发。 |
 | `searchQuery` | `string` | (可选) 这里传入搜索关键词，匹配的任务节点会高亮显示。 |
 
 ### 运行态集成 (Runtime)
@@ -83,6 +83,45 @@ const executionData = await fetch('/api/workflow/execution/123').then(res => res
 - 节点会根据状态（Running, Completed, Failed）显示不同颜色。
 - 连线会高亮实际执行路径。
 - 点击节点将展示输入/输出详情面板。
+
+## 🔗 Ref API (命令式访问)
+
+通过 `ref` 可以在任意时刻主动读取或操作 IDE 状态：
+
+```tsx
+import { useRef } from 'react';
+import { WorkflowIDE, WorkflowIDERef } from 'reactflow-ui';
+import 'reactflow-ui/style.css';
+
+const App = () => {
+  const ideRef = useRef<WorkflowIDERef>(null);
+
+  const handleExport = () => {
+    const def = ideRef.current?.getWorkflowDef();
+    if (def) console.log('当前工作流:', def);
+  };
+
+  return (
+    <div style={{ height: '100vh' }}>
+      <button onClick={handleExport}>导出</button>
+      <button onClick={() => ideRef.current?.save()}>保存</button>
+      <WorkflowIDE
+        ref={ideRef}
+        onSave={(def) => fetch('/api/save', { method: 'POST', body: JSON.stringify(def) })}
+        onWorkflowChange={(def) => console.log('changed:', def.name)}
+      />
+    </div>
+  );
+};
+```
+
+### WorkflowIDERef 方法
+
+| 方法 | 返回值 | 说明 |
+| :--- | :--- | :--- |
+| `getWorkflowDef()` | `WorkflowDef \| null` | 获取当前最新的工作流定义 |
+| `getValidationResults()` | `ValidationResults` | 获取当前校验结果（错误和警告列表） |
+| `save()` | `void` | 触发 `onSave` 回调（等同于 Ctrl+S） |
 
 ## 🤖 AI Copilot (智能辅助)
 
@@ -117,9 +156,9 @@ const executionData = await fetch('/api/workflow/execution/123').then(res => res
 本库提供完整的 TypeScript 定义。您可以直接导入核心类型：
 
 ```tsx
-import { 
-  WorkflowDef, 
-  TaskDef, 
-  WorkflowInstance 
+import {
+  WorkflowDef,
+  TaskDef,
+  WorkflowIDERef
 } from 'reactflow-ui';
 ```

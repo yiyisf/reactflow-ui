@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
@@ -6,11 +6,23 @@ import HealthCheckPanel from './components/HealthCheckPanel';
 import ExecutionTaskPanel from './components/ExecutionTaskPanel';
 import AIChatPanel from './components/AICopilot/AIChatPanel';
 import useWorkflowStore from './store/workflowStore';
-import { ThemeMode, ThemeColor, LayoutDirection } from './types/workflow';
+import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults } from './types/workflow';
 import { WorkflowDef } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
+
+/**
+ * WorkflowIDE 的命令式 API（通过 ref 调用）
+ */
+export interface WorkflowIDERef {
+    /** 获取当前最新的工作流定义 */
+    getWorkflowDef: () => WorkflowDef | null;
+    /** 获取当前校验结果 */
+    getValidationResults: () => ValidationResults;
+    /** 触发保存（等同于 Ctrl+S） */
+    save: () => void;
+}
 
 /**
  * WorkflowIDE 组件的属性接口
@@ -101,7 +113,7 @@ export interface WorkflowIDEProps {
  * />
  * ```
  */
-export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
+export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     workflowDef,
     readOnly = false,
     theme = 'dark',
@@ -110,10 +122,10 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
     searchQuery = '',
     workflowExecution,
     aiConfig,
-    // onSave,
-    // onWorkflowChange,
+    onSave,
+    onWorkflowChange,
     height = '100%'
-}) => {
+}, ref) => {
     const {
         setWorkflow,
         setTheme,
@@ -159,6 +171,31 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         }
     }, [workflowExecution, importExecutionJSON, setMode, readOnly]);
 
+    // Expose imperative API via ref
+    useImperativeHandle(ref, () => ({
+        getWorkflowDef: () => useWorkflowStore.getState().workflowDef,
+        getValidationResults: () => useWorkflowStore.getState().validationResults,
+        save: () => {
+            const def = useWorkflowStore.getState().workflowDef;
+            if (def && onSave) onSave(def);
+        },
+    }), [onSave]);
+
+    // Notify consumer when workflowDef changes (skip initial load from props)
+    useEffect(() => {
+        if (!onWorkflowChange) return;
+        let skipInitial = true;
+        let prevDef = useWorkflowStore.getState().workflowDef;
+        const unsub = useWorkflowStore.subscribe((state) => {
+            const def = state.workflowDef;
+            if (def === prevDef) return;
+            prevDef = def;
+            if (skipInitial) { skipInitial = false; return; }
+            if (def) onWorkflowChange(def);
+        });
+        return unsub;
+    }, [onWorkflowChange]);
+
     // Handle node click
     const handleNodeClick = (task: any) => {
         if (!workflowExecution) {
@@ -183,6 +220,7 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
                         theme={theme}
                         nodesLocked={readOnly || !!workflowExecution}
                         searchQuery={searchQuery}
+                        onSave={onSave}
                     />
                 </ReactFlowProvider>
 
@@ -219,4 +257,6 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
             <AIChatPanel aiConfig={aiConfig} />
         </div >
     );
-};
+});
+
+WorkflowIDE.displayName = 'WorkflowIDE';

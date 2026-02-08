@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { WorkflowDef } from '../types/conductor';
 
@@ -32,6 +32,17 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
             setLocalDef(workflowDef as any);
         }
     }, [workflowDef, isOpen]);
+
+    // Escape 键关闭
+    const handleEscape = useCallback((e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+    }, [onClose]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen, handleEscape]);
 
     if (!isOpen || !localDef) return null;
 
@@ -84,13 +95,14 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
         fontSize: '11px',
         color: secondaryTextColor,
         marginBottom: '8px',
-        fontWeight: 'bold',
+        fontWeight: 600,
     };
 
     const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text', opts?: { readOnly?: boolean; placeholder?: string }) => (
         <div style={{ marginBottom: '20px' }}>
             <label style={labelStyle}>{label.toUpperCase()}</label>
             <input
+                className="wsp-input"
                 type={type}
                 value={(localDef as any)?.[field] ?? ''}
                 onChange={(e) => handleChange(field, type === 'number' ? (e.target.value === '' ? 0 : parseInt(e.target.value)) : e.target.value)}
@@ -110,6 +122,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
             <div style={{ marginBottom: '20px' }}>
                 <label style={labelStyle}>{label.toUpperCase()} {isJson && '(JSON)'}</label>
                 <textarea
+                    className="wsp-input"
                     value={value || ''}
                     onChange={(e) => isJson ? handleJsonChange(field, e.target.value) : handleChange(field, e.target.value)}
                     rows={rows}
@@ -117,7 +130,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                     style={{
                         ...inputStyle,
                         fontSize: '13px',
-                        fontFamily: isJson ? 'monospace' : 'inherit',
+                        fontFamily: isJson ? 'var(--font-mono)' : 'inherit',
                         resize: 'vertical',
                         opacity: isReadOnly ? 0.6 : 1,
                     }}
@@ -130,6 +143,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
         <div style={{ marginBottom: '20px' }}>
             <label style={labelStyle}>{label.toUpperCase()}</label>
             <select
+                className="wsp-input"
                 value={(localDef as any)?.[field] ?? options[0]?.value}
                 onChange={(e) => handleChange(field, e.target.value)}
                 disabled={isReadOnly}
@@ -171,7 +185,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                         width: '20px',
                         height: '20px',
                         borderRadius: '50%',
-                        background: '#fff',
+                        background: 'var(--text-inverse)',
                         transition: 'left 0.2s',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                     }} />
@@ -243,6 +257,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                     <div>
                         <label style={labelStyle}>RATE LIMIT KEY</label>
                         <input
+                            className="wsp-input"
                             type="text"
                             value={(localDef as any)?.rateLimitConfig?.rateLimitKey ?? ''}
                             onChange={(e) => handleNestedChange('rateLimitConfig', 'rateLimitKey', e.target.value)}
@@ -254,6 +269,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                     <div>
                         <label style={labelStyle}>并发上限</label>
                         <input
+                            className="wsp-input"
                             type="number"
                             value={(localDef as any)?.rateLimitConfig?.concurrentExecLimit ?? ''}
                             onChange={(e) => handleNestedChange('rateLimitConfig', 'concurrentExecLimit', e.target.value === '' ? 0 : parseInt(e.target.value))}
@@ -277,38 +293,42 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            left: 0,
-            top: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 2000,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            backdropFilter: 'blur(4px)',
-            animation: 'fadeIn 0.2s ease'
-        }}>
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-            `}</style>
-
-            <div style={{
-                width: '680px',
-                maxHeight: '85vh',
-                background: 'var(--glass-surface)',
-                borderRadius: '20px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="工作流全局配置"
+            onClick={onClose}
+            style={{
+                position: 'fixed',
+                left: 0,
+                top: 0,
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                zIndex: 1300,
                 display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                border: `1px solid ${borderColor}`,
-                backdropFilter: 'blur(20px)'
-            }}>
+                justifyContent: 'center',
+                alignItems: 'center',
+                backdropFilter: 'blur(4px)',
+                animation: 'fadeIn 0.2s ease'
+            }}
+        >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    width: '680px',
+                    maxHeight: '85vh',
+                    background: 'var(--glass-surface)',
+                    borderRadius: '16px',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    border: `1px solid ${borderColor}`,
+                    backdropFilter: 'blur(20px)'
+                }}
+            >
                 {/* Header */}
                 <div style={{
                     padding: '24px 32px 0 32px',
@@ -322,15 +342,18 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                             </p>
                         </div>
                         <button
+                            className="wsp-close"
                             onClick={onClose}
+                            aria-label="关闭"
                             style={{ background: 'none', border: 'none', color: textColor, fontSize: '24px', cursor: 'pointer', opacity: 0.6 }}
                         >✕</button>
                     </div>
 
                     {/* Tab Bar */}
-                    <div style={{ display: 'flex', gap: '0', borderBottom: `1px solid ${borderColor}` }}>
+                    <div style={{ display: 'flex', borderBottom: `1px solid ${borderColor}` }}>
                         {TABS.map(tab => (
                             <button
+                                className="wsp-tab"
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 style={{
@@ -358,15 +381,16 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '20px 32px', borderTop: `1px solid ${borderColor}`, background: 'rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ padding: '20px 32px', borderTop: `1px solid ${borderColor}`, background: 'var(--bg-highlight)', display: 'flex', justifyContent: 'flex-end' }}>
                     <button
+                        className="wsp-footer-btn"
                         onClick={onClose}
                         style={{
                             padding: '12px 32px',
                             background: 'var(--color-accent)',
-                            color: '#fff',
+                            color: 'var(--text-inverse)',
                             border: 'none',
-                            borderRadius: '10px',
+                            borderRadius: '12px',
                             fontWeight: 'bold',
                             cursor: 'pointer',
                             boxShadow: '0 4px 12px var(--color-accent-bg)'

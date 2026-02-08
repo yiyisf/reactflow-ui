@@ -165,3 +165,15 @@
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* WorkflowSettingsPanel form interactions */
+.wsp-input:hover:not(:disabled) { border-color: var(--border-secondary) !important; }
+.wsp-input:focus-visible { border-color: var(--color-accent) !important; outline: none; box-shadow: 0 0 0 2px var(--color-accent-bg); }
+.wsp-tab:hover { color: var(--text-primary) !important; }
+.wsp-close:hover { opacity: 1 !important; }
+.wsp-footer-btn:hover { filter: brightness(1.1); }

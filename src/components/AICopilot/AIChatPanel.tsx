@@ -79,7 +79,21 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
     const [streamingContent, setStreamingContent] = useState('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const abortRef = useRef<AbortController | null>(null);
+
+    const autoResize = () => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    };
+
+    const resetTextareaHeight = () => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+    };
 
     // Cleanup abort on unmount
     useEffect(() => {
@@ -142,6 +156,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
         if (!retryContent) {
             setMessages(prev => [...prev, userMsg]);
             setInputValue('');
+            resetTextareaHeight();
         }
         setIsLoading(true);
         setStreamingContent('');
@@ -195,7 +210,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
             const aiMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                content: fullResponse.replace(/```json[\s\S]*?```/, ''),
+                content: fullResponse,
                 type: suggestedJson ? 'change_suggestion' : 'text',
                 payload: suggestedJson
             };
@@ -267,6 +282,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -351,13 +367,15 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
             <div className="ai-input-area">
                 <div className="ai-input-container">
                     <textarea
+                        ref={textareaRef}
                         className="ai-input"
                         placeholder={isLoading ? "AI 正在响应..." : "描述您的需求…（Shift+Enter 换行）"}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
+                        onInput={autoResize}
                         onKeyDown={handleKeyPress}
                         disabled={isLoading}
-                        rows={1}
+                        rows={2}
                     />
                     {isLoading ? (
                         <button className="ai-send stop" onClick={handleStop} title="停止生成">

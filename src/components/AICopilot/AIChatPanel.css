@@ -2,9 +2,9 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 380px;
-    height: 600px;
-    max-height: calc(80vh - 40px);
+    width: 480px;
+    height: 70vh;
+    max-height: calc(85vh - 40px);
     background: var(--glass-surface);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -33,7 +33,7 @@
 
 .ai-chat-panel.collapsed {
     height: 48px;
-    width: 180px;
+    width: 200px;
     cursor: pointer;
 }
 
@@ -103,7 +103,7 @@
 .message {
     padding: 10px 14px;
     border-radius: 12px;
-    max-width: 85%;
+    max-width: 95%;
     font-size: 13px;
     line-height: 1.5;
     position: relative;
@@ -132,6 +132,8 @@
     font-size: 12px;
     margin: 8px 0;
     overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 .ai-input-area {
@@ -163,8 +165,8 @@
     font-size: 13px;
     outline: none;
     resize: none;
-    min-height: 20px;
-    max-height: 100px;
+    min-height: 44px;
+    max-height: 120px;
 }
 
 .ai-send {

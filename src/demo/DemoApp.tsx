@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { WorkflowIDE } from '../WorkflowIDE';
 import useWorkflowStore from '../store/workflowStore'; // Still used for some global state in demo
 import { useTheme } from '../hooks/useTheme';
@@ -15,6 +15,36 @@ function DemoApp() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // AI config from localStorage (editable in demo header)
+  const [aiConfig, setAiConfig] = useState(() => ({
+    apiKey: localStorage.getItem('AI_API_KEY') || '',
+    baseUrl: localStorage.getItem('AI_BASE_URL') || '',
+    model: localStorage.getItem('AI_MODEL') || '',
+  }));
+  const [showAiConfig, setShowAiConfig] = useState(false);
+  const [aiDraft, setAiDraft] = useState(aiConfig);
+  const aiConfigRef = useRef<HTMLDivElement>(null);
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!showAiConfig) return;
+    const handler = (e: MouseEvent) => {
+      if (aiConfigRef.current && !aiConfigRef.current.contains(e.target as Node)) {
+        setShowAiConfig(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAiConfig]);
+
+  const saveAiConfig = () => {
+    setAiConfig(aiDraft);
+    localStorage.setItem('AI_API_KEY', aiDraft.apiKey);
+    localStorage.setItem('AI_BASE_URL', aiDraft.baseUrl);
+    localStorage.setItem('AI_MODEL', aiDraft.model);
+    setShowAiConfig(false);
+  };
 
   // Access store for Mode switching if needed by Header (optional, or pass via props)
   const storeState = useWorkflowStore();
@@ -128,6 +158,68 @@ function DemoApp() {
               <input type="file" accept=".json" onChange={handleFileUpload} style={{ display: 'none' }} />
               📤 上传
             </label>
+
+            <div className="divider"></div>
+
+            <div style={{ position: 'relative' }} ref={aiConfigRef}>
+              <button
+                className="mode-btn"
+                onClick={() => { setAiDraft(aiConfig); setShowAiConfig(v => !v); }}
+                title="配置 AI 服务"
+                style={{
+                  background: aiConfig.apiKey ? 'var(--color-success)' : 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-primary)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: aiConfig.apiKey ? '#fff' : 'var(--text-primary)',
+                  fontSize: '13px',
+                  fontWeight: 500
+                }}
+              >
+                🤖 AI {aiConfig.apiKey ? '✓' : '配置'}
+              </button>
+
+              {showAiConfig && (
+                <div className="ai-config-popover">
+                  <div className="ai-config-title">AI 服务配置</div>
+
+                  <label className="ai-config-label">API Key</label>
+                  <input
+                    className="ai-config-input"
+                    type="password"
+                    placeholder="sk-..."
+                    value={aiDraft.apiKey}
+                    onChange={e => setAiDraft(d => ({ ...d, apiKey: e.target.value }))}
+                    autoFocus
+                  />
+
+                  <label className="ai-config-label">Base URL</label>
+                  <input
+                    className="ai-config-input"
+                    type="text"
+                    placeholder="https://api.openai.com/v1"
+                    value={aiDraft.baseUrl}
+                    onChange={e => setAiDraft(d => ({ ...d, baseUrl: e.target.value }))}
+                  />
+
+                  <label className="ai-config-label">Model</label>
+                  <input
+                    className="ai-config-input"
+                    type="text"
+                    placeholder="gpt-4o"
+                    value={aiDraft.model}
+                    onChange={e => setAiDraft(d => ({ ...d, model: e.target.value }))}
+                    onKeyDown={e => { if (e.key === 'Enter') saveAiConfig(); }}
+                  />
+
+                  <div className="ai-config-actions">
+                    <button className="ai-config-btn cancel" onClick={() => setShowAiConfig(false)}>取消</button>
+                    <button className="ai-config-btn save" onClick={saveAiConfig}>保存</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -148,6 +240,7 @@ function DemoApp() {
           themeColor={themeColor}
           layoutDirection="LR"
           searchQuery={searchQuery}
+          aiConfig={aiConfig}
         />
       </div>
     </div>

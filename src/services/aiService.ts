@@ -24,7 +24,8 @@ const DEFAULT_CONFIG: AIServiceConfig = {
  */
 export const callAICopilot = async (
     messages: ChatMessage[],
-    config: Partial<AIServiceConfig> = {}
+    config: Partial<AIServiceConfig> = {},
+    signal?: AbortSignal
 ) => {
     const finalConfig = { ...DEFAULT_CONFIG, ...config };
 
@@ -43,7 +44,8 @@ export const callAICopilot = async (
             messages,
             temperature: 0.7,
             stream: false
-        })
+        }),
+        signal
     });
 
     if (!response.ok) {
@@ -62,7 +64,8 @@ export const callAICopilotStream = async (
     messages: ChatMessage[],
     config: Partial<AIServiceConfig> = {},
     onToken: (token: string) => void,
-    onDone?: () => void
+    onDone?: () => void,
+    signal?: AbortSignal
 ) => {
     const finalConfig = { ...DEFAULT_CONFIG, ...config };
 
@@ -81,7 +84,8 @@ export const callAICopilotStream = async (
             messages,
             temperature: 0.7,
             stream: true
-        })
+        }),
+        signal
     });
 
     if (!response.ok) {
@@ -118,7 +122,7 @@ export const callAICopilotStream = async (
                         onToken(content);
                     }
                 } catch {
-                    // Skip malformed SSE chunks
+                    console.warn('[AI SSE] malformed chunk:', data);
                 }
             }
         }

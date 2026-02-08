@@ -1,6 +1,8 @@
 import { memo, useState, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { TaskDef } from '../types/conductor';
+import { AIServiceConfig, callAICopilot } from '../services/aiService';
+import { generateParameterHintPrompt } from '../services/promptTemplates';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 
 interface TaskDetailPanelProps {
@@ -8,12 +10,13 @@ interface TaskDetailPanelProps {
     isOpen?: boolean; // 新增控制属性
     onClose: () => void;
     theme?: 'dark' | 'light';
+    aiConfig?: Partial<AIServiceConfig>;
 }
 
 /**
  * 任务配置面板组件 - 抽屉式，支持编辑模式
  */
-const TaskDetailPanel = ({ task, isOpen = true, onClose }: TaskDetailPanelProps) => {
+const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
 
@@ -23,19 +26,50 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose }: TaskDetailPanelProps)
     const [currentSuggestions, setCurrentSuggestions] = useState<Suggestion[]>([]);
     const [onSelectSuggestion, setOnSelectSuggestion] = useState<(val: string) => void>(() => () => { });
 
-    const handleAiHintClick = (e: React.MouseEvent, onSelect: (val: string) => void) => {
+    const mockSuggestions: Suggestion[] = [
+        { label: '引用工作流输入', value: '${workflow.input.data}', description: '引用工作流启动时传入的原始数据' },
+        { label: '引用前序任务输出', value: '${previous_task.output.result}', description: '引用上一个节点的计算结果' },
+        { label: '环境变量', value: '${workflow.variables.api_key}', description: '引用工作流定义的全局变量' }
+    ];
+
+    const handleAiHintClick = async (e: React.MouseEvent, onSelect: (val: string) => void) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         setSuggesterAnchor(rect);
         setOnSelectSuggestion(() => onSelect);
-
-        // Mock Suggestions based on context (In real world, fetch from LLM)
-        setCurrentSuggestions([
-            { label: '引用工作流输入', value: '${workflow.input.data}', description: '引用工作流启动时传入的原始数据' },
-            { label: '引用前序任务输出', value: '${previous_task.output.result}', description: '引用上一个节点的计算结果' },
-            { label: '环境变量', value: '${workflow.variables.api_key}', description: '引用工作流定义的全局变量' }
-        ]);
-
+        setCurrentSuggestions([]); // Show loading state
         setSuggesterOpen(true);
+
+        const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
+        if (!apiKey) {
+            setCurrentSuggestions(mockSuggestions);
+            return;
+        }
+
+        try {
+            const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
+            const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
+            const config: Record<string, string> = { apiKey };
+            if (baseUrl) config.baseUrl = baseUrl;
+            if (model) config.model = model;
+
+            const { workflowDef } = useWorkflowStore.getState();
+            const prompt = generateParameterHintPrompt(effectiveTask!, workflowDef);
+            const response = await callAICopilot(
+                [{ role: 'system', content: 'You are a Conductor workflow expert. Return only valid JSON.' }, { role: 'user', content: prompt }],
+                config
+            );
+
+            const jsonMatch = response.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]) as Suggestion[];
+                setCurrentSuggestions(parsed);
+            } else {
+                setCurrentSuggestions(mockSuggestions);
+            }
+        } catch (err) {
+            console.warn('[AI ParameterSuggester] fallback to mock:', err);
+            setCurrentSuggestions(mockSuggestions);
+        }
     };
 
     // 当选中的任务改变时，同步本地状态。如果任务变为 null，保留上一个任务以便执行退出动画。

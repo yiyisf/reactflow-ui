@@ -141,13 +141,6 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
         setNodesLocked(readOnly || !!workflowExecution);
     }, [theme, themeColor, layoutDirection, readOnly, workflowExecution, setTheme, setThemeColor, setLayoutDirection, setNodesLocked]);
 
-    // Sync AI config from Props to localStorage (Props take priority)
-    useEffect(() => {
-        if (aiConfig?.apiKey) localStorage.setItem('AI_API_KEY', aiConfig.apiKey);
-        if (aiConfig?.baseUrl) localStorage.setItem('AI_BASE_URL', aiConfig.baseUrl);
-        if (aiConfig?.model) localStorage.setItem('AI_MODEL', aiConfig.model);
-    }, [aiConfig]);
-
     // Handle initial workflow load
     useEffect(() => {
         if (workflowDef) {
@@ -205,6 +198,7 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
                 isOpen={isDetailPanelOpen}
                 onClose={() => setIsDetailPanelOpen(false)}
                 theme={theme}
+                aiConfig={aiConfig}
             />
 
             <HealthCheckPanel
@@ -222,7 +216,7 @@ export const WorkflowIDE: React.FC<WorkflowIDEProps> = ({
                 )
             }
 
-            <AIChatPanel />
+            <AIChatPanel aiConfig={aiConfig} />
         </div >
     );
 };

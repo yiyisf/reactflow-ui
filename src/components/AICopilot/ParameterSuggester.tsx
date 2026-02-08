@@ -42,7 +42,11 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
                 </div>
                 <div className="suggester-list">
                     {suggestions.length === 0 ? (
-                        <div className="suggester-empty">Analyzing context...</div>
+                        <div className="suggester-loading">
+                            <div className="suggester-skeleton-line" style={{ width: '85%' }} />
+                            <div className="suggester-skeleton-line" style={{ width: '65%' }} />
+                            <div className="suggester-skeleton-line" style={{ width: '75%' }} />
+                        </div>
                     ) : (
                         suggestions.map((s, idx) => (
                             <div

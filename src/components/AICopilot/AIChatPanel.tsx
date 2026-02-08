@@ -7,27 +7,84 @@ interface Message {
     content: string;
     type?: 'text' | 'change_suggestion';
     payload?: any;
+    error?: boolean;
 }
 
 import useWorkflowStore from '../../store/workflowStore';
-import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage } from '../../services/aiService';
+import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage, AIServiceConfig } from '../../services/aiService';
 import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates';
 
-const AIChatPanel: React.FC = () => {
+interface AIChatPanelProps {
+    aiConfig?: Partial<AIServiceConfig>;
+}
+
+const WELCOME_MESSAGE: Message = {
+    id: '1',
+    role: 'ai',
+    content: '你好！我是您的流程助手。我可以帮你生成工作流框架、优化逻辑或提供参数配置建议。你想实现什么样的流程？',
+    type: 'text'
+};
+
+/** Lightweight markdown renderer — no external deps */
+const renderMessageContent = (content: string): React.ReactNode => {
+    // Split by code blocks first
+    const parts = content.split(/(```[\s\S]*?```)/);
+    return parts.map((part, i) => {
+        // Code block
+        if (part.startsWith('```') && part.endsWith('```')) {
+            const inner = part.slice(3, -3);
+            const newlineIdx = inner.indexOf('\n');
+            const code = newlineIdx >= 0 ? inner.slice(newlineIdx + 1) : inner;
+            return <pre key={i}><code>{code}</code></pre>;
+        }
+        // Inline formatting
+        return <span key={i}>{renderInline(part)}</span>;
+    });
+};
+
+const renderInline = (text: string): React.ReactNode => {
+    // Process bold, inline code, and newlines
+    const tokens: React.ReactNode[] = [];
+    // Split by **bold** and `inline code`
+    const re = /(\*\*[^*]+\*\*|`[^`]+`|\n)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = re.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            tokens.push(text.slice(lastIndex, match.index));
+        }
+        const m = match[0];
+        if (m.startsWith('**') && m.endsWith('**')) {
+            tokens.push(<strong key={match.index}>{m.slice(2, -2)}</strong>);
+        } else if (m.startsWith('`') && m.endsWith('`')) {
+            tokens.push(<code key={match.index}>{m.slice(1, -1)}</code>);
+        } else if (m === '\n') {
+            tokens.push(<br key={match.index} />);
+        }
+        lastIndex = match.index + m.length;
+    }
+    if (lastIndex < text.length) {
+        tokens.push(text.slice(lastIndex));
+    }
+    return tokens;
+};
+
+const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
     const { workflowDef, applyAIGeneratedWorkflow } = useWorkflowStore();
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            role: 'ai',
-            content: '你好！我是您的流程助手。我可以帮你生成工作流框架、优化逻辑或提供参数配置建议。你想实现什么样的流程？',
-            type: 'text'
-        }
-    ]);
+    const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
     const [streamingContent, setStreamingContent] = useState('');
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const abortRef = useRef<AbortController | null>(null);
+
+    // Cleanup abort on unmount
+    useEffect(() => {
+        return () => { abortRef.current?.abort(); };
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,45 +102,51 @@ const AIChatPanel: React.FC = () => {
             { role: 'system', content: CONDUCTOR_SYSTEM_PROMPT }
         ];
 
-        // 将已有对话历史加入上下文
         for (const msg of messages) {
             if (msg.role === 'user') {
                 history.push({ role: 'user', content: msg.content });
-            } else if (msg.role === 'ai') {
+            } else if (msg.role === 'ai' && !msg.error) {
                 history.push({ role: 'assistant', content: msg.content });
             }
         }
 
-        // 加入当前用户输入（使用 prompt 模板增强）
         const prompt = generateWorkflowSuggestionPrompt(userInput, workflowDef);
         history.push({ role: 'user', content: prompt });
 
         return history;
     }, [messages, workflowDef]);
 
-    const handleSend = async () => {
-        if (!inputValue.trim() || isLoading) return;
+    const handleSend = async (retryContent?: string) => {
+        const text = retryContent || inputValue.trim();
+        if (!text || isLoading) return;
+
+        // Abort previous request
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
 
         const userMsg: Message = {
             id: Date.now().toString(),
             role: 'user',
-            content: inputValue,
+            content: text,
             type: 'text'
         };
 
-        setMessages(prev => [...prev, userMsg]);
-        setInputValue('');
+        if (!retryContent) {
+            setMessages(prev => [...prev, userMsg]);
+            setInputValue('');
+        }
         setIsLoading(true);
         setStreamingContent('');
 
         try {
-            const apiKey = localStorage.getItem('AI_API_KEY') || '';
-            const baseUrl = localStorage.getItem('AI_BASE_URL') || '';
-            const model = localStorage.getItem('AI_MODEL') || '';
+            const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
+            const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
+            const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
 
             if (!apiKey) {
-                // FALLBACK TO MOCK FOR DEMO PURPOSES
                 setTimeout(() => {
+                    if (controller.signal.aborted) return;
                     const aiMsg: Message = {
                         id: (Date.now() + 1).toString(),
                         role: 'ai',
@@ -107,21 +170,18 @@ const AIChatPanel: React.FC = () => {
             if (baseUrl) apiConfig.baseUrl = baseUrl;
             if (model) apiConfig.model = model;
 
-            const chatHistory = buildChatHistory(inputValue);
+            const chatHistory = buildChatHistory(text);
 
-            // 使用流式 API
             const fullResponse = await callAICopilotStream(
                 chatHistory,
                 apiConfig,
                 (token) => {
                     setStreamingContent(prev => prev + token);
                 },
-                () => {
-                    // streaming done
-                }
+                () => { /* streaming done */ },
+                controller.signal
             );
 
-            // 流结束后，解析完整响应
             const jsonMatch = fullResponse.match(/```json\n([\s\S]*?)\n```/);
             const suggestedJson = jsonMatch ? JSON.parse(jsonMatch[1]) : null;
 
@@ -136,16 +196,63 @@ const AIChatPanel: React.FC = () => {
             setMessages(prev => [...prev, aiMsg]);
             setStreamingContent('');
         } catch (err: any) {
-            const errorMsg: Message = {
-                id: Date.now().toString(),
-                role: 'ai',
-                content: `抱歉，目前无法连接到 AI 服务: ${err.message}`,
-            };
-            setMessages(prev => [...prev, errorMsg]);
-            setStreamingContent('');
+            if (err.name === 'AbortError') {
+                // User stopped generation — save what we have
+                setStreamingContent(prev => {
+                    if (prev) {
+                        const interruptedMsg: Message = {
+                            id: (Date.now() + 1).toString(),
+                            role: 'ai',
+                            content: prev,
+                            type: 'text'
+                        };
+                        setMessages(p => [...p, interruptedMsg]);
+                    }
+                    return '';
+                });
+            } else {
+                const errorMsg: Message = {
+                    id: Date.now().toString(),
+                    role: 'ai',
+                    content: `抱歉，目前无法连接到 AI 服务: ${err.message}`,
+                    error: true
+                };
+                setMessages(prev => [...prev, errorMsg]);
+                setStreamingContent('');
+            }
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleStop = () => {
+        abortRef.current?.abort();
+    };
+
+    const handleClear = () => {
+        abortRef.current?.abort();
+        setMessages([WELCOME_MESSAGE]);
+        setStreamingContent('');
+        setIsLoading(false);
+    };
+
+    const handleCopy = (msg: Message) => {
+        navigator.clipboard.writeText(msg.content);
+        setCopiedId(msg.id);
+        setTimeout(() => setCopiedId(null), 1500);
+    };
+
+    const handleRetry = () => {
+        // Find last user message to retry
+        const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+        if (!lastUserMsg) return;
+        // Remove last error message
+        setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last?.error) return prev.slice(0, -1);
+            return prev;
+        });
+        handleSend(lastUserMsg.content);
     };
 
     const applySuggestion = (payload: any) => {
@@ -179,13 +286,18 @@ const AIChatPanel: React.FC = () => {
                     <span className="ai-sparkles">✨</span>
                     AI 助手
                 </div>
-                <button className="ai-close" onClick={() => setIsOpen(false)}>×</button>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    <button className="ai-close" onClick={handleClear} title="清空对话">🗑</button>
+                    <button className="ai-close" onClick={() => setIsOpen(false)}>×</button>
+                </div>
             </div>
 
             <div className="ai-messages">
                 {messages.map((msg) => (
-                    <div key={msg.id} className={`message ${msg.role}`}>
-                        {msg.content}
+                    <div key={msg.id} className={`message ${msg.role}${msg.error ? ' error' : ''}`}>
+                        <div className="message-content">
+                            {msg.role === 'ai' ? renderMessageContent(msg.content) : msg.content}
+                        </div>
                         {msg.type === 'change_suggestion' && msg.payload && (
                             <div className="change-card">
                                 <div className="card-header">工作流修改建议</div>
@@ -195,18 +307,35 @@ const AIChatPanel: React.FC = () => {
                                 </div>
                             </div>
                         )}
+                        {msg.role === 'ai' && !msg.error && (
+                            <button
+                                className="copy-btn"
+                                onClick={() => handleCopy(msg)}
+                                title="复制"
+                            >
+                                {copiedId === msg.id ? '✓' : '📋'}
+                            </button>
+                        )}
+                        {msg.error && (
+                            <button className="retry-btn" onClick={handleRetry}>重试</button>
+                        )}
                     </div>
                 ))}
-                {/* 流式输出中显示正在生成的内容 */}
+                {/* Streaming content */}
                 {isLoading && streamingContent && (
                     <div className="message ai" style={{ opacity: 0.9 }}>
-                        {streamingContent}
-                        <span style={{ animation: 'blink 1s infinite' }}>▊</span>
+                        <div className="message-content">
+                            {renderMessageContent(streamingContent)}
+                        </div>
+                        <span className="streaming-cursor">▊</span>
                     </div>
                 )}
+                {/* Thinking skeleton */}
                 {isLoading && !streamingContent && (
-                    <div className="message ai" style={{ opacity: 0.7 }}>
-                        正在思考中...
+                    <div className="message ai thinking-skeleton">
+                        <div className="skeleton-line" style={{ width: '80%' }} />
+                        <div className="skeleton-line" style={{ width: '60%' }} />
+                        <div className="skeleton-line" style={{ width: '70%' }} />
                     </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -216,16 +345,22 @@ const AIChatPanel: React.FC = () => {
                 <div className="ai-input-container">
                     <textarea
                         className="ai-input"
-                        placeholder={isLoading ? "AI 正在响应..." : "描述您的需求..."}
+                        placeholder={isLoading ? "AI 正在响应..." : "描述您的需求…（Shift+Enter 换行）"}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyPress}
                         disabled={isLoading}
                         rows={1}
                     />
-                    <button className="ai-send" onClick={handleSend} title="发送" disabled={isLoading}>
-                        {isLoading ? '⏳' : '🚀'}
-                    </button>
+                    {isLoading ? (
+                        <button className="ai-send stop" onClick={handleStop} title="停止生成">
+                            ⏹
+                        </button>
+                    ) : (
+                        <button className="ai-send" onClick={() => handleSend()} title="发送">
+                            🚀
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

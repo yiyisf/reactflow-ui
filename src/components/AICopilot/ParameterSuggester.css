@@ -83,3 +83,24 @@
     font-size: 12px;
     color: var(--text-muted);
 }
+
+/* Loading skeleton */
+@keyframes suggesterShimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+.suggester-loading {
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.suggester-skeleton-line {
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-highlight) 50%, var(--bg-tertiary) 75%);
+    background-size: 400px 100%;
+    animation: suggesterShimmer 1.5s infinite linear;
+}

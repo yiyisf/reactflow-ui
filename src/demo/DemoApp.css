@@ -809,6 +809,124 @@ body {
   background-color: var(--color-accent-hover) !important;
 }
 
+/* AI Config Popover */
+.ai-config-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  padding: 20px;
+  background: var(--glass-bg-accent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  z-index: 2000;
+  animation: popoverSlideIn 0.2s ease-out;
+}
+
+@keyframes popoverSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-config-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-config-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  margin-top: 12px;
+}
+
+.ai-config-label:first-of-type {
+  margin-top: 0;
+}
+
+.ai-config-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ai-config-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-bg);
+}
+
+.ai-config-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.ai-config-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.ai-config-btn {
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.ai-config-btn.cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+.ai-config-btn.cancel:hover {
+  background: var(--bg-highlight);
+  color: var(--text-primary);
+}
+
+.ai-config-btn.save {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.ai-config-btn.save:hover {
+  filter: brightness(1.15);
+}
+
+/* Light theme overrides */
+.app.light-theme .ai-config-popover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.app.light-theme .ai-config-input {
+  background: #fff;
+  border-color: #e2e8f0;
+}
+
 /* Decision 节点特殊处理：移除背景和圆角以显示菱形 */
 .decision-node-wrapper {
   background: transparent !important;

@@ -231,3 +231,97 @@
     color: var(--color-success);
     border-left: 1px solid var(--border-primary);
 }
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+.streaming-cursor {
+    animation: blink 1s infinite;
+}
+
+/* Error message styling */
+.message.ai.error {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.retry-btn {
+    margin-top: 8px;
+    padding: 4px 12px;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.retry-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
+/* Copy button */
+.copy-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message:hover .copy-btn {
+    opacity: 0.7;
+}
+
+.copy-btn:hover {
+    opacity: 1 !important;
+    background: var(--bg-highlight);
+}
+
+/* Stop button */
+.ai-send.stop {
+    background: #ef4444;
+}
+
+/* Inline code in messages */
+.message-content code {
+    background: var(--bg-primary);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.message-content strong {
+    font-weight: 700;
+}
+
+/* Thinking skeleton */
+@keyframes shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+.thinking-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+}
+
+.skeleton-line {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-highlight) 50%, var(--bg-tertiary) 75%);
+    background-size: 400px 100%;
+    animation: shimmer 1.5s infinite linear;
+}

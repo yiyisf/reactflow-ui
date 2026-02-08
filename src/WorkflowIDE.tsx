@@ -22,6 +22,8 @@ export interface WorkflowIDERef {
     getValidationResults: () => ValidationResults;
     /** 触发保存（等同于 Ctrl+S） */
     save: () => void;
+    /** 创建空白工作流 */
+    createBlankWorkflow: (name?: string) => void;
 }
 
 /**
@@ -87,6 +89,11 @@ export interface WorkflowIDEProps {
     onWorkflowChange?: (def: WorkflowDef) => void;
 
     /**
+     * 空状态面板点击"导入 JSON"时的回调。
+     */
+    onRequestImport?: () => void;
+
+    /**
      * AI 配置。通过 Props 注入优先于 localStorage 配置。
      */
     aiConfig?: Partial<AIServiceConfig>;
@@ -121,6 +128,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     layoutDirection = 'LR', // Default per user request
     searchQuery = '',
     workflowExecution,
+    onRequestImport,
     aiConfig,
     onSave,
     onWorkflowChange,
@@ -179,6 +187,10 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             const def = useWorkflowStore.getState().workflowDef;
             if (def && onSave) onSave(def);
         },
+        createBlankWorkflow: (name?: string) => {
+            useWorkflowStore.getState().createBlankWorkflow(name);
+            useWorkflowStore.temporal.getState().clear();
+        },
     }), [onSave]);
 
     // Notify consumer when workflowDef changes (skip initial load from props)
@@ -221,6 +233,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         nodesLocked={readOnly || !!workflowExecution}
                         searchQuery={searchQuery}
                         onSave={onSave}
+                        onRequestImport={onRequestImport}
                     />
                 </ReactFlowProvider>
 

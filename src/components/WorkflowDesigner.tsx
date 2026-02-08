@@ -21,6 +21,7 @@ import AddableEdge from './edges/AddableEdge';
 import ControlHub from './Controls/ControlHub';
 import ActionBar from './Controls/ActionBar';
 import WorkflowSettingsPanel from './WorkflowSettingsPanel';
+import EmptyStatePanel from './EmptyStatePanel';
 import ConfirmDialog from './ConfirmDialog';
 import Toast from './Toast';
 import { useShortcuts } from '../hooks/useShortcuts';
@@ -49,12 +50,14 @@ interface WorkflowDesignerProps {
     theme?: 'dark' | 'light';
     nodesLocked?: boolean;
     onSave?: (def: any) => void;
+    onRequestImport?: () => void;
 }
 
 const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     onNodeClick: onNodeClickProp,
     searchQuery = '',
     onSave,
+    onRequestImport,
 }) => {
     const {
         nodes,
@@ -72,6 +75,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         executionData,
         validationResults,
         setIsDetailPanelOpen,
+        workflowDef,
     } = useWorkflowStore();
 
     const { fitView } = useReactFlow();
@@ -310,6 +314,8 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     />
                 </div>
             </ReactFlow>
+
+            {!workflowDef && <EmptyStatePanel onRequestImport={onRequestImport} />}
 
             {showSelector && (
                 <NodeSelector

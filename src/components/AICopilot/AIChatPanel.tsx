@@ -86,6 +86,13 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
         return () => { abortRef.current?.abort(); };
     }, []);
 
+    // 监听外部事件打开面板
+    useEffect(() => {
+        const handler = () => setIsOpen(true);
+        window.addEventListener('open-ai-chat', handler);
+        return () => window.removeEventListener('open-ai-chat', handler);
+    }, []);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };

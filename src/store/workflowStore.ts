@@ -37,7 +37,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 // 用户喜好配置
                 theme: 'dark' as ThemeMode,
                 themeColor: 'blue' as ThemeColor,
-                edgeType: 'default',
+                edgeType: 'smoothstep',
                 nodesLocked: true,
                 copiedTask: null as TaskDef | null,
 
@@ -349,8 +349,12 @@ const useWorkflowStore = create<WorkflowStore>()(
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
                         } else {
-                            insertTaskAfter(newDef.tasks, sourceId, newTask);
-                            insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
+                            if (sourceId === 'start' && newDef.tasks.length === 0) {
+                                newDef.tasks.push(newTask, joinTask);
+                            } else {
+                                insertTaskAfter(newDef.tasks, sourceId, newTask);
+                                insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
+                            }
                         }
                     } else {
                         if (newTask.type === 'DECISION') {
@@ -365,7 +369,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                         if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                         } else {
-                            insertTaskAfter(newDef.tasks, sourceId, newTask);
+                            if (sourceId === 'start' && newDef.tasks.length === 0) {
+                                newDef.tasks.push(newTask);
+                            } else {
+                                insertTaskAfter(newDef.tasks, sourceId, newTask);
+                            }
                         }
                     }
 
@@ -565,6 +573,18 @@ const useWorkflowStore = create<WorkflowStore>()(
                 setEdgeType: (edgeType: string) => set({ edgeType }),
                 setNodesLocked: (nodesLocked: boolean) => set({ nodesLocked }),
 
+                createBlankWorkflow: (name?: string) => {
+                    const blankDef: WorkflowDef = {
+                        name: name || 'new_workflow',
+                        description: '',
+                        tasks: [],
+                        version: 1,
+                        schemaVersion: 2
+                    };
+                    get().setWorkflow(blankDef);
+                    set({ mode: 'edit' });
+                },
+
                 applyAIGeneratedWorkflow: (workflowJson: any) => {
                     // 深度拷贝并确保基础结构完整
                     const newDef = {
@@ -603,7 +623,17 @@ const useWorkflowStore = create<WorkflowStore>()(
         ),
         {
             name: 'conductor-ui-prefs',
+            version: 1,
             storage: createJSONStorage(() => localStorage),
+            migrate: (persisted: any, version: number) => {
+                if (version === 0) {
+                    // v0 → v1: 默认连线从贝塞尔曲线改为折线
+                    if (persisted.edgeType === 'default') {
+                        persisted.edgeType = 'smoothstep';
+                    }
+                }
+                return persisted;
+            },
             partialize: (state: WorkflowStore) => ({
                 theme: state.theme,
                 themeColor: state.themeColor,

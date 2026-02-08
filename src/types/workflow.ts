@@ -163,6 +163,7 @@ export interface WorkflowActions {
     setThemeColor: (color: ThemeColor) => void;
     setEdgeType: (edgeType: string) => void;
     setNodesLocked: (nodesLocked: boolean) => void;
+    createBlankWorkflow: (name?: string) => void;
     applyAIGeneratedWorkflow: (workflowJson: any) => void;
     setIsDetailPanelOpen: (isOpen: boolean) => void;
     selectTaskAction: (task: TaskDef | null, openPanel?: boolean) => void;

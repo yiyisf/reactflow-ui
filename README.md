@@ -6,11 +6,13 @@
 
 ## ✨ 特性
 
-- **可视化建模**: 支持 DAG 工作流的拖拽式设计。
-- **智能布局**: 支持复杂图表的自动布局 (TB/LR)，包括针对超大流程优化的“蛇形布局”。
+- **从零创建**: 无需预先提供 JSON，通过空状态引导面板即可新建空白工作流或 AI 一键生成。
+- **可视化建模**: 支持 DAG 工作流的拖拽式设计，连接线默认使用清晰的折线样式。
+- **智能布局**: 支持复杂图表的自动布局 (TB/LR)，包括针对超大流程优化的"蛇形布局"。
 - **运行态监控**: 实时可视化执行状态，支持路径高亮和任务详情查看。
 - **强大的搜索**: 毫秒级任务搜索与高亮定位。
-- **AI 灵感辅助 (AI Copilot)**: 
+- **AI 灵感辅助 (AI Copilot)**:
+  - **从零生成**: 空画布下直接通过自然语言描述生成完整工作流。
   - **对话建模**: 通过自然语言描述直接生成 Conductor 流程草图。
   - **智能提示**: 在属性面板中基于上下文自动推荐参数配置 (JSONPath)。
 - **企业级能力**:
@@ -18,6 +20,7 @@
   - 深色/浅色主题支持
   - 只读模式 / 编辑模式切换
   - 撤销/重做 & 智能剪贴板
+  - 命令式 API (ref) 支持程序化创建、保存、导出
 
 ## 📦 安装
 
@@ -30,18 +33,30 @@ npm install reactflow-ui
 ### 库模式 (集成到 React 应用)
 
 ```tsx
-import { WorkflowIDE } from 'reactflow-ui';
+import { useRef } from 'react';
+import { WorkflowIDE, WorkflowIDERef } from 'reactflow-ui';
 import 'reactflow-ui/style.css';
 
 function App() {
+  const ideRef = useRef<WorkflowIDERef>(null);
+
   return (
-    <WorkflowIDE 
-      theme="dark"
-      onSave={(workflow) => console.log('保存:', workflow)}
-    />
+    <div style={{ height: '100vh' }}>
+      {/* 宿主应用可通过 ref 程序化新建工作流 */}
+      <button onClick={() => ideRef.current?.createBlankWorkflow('my_flow')}>新建</button>
+
+      <WorkflowIDE
+        ref={ideRef}
+        theme="dark"
+        onSave={(workflow) => console.log('保存:', workflow)}
+        onRequestImport={() => { /* 打开文件选择器 */ }}
+      />
+    </div>
   );
 }
 ```
+
+不传 `workflowDef` 时，画布会显示引导面板，支持空白创建、AI 生成或导入 JSON。
 
 详细集成步骤和 API 参考，请查阅 **[集成指南](./INTEGRATION.md)**。
 

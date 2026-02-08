@@ -169,6 +169,28 @@ function DemoApp() {
 
             <ThemeControls />
 
+            <button
+              className="mode-btn"
+              onClick={() => {
+                setWorkflowJson(null);
+                setCurrentDef(null);
+                ideRef.current?.createBlankWorkflow();
+              }}
+              title="新建空白工作流"
+              style={{
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-primary)',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
+                fontSize: '13px',
+                fontWeight: 500
+              }}
+            >
+              📄 新建
+            </button>
+
             <select className="sample-select" onChange={(e) => loadSampleWorkflow(e.target.value)}>
               <option value="">选择示例...</option>
               <option value="simple-workflow">简单流程</option>
@@ -270,12 +292,6 @@ function DemoApp() {
       <div className="app-content" style={{ flex: 1, position: 'relative' }}>
         {error && <div className="error-message">⚠️ {error}</div>}
 
-        {!workflowJson && !error && !currentDef && (
-          <div className="welcome-message">
-            <h2>请选择示例或上传工作流以开始</h2>
-          </div>
-        )}
-
         <WorkflowIDE
           ref={ideRef}
           workflowDef={workflowJson}
@@ -287,6 +303,13 @@ function DemoApp() {
           aiConfig={aiConfig}
           onSave={handleSave}
           onWorkflowChange={handleWorkflowChange}
+          onRequestImport={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => handleFileUpload(e as any);
+            input.click();
+          }}
         />
       </div>
     </div>

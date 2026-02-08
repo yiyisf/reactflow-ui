@@ -117,6 +117,14 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
             target: 'end',
             animated: true
         });
+    } else {
+        edges.push({
+            id: 'e-start-end',
+            source: 'start',
+            target: 'end',
+            type: 'addableEdge',
+            animated: true
+        });
     }
 
     return { nodes, edges, taskMap };

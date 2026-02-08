@@ -191,16 +191,17 @@ const useWorkflowStore = create<WorkflowStore>()(
                 },
 
                 onNodesChange: (changes: NodeChange[]) => {
-                    const newNodes = applyNodeChanges(changes, get().nodes);
-                    // 仅当节点真的发生变化时才更新，减少噪音
-                    if (JSON.stringify(newNodes) !== JSON.stringify(get().nodes)) {
+                    const currentNodes = get().nodes;
+                    const newNodes = applyNodeChanges(changes, currentNodes);
+                    if (newNodes !== currentNodes) {
                         set({ nodes: newNodes });
                     }
                 },
 
                 onEdgesChange: (changes: EdgeChange[]) => {
-                    const newEdges = applyEdgeChanges(changes, get().edges);
-                    if (JSON.stringify(newEdges) !== JSON.stringify(get().edges)) {
+                    const currentEdges = get().edges;
+                    const newEdges = applyEdgeChanges(changes, currentEdges);
+                    if (newEdges !== currentEdges) {
                         set({ edges: newEdges });
                     }
                 },

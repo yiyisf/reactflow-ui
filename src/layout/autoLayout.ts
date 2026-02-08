@@ -79,6 +79,9 @@ interface AutoLayoutOptions {
     direction?: LayoutDirection;
     mode?: EditorMode;
     enableSnakeLayout?: boolean;
+    snakeColumns?: number;          // 每行/列节点数，默认 5
+    snakeMinChainLength?: number;   // 最小链长度触发蛇形，默认 8
+    snakeMinNodeCount?: number;     // 最小节点总数触发蛇形，默认 10
 }
 
 /**
@@ -88,10 +91,13 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
     const chains: string[][] = [];
     if (nodes.length < minLength) return chains;
 
+    // O(1) 节点查找表
+    const nodeMap = new Map<string, WorkflowNode>();
     const outDegree: Record<string, string[]> = {};
     const inDegree: Record<string, string[]> = {};
 
     nodes.forEach(n => {
+        nodeMap.set(n.id, n);
         outDegree[n.id] = [];
         inDegree[n.id] = [];
     });
@@ -103,8 +109,9 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
 
     const visited = new Set<string>();
     const isSimpleType = (n: WorkflowNode) =>
-        ['simple', 'http', 'kafka', 'json_jq', 'set_variable', 'subWorkflowNode', 'task'].includes(n.type || '') ||
-        n.data.taskType === 'SIMPLE' || n.data.taskType === 'HTTP' || n.data.taskType === 'SUB_WORKFLOW';
+        n.id !== 'start' && n.id !== 'end' &&
+        (['simple', 'http', 'kafka', 'json_jq', 'set_variable', 'subWorkflowNode', 'task'].includes(n.type || '') ||
+        n.data.taskType === 'SIMPLE' || n.data.taskType === 'HTTP' || n.data.taskType === 'SUB_WORKFLOW');
 
     const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y);
 
@@ -118,7 +125,7 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
 
         while (nextIds && nextIds.length === 1) {
             const nextId = nextIds[0];
-            const nextNode = nodes.find(n => n.id === nextId);
+            const nextNode = nodeMap.get(nextId);
 
             if (!nextNode || visited.has(nextId) || !isSimpleType(nextNode)) break;
             if (inDegree[nextId].length !== 1) break;
@@ -139,16 +146,23 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
 /**
  * 计算蛇形块的尺寸
  */
-function getSnakeBlockDimensions(chain: string[], nodes: WorkflowNode[], direction: LayoutDirection, nodeSep: number, rankSep: number): { width: number, height: number, gridKW: number, gridKH: number, cols: number } {
-    const COLUMNS = 5;
-    const nodeMap = nodes.reduce((acc, n) => ({ ...acc, [n.id]: n }), {} as Record<string, WorkflowNode>);
+function getSnakeBlockDimensions(
+    chain: string[],
+    nodes: WorkflowNode[],
+    direction: LayoutDirection,
+    nodeSep: number,
+    rankSep: number,
+    columns: number = 5,
+    mode: EditorMode = 'view'
+): { width: number, height: number, gridKW: number, gridKH: number, cols: number } {
+    const sampleNode = nodes.find(n => n.id === chain[0]);
+    const { width: nW, height: nH } = getNodeDimensions(sampleNode || nodes[0], direction);
 
-    // 假设链中所有节点尺寸相近，取第一个
-    const sampleNode = nodeMap[chain[0]];
-    const { width: nW, height: nH } = getNodeDimensions(sampleNode, direction);
-
-    const snakeNodeSep = Math.min(nodeSep, 60);
-    const snakeRankSep = Math.min(rankSep, 80);
+    // 间距根据链长度和模式动态调整
+    const chainFactor = Math.max(0.7, 1 - (chain.length - 10) / 80);
+    const modeFactor = mode === 'edit' ? 1.15 : 1.0;
+    const snakeNodeSep = Math.min(nodeSep, Math.round(60 * chainFactor * modeFactor));
+    const snakeRankSep = Math.min(rankSep, Math.round(80 * chainFactor * modeFactor));
 
     const gridKW = nW + snakeNodeSep;
     const gridKH = nH + snakeRankSep;
@@ -157,24 +171,21 @@ function getSnakeBlockDimensions(chain: string[], nodes: WorkflowNode[], directi
     let height = 0;
 
     if (direction === 'TB') {
-        // TB模式（行优先）：width = Cols * KW, height = Rows * KH
-        const rows = Math.ceil(chain.length / COLUMNS);
-        // 实际宽度取决于是不是满行，但为了简单，给满宽
-        width = COLUMNS * gridKW - snakeNodeSep;
+        const rows = Math.ceil(chain.length / columns);
+        width = columns * gridKW - snakeNodeSep;
         height = rows * gridKH - snakeRankSep;
     } else {
-        // LR模式（列优先）：width = Cols * KW, height = Rows * KH
-        // 这里的 "Col" 实际上是布局的列数（蛇形的“层”）
-        const visualCols = Math.ceil(chain.length / COLUMNS);
-        width = visualCols * gridKW - snakeNodeSep;
-        height = COLUMNS * gridKH - snakeRankSep;
+        // LR模式：layers 表示蛇形的垂直层数
+        const layers = Math.ceil(chain.length / columns);
+        width = layers * gridKW - snakeNodeSep;
+        height = columns * gridKH - snakeRankSep;
     }
 
-    // Dagre 需要一点 extra padding
+    // Dagre 需要 extra padding
     width += 40;
     height += 40;
 
-    return { width, height, gridKW, gridKH, cols: COLUMNS };
+    return { width, height, gridKW, gridKH, cols: columns };
 }
 
 /**
@@ -184,7 +195,10 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
     const {
         direction = 'TB',
         mode = 'view',
-        enableSnakeLayout = true
+        enableSnakeLayout = true,
+        snakeColumns = 5,
+        snakeMinChainLength = 8,
+        snakeMinNodeCount = 10
     } = options;
 
     const nodeCount = nodes.length;
@@ -207,7 +221,7 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
     }
 
     // 2. 检测蛇形链
-    const snakeChains = (enableSnakeLayout && nodeCount > 10) ? detectLinearChains(nodes, edges, 8) : [];
+    const snakeChains = (enableSnakeLayout && nodeCount > snakeMinNodeCount) ? detectLinearChains(nodes, edges, snakeMinChainLength) : [];
 
     // 建立映射：节点ID -> 链索引
     const nodeToChainIndex: Record<string, number> = {};
@@ -244,7 +258,7 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
             if (!addedChainIndices.has(chainIdx)) {
                 // 第一次遇到该链，添加虚拟节点
                 addedChainIndices.add(chainIdx);
-                const info = getSnakeBlockDimensions(snakeChains[chainIdx], nodes, direction, nodeSep, rankSep);
+                const info = getSnakeBlockDimensions(snakeChains[chainIdx], nodes, direction, nodeSep, rankSep, snakeColumns, mode);
                 chainLayoutInfos[chainIdx] = info;
 
                 dagreGraph.setNode(`__CHAIN_${chainIdx}`, { width: info.width, height: info.height });
@@ -278,7 +292,10 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
 
     // 5. 还原节点坐标
     // 先建立 ID->Node 映射方便查找
-    const originalNodeMap = nodes.reduce((acc, n) => ({ ...acc, [n.id]: { ...n } }), {} as Record<string, WorkflowNode>);
+    const originalNodeMap: Record<string, WorkflowNode> = {};
+    for (const n of nodes) {
+        originalNodeMap[n.id] = { ...n };
+    }
 
     const finalNodes: WorkflowNode[] = [];
     const snakeNodeIds = new Set<string>();
@@ -332,23 +349,35 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
                 const row = Math.floor(index / COLUMNS);
                 const col = index % COLUMNS;
                 const isEvenRow = row % 2 === 0;
+                const totalRows = Math.ceil(chain.length / COLUMNS);
+                const isLastRow = row === totalRows - 1;
+                const lastRowCount = chain.length % COLUMNS || COLUMNS;
 
-                const xOffset = isEvenRow ? (col * gridKW) : ((COLUMNS - 1 - col) * gridKW);
+                // 末行居中偏移
+                const centerOffset = isLastRow ? ((COLUMNS - lastRowCount) * gridKW) / 2 : 0;
+
+                let xOffset: number;
+                if (isEvenRow) {
+                    xOffset = col * gridKW + centerOffset;
+                } else {
+                    xOffset = (COLUMNS - 1 - col) * gridKW - centerOffset;
+                }
                 const yOffset = row * gridKH;
 
                 x = startX + xOffset;
                 y = startY + yOffset;
 
                 // Handles
+                const rowNodeCount = isLastRow ? lastRowCount : COLUMNS;
                 if (isEvenRow) {
                     tgtPos = Position.Left;
                     srcPos = Position.Right;
-                    if (col === COLUMNS - 1 && index !== chain.length - 1) srcPos = Position.Bottom;
+                    if (col === rowNodeCount - 1 && index !== chain.length - 1) srcPos = Position.Bottom;
                     if (col === 0 && index !== 0) tgtPos = Position.Top;
                 } else {
                     tgtPos = Position.Right;
                     srcPos = Position.Left;
-                    if (col === COLUMNS - 1 && index !== chain.length - 1) srcPos = Position.Bottom;
+                    if (col === rowNodeCount - 1 && index !== chain.length - 1) srcPos = Position.Bottom;
                     if (col === 0 && index !== 0) tgtPos = Position.Top;
                 }
                 if (index === 0) tgtPos = Position.Top; // Entry
@@ -356,27 +385,38 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
 
             } else {
                 // LR模式：垂直贪吃蛇 (S型向右)
-                // 这里的 Col 其实是 Layout 上的 Grid Col (Visual Columns)
-                const col = Math.floor(index / COLUMNS);
+                const layer = Math.floor(index / COLUMNS);
                 const row = index % COLUMNS;
-                const isEvenCol = col % 2 === 0;
+                const isEvenLayer = layer % 2 === 0;
+                const totalLayers = Math.ceil(chain.length / COLUMNS);
+                const isLastLayer = layer === totalLayers - 1;
+                const lastLayerCount = chain.length % COLUMNS || COLUMNS;
 
-                const xOffset = col * gridKW;
-                const yOffset = isEvenCol ? (row * gridKH) : ((COLUMNS - 1 - row) * gridKH);
+                // 末层居中偏移
+                const centerOffset = isLastLayer ? ((COLUMNS - lastLayerCount) * gridKH) / 2 : 0;
+
+                const xOffset = layer * gridKW;
+                let yOffset: number;
+                if (isEvenLayer) {
+                    yOffset = row * gridKH + centerOffset;
+                } else {
+                    yOffset = (COLUMNS - 1 - row) * gridKH - centerOffset;
+                }
 
                 x = startX + xOffset;
                 y = startY + yOffset;
 
                 // Handles
-                if (isEvenCol) {
+                const layerNodeCount = isLastLayer ? lastLayerCount : COLUMNS;
+                if (isEvenLayer) {
                     tgtPos = Position.Top;
                     srcPos = Position.Bottom;
-                    if (row === COLUMNS - 1 && index !== chain.length - 1) srcPos = Position.Right;
+                    if (row === layerNodeCount - 1 && index !== chain.length - 1) srcPos = Position.Right;
                     if (row === 0 && index !== 0) tgtPos = Position.Left;
                 } else {
                     tgtPos = Position.Bottom;
                     srcPos = Position.Top;
-                    if (row === COLUMNS - 1 && index !== chain.length - 1) srcPos = Position.Right;
+                    if (row === layerNodeCount - 1 && index !== chain.length - 1) srcPos = Position.Right;
                     if (row === 0 && index !== 0) tgtPos = Position.Left;
                 }
                 if (index === 0) tgtPos = Position.Left; // Entry

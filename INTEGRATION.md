@@ -21,7 +21,7 @@ yarn add reactflow-ui reactflow react react-dom
 ```tsx
 import React, { useState } from 'react';
 import { WorkflowIDE, WorkflowDef } from 'reactflow-ui';
-import 'reactflow-ui/dist/reactflow-ui.css'; // 务必引入样式文件
+import 'reactflow-ui/style.css'; // 务必引入样式文件
 
 const MyWorkflowApp = () => {
   const [workflow, setWorkflow] = useState<WorkflowDef>();
@@ -100,7 +100,12 @@ const executionData = await fetch('/api/workflow/execution/123').then(res => res
    localStorage.setItem('AI_MODEL', 'gpt-4o'); // 可选，默认为 gpt-4o
    ```
 
-2. **Props 注入 (即将支持)**: 计划在下个版本支持通过 `aiConfig` 属性直接传入配置。
+2. **Props 注入**:
+   ```tsx
+   <WorkflowIDE
+     aiConfig={{ apiKey: 'your-key', baseUrl: 'https://api.your-proxy.com/v1', model: 'gpt-4o' }}
+   />
+   ```
 
 ### 核心能力
 

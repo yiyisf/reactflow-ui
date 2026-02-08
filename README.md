@@ -31,7 +31,7 @@ npm install reactflow-ui
 
 ```tsx
 import { WorkflowIDE } from 'reactflow-ui';
-import 'reactflow-ui/dist/reactflow-ui.css';
+import 'reactflow-ui/style.css';
 
 function App() {
   return (

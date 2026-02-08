@@ -6,9 +6,10 @@ import { useStore } from 'zustand';
 interface ActionBarProps {
     onShowHealthCheck: () => void;
     showHealthCheck: boolean;
+    onShowSettings?: () => void;
 }
 
-const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthCheck }) => {
+const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthCheck, onShowSettings }) => {
     const { mode, validationResults } = useWorkflowStore();
 
     // Safely retrieve undo/redo from temporal with a fallback or standard usage
@@ -47,6 +48,12 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         onClick={onShowHealthCheck}
                         active={showHealthCheck}
                         variant={hasErrors ? 'danger' : 'secondary'}
+                    />
+                    <ControlButton
+                        icon="⚙️"
+                        label="配置"
+                        title="工作流全局配置"
+                        onClick={() => onShowSettings?.()}
                     />
                 </>
             )}

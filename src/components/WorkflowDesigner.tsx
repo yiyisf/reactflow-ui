@@ -20,6 +20,7 @@ import HealthCheckPanel from './HealthCheckPanel';
 import AddableEdge from './edges/AddableEdge';
 import ControlHub from './Controls/ControlHub';
 import ActionBar from './Controls/ActionBar';
+import WorkflowSettingsPanel from './WorkflowSettingsPanel';
 import ConfirmDialog from './ConfirmDialog';
 import Toast from './Toast';
 import { useShortcuts } from '../hooks/useShortcuts';
@@ -78,6 +79,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     const [activeEdgeData, setActiveEdgeData] = useState<any>(null);
 
     const [showHealthCheck, setShowHealthCheck] = React.useState(false);
+    const [showWorkflowSettings, setShowWorkflowSettings] = useState(false);
 
     // ConfirmDialog 和 Toast
     const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
@@ -304,6 +306,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     <ActionBar
                         onShowHealthCheck={() => setShowHealthCheck(!showHealthCheck)}
                         showHealthCheck={showHealthCheck}
+                        onShowSettings={() => setShowWorkflowSettings(true)}
                     />
                 </div>
             </ReactFlow>
@@ -315,6 +318,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     onCancel={() => setShowSelector(false)}
                 />
             )}
+
+            <WorkflowSettingsPanel
+                isOpen={showWorkflowSettings}
+                onClose={() => setShowWorkflowSettings(false)}
+            />
 
             {confirmState && (
                 <ConfirmDialog

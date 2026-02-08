@@ -8,101 +8,272 @@ interface WorkflowSettingsPanelProps {
     theme?: 'dark' | 'light';
 }
 
+type TabId = 'basic' | 'timeout' | 'params' | 'advanced';
+
+const TABS: { id: TabId; label: string }[] = [
+    { id: 'basic', label: '基本信息' },
+    { id: 'timeout', label: '超时与容错' },
+    { id: 'params', label: '参数配置' },
+    { id: 'advanced', label: '高级设置' },
+];
+
 /**
- * 工作流设置面板 - 编辑名称、版本、描述和全局参数
+ * 工作流设置面板 - Tab 分组形式，编辑工作流级全部配置字段
  */
 const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) => {
-    const { workflowDef, updateWorkflowProperties } = useWorkflowStore();
-    const [localDef, setLocalDef] = useState<WorkflowDef | (WorkflowDef & Record<string, any>) | null>(workflowDef);
+    const { workflowDef, updateWorkflowProperties, mode } = useWorkflowStore();
+    const [localDef, setLocalDef] = useState<(WorkflowDef & Record<string, any>) | null>(workflowDef as any);
+    const [activeTab, setActiveTab] = useState<TabId>('basic');
+
+    const isReadOnly = mode !== 'edit';
 
     useEffect(() => {
         if (workflowDef) {
-            setLocalDef(workflowDef);
+            setLocalDef(workflowDef as any);
         }
     }, [workflowDef, isOpen]);
 
     if (!isOpen || !localDef) return null;
 
-    const bgColor = 'var(--glass-surface)';
     const textColor = 'var(--text-primary)';
     const borderColor = 'var(--glass-border)';
     const inputBg = 'var(--bg-tertiary)';
     const secondaryTextColor = 'var(--text-secondary)';
 
     const handleChange = (field: string, value: any) => {
-        if (!localDef) return;
+        if (!localDef || isReadOnly) return;
         const updated = { ...localDef, [field]: value };
         setLocalDef(updated);
         updateWorkflowProperties({ [field]: value });
     };
 
+    const handleNestedChange = (parent: string, field: string, value: any) => {
+        if (!localDef || isReadOnly) return;
+        const current = (localDef as any)[parent] || {};
+        const updated = { ...current, [field]: value };
+        setLocalDef(prev => ({ ...prev!, [parent]: updated }));
+        updateWorkflowProperties({ [parent]: updated });
+    };
+
     const handleJsonChange = (field: string, value: string) => {
-        if (!localDef) return;
+        if (!localDef || isReadOnly) return;
         try {
             const parsed = JSON.parse(value);
             const updated = { ...localDef, [field]: parsed };
             setLocalDef(updated);
             updateWorkflowProperties({ [field]: parsed });
-        } catch (e) {
-            // Keep local state as string if invalid JSON, but don't sync to store
+        } catch {
             setLocalDef(prev => ({ ...prev!, [`_${field}_str`]: value }));
         }
     };
 
-    const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text') => (
+    const inputStyle: React.CSSProperties = {
+        width: '100%',
+        padding: '10px 14px',
+        borderRadius: '8px',
+        border: `1px solid ${borderColor}`,
+        background: inputBg,
+        color: textColor,
+        fontSize: '14px',
+        outline: 'none',
+        boxSizing: 'border-box',
+    };
+
+    const labelStyle: React.CSSProperties = {
+        display: 'block',
+        fontSize: '11px',
+        color: secondaryTextColor,
+        marginBottom: '8px',
+        fontWeight: 'bold',
+    };
+
+    const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text', opts?: { readOnly?: boolean; placeholder?: string }) => (
         <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '8px', fontWeight: 'bold' }}>
-                {label.toUpperCase()}
-            </label>
+            <label style={labelStyle}>{label.toUpperCase()}</label>
             <input
                 type={type}
-                value={(localDef as any)?.[field] || ''}
-                onChange={(e) => handleChange(field, type === 'number' ? parseInt(e.target.value) : e.target.value)}
-                style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: `1px solid ${borderColor}`,
-                    background: inputBg,
-                    color: textColor,
-                    fontSize: '14px',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                }}
+                value={(localDef as any)?.[field] ?? ''}
+                onChange={(e) => handleChange(field, type === 'number' ? (e.target.value === '' ? 0 : parseInt(e.target.value)) : e.target.value)}
+                disabled={isReadOnly || opts?.readOnly}
+                placeholder={opts?.placeholder}
+                style={{ ...inputStyle, opacity: (isReadOnly || opts?.readOnly) ? 0.6 : 1 }}
             />
         </div>
     );
 
-    const renderTextArea = (label: string, field: string, isJson = false) => {
+    const renderTextArea = (label: string, field: string, isJson = false, rows = 6) => {
         const value = (localDef as any)?.[`_${field}_str`] !== undefined
             ? (localDef as any)[`_${field}_str`]
             : (typeof (localDef as any)?.[field] === 'object' ? JSON.stringify((localDef as any)[field], null, 2) : (localDef as any)?.[field]);
 
         return (
             <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '8px', fontWeight: 'bold' }}>
-                    {label.toUpperCase()} {isJson && '(JSON)'}
-                </label>
+                <label style={labelStyle}>{label.toUpperCase()} {isJson && '(JSON)'}</label>
                 <textarea
                     value={value || ''}
                     onChange={(e) => isJson ? handleJsonChange(field, e.target.value) : handleChange(field, e.target.value)}
-                    rows={field === 'description' ? 3 : 8}
+                    rows={rows}
+                    disabled={isReadOnly}
                     style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: `1px solid ${borderColor}`,
-                        background: inputBg,
-                        color: textColor,
+                        ...inputStyle,
                         fontSize: '13px',
                         fontFamily: isJson ? 'monospace' : 'inherit',
-                        outline: 'none',
                         resize: 'vertical',
-                        boxSizing: 'border-box'
+                        opacity: isReadOnly ? 0.6 : 1,
                     }}
                 />
             </div>
         );
+    };
+
+    const renderSelect = (label: string, field: string, options: { value: string; label: string }[]) => (
+        <div style={{ marginBottom: '20px' }}>
+            <label style={labelStyle}>{label.toUpperCase()}</label>
+            <select
+                value={(localDef as any)?.[field] ?? options[0]?.value}
+                onChange={(e) => handleChange(field, e.target.value)}
+                disabled={isReadOnly}
+                style={{ ...inputStyle, opacity: isReadOnly ? 0.6 : 1, cursor: isReadOnly ? 'not-allowed' : 'pointer' }}
+            >
+                {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+        </div>
+    );
+
+    const renderToggle = (label: string, field: string) => {
+        const checked = !!(localDef as any)?.[field];
+        return (
+            <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ fontSize: '13px', color: textColor }}>{label}</label>
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={checked}
+                    onClick={() => !isReadOnly && handleChange(field, !checked)}
+                    disabled={isReadOnly}
+                    style={{
+                        width: '44px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        background: checked ? 'var(--color-accent)' : 'var(--border-primary)',
+                        position: 'relative',
+                        cursor: isReadOnly ? 'not-allowed' : 'pointer',
+                        transition: 'background 0.2s',
+                        opacity: isReadOnly ? 0.6 : 1,
+                        flexShrink: 0,
+                    }}
+                >
+                    <span style={{
+                        position: 'absolute',
+                        top: '2px',
+                        left: checked ? '22px' : '2px',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: '#fff',
+                        transition: 'left 0.2s',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }} />
+                </button>
+            </div>
+        );
+    };
+
+    const renderBasicTab = () => (
+        <>
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px' }}>
+                {renderInput('工作流名称', 'name')}
+                {renderInput('版本号', 'version', 'number')}
+            </div>
+            {renderTextArea('描述信息', 'description', false, 3)}
+            {renderInput('负责人邮箱', 'ownerEmail', 'text', { placeholder: 'owner@example.com' })}
+            {renderInput('Schema 版本', 'schemaVersion', 'number', { readOnly: true })}
+        </>
+    );
+
+    const renderTimeoutTab = () => (
+        <>
+            {renderSelect('超时策略', 'timeoutPolicy', [
+                { value: 'ALERT_ONLY', label: 'ALERT_ONLY — 仅告警' },
+                { value: 'TIME_OUT_WF', label: 'TIME_OUT_WF — 超时终止' },
+            ])}
+            <div>
+                {renderInput('超时秒数', 'timeoutSeconds', 'number', { placeholder: '0 表示不超时' })}
+                {(localDef as any)?.timeoutPolicy === 'ALERT_ONLY' && (
+                    <p style={{ fontSize: '11px', color: secondaryTextColor, marginTop: '-12px', marginBottom: '20px' }}>
+                        当前策略为 ALERT_ONLY，超时仅触发告警，不会终止工作流。
+                    </p>
+                )}
+            </div>
+            {renderInput('失败补偿工作流', 'failureWorkflow', 'text', { placeholder: '输入补偿工作流名称' })}
+            {renderToggle('允许重启 (restartable)', 'restartable')}
+        </>
+    );
+
+    const renderParamsTab = () => (
+        <>
+            {renderTextArea('输入参数声明 (inputParameters)', 'inputParameters', true)}
+            {renderTextArea('输出参数映射 (outputParameters)', 'outputParameters', true)}
+            {renderTextArea('默认输入模板 (inputTemplate)', 'inputTemplate', true)}
+            {renderTextArea('工作流级变量 (variables)', 'variables', true)}
+        </>
+    );
+
+    const renderAdvancedTab = () => (
+        <>
+            {renderToggle('启用状态监听 (workflowStatusListenerEnabled)', 'workflowStatusListenerEnabled')}
+            {(localDef as any)?.workflowStatusListenerEnabled && (
+                renderInput('状态事件目标 (Listener Sink)', 'workflowStatusListenerSink', 'text', { placeholder: 'conductor:workflow_status_event' })
+            )}
+
+            <div style={{ borderTop: `1px solid ${borderColor}`, marginTop: '8px', paddingTop: '20px' }}>
+                {renderToggle('强制 Schema 校验 (enforceSchema)', 'enforceSchema')}
+                {(localDef as any)?.enforceSchema && (
+                    <>
+                        {renderTextArea('输入 Schema (inputSchema)', 'inputSchema', true, 4)}
+                        {renderTextArea('输出 Schema (outputSchema)', 'outputSchema', true, 4)}
+                    </>
+                )}
+            </div>
+
+            <div style={{ borderTop: `1px solid ${borderColor}`, marginTop: '8px', paddingTop: '20px' }}>
+                <label style={{ ...labelStyle, marginBottom: '16px' }}>并发限流 (RATE LIMIT)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+                    <div>
+                        <label style={labelStyle}>RATE LIMIT KEY</label>
+                        <input
+                            type="text"
+                            value={(localDef as any)?.rateLimitConfig?.rateLimitKey ?? ''}
+                            onChange={(e) => handleNestedChange('rateLimitConfig', 'rateLimitKey', e.target.value)}
+                            disabled={isReadOnly}
+                            placeholder="限流键"
+                            style={{ ...inputStyle, opacity: isReadOnly ? 0.6 : 1 }}
+                        />
+                    </div>
+                    <div>
+                        <label style={labelStyle}>并发上限</label>
+                        <input
+                            type="number"
+                            value={(localDef as any)?.rateLimitConfig?.concurrentExecLimit ?? ''}
+                            onChange={(e) => handleNestedChange('rateLimitConfig', 'concurrentExecLimit', e.target.value === '' ? 0 : parseInt(e.target.value))}
+                            disabled={isReadOnly}
+                            placeholder="0"
+                            style={{ ...inputStyle, opacity: isReadOnly ? 0.6 : 1 }}
+                        />
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'basic': return renderBasicTab();
+            case 'timeout': return renderTimeoutTab();
+            case 'params': return renderParamsTab();
+            case 'advanced': return renderAdvancedTab();
+        }
     };
 
     return (
@@ -126,9 +297,9 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
             `}</style>
 
             <div style={{
-                width: '600px',
+                width: '680px',
                 maxHeight: '85vh',
-                background: bgColor,
+                background: 'var(--glass-surface)',
                 borderRadius: '20px',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
                 display: 'flex',
@@ -140,45 +311,50 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
             }}>
                 {/* Header */}
                 <div style={{
-                    padding: '24px 32px',
-                    borderBottom: `1px solid ${borderColor}`,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    background: 'var(--bg-highlight)'
+                    padding: '24px 32px 0 32px',
+                    background: 'var(--bg-highlight)',
                 }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '20px', color: textColor }}>工作流全局配置</h2>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: secondaryTextColor }}>定义名称、版本及全局输入输出参数</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '20px', color: textColor }}>工作流全局配置</h2>
+                            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: secondaryTextColor }}>
+                                {isReadOnly ? '当前为只读模式' : '配置工作流级属性，所有更改将实时保存'}
+                            </p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            style={{ background: 'none', border: 'none', color: textColor, fontSize: '24px', cursor: 'pointer', opacity: 0.6 }}
+                        >✕</button>
                     </div>
-                    <button
-                        onClick={onClose}
-                        style={{ background: 'none', border: 'none', color: textColor, fontSize: '24px', cursor: 'pointer', opacity: 0.6 }}
-                    >✕</button>
+
+                    {/* Tab Bar */}
+                    <div style={{ display: 'flex', gap: '0', borderBottom: `1px solid ${borderColor}` }}>
+                        {TABS.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                style={{
+                                    padding: '10px 20px',
+                                    fontSize: '13px',
+                                    fontWeight: activeTab === tab.id ? 600 : 400,
+                                    color: activeTab === tab.id ? 'var(--color-accent)' : secondaryTextColor,
+                                    background: 'none',
+                                    border: 'none',
+                                    borderBottom: activeTab === tab.id ? '2px solid var(--color-accent)' : '2px solid transparent',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    marginBottom: '-1px',
+                                }}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Content */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '20px' }}>
-                        {renderInput('工作流名称', 'name')}
-                        {renderInput('版本号', 'version', 'number')}
-                    </div>
-
-                    {renderTextArea('描述信息', 'description')}
-
-                    <div style={{ borderTop: `1px solid ${borderColor}`, marginTop: '12px', paddingTop: '24px' }}>
-                        {renderTextArea('输入参数定义 (Input Definitions)', 'inputParameters', true)}
-                        {renderTextArea('输出参数映射 (Output Mapping)', 'outputParameters', true)}
-                    </div>
-
-                    <div style={{ marginTop: '12px', padding: '16px', background: 'var(--color-accent-bg)', borderRadius: '12px', border: '1px solid var(--color-accent-bg)' }}>
-                        <div style={{ fontSize: '12px', color: 'var(--color-accent)', fontWeight: 'bold', marginBottom: '8px' }}>💡 提示</div>
-                        <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '11px', color: secondaryTextColor, lineHeight: '1.6' }}>
-                            <li>工作流名称建议使用英文和下划线，例如：<code>order_fulfillment_flow</code></li>
-                            <li>修改名称或版本不会影响已部署的工作流实例。</li>
-                            <li>所有更改将实时保存。</li>
-                        </ul>
-                    </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+                    {renderTabContent()}
                 </div>
 
                 {/* Footer */}

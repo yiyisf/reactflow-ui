@@ -116,9 +116,26 @@ export interface WorkflowDef {
     restartable?: boolean;
     workflowStatusListenerEnabled?: boolean;
     ownerEmail?: string;
-    timeoutPolicy?: 'TERMINATE' | 'TIME_OUT_WF';
+    timeoutPolicy?: 'TIME_OUT_WF' | 'ALERT_ONLY';
     timeoutSeconds?: number;
     variables?: Record<string, any>;
+    /** 失败时触发的补偿工作流名称 */
+    failureWorkflow?: string;
+    /** 默认输入模板 */
+    inputTemplate?: Record<string, any>;
+    /** 状态事件发送目标 */
+    workflowStatusListenerSink?: string;
+    /** 并发限流配置 */
+    rateLimitConfig?: {
+        rateLimitKey?: string;
+        concurrentExecLimit?: number;
+    };
+    /** 输入 Schema 定义 */
+    inputSchema?: { name?: string; type?: string };
+    /** 输出 Schema 定义 */
+    outputSchema?: { name?: string; type?: string };
+    /** 是否强制 Schema 校验 */
+    enforceSchema?: boolean;
 }
 
 /**

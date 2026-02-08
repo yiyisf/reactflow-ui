@@ -4,18 +4,21 @@
   "type": "module",
   "main": "./dist/reactflow-ui.umd.js",
   "module": "./dist/reactflow-ui.es.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/reactflow-ui.es.js",
       "require": "./dist/reactflow-ui.umd.js"
-    }
+    },
+    "./style.css": "./dist/reactflow-ui.css"
   },
   "files": [
     "dist"
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "preview": "vite preview"
   },

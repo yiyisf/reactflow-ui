@@ -754,8 +754,7 @@ body {
 .detail-panel-container {
   height: 100%;
   border-left: 1px solid var(--glass-border);
-  background: var(--glass-bg-accent);
-  backdrop-filter: var(--glass-blur);
+  background: var(--bg-primary);
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
   overflow-y: auto;
   z-index: 100;

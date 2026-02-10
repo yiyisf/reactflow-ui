@@ -262,9 +262,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         <div
             className={`detail-panel-container ${panelClass}`}
             style={{
-                position: 'fixed',
+                position: 'absolute',
                 right: 0,
                 top: 0,
+                bottom: 0,
                 width: '450px',
                 zIndex: 1200,
             }}

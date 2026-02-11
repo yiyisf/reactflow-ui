@@ -13,7 +13,8 @@ import { WorkflowNode, LayoutDirection, ParserResult } from '../types/workflow';
  * @param {LayoutDirection} direction - 布局方向 'TB' | 'LR'
  * @returns {Object} { nodes, edges, taskMap } - React Flow 所需的数据结构
  */
-export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: LayoutDirection = 'TB') {
+export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: LayoutDirection = 'TB', options?: { hideEmptyBranches?: boolean }) {
+    const hideEmptyBranches = options?.hideEmptyBranches ?? false;
     if (!workflowDef || !workflowDef.tasks) {
         return { nodes: [] as WorkflowNode[], edges: [] as Edge[], taskMap: {} as Record<string, TaskDef> };
     }
@@ -56,7 +57,7 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
 
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
-        const result = parseTask(task, nodeIdCounter, taskMap, direction, tasks);
+        const result = parseTask(task, nodeIdCounter, taskMap, direction, tasks, hideEmptyBranches);
 
         nodes.push(...result.nodes);
         edges.push(...result.edges);
@@ -133,20 +134,20 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
 /**
  * 解析单个任务
  */
-function parseTask(task: TaskDef, startId: number, taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB', allTasks: TaskDef[] = []): ParserResult {
+function parseTask(task: TaskDef, startId: number, taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB', allTasks: TaskDef[] = [], hideEmptyBranches = false): ParserResult {
     const taskType = task.type || 'SIMPLE';
 
     switch (taskType) {
         case 'DECISION':
         case 'SWITCH':
-            return parseDecisionTask(task, startId, taskMap, direction);
+            return parseDecisionTask(task, startId, taskMap, direction, hideEmptyBranches);
 
         case 'FORK_JOIN':
         case 'FORK_JOIN_DYNAMIC':
             return parseForkJoinTask(task, startId, taskMap, direction);
 
         case 'JOIN':
-            return parseJoinTask(task, startId, taskMap, direction, allTasks);
+            return parseJoinTask(task, startId, taskMap, direction, allTasks, hideEmptyBranches);
 
         case 'DO_WHILE':
             return parseDoWhileTask(task, startId, taskMap, direction);
@@ -194,7 +195,7 @@ function parseSimpleTask(task: TaskDef, startId: number, _taskMap: Record<string
 /**
  * 解析 DECISION/SWITCH 任务（支持分支嵌套）
  */
-function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB'): ParserResult {
+function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB', hideEmptyBranches = false): ParserResult {
     const nodes: WorkflowNode[] = [];
     const edges: Edge[] = [];
     let nextId = startId;
@@ -294,17 +295,48 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
                 target: joinNodeId,
                 animated: true
             });
-        } else {
-            // 空分支：直接从决策节点连到合并节点
+        } else if (!hideEmptyBranches) {
+            // 编辑模式：创建占位节点，避免多个空分支边重叠
+            const placeholderId = `${task.taskReferenceName}_empty_${caseKey}`;
+            nodes.push({
+                id: placeholderId,
+                type: 'default',
+                data: {
+                    label: `${caseKey} (空)`,
+                    layoutDirection: direction,
+                    taskReferenceName: placeholderId,
+                    taskType: 'EMPTY_BRANCH',
+                },
+                position: { x: 0, y: 0 },
+                sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+                targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+                style: {
+                    background: 'transparent',
+                    border: '2px dashed var(--border-secondary, #64748b)',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '11px',
+                    color: 'var(--text-tertiary, #94a3b8)',
+                    minWidth: '80px',
+                    textAlign: 'center',
+                } as React.CSSProperties,
+            });
             edges.push({
-                id: `e-${task.taskReferenceName}-${joinNodeId}-${caseKey}`,
+                id: `e-${task.taskReferenceName}-${placeholderId}`,
                 source: task.taskReferenceName,
                 sourceHandle: sourceHandle || undefined,
-                target: joinNodeId,
+                target: placeholderId,
                 label: caseKey,
                 animated: true,
-                data: { mode: 'edit', branchCase: caseKey }, // 记录分支键名
-                style: { stroke: '#3b82f6', strokeDasharray: '5,5' }
+                data: { branchCase: caseKey },
+                style: { stroke: '#3b82f6', strokeDasharray: '5,5' },
+            });
+            edges.push({
+                id: `e-${placeholderId}-${joinNodeId}`,
+                source: placeholderId,
+                target: joinNodeId,
+                animated: true,
+                style: { strokeDasharray: '5,5' },
             });
         }
     });
@@ -335,16 +367,47 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
             target: joinNodeId,
             animated: true
         });
-    } else {
-        // 默认分支为空
+    } else if (!hideEmptyBranches) {
+        // 编辑模式：创建默认分支占位节点
+        const placeholderId = `${task.taskReferenceName}_empty_default`;
+        nodes.push({
+            id: placeholderId,
+            type: 'default',
+            data: {
+                label: 'default (空)',
+                layoutDirection: direction,
+                taskReferenceName: placeholderId,
+                taskType: 'EMPTY_BRANCH',
+            },
+            position: { x: 0, y: 0 },
+            sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+            targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+            style: {
+                background: 'transparent',
+                border: '2px dashed var(--border-secondary, #64748b)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '11px',
+                color: 'var(--text-tertiary, #94a3b8)',
+                minWidth: '80px',
+                textAlign: 'center',
+            } as React.CSSProperties,
+        });
         edges.push({
-            id: `e-${task.taskReferenceName}-${joinNodeId}-default`,
+            id: `e-${task.taskReferenceName}-${placeholderId}`,
             source: task.taskReferenceName,
-            target: joinNodeId,
+            target: placeholderId,
             label: 'default',
             animated: true,
-            data: { mode: 'edit', branchCase: 'default' }, // 记录 default
-            style: { stroke: '#f59e0b', strokeDasharray: '5,5' }
+            data: { branchCase: 'default' },
+            style: { stroke: '#f59e0b', strokeDasharray: '5,5' },
+        });
+        edges.push({
+            id: `e-${placeholderId}-${joinNodeId}`,
+            source: placeholderId,
+            target: joinNodeId,
+            animated: true,
+            style: { strokeDasharray: '5,5' },
         });
     }
 
@@ -506,7 +569,7 @@ function parseSubWorkflowTask(task: TaskDef, startId: number, _taskMap: Record<s
 /**
  * 解析 JOIN 任务
  */
-function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB', allTasks: TaskDef[] = []): ParserResult {
+function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB', allTasks: TaskDef[] = [], hideEmptyBranches = false): ParserResult {
     const node: WorkflowNode = {
         id: task.taskReferenceName,
         type: 'joinNode',
@@ -526,6 +589,7 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
         [task.taskReferenceName]: task
     };
 
+    const nodes: WorkflowNode[] = [];
     const edges: Edge[] = [];
     const joinOn = task.joinOn || [];
 
@@ -564,27 +628,62 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
                 }
             });
         } else if (prevTask.type === 'FORK_JOIN') {
-            // 对于静态 Fork，如果分支中有空分支（即 joinOn 没涵盖的部分），需要直接连过来
+            // 对于静态 Fork，如果分支中有空分支（即 joinOn 没涵盖的部分），需要处理
             const forkTasks = prevTask.forkTasks || [];
             forkTasks.forEach((branch, idx) => {
                 if (!branch || branch.length === 0) {
-                    edges.push({
-                        id: `e-${prevTask.taskReferenceName}-${task.taskReferenceName}-empty-${idx}`,
-                        source: prevTask.taskReferenceName,
-                        sourceHandle: `branch_${idx}`,
-                        target: task.taskReferenceName,
-                        label: `分支 ${idx + 1}`,
-                        animated: true,
-                        style: { stroke: '#10b981', strokeDasharray: '5,5' },
-                        data: { mode: 'edit', forkIndex: idx }
-                    });
+                    if (!hideEmptyBranches) {
+                        // 编辑模式：创建占位节点
+                        const placeholderId = `${prevTask.taskReferenceName}_empty_branch_${idx}`;
+                        nodes.push({
+                            id: placeholderId,
+                            type: 'default',
+                            data: {
+                                label: `分支 ${idx + 1} (空)`,
+                                layoutDirection: direction,
+                                taskReferenceName: placeholderId,
+                                taskType: 'EMPTY_BRANCH',
+                            },
+                            position: { x: 0, y: 0 },
+                            sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+                            targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+                            style: {
+                                background: 'transparent',
+                                border: '2px dashed var(--border-secondary, #64748b)',
+                                borderRadius: '8px',
+                                padding: '6px 12px',
+                                fontSize: '11px',
+                                color: 'var(--text-tertiary, #94a3b8)',
+                                minWidth: '80px',
+                                textAlign: 'center',
+                            } as React.CSSProperties,
+                        });
+                        edges.push({
+                            id: `e-${prevTask.taskReferenceName}-${placeholderId}`,
+                            source: prevTask.taskReferenceName,
+                            sourceHandle: `branch_${idx}`,
+                            target: placeholderId,
+                            label: `分支 ${idx + 1}`,
+                            animated: true,
+                            data: { forkIndex: idx },
+                            style: { stroke: '#10b981', strokeDasharray: '5,5' },
+                        });
+                        edges.push({
+                            id: `e-${placeholderId}-${task.taskReferenceName}`,
+                            source: placeholderId,
+                            target: task.taskReferenceName,
+                            animated: true,
+                            style: { strokeDasharray: '5,5' },
+                        });
+                    }
+                    // hideEmptyBranches=true: 不创建任何边或节点
                 }
             });
         }
     }
 
     return {
-        nodes: [node],
+        nodes: [node, ...nodes],
         edges,
         taskMap: localTaskMap,
         nextId: startId + 1

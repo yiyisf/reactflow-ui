@@ -47,7 +47,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const workflowWithSync = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
                     syncForkJoinOn(workflowWithSync.tasks);
 
-                    const { nodes, edges, taskMap } = parseWorkflow(workflowWithSync, dir);
+                    const { nodes, edges, taskMap } = parseWorkflow(workflowWithSync, dir, { hideEmptyBranches: get().mode !== 'edit' });
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: dir, mode: get().mode });
                     const validationResults = validateWorkflow(workflowWithSync);
 
@@ -68,6 +68,14 @@ const useWorkflowStore = create<WorkflowStore>()(
                         set({ executionData: null, workflowInstance: null });
                     }
                     set({ mode });
+
+                    // 切换模式后重新解析工作流（空分支显示策略依赖 mode）
+                    const { workflowDef, layoutDirection } = get();
+                    if (workflowDef) {
+                        const { nodes, edges, taskMap } = parseWorkflow(workflowDef, layoutDirection, { hideEmptyBranches: mode !== 'edit' });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode });
+                        set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap });
+                    }
                 },
 
                 setExecutionData: (data: Record<string, TaskExecutionData> | null) => set({ executionData: data }),
@@ -182,7 +190,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 setLayoutDirection: (direction: LayoutDirection) => {
                     const { workflowDef } = get();
                     if (workflowDef) {
-                        const { nodes, edges, taskMap } = parseWorkflow(workflowDef, direction);
+                        const { nodes, edges, taskMap } = parseWorkflow(workflowDef, direction, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction, mode: get().mode });
                         set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap, layoutDirection: direction });
                     } else {
@@ -234,7 +242,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                         syncForkJoinOn(newDef.tasks);
 
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
 
@@ -256,7 +264,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     Object.assign(newDef, properties);
                     syncForkJoinOn(newDef.tasks);
 
-                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
@@ -378,7 +386,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
 
                     syncForkJoinOn(newDef.tasks);
-                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
@@ -399,7 +407,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     removeTaskFromDef(newDef.tasks, nodeId);
                     syncForkJoinOn(newDef.tasks);
 
-                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
@@ -428,7 +436,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         };
                         loopTask.loopOver.push(newTask);
                         syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
@@ -444,7 +452,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     if (loopTask && loopTask.type === 'DO_WHILE' && loopTask.loopOver) {
                         loopTask.loopOver = loopTask.loopOver.filter(t => t.taskReferenceName !== taskRef);
                         syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
@@ -465,7 +473,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                             if (!task.decisionCases[caseName]) task.decisionCases[caseName] = [];
                         }
                         syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
@@ -485,7 +493,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                             delete task.decisionCases[caseName];
                         }
                         syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
@@ -502,7 +510,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         if (!task.forkTasks) task.forkTasks = [];
                         task.forkTasks.push([]);
                         syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection);
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
                         set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
@@ -555,7 +563,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
 
                     syncForkJoinOn(newDef.tasks);
-                    const { nodes, edges, taskMap: newTaskMap } = parseWorkflow(newDef, layoutDirection);
+                    const { nodes, edges, taskMap: newTaskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 

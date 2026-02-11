@@ -101,10 +101,17 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
 
 
                 {/* 动态 Source Handles (均匀分布，避开圆角) */}
-                {!isDynamic && (data.task?.forkTasks || []).map((_: any, index: number, arr: any[]) => {
-                    const count = arr.length;
-                    // 使用 (index + 1) / (count + 1) 逻辑，确保 Handle 不会贴在圆角边缘
-                    const offset = ((index + 1) / (count + 1)) * 100;
+                {!isDynamic && (data.task?.forkTasks || []).map((branch: any, index: number, arr: any[]) => {
+                    // 非编辑模式下跳过空分支的 handle
+                    if (mode !== 'edit' && (!branch || branch.length === 0)) return null;
+
+                    const visibleBranches = mode !== 'edit'
+                        ? arr.filter((b: any) => b && b.length > 0)
+                        : arr;
+                    const count = visibleBranches.length;
+                    const visibleIndex = visibleBranches.indexOf(branch);
+                    // 使用 (visibleIndex + 1) / (count + 1) 逻辑，确保 Handle 不会贴在圆角边缘
+                    const offset = ((visibleIndex + 1) / (count + 1)) * 100;
 
                     return (
                         <Handle

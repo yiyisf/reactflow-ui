@@ -108,16 +108,19 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
     });
 
     const visited = new Set<string>();
-    const isSimpleType = (n: WorkflowNode) =>
-        n.id !== 'start' && n.id !== 'end' &&
-        (['simple', 'http', 'kafka', 'json_jq', 'set_variable', 'subWorkflowNode', 'task'].includes(n.type || '') ||
-        n.data.taskType === 'SIMPLE' || n.data.taskType === 'HTTP' || n.data.taskType === 'SUB_WORKFLOW');
+    const NON_CHAINABLE = new Set([
+        'input', 'output',           // start/end 节点
+        'decisionNode', 'forkNode', 'joinNode', 'loopNode',  // 分支/汇合/循环节点
+        'default',                   // Decision 合并节点、空分支占位节点
+    ]);
+    const isChainableNode = (n: WorkflowNode) =>
+        n.id !== 'start' && n.id !== 'end' && !NON_CHAINABLE.has(n.type || '');
 
     const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y);
 
     for (const node of sortedNodes) {
         if (visited.has(node.id)) continue;
-        if (!isSimpleType(node)) continue;
+        if (!isChainableNode(node)) continue;
 
         const currentChain: string[] = [node.id];
         let curr = node;
@@ -127,7 +130,7 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
             const nextId = nextIds[0];
             const nextNode = nodeMap.get(nextId);
 
-            if (!nextNode || visited.has(nextId) || !isSimpleType(nextNode)) break;
+            if (!nextNode || visited.has(nextId) || !isChainableNode(nextNode)) break;
             if (inDegree[nextId].length !== 1) break;
 
             currentChain.push(nextId);

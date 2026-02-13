@@ -155,6 +155,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             isError={data.isError}
             hasWarning={data.hasWarning}
             isHighlighted={data.isHighlighted}
+            executionStatus={execution?.status}
         >
             <div
                 style={{

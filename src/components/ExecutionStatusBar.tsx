@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import { useReactFlow } from 'reactflow';
 import useWorkflowStore from '../store/workflowStore';
 
 /**
@@ -10,8 +11,10 @@ const ExecutionStatusBar = () => {
         loadSampleExecution,
         importExecutionJSON,
         workflowInstance,
-        setSelectedTask
+        setSelectedTask,
+        nodes
     } = useWorkflowStore();
+    const { fitView } = useReactFlow();
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -86,8 +89,20 @@ const ExecutionStatusBar = () => {
     // 统计状态
     const statsArr = Object.values(executionData);
     const completedCount = statsArr.filter(t => t.status === 'COMPLETED').length;
-    const failedCount = statsArr.filter(t => t.status === 'FAILED' || t.status === 'FAILED_WITH_TERMINAL_ERROR' || t.status === 'TIMED_OUT').length;
+    const failedRefs = statsArr.filter(t => t.status === 'FAILED' || t.status === 'FAILED_WITH_TERMINAL_ERROR' || t.status === 'TIMED_OUT');
+    const failedCount = failedRefs.length;
     const inProgressCount = statsArr.filter(t => t.status === 'IN_PROGRESS' || t.status === 'SCHEDULED').length;
+
+    const handleFocusFailed = useCallback(() => {
+        if (failedCount === 0) return;
+        const failedRefNames = new Set(failedRefs.map(t => t.taskReferenceName));
+        const failedNodeIds = nodes
+            .filter(n => failedRefNames.has(n.data?.taskReferenceName))
+            .map(n => n.id);
+        if (failedNodeIds.length > 0) {
+            fitView({ nodes: failedNodeIds.map(id => ({ id })), duration: 500, padding: 0.3 });
+        }
+    }, [failedRefs, nodes, fitView, failedCount]);
 
     return (
         <div className="execution-status-bar">
@@ -111,7 +126,18 @@ const ExecutionStatusBar = () => {
                 <span className="status-label">已完成:</span>
                 <span className="status-value">{completedCount}</span>
             </div>
-            <div className="status-item">
+            <div
+                className="status-item"
+                onClick={failedCount > 0 ? handleFocusFailed : undefined}
+                style={{
+                    cursor: failedCount > 0 ? 'pointer' : 'default',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    transition: 'background 0.2s',
+                    ...(failedCount > 0 ? { background: 'rgba(239, 68, 68, 0.1)' } : {})
+                }}
+                title={failedCount > 0 ? '点击聚焦失败节点' : undefined}
+            >
                 <span className="status-label" style={{ color: 'var(--status-failed)' }}>失败:</span>
                 <span className="status-value" style={{ color: 'var(--status-failed)' }}>{failedCount}</span>
             </div>

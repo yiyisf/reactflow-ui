@@ -40,6 +40,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
             isError={data.isError}
             hasWarning={data.hasWarning}
             isHighlighted={data.isHighlighted}
+            executionStatus={execution?.status}
         >
             <div style={{
                 borderRadius: '8px',

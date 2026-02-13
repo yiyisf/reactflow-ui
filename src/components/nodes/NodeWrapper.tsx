@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import ConfirmDialog from '../ConfirmDialog';
+import { ExecutionStatus } from '../../types/workflow';
 
 interface NodeWrapperProps {
     children: React.ReactNode;
@@ -11,6 +12,7 @@ interface NodeWrapperProps {
     hasWarning?: boolean;
     isDecision?: boolean;
     isHighlighted?: boolean;
+    executionStatus?: ExecutionStatus;
 }
 
 const NodeWrapper = ({
@@ -21,7 +23,8 @@ const NodeWrapper = ({
     isError = false,
     hasWarning = false,
     isDecision = false,
-    isHighlighted = false
+    isHighlighted = false,
+    executionStatus
 }: NodeWrapperProps) => {
     const { mode, removeNode } = useWorkflowStore();
     const [showConfirm, setShowConfirm] = useState(false);
@@ -37,8 +40,52 @@ const NodeWrapper = ({
         ? `decision-node-wrapper ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`
         : `node-wrapper-glass ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`;
 
+    // 运行态执行状态边框样式
+    const executionStyle = useMemo<React.CSSProperties>(() => {
+        if (mode !== 'run') return {};
+
+        // 未到达的节点（无执行数据）
+        if (!executionStatus) {
+            return { opacity: 0.4 };
+        }
+
+        switch (executionStatus) {
+            case 'FAILED':
+            case 'FAILED_WITH_TERMINAL_ERROR':
+                return {
+                    borderColor: 'var(--status-failed)',
+                    boxShadow: '0 0 12px rgba(239, 68, 68, 0.5), 0 0 24px rgba(239, 68, 68, 0.2)',
+                };
+            case 'TIMED_OUT':
+                return {
+                    borderColor: 'var(--status-timed-out)',
+                    boxShadow: '0 0 8px rgba(249, 115, 22, 0.4)',
+                };
+            case 'IN_PROGRESS':
+            case 'SCHEDULED':
+                return {
+                    borderColor: 'var(--status-in-progress)',
+                    animation: 'status-pulse 1.5s ease-in-out infinite',
+                };
+            case 'COMPLETED':
+                return {
+                    borderColor: 'var(--status-completed)',
+                    opacity: 0.85,
+                };
+            case 'COMPLETED_WITH_ERRORS':
+                return {
+                    borderColor: 'var(--status-completed-with-errors)',
+                };
+            case 'SKIPPED':
+            case 'CANCELED':
+                return { opacity: 0.5 };
+            default:
+                return {};
+        }
+    }, [mode, executionStatus]);
+
     return (
-        <div className={wrapperClass} style={{ position: 'relative' }}>
+        <div className={wrapperClass} style={{ position: 'relative', ...executionStyle }}>
             {showDelete && (
                 <button
                     onClick={onDelete}

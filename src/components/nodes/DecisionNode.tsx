@@ -66,6 +66,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
             hasWarning={data.hasWarning}
             isDecision={true}
             isHighlighted={data.isHighlighted}
+            executionStatus={execution?.status}
         >
             <div style={{ position: 'relative' }}>
                 <Handle type="target" position={targetPosition} style={{ background: '#fff', [layoutDirection === 'LR' ? 'left' : 'top']: '-5px' }} />

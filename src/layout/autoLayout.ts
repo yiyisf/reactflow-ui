@@ -163,7 +163,7 @@ function getSnakeBlockDimensions(
 
     // 间距根据链长度和模式动态调整
     const chainFactor = Math.max(0.7, 1 - (chain.length - 10) / 80);
-    const modeFactor = mode === 'edit' ? 1.15 : 1.0;
+    const modeFactor = (mode === 'edit' || mode === 'run') ? 1.15 : 1.0;
     const snakeNodeSep = Math.min(nodeSep, Math.round(60 * chainFactor * modeFactor));
     const snakeRankSep = Math.min(rankSep, Math.round(80 * chainFactor * modeFactor));
 
@@ -215,7 +215,7 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
     if (nodeCount > 15) {
         let rankFactor = Math.max(0.5, 1 - (nodeCount - 15) / 50);
         let nodeFactor = Math.max(0.4, 1 - (nodeCount - 15) / 40);
-        if (mode === 'edit') {
+        if (mode === 'edit' || mode === 'run') {
             rankFactor = 1 - (1 - rankFactor) * 0.5;
             nodeFactor = 1 - (1 - nodeFactor) * 0.5;
         }

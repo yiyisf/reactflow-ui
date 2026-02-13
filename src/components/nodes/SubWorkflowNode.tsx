@@ -33,6 +33,7 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
             isError={data.isError}
             hasWarning={data.hasWarning}
             isHighlighted={data.isHighlighted}
+            executionStatus={execution?.status}
         >
             <div
                 style={{

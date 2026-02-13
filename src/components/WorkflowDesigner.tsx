@@ -27,6 +27,7 @@ import Toast from './Toast';
 import { useShortcuts } from '../hooks/useShortcuts';
 import { useConfirm } from '../hooks/useConfirm';
 import { useToast } from '../hooks/useToast';
+import { ExecutionActions } from '../types/workflow';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -51,6 +52,7 @@ interface WorkflowDesignerProps {
     nodesLocked?: boolean;
     onSave?: (def: any) => void;
     onRequestImport?: () => void;
+    executionActions?: ExecutionActions;
 }
 
 const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
@@ -58,6 +60,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     searchQuery = '',
     onSave,
     onRequestImport,
+    executionActions,
 }) => {
     const {
         nodes,
@@ -311,6 +314,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         onShowHealthCheck={() => setShowHealthCheck(!showHealthCheck)}
                         showHealthCheck={showHealthCheck}
                         onShowSettings={() => setShowWorkflowSettings(true)}
+                        executionActions={executionActions}
                     />
                 </div>
             </ReactFlow>

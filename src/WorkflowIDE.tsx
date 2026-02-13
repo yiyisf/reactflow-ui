@@ -6,7 +6,7 @@ import HealthCheckPanel from './components/HealthCheckPanel';
 import ExecutionTaskPanel from './components/ExecutionTaskPanel';
 import AIChatPanel from './components/AICopilot/AIChatPanel';
 import useWorkflowStore from './store/workflowStore';
-import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults } from './types/workflow';
+import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions } from './types/workflow';
 import { WorkflowDef } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
 import './styles/tokens.css';
@@ -94,6 +94,13 @@ export interface WorkflowIDEProps {
     onRequestImport?: () => void;
 
     /**
+     * 运行态操作回调。
+     * 传入后，运行模式下会根据工作流状态显示对应的操作按钮（暂停/恢复/停止/重试/重启）。
+     * 未传入的回调对应的按钮不会渲染。
+     */
+    executionActions?: ExecutionActions;
+
+    /**
      * AI 配置。通过 Props 注入优先于 localStorage 配置。
      */
     aiConfig?: Partial<AIServiceConfig>;
@@ -129,6 +136,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     searchQuery = '',
     workflowExecution,
     onRequestImport,
+    executionActions,
     aiConfig,
     onSave,
     onWorkflowChange,
@@ -234,6 +242,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         searchQuery={searchQuery}
                         onSave={onSave}
                         onRequestImport={onRequestImport}
+                        executionActions={executionActions}
                     />
                 </ReactFlowProvider>
 

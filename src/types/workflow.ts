@@ -170,6 +170,19 @@ export interface WorkflowActions {
 }
 
 /**
+ * 运行态操作回调
+ * 集成方通过此接口注入工作流执行操作（暂停/恢复/停止/重试/重启）的回调函数。
+ * 未传入的回调对应的按钮不会渲染。
+ */
+export interface ExecutionActions {
+    onRestart?: (workflowId: string) => void;
+    onPause?: (workflowId: string) => void;
+    onResume?: (workflowId: string) => void;
+    onTerminate?: (workflowId: string) => void;
+    onRetry?: (workflowId: string) => void;
+}
+
+/**
  * 组合 Store 类型
  */
 export type WorkflowStore = WorkflowState & WorkflowActions;

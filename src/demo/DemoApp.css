@@ -750,29 +750,7 @@ body {
 
 /* --- P2.3 Visual Polish --- */
 
-/* 详情面板侧滑转场 2.0 */
-.detail-panel-container {
-  height: 100%;
-  border-left: 1px solid var(--glass-border);
-  background: var(--bg-primary);
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
-  overflow-y: auto;
-  z-index: 100;
-  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
-  /* 基础隐藏状态 */
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-.panel-enter-active {
-  transform: translateX(0);
-  opacity: 1;
-}
-
-.panel-exit {
-  transform: translateX(100%);
-  opacity: 0;
-}
+/* 详情面板侧滑转场样式已迁移至 tokens.css，此处不再重复定义 */
 
 /* 连线优化 */
 .react-flow__connection-path {

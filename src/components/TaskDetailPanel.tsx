@@ -268,13 +268,20 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 bottom: 0,
                 width: '450px',
                 zIndex: 1200,
+                display: 'flex',
+                flexDirection: 'column',
+                background: 'var(--bg-primary)',
+                borderLeft: `1px solid ${borderColor}`,
+                boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.2)',
+                overflowY: 'hidden',
             }}
         >
             {/* Header */}
             <div style={{
                 padding: '24px',
                 borderBottom: `1px solid ${borderColor}`,
-                background: 'var(--bg-highlight)'
+                background: 'var(--bg-secondary)',
+                flexShrink: 0,
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div style={{
@@ -318,7 +325,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             </div>
 
             {/* Scrollable Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: 'var(--bg-primary)' }}>
 
                 {/* 1. HTTP 任务专项 UI */}
                 {displayTask.type === 'HTTP' && renderSpecialSection('HTTP 请求配置', '🌐', 'var(--color-accent)', (
@@ -524,7 +531,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
 
             {/* Footer */}
             {isEditMode && (
-                <div style={{ padding: '24px', borderTop: `1px solid ${borderColor}`, background: 'rgba(0,0,0,0.1)', display: 'flex', gap: '12px' }}>
+                <div style={{ padding: '24px', borderTop: `1px solid ${borderColor}`, background: 'var(--bg-secondary)', display: 'flex', gap: '12px', flexShrink: 0 }}>
                     <div style={{ flex: 1, fontSize: '11px', color: secondaryTextColor, display: 'flex', alignItems: 'center' }}>
                         ✅ 所有修改已实时同步
                     </div>

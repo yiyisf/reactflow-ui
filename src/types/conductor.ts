@@ -80,7 +80,7 @@ export interface TaskDef {
     // HTTP 任务特有
     httpRequest?: {
         method?: string;
-        url?: string;
+        uri?: string;
         headers?: Record<string, string>;
         body?: any;
     };

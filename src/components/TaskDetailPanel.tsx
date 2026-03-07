@@ -340,9 +340,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
                             <input
-                                placeholder="URL (支持 ${workflow.input.url})"
-                                value={displayTask.inputParameters?.http_request?.url || displayTask.httpRequest?.url || ''}
-                                onChange={(e) => handleHttpChange('url', e.target.value)}
+                                placeholder="URI (支持 ${workflow.input.uri})"
+                                value={displayTask.inputParameters?.http_request?.uri || displayTask.httpRequest?.uri || ''}
+                                onChange={(e) => handleHttpChange('uri', e.target.value)}
                                 disabled={!isEditMode}
                                 style={{ flex: 1, padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}` }}
                             />

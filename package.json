@@ -1,6 +1,17 @@
 {
   "name": "reactflow-ui",
   "version": "0.1.0",
+  "description": "Conductor Workflow IDE — a visual workflow designer built with React 19, ReactFlow and Zustand for editing, validating and monitoring Netflix Conductor workflows.",
+  "keywords": ["conductor", "workflow", "reactflow", "react", "visual-editor", "dag"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yiyisf/reactflow-ui.git"
+  },
+  "homepage": "https://github.com/yiyisf/reactflow-ui#readme",
+  "bugs": {
+    "url": "https://github.com/yiyisf/reactflow-ui/issues"
+  },
   "type": "module",
   "main": "./dist/reactflow-ui.umd.js",
   "module": "./dist/reactflow-ui.es.js",

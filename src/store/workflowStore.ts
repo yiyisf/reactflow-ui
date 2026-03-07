@@ -294,7 +294,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         case 'HTTP':
                             newTask.httpRequest = {
                                 method: 'GET',
-                                url: 'https://example.com/api',
+                                uri: 'https://example.com/api',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: {}
                             };

@@ -20,7 +20,7 @@ export const TASK_RULES = {
     // 按任务类型定义的专项校验规则
     types: {
         'HTTP': [
-            { field: 'inputParameters.http_request.url', type: 'required', message: 'HTTP 任务缺少 URL 配置' },
+            { field: 'inputParameters.http_request.uri', type: 'required', message: 'HTTP 任务缺少请求地址 (uri) 配置' },
             { field: 'inputParameters.http_request.method', type: 'required', level: 'warning', message: 'HTTP 任务未指定 Method，建议配置' }
         ],
         'LAMBDA': [

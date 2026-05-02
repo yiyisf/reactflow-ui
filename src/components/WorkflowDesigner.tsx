@@ -192,7 +192,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 const sourceStatus = executionData[edge.source]?.status;
                 const targetStatus = executionData[edge.target]?.status;
 
-                const isSourceCompleted = sourceStatus === 'COMPLETED' || edge.source === 'start';
+                const isSourceCompleted = sourceStatus === 'COMPLETED';
                 const isTargetCompleted = targetStatus === 'COMPLETED';
                 const isTargetInProgress = targetStatus === 'IN_PROGRESS';
 
@@ -319,7 +319,49 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 </div>
             </ReactFlow>
 
+            
             {!workflowDef && <EmptyStatePanel onRequestImport={onRequestImport} />}
+
+            {workflowDef && nodes.length === 0 && mode === 'edit' && (
+                <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 10,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px'
+                }}>
+                    <button 
+                        className="empty-state-btn primary"
+                        style={{
+                            padding: '12px 24px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '16px',
+                            fontWeight: 500,
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                        onClick={() => {
+                            setActiveEdgeData({
+                                sourceId: 'start',
+                                targetId: 'end',
+                                edgeId: 'new',
+                                edgeData: {}
+                            });
+                            setShowSelector(true);
+                        }}
+                    >
+                        <span style={{ fontSize: '20px', lineHeight: 1 }}>+</span>
+                        添加第一个任务
+                    </button>
+                </div>
+            )}
 
             {showSelector && (
                 <NodeSelector
@@ -348,3 +390,4 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 };
 
 export default WorkflowDesigner;
+

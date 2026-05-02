@@ -192,10 +192,6 @@ const WorkflowViewer = ({
                 <MiniMap
                     nodeColor={(node) => {
                         switch (node.type) {
-                            case 'input':
-                                return '#4ade80';
-                            case 'output':
-                                return '#f87171';
                             case 'decisionNode':
                                 return '#f59e0b';
                             case 'forkNode':

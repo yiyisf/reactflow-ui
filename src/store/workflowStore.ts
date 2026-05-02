@@ -357,7 +357,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
                         } else {
-                            if (sourceId === 'start' && newDef.tasks.length === 0) {
+                            if (newDef.tasks.length === 0) {
                                 newDef.tasks.push(newTask, joinTask);
                             } else {
                                 insertTaskAfter(newDef.tasks, sourceId, newTask);
@@ -377,7 +377,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                         } else {
-                            if (sourceId === 'start' && newDef.tasks.length === 0) {
+                            if (newDef.tasks.length === 0) {
                                 newDef.tasks.push(newTask);
                             } else {
                                 insertTaskAfter(newDef.tasks, sourceId, newTask);
@@ -401,7 +401,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 removeNode: (nodeId: string) => {
                     const { workflowDef, layoutDirection } = get();
-                    if (!workflowDef || nodeId === 'start' || nodeId === 'end') return;
+                    if (!workflowDef) return;
 
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
                     removeTaskFromDef(newDef.tasks, nodeId);
@@ -548,14 +548,14 @@ const useWorkflowStore = create<WorkflowStore>()(
                             type: 'JOIN',
                             joinOn: []
                         };
-                        if (sourceRef === 'start' && newDef.tasks.length === 0) {
+                        if (newDef.tasks.length === 0) {
                             newDef.tasks.push(newTask, joinTask);
                         } else {
                             insertTaskAfter(newDef.tasks, sourceRef, newTask);
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
                         }
                     } else {
-                        if (sourceRef === 'start' && newDef.tasks.length === 0) {
+                        if (newDef.tasks.length === 0) {
                             newDef.tasks.push(newTask);
                         } else {
                             insertTaskAfter(newDef.tasks, sourceRef, newTask);

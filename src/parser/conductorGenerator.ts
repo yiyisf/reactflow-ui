@@ -84,10 +84,6 @@ export function insertTaskAfter(tasks: TaskDef[] | undefined, sourceRef: string,
     }
 
     // 如果是 'start'，插入到顶层第一个
-    if (sourceRef === 'start') {
-        tasks.unshift(newTask);
-        return true;
-    }
 
     for (const task of tasks) {
         if (task.decisionCases) {

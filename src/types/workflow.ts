@@ -47,7 +47,6 @@ export interface ParserResult {
     edges: Edge[];
     taskMap: Record<string, TaskDef>;
     nextId: number;
-    joinNodeId?: string; // Decision 任务专用
 }
 
 /**

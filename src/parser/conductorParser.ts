@@ -24,33 +24,6 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
     const taskMap: Record<string, TaskDef> = {}; // 用于快速查找任务
     let nodeIdCounter = 0;
 
-    // 添加开始节点
-    const startNode: WorkflowNode = {
-        id: 'start',
-        type: 'input',
-        data: {
-            label: '开始',
-            layoutDirection: direction,
-            taskReferenceName: 'start',
-            taskType: 'START'
-        },
-        position: { x: 0, y: 0 },
-        sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
-        style: {
-            background: '#4ade80',
-            color: '#fff',
-            border: '2px solid #22c55e',
-            borderRadius: '50%',
-            width: 60,
-            height: 60,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '12px',
-            fontWeight: 'bold'
-        } as React.CSSProperties
-    };
-    nodes.push(startNode);
 
     // 解析所有任务
     const tasks = workflowDef.tasks;
@@ -64,68 +37,14 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
         nodeIdCounter = result.nextId;
 
         // 连接到前一个任务
-        if (i === 0) {
-            edges.push({
-                id: `e-start-${task.taskReferenceName}`,
-                source: 'start',
-                target: task.taskReferenceName,
-                animated: true
-            });
-        } else {
+        if (i > 0) {
             const prevTask = tasks[i - 1];
             // 对于并行任务，由 JOIN 逻辑处理多入连线，connectTasks 仅处理顺序流
-            connectTasks(prevTask, task, edges);
+            connectTasks(prevTask, task, edges, hideEmptyBranches);
         }
 
         // 更新 taskMap
         Object.assign(taskMap, result.taskMap);
-    }
-
-    // 添加结束节点
-    const lastTask = tasks[tasks.length - 1];
-    const endNode: WorkflowNode = {
-        id: 'end',
-        type: 'output',
-        data: {
-            label: '结束',
-            layoutDirection: direction,
-            taskReferenceName: 'end',
-            taskType: 'END'
-        },
-        position: { x: 0, y: 0 },
-        targetPosition: direction === 'LR' ? Position.Left : Position.Top,
-        style: {
-            background: '#f87171',
-            color: '#fff',
-            border: '2px solid #ef4444',
-            borderRadius: '50%',
-            width: 60,
-            height: 60,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '12px',
-            fontWeight: 'bold'
-        } as React.CSSProperties
-    };
-    nodes.push(endNode);
-
-    if (lastTask) {
-        const lastNodeId = getLastNodeId(lastTask);
-        edges.push({
-            id: `e-${lastNodeId}-end`,
-            source: lastNodeId,
-            target: 'end',
-            animated: true
-        });
-    } else {
-        edges.push({
-            id: 'e-start-end',
-            source: 'start',
-            target: 'end',
-            type: 'addableEdge',
-            animated: true
-        });
     }
 
     return { nodes, edges, taskMap };
@@ -286,15 +205,6 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
                 data: { branchCase: caseKey }, // 即使不为空也标记，方便在起始连线插入
                 style: { stroke: '#3b82f6' }
             });
-
-            // 连接分支最后一个任务到合并节点
-            const lastTaskRef = caseTasks[caseTasks.length - 1].taskReferenceName;
-            edges.push({
-                id: `e-${lastTaskRef}-${joinNodeId}`,
-                source: lastTaskRef,
-                target: joinNodeId,
-                animated: true
-            });
         } else if (!hideEmptyBranches) {
             // 编辑模式：创建占位节点，避免多个空分支边重叠
             const placeholderId = `${task.taskReferenceName}_empty_${caseKey}`;
@@ -330,13 +240,6 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
                 animated: true,
                 data: { branchCase: caseKey },
                 style: { stroke: '#3b82f6', strokeDasharray: '5,5' },
-            });
-            edges.push({
-                id: `e-${placeholderId}-${joinNodeId}`,
-                source: placeholderId,
-                target: joinNodeId,
-                animated: true,
-                style: { strokeDasharray: '5,5' },
             });
         }
     });
@@ -402,31 +305,13 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
             data: { branchCase: 'default' },
             style: { stroke: '#f59e0b', strokeDasharray: '5,5' },
         });
-        edges.push({
-            id: `e-${placeholderId}-${joinNodeId}`,
-            source: placeholderId,
-            target: joinNodeId,
-            animated: true,
-            style: { strokeDasharray: '5,5' },
-        });
-    }
-
-    // 如果没有任何分支，直接连接到合并节点
-    if (Object.keys(decisionCases).length === 0 && (!defaultCase || defaultCase.length === 0)) {
-        edges.push({
-            id: `e-${task.taskReferenceName}-${joinNodeId}`,
-            source: task.taskReferenceName,
-            target: joinNodeId,
-            animated: true
-        });
     }
 
     return {
         nodes,
         edges,
         taskMap: localTaskMap,
-        nextId,
-        joinNodeId // 返回合并节点 ID，用于后续连接
+        nextId
     };
 }
 
@@ -598,12 +483,14 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
         // 寻找该引用对应的任务
         const sourceTask = allTasks.find(t => t.taskReferenceName === sourceRef) || taskMap[sourceRef];
         if (sourceTask) {
-            const lastNodeId = getLastNodeId(sourceTask);
-            edges.push({
-                id: `e-${lastNodeId}-${task.taskReferenceName}`,
-                source: lastNodeId,
-                target: task.taskReferenceName,
-                animated: true
+            const lastNodeIds = getLastNodeIds(sourceTask, hideEmptyBranches);
+            lastNodeIds.forEach(lastNodeId => {
+                edges.push({
+                    id: `e-${lastNodeId}-${task.taskReferenceName}`,
+                    source: lastNodeId,
+                    target: task.taskReferenceName,
+                    animated: true
+                });
             });
         }
     });
@@ -728,41 +615,64 @@ function parseBranch(tasks: TaskDef[], startId: number, parentTaskMap: Record<st
 /**
  * 连接两个任务
  */
-function connectTasks(fromTask: TaskDef, toTask: TaskDef, edges: Edge[]) {
+function connectTasks(fromTask: TaskDef, toTask: TaskDef, edges: Edge[], hideEmptyBranches = false) {
     // 并行任务的输出由分支 and JOIN 逻辑控制，不产生直接的顺序连线
     if (fromTask.type === 'FORK_JOIN' || fromTask.type === 'FORK_JOIN_DYNAMIC') {
         return;
     }
 
-    const fromId = getLastNodeId(fromTask);
+    const fromIds = getLastNodeIds(fromTask, hideEmptyBranches);
     const toId = toTask.taskReferenceName;
 
-    // 避免重复边
-    const edgeId = `e-${fromId}-${toId}`;
-    if (!edges.find(e => e.id === edgeId)) {
-        edges.push({
-            id: edgeId,
-            source: fromId,
-            target: toId,
-            animated: true
-        });
-    }
+    fromIds.forEach(fromId => {
+        // 避免重复边
+        const edgeId = `e-${fromId}-${toId}`;
+        if (!edges.find(e => e.id === edgeId)) {
+            edges.push({
+                id: edgeId,
+                source: fromId,
+                target: toId,
+                animated: true
+            });
+        }
+    });
 }
 
 /**
  * 获取任务的最后一个节点 ID
  * 对于有 JOIN 节点的任务（DECISION, FORK_JOIN），返回 JOIN 节点 ID
  */
-function getLastNodeId(task: TaskDef): string {
+function getLastNodeIds(task: TaskDef, hideEmptyBranches = false): string[] {
     const taskType = task.type || 'SIMPLE';
 
     if (taskType === 'DECISION' || taskType === 'SWITCH') {
-        return `${task.taskReferenceName}_join`;
-    } else {
-        // Parallel tasks use the real JOIN task, not a virtual ID here.
-        // Branches connect TO the JOIN task.
-        return task.taskReferenceName;
+        const exits: string[] = [];
+        const decisionCases = task.decisionCases || {};
+        const defaultCase = task.defaultCase || [];
+
+        // 各 case 分支
+        Object.entries(decisionCases).forEach(([caseKey, caseTasks]) => {
+            if (caseTasks && caseTasks.length > 0) {
+                const lastTask = caseTasks[caseTasks.length - 1];
+                exits.push(...getLastNodeIds(lastTask, hideEmptyBranches));
+            } else if (!hideEmptyBranches) {
+                exits.push(`${task.taskReferenceName}_empty_${caseKey}`);
+            }
+        });
+
+        // default 分支
+        if (defaultCase.length > 0) {
+            const lastTask = defaultCase[defaultCase.length - 1];
+            exits.push(...getLastNodeIds(lastTask, hideEmptyBranches));
+        } else if (!hideEmptyBranches) {
+            exits.push(`${task.taskReferenceName}_empty_default`);
+        }
+
+        // 如果所有分支都为空（hide 模式），fallback 到 SWITCH 节点自身
+        return exits.length > 0 ? exits : [task.taskReferenceName];
     }
+
+    return [task.taskReferenceName];
 }
 
 /**

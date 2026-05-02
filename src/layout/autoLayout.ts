@@ -14,11 +14,6 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
     let height = 80;  // NodeLayout 的标准高度
 
     switch (node.type) {
-        case 'input':
-        case 'output':
-            width = 60;
-            height = 60;
-            break;
         case 'decisionNode':
             // 菱形 DecisionNode (150x150 旋转后的边界框约为 212x212)
             width = 212;
@@ -114,7 +109,7 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
         'default',                   // Decision 合并节点、空分支占位节点
     ]);
     const isChainableNode = (n: WorkflowNode) =>
-        n.id !== 'start' && n.id !== 'end' && !NON_CHAINABLE.has(n.type || '');
+        !NON_CHAINABLE.has(n.type || '');
 
     const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y);
 

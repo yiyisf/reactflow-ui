@@ -170,9 +170,9 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             >
                 <NodeLayout
                     icon={IconComponent}
-                    header="JOIN"
+                    header={data.taskType === 'EXCLUSIVE_JOIN' ? 'EXCLUSIVE JOIN' : 'JOIN'}
                     title={data.taskReferenceName}
-                    meta="Wait for tasks"
+                    meta={data.taskType === 'EXCLUSIVE_JOIN' ? 'Wait for any task' : 'Wait for tasks'}
                     color={FORK_JOIN_COLOR}
                     status={execution?.status}
                     isRunning={isRunning}

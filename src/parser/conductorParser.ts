@@ -56,6 +56,8 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
             type: 'plusNode',
             data: {
                 label: '+',
+                taskReferenceName: plusNodeId,
+                taskType: 'PLUS',
                 parentRef: lastTask.taskReferenceName,
                 layoutDirection: direction,
             },
@@ -87,6 +89,7 @@ function parseTask(task: TaskDef, startId: number, taskMap: Record<string, TaskD
             return parseForkJoinTask(task, startId, taskMap, direction);
 
         case 'JOIN':
+        case 'EXCLUSIVE_JOIN':
             return parseJoinTask(task, startId, taskMap, direction, allTasks, hideEmptyBranches);
 
         case 'DO_WHILE':
@@ -96,7 +99,9 @@ function parseTask(task: TaskDef, startId: number, taskMap: Record<string, TaskD
             return parseSubWorkflowTask(task, startId, taskMap, direction);
 
         default:
-            // 常规任务 (SIMPLE, HTTP, JSON_JQ_TRANSFORM, EVENT, etc.)
+            // 常规任务 (SIMPLE, HTTP, INLINE, LAMBDA, JSON_JQ_TRANSFORM, EVENT, WAIT,
+            //           SET_VARIABLE, TERMINATE, KAFKA_PUBLISH, DYNAMIC, HUMAN,
+            //           START_WORKFLOW, NOOP, USER_DEFINED, etc.)
             return parseSimpleTask(task, startId, taskMap, direction);
     }
 }

@@ -86,6 +86,8 @@ export interface WorkflowNodeData {
     decisionCases?: Record<string, TaskDef[]>; // Decision 任务专用
     sourcePosition?: Position; // 动态布局专用 (如蛇形布局)
     targetPosition?: Position; // 动态布局专用 (如蛇形布局)
+    parentRef?: string; // 父节点引用名（用于 Join/plusNode 查找上游节点）
+    edgeData?: Record<string, any>; // plusNode 专用：携带边的附加信息
 }
 
 /**

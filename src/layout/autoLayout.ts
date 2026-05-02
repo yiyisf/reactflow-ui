@@ -121,6 +121,8 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
     for (const node of sortedNodes) {
         if (visited.has(node.id)) continue;
         if (!isChainableNode(node)) continue;
+        // 分叉节点（outDegree > 1）不应成为链起点
+        if (outDegree[node.id].length > 1) continue;
 
         const currentChain: string[] = [node.id];
         let curr = node;
@@ -395,8 +397,8 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
                 const isLastLayer = layer === totalLayers - 1;
                 const lastLayerCount = chain.length % COLUMNS || COLUMNS;
 
-                // 末层居中偏移
-                const centerOffset = isLastLayer ? ((COLUMNS - lastLayerCount) * gridKH) / 2 : 0;
+                // 末层居中偏移（非负保护）
+                const centerOffset = isLastLayer ? Math.max(0, (COLUMNS - lastLayerCount) * gridKH) / 2 : 0;
 
                 const xOffset = layer * gridKW;
                 let yOffset: number;

@@ -9,6 +9,7 @@ export type TaskType =
     | 'DECISION'
     | 'SWITCH'
     | 'JOIN'
+    | 'EXCLUSIVE_JOIN'
     | 'DO_WHILE'
     | 'SUB_WORKFLOW'
     | 'EVENT'
@@ -16,12 +17,14 @@ export type TaskType =
     | 'HUMAN'
     | 'USER_DEFINED'
     | 'HTTP'
+    | 'INLINE'
     | 'LAMBDA'
-    | 'EXCLUSIVE_JOIN'
     | 'TERMINATE'
     | 'KAFKA_PUBLISH'
     | 'JSON_JQ_TRANSFORM'
-    | 'SET_VARIABLE';
+    | 'SET_VARIABLE'
+    | 'START_WORKFLOW'
+    | 'NOOP';
 
 /**
  * Conductor 任务定义
@@ -77,20 +80,53 @@ export interface TaskDef {
     optional?: boolean;
     asyncComplete?: boolean;
     startDelay?: number;
+
     // HTTP 任务特有
     httpRequest?: {
         method?: string;
         uri?: string;
         headers?: Record<string, string>;
         body?: any;
+        contentType?: string;
+        accept?: string;
+        connectionTimeOut?: number;
+        readTimeOut?: number;
     };
+
     // Event 任务特有
     sink?: string;
+
+    // INLINE/LAMBDA 任务特有
+    evaluatorType?: 'graaljs' | 'javascript' | 'value-param' | 'python';
+
     // Decision 任务特有
     caseExpression?: string;
+
+    // DO_WHILE 任务特有
+    keepLastN?: number;
+
+    // Dynamic Fork 简化配置
+    forkTaskType?: string;
+    forkTaskName?: string;
+    forkTaskWorkflow?: string;
+    forkTaskWorkflowVersion?: string;
+
+    // Dynamic 任务特有
+    dynamicTaskNameParam?: string;
+
+    // HUMAN 任务特有
+    humanTaskDef?: {
+        userFormTemplate?: string;
+        assignmentCompletionStrategy?: string;
+        displayName?: string;
+    };
+
     // 通用运行属性
     retryCount?: number;
+    retryLogic?: 'FIXED' | 'EXPONENTIAL_BACKOFF' | 'LINEAR_BACKOFF';
+    retryDelaySeconds?: number;
     timeoutSeconds?: number;
+    timeoutPolicy?: 'RETRY' | 'TIME_OUT_WF' | 'ALERT_ONLY' | 'FAIL_WORKFLOW';
 }
 
 /**

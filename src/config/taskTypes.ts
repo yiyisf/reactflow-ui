@@ -10,7 +10,11 @@ import {
     Clock,
     MessageSquare,
     Database,
-    Zap
+    Zap,
+    Code2,
+    Play,
+    User,
+    Minus
 } from 'lucide-react';
 
 export type TaskCategory = 'CORE' | 'SYSTEM' | 'FLOW';
@@ -21,7 +25,7 @@ export interface TaskTypeConfig {
     description: string;
     category: TaskCategory;
     icon: any;
-    defaultData?: any;
+    hidden?: boolean;
 }
 
 export const TASK_TYPES: TaskTypeConfig[] = [
@@ -40,6 +44,13 @@ export const TASK_TYPES: TaskTypeConfig[] = [
         category: 'CORE',
         icon: GitMerge
     },
+    {
+        type: 'START_WORKFLOW',
+        label: '启动工作流 (Start Workflow)',
+        description: '启动另一个工作流（不等待结果）',
+        category: 'CORE',
+        icon: Play
+    },
 
     // System Tasks
     {
@@ -48,6 +59,13 @@ export const TASK_TYPES: TaskTypeConfig[] = [
         description: '发起 REST/HTTP 调用',
         category: 'SYSTEM',
         icon: Globe
+    },
+    {
+        type: 'INLINE',
+        label: '内联脚本 (Inline)',
+        description: '执行内联脚本（JS/Python/GraalJS）',
+        category: 'SYSTEM',
+        icon: Code2
     },
     {
         type: 'JSON_JQ_TRANSFORM',
@@ -91,19 +109,64 @@ export const TASK_TYPES: TaskTypeConfig[] = [
         category: 'SYSTEM',
         icon: StopCircle
     },
+    {
+        type: 'HUMAN',
+        label: '人工审批 (Human)',
+        description: '等待人工审核或表单提交',
+        category: 'SYSTEM',
+        icon: User
+    },
+    {
+        type: 'DYNAMIC',
+        label: '动态任务 (Dynamic)',
+        description: '运行时动态决定任务类型',
+        category: 'SYSTEM',
+        icon: Shuffle
+    },
+    {
+        type: 'NOOP',
+        label: '空操作 (Noop)',
+        description: '占位符任务，无实际操作',
+        category: 'SYSTEM',
+        icon: Minus
+    },
+    // LAMBDA 保留但隐藏，兼容旧数据
+    {
+        type: 'LAMBDA',
+        label: 'Lambda 脚本 (旧)',
+        description: '已被 INLINE 取代',
+        category: 'SYSTEM',
+        icon: Code2,
+        hidden: true
+    },
 
     // Flow Control
     {
-        type: 'DECISION',
-        label: '判断 (Switch)',
+        type: 'SWITCH',
+        label: '条件分支 (Switch)',
         description: '基于条件的逻辑分支 (Switch/Case)',
         category: 'FLOW',
         icon: Shuffle
     },
     {
+        type: 'DECISION',
+        label: '判断 (Decision，旧)',
+        description: '基于条件的逻辑分支（旧版，推荐改用 Switch）',
+        category: 'FLOW',
+        icon: Shuffle,
+        hidden: true
+    },
+    {
         type: 'FORK_JOIN',
-        label: '并行分支 (Fork)',
-        description: '并行执行多个任务分支',
+        label: '静态并行 (Fork)',
+        description: '并行执行多个预定义任务分支',
+        category: 'FLOW',
+        icon: GitBranch
+    },
+    {
+        type: 'FORK_JOIN_DYNAMIC',
+        label: '动态并行 (Dynamic Fork)',
+        description: '运行时动态生成并行分支',
         category: 'FLOW',
         icon: GitBranch
     },
@@ -117,7 +180,7 @@ export const TASK_TYPES: TaskTypeConfig[] = [
     {
         type: 'JOIN',
         label: '汇聚 (Join)',
-        description: '等待并行分支执行完成',
+        description: '等待所有并行分支执行完成',
         category: 'FLOW',
         icon: GitMerge
     }

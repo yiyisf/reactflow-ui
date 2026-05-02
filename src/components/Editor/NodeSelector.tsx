@@ -20,8 +20,8 @@ const NodeSelector = ({ onSelect, onCancel }: NodeSelectorProps) => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onCancel]);
 
-    // 过滤当前分类的任务
-    const currentTasks = TASK_TYPES.filter(task => task.category === activeCategory);
+    // 过滤当前分类的任务（排除隐藏类型）
+    const currentTasks = TASK_TYPES.filter(task => task.category === activeCategory && !task.hidden);
 
     return (
         <div style={{

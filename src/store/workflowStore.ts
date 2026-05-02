@@ -344,6 +344,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         if (newTask.type === 'FORK_JOIN') {
                             newTask.forkTasks = [[], []];
                         } else {
+                            // 默认使用经典 dynamicForkTasksParam 模式
                             newTask.dynamicForkTasksParam = 'dynamic_tasks';
                             newTask.dynamicForkTasksInputParamName = 'input';
                         }
@@ -365,13 +366,26 @@ const useWorkflowStore = create<WorkflowStore>()(
                             }
                         }
                     } else {
-                        if (newTask.type === 'DECISION') {
+                        if (newTask.type === 'DECISION' || newTask.type === 'SWITCH') {
+                            newTask.evaluatorType = 'value-param';
                             newTask.caseValueParam = 'case_param';
                             newTask.decisionCases = { "case1": [] };
                             newTask.defaultCase = [];
                         } else if (newTask.type === 'DO_WHILE') {
                             newTask.loopCondition = "$.taskReferenceName.output.value < 10";
                             newTask.loopOver = [];
+                        } else if (newTask.type === 'INLINE') {
+                            newTask.evaluatorType = 'graaljs';
+                            newTask.inputParameters = { expression: 'function execute(input) {\n  return { result: input };\n}\nexecute($.input);' };
+                        } else if (newTask.type === 'DYNAMIC') {
+                            newTask.dynamicTaskNameParam = 'taskToExecute';
+                            newTask.inputParameters = { taskToExecute: '${workflow.input.taskName}' };
+                        } else if (newTask.type === 'HUMAN') {
+                            newTask.humanTaskDef = { userFormTemplate: '', assignmentCompletionStrategy: 'LEAVE_OPEN' };
+                        } else if (newTask.type === 'START_WORKFLOW') {
+                            newTask.inputParameters = { startWorkflow: { name: '', version: 1, input: {}, correlationId: '' } };
+                        } else if (newTask.type === 'NOOP') {
+                            newTask.inputParameters = {};
                         }
 
                         if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {

@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import useWorkflowStore from '../store/workflowStore';
 
 interface ConfirmDialogProps {
     message: string;
@@ -8,9 +10,11 @@ interface ConfirmDialogProps {
 
 const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => {
     const cancelRef = useRef<HTMLButtonElement>(null);
+    const { theme, themeColor } = useWorkflowStore();
 
     useEffect(() => {
-        cancelRef.current?.focus();
+        // preventScroll 避免 focus 触发浏览器滚动导致 ReactFlow 视图偏移
+        cancelRef.current?.focus({ preventScroll: true });
 
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onCancel();
@@ -19,60 +23,63 @@ const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => 
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onCancel]);
 
-    return (
+    // Portal 渲染到 document.body，脱离 ReactFlow CSS transform 上下文，
+    // 避免 position:fixed 相对祖先定位导致 canvas 变灰。
+    // 在 Portal 根节点上保留 data-mode / data-brand，使 CSS 主题变量正常继承。
+    return createPortal(
         <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="确认操作"
+            data-mode={theme}
+            data-brand={themeColor}
+            onClick={onCancel}
             style={{
                 position: 'fixed',
                 top: 0,
                 left: 0,
                 width: '100vw',
                 height: '100vh',
-                backgroundColor: 'rgba(0,0,0,0.5)',
+                backgroundColor: 'rgba(0, 0, 0, 0.45)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 2000,
-                backdropFilter: 'blur(4px)',
-                animation: 'fadeIn 0.15s ease-out'
             }}
-            onClick={onCancel}
         >
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="确认操作"
+                onClick={e => e.stopPropagation()}
                 style={{
                     backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-secondary)',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    maxWidth: '400px',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: '8px',
+                    padding: '24px 28px',
+                    maxWidth: '380px',
                     width: '90%',
-                    boxShadow: '0 16px 40px rgba(0,0,0,0.3)',
-                    animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.18)',
                 }}
-                onClick={e => e.stopPropagation()}
             >
                 <div style={{
                     fontSize: '14px',
                     color: 'var(--text-primary)',
-                    marginBottom: '20px',
-                    lineHeight: '1.5'
+                    marginBottom: '24px',
+                    lineHeight: '1.6',
                 }}>
                     {message}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <button
                         ref={cancelRef}
                         onClick={onCancel}
                         style={{
-                            padding: '8px 16px',
+                            padding: '7px 18px',
                             backgroundColor: 'var(--bg-tertiary)',
                             border: '1px solid var(--border-primary)',
                             borderRadius: '6px',
                             color: 'var(--text-primary)',
                             cursor: 'pointer',
-                            fontSize: '13px'
+                            fontSize: '13px',
+                            fontWeight: 500,
                         }}
                     >
                         取消
@@ -80,21 +87,22 @@ const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => 
                     <button
                         onClick={onConfirm}
                         style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#ef4444',
+                            padding: '7px 18px',
+                            backgroundColor: 'var(--color-accent)',
                             border: 'none',
                             borderRadius: '6px',
-                            color: '#fff',
+                            color: '#ffffff',
                             cursor: 'pointer',
                             fontSize: '13px',
-                            fontWeight: 600
+                            fontWeight: 600,
                         }}
                     >
                         确定
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

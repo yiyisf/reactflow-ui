@@ -66,7 +66,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const currentMode = get().mode;
                     // 如果从运行模式退出，清空执行数据
                     if (currentMode === 'run' && mode !== 'run') {
-                        set({ executionData: null, workflowInstance: null });
+                        set({ executionData: null, workflowInstance: null, dynamicRuntimeTasks: [] });
                     }
                     set({ mode });
 
@@ -79,7 +79,10 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
                 },
 
-                setExecutionData: (data: Record<string, TaskExecutionData> | null) => set({ executionData: data }),
+                setExecutionData: (data: Record<string, TaskExecutionData> | null) => set({
+                    executionData: data,
+                    dynamicRuntimeTasks: data === null ? [] : get().dynamicRuntimeTasks
+                }),
 
                 updateTaskStatus: (taskRef: string, status: ExecutionStatus) => {
                     const { executionData } = get();
@@ -157,7 +160,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                         const hasIterations = data.attempts.some(a => a.iteration !== undefined && a.iteration > 0);
                         if (hasIterations) {
                             data.attempts.sort((a, b) => (a.iteration ?? 0) - (b.iteration ?? 0));
-                            data.totalIterations = Math.max(...data.attempts.map(a => a.iteration ?? 0));
+                            data.totalIterations = data.attempts.reduce((max, a) => Math.max(max, a.iteration ?? 0), 0);
                             // 开始时间取第一次迭代，结束时间取最后一次迭代
                             data.startTime = data.attempts[0]?.startTime;
                         } else {

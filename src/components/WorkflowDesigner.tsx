@@ -185,56 +185,58 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         const forkNodes = nodes.filter(n => n.type === 'forkNode' && n.data.taskType === 'FORK_JOIN_DYNAMIC');
         if (!forkNodes.length) return empty;
 
+        // 多个 FORK_JOIN_DYNAMIC 时无法确定任务归属，跳过注入避免 key 冲突
+        if (forkNodes.length > 1) return empty;
+
+        const forkNode = forkNodes[0];
+        const directEdge = edges.find(e => e.source === forkNode.id && e.id.endsWith('-dynamic'));
+        if (!directEdge) return empty;
+
+        const joinNodeId = directEdge.target;
+        const joinNode = nodes.find(n => n.id === joinNodeId);
+        if (!joinNode) return empty;
+
         const extraNodes: typeof nodes = [];
         const extraEdges: typeof edges = [];
         const removedEdgeIds = new Set<string>();
         const isHorizontal = layoutDirection === 'LR';
+        const count = dynamicRuntimeTasks.length;
 
-        forkNodes.forEach(forkNode => {
-            const directEdge = edges.find(e => e.source === forkNode.id && e.id.endsWith('-dynamic'));
-            if (!directEdge) return;
+        removedEdgeIds.add(directEdge.id);
 
-            const joinNodeId = directEdge.target;
-            const joinNode = nodes.find(n => n.id === joinNodeId);
-            if (!joinNode) return;
+        dynamicRuntimeTasks.forEach((task, idx) => {
+            const nodeId = `dynamic_rt_${task.taskId || task.referenceTaskName}`;
+            const t = (idx + 1) / (count + 1);
+            const forkPos = forkNode.position;
+            const joinPos = joinNode.position;
 
-            const count = dynamicRuntimeTasks.length;
-            removedEdgeIds.add(directEdge.id);
+            const x = isHorizontal
+                ? forkPos.x + t * (joinPos.x - forkPos.x)
+                : forkPos.x + (idx - (count - 1) / 2) * 260;
+            const y = isHorizontal
+                ? forkPos.y + (idx - (count - 1) / 2) * 100
+                : forkPos.y + t * (joinPos.y - forkPos.y);
 
-            dynamicRuntimeTasks.forEach((task, idx) => {
-                const nodeId = `dynamic_rt_${task.taskId || task.referenceTaskName}`;
-                const t = (idx + 1) / (count + 1);
-                const forkPos = forkNode.position;
-                const joinPos = joinNode.position;
+            extraNodes.push({
+                id: nodeId,
+                type: 'taskNode',
+                data: {
+                    label: task.referenceTaskName,
+                    taskReferenceName: task.referenceTaskName,
+                    taskType: task.taskType || 'SIMPLE',
+                    isDynamicRuntime: true,
+                    layoutDirection,
+                },
+                position: { x, y },
+            } as typeof nodes[0]);
 
-                const x = isHorizontal
-                    ? forkPos.x + t * (joinPos.x - forkPos.x)
-                    : forkPos.x + (idx - (count - 1) / 2) * 260;
-                const y = isHorizontal
-                    ? forkPos.y + (idx - (count - 1) / 2) * 100
-                    : forkPos.y + t * (joinPos.y - forkPos.y);
-
-                extraNodes.push({
-                    id: nodeId,
-                    type: 'taskNode',
-                    data: {
-                        label: task.referenceTaskName,
-                        taskReferenceName: task.referenceTaskName,
-                        taskType: task.taskType || 'SIMPLE',
-                        isDynamicRuntime: true,
-                        layoutDirection,
-                    },
-                    position: { x, y },
-                } as typeof nodes[0]);
-
-                const dynamicEdgeBase = {
-                    animated: true,
-                    style: { stroke: '#10b981', strokeDasharray: '4,4' },
-                    markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
-                };
-                extraEdges.push({ id: `e-${forkNode.id}-${nodeId}`, source: forkNode.id, target: nodeId, ...dynamicEdgeBase });
-                extraEdges.push({ id: `e-${nodeId}-${joinNodeId}`, source: nodeId, target: joinNodeId, ...dynamicEdgeBase });
-            });
+            const dynamicEdgeBase = {
+                animated: true,
+                style: { stroke: '#10b981', strokeDasharray: '4,4' },
+                markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
+            };
+            extraEdges.push({ id: `e-${forkNode.id}-${nodeId}`, source: forkNode.id, target: nodeId, ...dynamicEdgeBase });
+            extraEdges.push({ id: `e-${nodeId}-${joinNodeId}`, source: nodeId, target: joinNodeId, ...dynamicEdgeBase });
         });
 
         return { extraNodes, extraEdges, removedEdgeIds };
@@ -242,7 +244,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
     // 为边添加元数据和箭头标记
     const processedEdges = useMemo(() => {
-        return edges
+        const mappedEdges = edges
           .filter(edge => !dynamicForkData.removedEdgeIds.has(edge.id))
           .map((edge) => {
             const isLoopBack = edge.id.includes('loop-back');
@@ -295,7 +297,8 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 style: currentStyle,
                 animated: isAnimated,
             };
-        }).concat(dynamicForkData.extraEdges as any[]);
+        });
+        return [...mappedEdges, ...dynamicForkData.extraEdges];
     }, [edges, edgeType, theme, mode, executionData, dynamicForkData]);
 
     // 背景颜色 - 使用 CSS变量

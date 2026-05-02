@@ -151,7 +151,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             const subExec = executionData[subTask.taskReferenceName];
             if (subExec?.totalIterations) {
                 maxIter = Math.max(maxIter, subExec.totalIterations);
-            } else if (subExec?.attempts && subExec.attempts.length > 1) {
+            } else if (subExec?.attempts.some(a => a.iteration !== undefined && a.iteration > 0)) {
                 maxIter = Math.max(maxIter, subExec.attempts.length);
             }
         });

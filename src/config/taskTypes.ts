@@ -48,7 +48,7 @@ export const TASK_TYPES: TaskTypeConfig[] = [
         type: 'START_WORKFLOW',
         label: '启动工作流 (Start Workflow)',
         description: '启动另一个工作流（不等待结果）',
-        category: 'CORE',
+        category: 'SYSTEM',
         icon: Play
     },
 

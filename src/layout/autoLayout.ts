@@ -60,6 +60,11 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
             width = 240;
             height = 40;
             break;
+        case 'plusNode':
+            // 极简引导节点
+            width = node.data.label && node.data.label !== '+' ? 120 : 32;
+            height = 32;
+            break;
         default:
             // 默认 TaskNode 尺寸
             width = 240;

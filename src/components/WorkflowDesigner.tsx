@@ -13,6 +13,7 @@ import DecisionNode from './nodes/DecisionNode';
 import ForkJoinNode from './nodes/ForkJoinNode';
 import LoopNode from './nodes/LoopNode';
 import SubWorkflowNode from './nodes/SubWorkflowNode';
+import PlusNode from './nodes/PlusNode';
 import NodeSelector from './Editor/NodeSelector';
 import ExecutionTaskPanel from './ExecutionTaskPanel';
 import ExecutionStatusBar from './ExecutionStatusBar';
@@ -37,6 +38,7 @@ const nodeTypes = {
     joinNode: ForkJoinNode.JoinNode,
     loopNode: LoopNode,
     subWorkflowNode: SubWorkflowNode,
+    plusNode: PlusNode,
 };
 
 const edgeTypes = {
@@ -264,6 +266,14 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 onNodeClick={(_: any, node: any) => {
+                    if (node.type === 'plusNode') {
+                        setActiveEdgeData({
+                            sourceId: node.data.parentRef,
+                            edgeData: node.data.edgeData || {}
+                        });
+                        setShowSelector(true);
+                        return;
+                    }
                     const task = node.data.task || null;
                     setSelectedTask(task);
                     if (onNodeClickProp) {

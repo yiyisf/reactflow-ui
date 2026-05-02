@@ -47,6 +47,27 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
         Object.assign(taskMap, result.taskMap);
     }
 
+    // 编辑模式：在流程末尾添加 "+" 引导节点，解决单任务节点无法添加后续节点的问题
+    if (!hideEmptyBranches && tasks.length > 0) {
+        const lastTask = tasks[tasks.length - 1];
+        const plusNodeId = '__workflow_end__';
+        nodes.push({
+            id: plusNodeId,
+            type: 'plusNode',
+            data: {
+                label: '+',
+                parentRef: lastTask.taskReferenceName,
+                layoutDirection: direction,
+            },
+            position: { x: 0, y: 0 },
+            sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+            targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+        });
+
+        // 将所有末尾任务连接到 "+" 节点
+        connectTasks(lastTask, { taskReferenceName: plusNodeId } as any, edges, hideEmptyBranches);
+    }
+
     return { nodes, edges, taskMap };
 }
 
@@ -181,13 +202,15 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
                 style: { stroke: '#3b82f6' }
             });
         } else if (!hideEmptyBranches) {
-            // 编辑模式：创建占位节点，避免多个空分支边重叠
+            // 编辑模式：创建占位引导节点
             const placeholderId = `${task.taskReferenceName}_empty_${caseKey}`;
             nodes.push({
                 id: placeholderId,
-                type: 'default',
+                type: 'plusNode',
                 data: {
                     label: `${caseKey} (空)`,
+                    parentRef: task.taskReferenceName,
+                    edgeData: { branchCase: caseKey },
                     layoutDirection: direction,
                     taskReferenceName: placeholderId,
                     taskType: 'EMPTY_BRANCH',
@@ -242,9 +265,11 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
         const placeholderId = `${task.taskReferenceName}_empty_default`;
         nodes.push({
             id: placeholderId,
-            type: 'default',
+            type: 'plusNode',
             data: {
                 label: 'default (空)',
+                parentRef: task.taskReferenceName,
+                edgeData: { branchCase: 'default' },
                 layoutDirection: direction,
                 taskReferenceName: placeholderId,
                 taskType: 'EMPTY_BRANCH',

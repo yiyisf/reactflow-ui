@@ -1,0 +1,136 @@
+{
+    "workflowId": "wf_switch_demo_001",
+    "status": "COMPLETED",
+    "startTime": 1704546000000,
+    "endTime": 1704546090000,
+    "input": { "userType": "premium", "requestId": "req_555" },
+    "output": { "processed": true, "tier": "premium" },
+    "workflowDefinition": {
+        "name": "user_tier_workflow",
+        "description": "SWITCH 分支演示：根据用户类型走不同处理路径（premium 分支执行）",
+        "version": 1,
+        "tasks": [
+            {
+                "name": "lookup_user",
+                "taskReferenceName": "lookup_user_ref",
+                "type": "HTTP",
+                "inputParameters": {
+                    "uri": "https://api.example.com/users/${workflow.input.requestId}",
+                    "method": "GET"
+                }
+            },
+            {
+                "name": "route_by_tier",
+                "taskReferenceName": "route_ref",
+                "type": "SWITCH",
+                "inputParameters": {
+                    "switchCaseValue": "${workflow.input.userType}"
+                },
+                "evaluatorType": "value-param",
+                "expression": "switchCaseValue",
+                "decisionCases": {
+                    "premium": [
+                        {
+                            "name": "premium_processing",
+                            "taskReferenceName": "premium_proc_ref",
+                            "type": "SIMPLE",
+                            "inputParameters": { "priority": "high", "sla": "1h" }
+                        },
+                        {
+                            "name": "premium_notify",
+                            "taskReferenceName": "premium_notify_ref",
+                            "type": "EVENT",
+                            "inputParameters": { "sink": "sqs:premium-events" }
+                        }
+                    ],
+                    "standard": [
+                        {
+                            "name": "standard_processing",
+                            "taskReferenceName": "standard_proc_ref",
+                            "type": "SIMPLE",
+                            "inputParameters": { "priority": "normal", "sla": "24h" }
+                        }
+                    ],
+                    "free": [
+                        {
+                            "name": "queue_request",
+                            "taskReferenceName": "queue_ref",
+                            "type": "SET_VARIABLE",
+                            "inputParameters": { "queuePosition": "${workflow.input.requestId}" }
+                        }
+                    ]
+                },
+                "defaultCase": [
+                    {
+                        "name": "handle_unknown_tier",
+                        "taskReferenceName": "unknown_tier_ref",
+                        "type": "TERMINATE",
+                        "inputParameters": {
+                            "terminationStatus": "FAILED",
+                            "reasonForIncompletion": "Unknown user tier"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "log_completion",
+                "taskReferenceName": "log_ref",
+                "type": "INLINE",
+                "inputParameters": {
+                    "expression": "console.log('Workflow complete')"
+                }
+            }
+        ],
+        "schemaVersion": 2
+    },
+    "tasks": [
+        {
+            "taskId": "task_lookup_001",
+            "referenceTaskName": "lookup_user_ref",
+            "status": "COMPLETED",
+            "taskType": "HTTP",
+            "startTime": 1704546000000,
+            "endTime": 1704546005000,
+            "inputData": { "uri": "https://api.example.com/users/req_555" },
+            "outputData": { "userId": "usr_999", "tier": "premium", "email": "user@example.com" }
+        },
+        {
+            "taskId": "task_switch_001",
+            "referenceTaskName": "route_ref",
+            "status": "COMPLETED",
+            "taskType": "SWITCH",
+            "startTime": 1704546006000,
+            "endTime": 1704546006500,
+            "inputData": { "switchCaseValue": "premium" },
+            "outputData": { "caseOutput": "premium" }
+        },
+        {
+            "taskId": "task_premium_proc_001",
+            "referenceTaskName": "premium_proc_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546007000,
+            "endTime": 1704546040000,
+            "inputData": { "priority": "high", "sla": "1h" },
+            "outputData": { "jobId": "job_premium_789", "estimatedTime": "45m" }
+        },
+        {
+            "taskId": "task_premium_notify_001",
+            "referenceTaskName": "premium_notify_ref",
+            "status": "COMPLETED",
+            "taskType": "EVENT",
+            "startTime": 1704546041000,
+            "endTime": 1704546043000,
+            "outputData": { "eventId": "evt_premium_sent" }
+        },
+        {
+            "taskId": "task_log_001",
+            "referenceTaskName": "log_ref",
+            "status": "COMPLETED",
+            "taskType": "INLINE",
+            "startTime": 1704546044000,
+            "endTime": 1704546046000,
+            "outputData": { "result": "logged" }
+        }
+    ]
+}

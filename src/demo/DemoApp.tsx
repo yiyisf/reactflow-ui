@@ -104,9 +104,30 @@ function DemoApp() {
       if (!response.ok) throw new Error(`加载示例失败: ${response.statusText}`);
       const json = await response.json();
       setWorkflowJson(json);
+      setWorkflowExecution(null);
       setError(null);
     } catch (err: any) {
       setError(`加载示例工作流失败: ${err.message}`);
+    }
+  }, []);
+
+  // 运行态执行示例
+  const [workflowExecution, setWorkflowExecution] = useState<any>(null);
+
+  const loadExecutionExample = useCallback(async (exampleName: string) => {
+    if (!exampleName) {
+      setWorkflowExecution(null);
+      return;
+    }
+    try {
+      const response = await fetch(`/sample-executions/${exampleName}.json`);
+      if (!response.ok) throw new Error(`加载示例失败: ${response.statusText}`);
+      const json = await response.json();
+      setWorkflowExecution(json);
+      setWorkflowJson(null);
+      setError(null);
+    } catch (err: any) {
+      setError(`加载执行示例失败: ${err.message}`);
     }
   }, []);
 
@@ -192,11 +213,25 @@ function DemoApp() {
             </button>
 
             <select className="sample-select" onChange={(e) => loadSampleWorkflow(e.target.value)}>
-              <option value="">选择示例...</option>
+              <option value="">编辑态示例...</option>
               <option value="simple-workflow">简单流程</option>
               <option value="decision-workflow">分支流程</option>
               <option value="fork-join-workflow">并行流程</option>
               <option value="complex-workflow">复杂流程</option>
+            </select>
+
+            <select
+              className="sample-select"
+              onChange={(e) => loadExecutionExample(e.target.value)}
+              style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }}
+            >
+              <option value="">运行态示例...</option>
+              <option value="loop-iterations">DO_WHILE 循环迭代 (×3)</option>
+              <option value="fork-dynamic">FORK_JOIN_DYNAMIC 动态并行</option>
+              <option value="retry-tasks">任务重试机制</option>
+              <option value="switch-branches">SWITCH 分支执行</option>
+              <option value="human-approval">HUMAN 人工审批（进行中）</option>
+              <option value="mixed-status">CI/CD 流水线（混合状态）</option>
             </select>
 
             <label className="upload-btn">
@@ -295,6 +330,7 @@ function DemoApp() {
         <WorkflowIDE
           ref={ideRef}
           workflowDef={workflowJson}
+          workflowExecution={workflowExecution}
           readOnly={isReadOnly}
           theme={themeMode}
           themeColor={themeColor}

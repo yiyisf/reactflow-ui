@@ -1,0 +1,124 @@
+{
+    "workflowId": "wf_retry_demo_001",
+    "status": "COMPLETED",
+    "startTime": 1704546000000,
+    "endTime": 1704546180000,
+    "input": { "orderId": "ord_9876", "maxRetries": 3 },
+    "output": { "orderStatus": "PROCESSED", "transactionId": "txn_abc123" },
+    "workflowDefinition": {
+        "name": "payment_processing_workflow",
+        "description": "重试机制演示：支付任务重试 2 次后成功，通知任务首次成功",
+        "version": 1,
+        "tasks": [
+            {
+                "name": "validate_order",
+                "taskReferenceName": "validate_order_ref",
+                "type": "SIMPLE",
+                "inputParameters": { "orderId": "${workflow.input.orderId}" }
+            },
+            {
+                "name": "process_payment",
+                "taskReferenceName": "process_payment_ref",
+                "type": "HTTP",
+                "retryCount": 3,
+                "retryDelaySeconds": 10,
+                "inputParameters": {
+                    "uri": "https://payment-api.example.com/charge",
+                    "method": "POST",
+                    "body": { "orderId": "${workflow.input.orderId}" }
+                }
+            },
+            {
+                "name": "update_inventory",
+                "taskReferenceName": "update_inventory_ref",
+                "type": "SIMPLE",
+                "retryCount": 2,
+                "inputParameters": { "orderId": "${workflow.input.orderId}" }
+            },
+            {
+                "name": "send_confirmation",
+                "taskReferenceName": "send_confirm_ref",
+                "type": "HTTP",
+                "inputParameters": {
+                    "uri": "https://notify-api.example.com/email",
+                    "method": "POST"
+                }
+            }
+        ],
+        "schemaVersion": 2
+    },
+    "tasks": [
+        {
+            "taskId": "task_validate_001",
+            "referenceTaskName": "validate_order_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546000000,
+            "endTime": 1704546005000,
+            "inputData": { "orderId": "ord_9876" },
+            "outputData": { "valid": true, "amount": 99.99 }
+        },
+        {
+            "taskId": "task_payment_retry0",
+            "referenceTaskName": "process_payment_ref",
+            "status": "FAILED_WITH_TERMINAL_ERROR",
+            "taskType": "HTTP",
+            "retryCount": 0,
+            "startTime": 1704546006000,
+            "endTime": 1704546016000,
+            "inputData": { "orderId": "ord_9876", "amount": 99.99 },
+            "reasonForIncompletion": "Connection timeout: payment gateway unreachable"
+        },
+        {
+            "taskId": "task_payment_retry1",
+            "referenceTaskName": "process_payment_ref",
+            "status": "FAILED_WITH_TERMINAL_ERROR",
+            "taskType": "HTTP",
+            "retryCount": 1,
+            "startTime": 1704546026000,
+            "endTime": 1704546036000,
+            "inputData": { "orderId": "ord_9876", "amount": 99.99 },
+            "reasonForIncompletion": "HTTP 503: Service Temporarily Unavailable"
+        },
+        {
+            "taskId": "task_payment_retry2",
+            "referenceTaskName": "process_payment_ref",
+            "status": "COMPLETED",
+            "taskType": "HTTP",
+            "retryCount": 2,
+            "startTime": 1704546046000,
+            "endTime": 1704546056000,
+            "inputData": { "orderId": "ord_9876", "amount": 99.99 },
+            "outputData": { "transactionId": "txn_abc123", "status": "APPROVED" }
+        },
+        {
+            "taskId": "task_inventory_retry0",
+            "referenceTaskName": "update_inventory_ref",
+            "status": "FAILED",
+            "taskType": "SIMPLE",
+            "retryCount": 0,
+            "startTime": 1704546057000,
+            "endTime": 1704546067000,
+            "reasonForIncompletion": "Database deadlock detected"
+        },
+        {
+            "taskId": "task_inventory_retry1",
+            "referenceTaskName": "update_inventory_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "retryCount": 1,
+            "startTime": 1704546077000,
+            "endTime": 1704546085000,
+            "outputData": { "updated": true, "newStock": 42 }
+        },
+        {
+            "taskId": "task_confirm_001",
+            "referenceTaskName": "send_confirm_ref",
+            "status": "COMPLETED",
+            "taskType": "HTTP",
+            "startTime": 1704546086000,
+            "endTime": 1704546090000,
+            "outputData": { "emailSent": true, "messageId": "msg_confirm_456" }
+        }
+    ]
+}

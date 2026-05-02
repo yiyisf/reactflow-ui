@@ -1,0 +1,155 @@
+{
+    "workflowId": "wf_mixed_status_demo_001",
+    "status": "RUNNING",
+    "startTime": 1704546000000,
+    "input": { "environment": "production", "version": "3.2.1" },
+    "workflowDefinition": {
+        "name": "cicd_pipeline_workflow",
+        "description": "混合状态演示：CI/CD 流水线，包含完成、运行中、失败和等待中的任务",
+        "version": 1,
+        "tasks": [
+            {
+                "name": "checkout_code",
+                "taskReferenceName": "checkout_ref",
+                "type": "SIMPLE",
+                "inputParameters": { "repo": "https://github.com/example/service" }
+            },
+            {
+                "name": "run_tests",
+                "taskReferenceName": "test_fork_ref",
+                "type": "FORK_JOIN",
+                "forkTasks": [
+                    [
+                        {
+                            "name": "unit_tests",
+                            "taskReferenceName": "unit_test_ref",
+                            "type": "SIMPLE"
+                        }
+                    ],
+                    [
+                        {
+                            "name": "integration_tests",
+                            "taskReferenceName": "integration_test_ref",
+                            "type": "HTTP",
+                            "inputParameters": { "uri": "https://test-runner.internal/run" }
+                        }
+                    ],
+                    [
+                        {
+                            "name": "security_scan",
+                            "taskReferenceName": "security_scan_ref",
+                            "type": "SIMPLE"
+                        }
+                    ]
+                ]
+            },
+            {
+                "name": "join_tests",
+                "taskReferenceName": "test_join_ref",
+                "type": "JOIN",
+                "joinOn": ["unit_test_ref", "integration_test_ref", "security_scan_ref"]
+            },
+            {
+                "name": "build_image",
+                "taskReferenceName": "build_ref",
+                "type": "SIMPLE",
+                "inputParameters": { "version": "${workflow.input.version}" }
+            },
+            {
+                "name": "deploy_to_staging",
+                "taskReferenceName": "deploy_staging_ref",
+                "type": "HTTP",
+                "inputParameters": {
+                    "uri": "https://deploy-api.internal/staging",
+                    "method": "POST"
+                }
+            },
+            {
+                "name": "smoke_tests",
+                "taskReferenceName": "smoke_test_ref",
+                "type": "SIMPLE"
+            },
+            {
+                "name": "deploy_to_production",
+                "taskReferenceName": "deploy_prod_ref",
+                "type": "HTTP",
+                "inputParameters": {
+                    "uri": "https://deploy-api.internal/production",
+                    "method": "POST"
+                }
+            },
+            {
+                "name": "notify_release",
+                "taskReferenceName": "release_notify_ref",
+                "type": "KAFKA_PUBLISH",
+                "inputParameters": { "topic": "releases" }
+            }
+        ],
+        "schemaVersion": 2
+    },
+    "tasks": [
+        {
+            "taskId": "task_checkout_001",
+            "referenceTaskName": "checkout_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546000000,
+            "endTime": 1704546010000,
+            "inputData": { "repo": "https://github.com/example/service", "branch": "main" },
+            "outputData": { "commitHash": "a1b2c3d4", "filesChanged": 23 }
+        },
+        {
+            "taskId": "task_fork_001",
+            "referenceTaskName": "test_fork_ref",
+            "status": "COMPLETED",
+            "taskType": "FORK",
+            "startTime": 1704546011000,
+            "endTime": 1704546011100
+        },
+        {
+            "taskId": "task_unit_test_001",
+            "referenceTaskName": "unit_test_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546012000,
+            "endTime": 1704546035000,
+            "outputData": { "passed": 142, "failed": 0, "coverage": "87%" }
+        },
+        {
+            "taskId": "task_integration_test_001",
+            "referenceTaskName": "integration_test_ref",
+            "status": "FAILED",
+            "taskType": "HTTP",
+            "retryCount": 0,
+            "startTime": 1704546012000,
+            "endTime": 1704546045000,
+            "reasonForIncompletion": "Test suite failed: 3 integration tests failed (UserAuth, PaymentFlow, NotificationService)"
+        },
+        {
+            "taskId": "task_security_scan_001",
+            "referenceTaskName": "security_scan_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546012000,
+            "endTime": 1704546040000,
+            "outputData": { "vulnerabilities": 0, "grade": "A" }
+        },
+        {
+            "taskId": "task_test_join_001",
+            "referenceTaskName": "test_join_ref",
+            "status": "FAILED",
+            "taskType": "JOIN",
+            "startTime": 1704546046000,
+            "endTime": 1704546046500,
+            "reasonForIncompletion": "One or more parallel branches failed"
+        },
+        {
+            "taskId": "task_build_001",
+            "referenceTaskName": "build_ref",
+            "status": "IN_PROGRESS",
+            "taskType": "SIMPLE",
+            "startTime": 1704546047000,
+            "inputData": { "version": "3.2.1", "skipTests": true }
+        }
+    ]
+}

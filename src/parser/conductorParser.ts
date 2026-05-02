@@ -138,31 +138,6 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
     nodes.push(decisionNode);
     localTaskMap[task.taskReferenceName] = task;
 
-    // 创建合并节点（用于汇聚所有分支）
-    const joinNodeId = `${task.taskReferenceName}_join`;
-    const joinNode: WorkflowNode = {
-        id: joinNodeId,
-        type: 'default',
-        data: {
-            label: '合并',
-            layoutDirection: direction,
-            taskReferenceName: joinNodeId,
-            taskType: 'DECISION_JOIN'
-        },
-        position: { x: 0, y: 0 },
-        sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
-        targetPosition: direction === 'LR' ? Position.Left : Position.Top,
-        style: {
-            background: '#a78bfa',
-            color: '#fff',
-            border: '2px solid #8b5cf6',
-            borderRadius: '8px',
-            padding: '10px',
-            fontSize: '12px'
-        } as React.CSSProperties
-    };
-    nodes.push(joinNode);
-
     // 解析决策映射
     const decisionCases = task.decisionCases || {};
     const defaultCase = task.defaultCase || [];
@@ -261,14 +236,6 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
             animated: true,
             data: { branchCase: 'default' },
             style: { stroke: '#f59e0b' }
-        });
-
-        const lastTaskRef = defaultCase[defaultCase.length - 1].taskReferenceName;
-        edges.push({
-            id: `e-${lastTaskRef}-${joinNodeId}`,
-            source: lastTaskRef,
-            target: joinNodeId,
-            animated: true
         });
     } else if (!hideEmptyBranches) {
         // 编辑模式：创建默认分支占位节点

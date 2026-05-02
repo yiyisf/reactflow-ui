@@ -81,6 +81,8 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         validationResults,
         setIsDetailPanelOpen,
         workflowDef,
+        dynamicRuntimeTasks,
+        layoutDirection,
     } = useWorkflowStore();
 
     const { fitView } = useReactFlow();
@@ -175,9 +177,74 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         setActiveEdgeData(null);
     }, [activeEdgeData, addNode]);
 
+    // 运行态：计算 FORK_JOIN_DYNAMIC 动态子任务节点和边
+    const dynamicForkData = useMemo(() => {
+        const empty = { extraNodes: [] as typeof nodes, extraEdges: [] as typeof edges, removedEdgeIds: new Set<string>() };
+        if (mode !== 'run' || !dynamicRuntimeTasks.length) return empty;
+
+        const forkNodes = nodes.filter(n => n.type === 'forkNode' && n.data.taskType === 'FORK_JOIN_DYNAMIC');
+        if (!forkNodes.length) return empty;
+
+        const extraNodes: typeof nodes = [];
+        const extraEdges: typeof edges = [];
+        const removedEdgeIds = new Set<string>();
+        const isHorizontal = layoutDirection === 'LR';
+
+        forkNodes.forEach(forkNode => {
+            const directEdge = edges.find(e => e.source === forkNode.id && e.id.endsWith('-dynamic'));
+            if (!directEdge) return;
+
+            const joinNodeId = directEdge.target;
+            const joinNode = nodes.find(n => n.id === joinNodeId);
+            if (!joinNode) return;
+
+            const count = dynamicRuntimeTasks.length;
+            removedEdgeIds.add(directEdge.id);
+
+            dynamicRuntimeTasks.forEach((task, idx) => {
+                const nodeId = `dynamic_rt_${task.taskId || task.referenceTaskName}`;
+                const t = (idx + 1) / (count + 1);
+                const forkPos = forkNode.position;
+                const joinPos = joinNode.position;
+
+                const x = isHorizontal
+                    ? forkPos.x + t * (joinPos.x - forkPos.x)
+                    : forkPos.x + (idx - (count - 1) / 2) * 260;
+                const y = isHorizontal
+                    ? forkPos.y + (idx - (count - 1) / 2) * 100
+                    : forkPos.y + t * (joinPos.y - forkPos.y);
+
+                extraNodes.push({
+                    id: nodeId,
+                    type: 'taskNode',
+                    data: {
+                        label: task.referenceTaskName,
+                        taskReferenceName: task.referenceTaskName,
+                        taskType: task.taskType || 'SIMPLE',
+                        isDynamicRuntime: true,
+                        layoutDirection,
+                    },
+                    position: { x, y },
+                } as typeof nodes[0]);
+
+                const dynamicEdgeBase = {
+                    animated: true,
+                    style: { stroke: '#10b981', strokeDasharray: '4,4' },
+                    markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
+                };
+                extraEdges.push({ id: `e-${forkNode.id}-${nodeId}`, source: forkNode.id, target: nodeId, ...dynamicEdgeBase });
+                extraEdges.push({ id: `e-${nodeId}-${joinNodeId}`, source: nodeId, target: joinNodeId, ...dynamicEdgeBase });
+            });
+        });
+
+        return { extraNodes, extraEdges, removedEdgeIds };
+    }, [mode, dynamicRuntimeTasks, nodes, edges, layoutDirection]);
+
     // 为边添加元数据和箭头标记
     const processedEdges = useMemo(() => {
-        return edges.map((edge) => {
+        return edges
+          .filter(edge => !dynamicForkData.removedEdgeIds.has(edge.id))
+          .map((edge) => {
             const isLoopBack = edge.id.includes('loop-back');
             const baseStyle = {
                 ...edge.style,
@@ -228,8 +295,8 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 style: currentStyle,
                 animated: isAnimated,
             };
-        });
-    }, [edges, edgeType, theme, mode, executionData]);
+        }).concat(dynamicForkData.extraEdges as any[]);
+    }, [edges, edgeType, theme, mode, executionData, dynamicForkData]);
 
     // 背景颜色 - 使用 CSS变量
     const backgroundColor = 'var(--bg-secondary)';
@@ -242,7 +309,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     const warningRefs = new Set(validationResults.warnings.filter(w => w.type === 'TASK').map(w => w.ref));
                     const query = searchQuery.toLowerCase();
 
-                    return nodes.map(node => {
+                    const baseNodes = nodes.map(node => {
                         const ref = node.data.taskReferenceName;
                         return {
                             ...node,
@@ -258,7 +325,12 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             }
                         };
                     });
-                }, [nodes, validationResults, searchQuery, selectedTask])}
+                    // 追加动态 fork 子任务节点
+                    return baseNodes.concat(dynamicForkData.extraNodes.map(node => ({
+                        ...node,
+                        data: { ...node.data, isError: false, hasWarning: false, isHighlighted: false },
+                    })) as typeof baseNodes);
+                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData])}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}

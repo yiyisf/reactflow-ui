@@ -38,6 +38,7 @@ export interface TaskExecutionData {
     input?: any;
     reasonForIncompletion?: string;
     iteration?: number;
+    totalIterations?: number; // DO_WHILE 循环总迭代次数
 }
 /**
  * 解析结果
@@ -88,6 +89,7 @@ export interface WorkflowNodeData {
     targetPosition?: Position; // 动态布局专用 (如蛇形布局)
     parentRef?: string; // 父节点引用名（用于 Join/plusNode 查找上游节点）
     edgeData?: Record<string, any>; // plusNode 专用：携带边的附加信息
+    isDynamicRuntime?: boolean; // FORK_JOIN_DYNAMIC 运行时动态生成的子任务节点
 }
 
 /**
@@ -123,6 +125,7 @@ export interface WorkflowState {
     selectedTask: TaskDef | null;
     selectedTaskInstance: TaskInstance | null; // 当前选中的运行时任务实例
     executionData: Record<string, TaskExecutionData> | null;
+    dynamicRuntimeTasks: TaskInstance[]; // FORK_JOIN_DYNAMIC 运行时生成的子任务
     validationResults: ValidationResults;
     theme: ThemeMode;
     themeColor: ThemeColor;

@@ -21,7 +21,7 @@ const LOOP_COLOR = 'var(--color-accent)';
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
     const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
-    const { removeLoopTask } = useWorkflowStore();
+    const { removeLoopTask, executionData, selectTaskAction } = useWorkflowStore();
 
     // 获取循环体任务信息
     const loopOver = data.loopOver || data.task?.loopOver || [];
@@ -143,10 +143,22 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
 
     const isHorizontal = layoutDirection === 'LR';
 
-    // 格式化 Iteration 信息 for Meta
-    const meta = isRunning && (execution as any)?.iteration !== undefined
-        ? `Condition: ${data.loopCondition || 'None'} | Iteration: ${(execution as any).iteration}`
-        : `Condition: ${data.loopCondition || 'None'}`;
+    // 从循环体子任务的 executionData 中推断总迭代次数
+    const totalIterations = useMemo(() => {
+        if (!isRunning || !executionData || loopOver.length === 0) return 0;
+        let maxIter = 0;
+        loopOver.forEach(subTask => {
+            const subExec = executionData[subTask.taskReferenceName];
+            if (subExec?.totalIterations) {
+                maxIter = Math.max(maxIter, subExec.totalIterations);
+            } else if (subExec?.attempts && subExec.attempts.length > 1) {
+                maxIter = Math.max(maxIter, subExec.attempts.length);
+            }
+        });
+        return maxIter;
+    }, [isRunning, executionData, loopOver]);
+
+    const meta = `Condition: ${data.loopCondition || 'None'}`;
 
     return (
         <NodeWrapper
@@ -215,12 +227,33 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                         fontWeight: 'bold',
                                         marginLeft: '0',
                                         marginRight: '0',
-                                        flexShrink: 0 // 防止按钮被压缩
+                                        flexShrink: 0
                                     }}
                                 >
                                     +
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* 运行态迭代进度 */}
+                    {isRunning && totalIterations > 0 && (
+                        <div
+                            onClick={() => selectTaskAction(data.task || null)}
+                            style={{
+                                marginTop: '8px',
+                                padding: '4px 10px',
+                                background: 'var(--bg-primary)',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                color: 'var(--color-accent)',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                border: '1px solid var(--border-secondary)',
+                                fontWeight: '600',
+                            }}
+                        >
+                            已完成 {totalIterations} 次迭代
                         </div>
                     )}
                 </NodeLayout>

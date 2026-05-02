@@ -32,6 +32,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 selectedTaskInstance: null as TaskInstance | null,
                 isDetailPanelOpen: false,
                 executionData: null,
+                dynamicRuntimeTasks: [] as TaskInstance[],
                 validationResults: { isValid: true, errors: [], warnings: [] },
 
                 // 用户喜好配置
@@ -146,20 +147,46 @@ const useWorkflowStore = create<WorkflowStore>()(
                                     iteration: task.iteration
                                 };
                             }
-
-                            // 保存所有实例到 attempts
                             executionData[ref].attempts.push(task as TaskInstance);
-
-                            // 更新状态为最后一次尝试的状态
-                            executionData[ref].status = task.status as ExecutionStatus;
-                            executionData[ref].startTime = task.startTime;
-                            executionData[ref].endTime = task.endTime;
-                            executionData[ref].output = task.outputData;
-                            executionData[ref].input = task.inputData;
-                            executionData[ref].reasonForIncompletion = task.reasonForIncompletion;
-                            executionData[ref].iteration = task.iteration;
                         }
                     });
+
+                    // 后处理：对每个 ref 的 attempts 排序，并计算正确的状态和 totalIterations
+                    Object.values(executionData).forEach(data => {
+                        // 按 iteration（循环次序）排序，无 iteration 时按 retryCount 排序
+                        const hasIterations = data.attempts.some(a => a.iteration !== undefined && a.iteration > 0);
+                        if (hasIterations) {
+                            data.attempts.sort((a, b) => (a.iteration ?? 0) - (b.iteration ?? 0));
+                            data.totalIterations = Math.max(...data.attempts.map(a => a.iteration ?? 0));
+                            // 开始时间取第一次迭代，结束时间取最后一次迭代
+                            data.startTime = data.attempts[0]?.startTime;
+                        } else {
+                            data.attempts.sort((a, b) => (a.retryCount ?? 0) - (b.retryCount ?? 0));
+                        }
+                        // 状态/输出取最后一次尝试
+                        const last = data.attempts[data.attempts.length - 1];
+                        if (last) {
+                            data.status = last.status as ExecutionStatus;
+                            data.endTime = last.endTime;
+                            data.output = last.outputData;
+                            data.input = last.inputData;
+                            data.reasonForIncompletion = last.reasonForIncompletion;
+                            data.iteration = last.iteration;
+                        }
+                    });
+
+                    // 提取动态 fork 子任务（referenceTaskName 不在 taskMap 中的任务）
+                    const currentTaskMap = get().taskMap;
+                    const seenTaskIds = new Set<string>();
+                    const dynamicRuntimeTasks = tasks
+                        .filter((task: any) => {
+                            if (!task.referenceTaskName || !task.taskId) return false;
+                            if (currentTaskMap[task.referenceTaskName]) return false;
+                            if (seenTaskIds.has(task.taskId)) return false;
+                            seenTaskIds.add(task.taskId);
+                            return true;
+                        })
+                        .map((task: any) => task as TaskInstance);
 
                     // 如果探测到新的定义，先更新图表 (使用字符串化比较)
                     if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(get().workflowDef)) {
@@ -168,6 +195,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     set({
                         executionData,
+                        dynamicRuntimeTasks,
                         workflowInstance,
                         mode: 'run'
                     });

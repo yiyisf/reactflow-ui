@@ -14,6 +14,7 @@ import ForkJoinNode from './nodes/ForkJoinNode';
 import LoopNode from './nodes/LoopNode';
 import SubWorkflowNode from './nodes/SubWorkflowNode';
 import PlusNode from './nodes/PlusNode';
+import DynamicPlaceholderNode from './nodes/DynamicPlaceholderNode';
 import NodeSelector from './Editor/NodeSelector';
 import ExecutionTaskPanel from './ExecutionTaskPanel';
 import ExecutionStatusBar from './ExecutionStatusBar';
@@ -39,6 +40,7 @@ const nodeTypes = {
     loopNode: LoopNode,
     subWorkflowNode: SubWorkflowNode,
     plusNode: PlusNode,
+    dynamicPlaceholderNode: DynamicPlaceholderNode,
 };
 
 const edgeTypes = {
@@ -179,7 +181,12 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
     // 运行态：计算 FORK_JOIN_DYNAMIC 动态子任务节点和边
     const dynamicForkData = useMemo(() => {
-        const empty = { extraNodes: [] as typeof nodes, extraEdges: [] as typeof edges, removedEdgeIds: new Set<string>() };
+        const empty = {
+            extraNodes: [] as typeof nodes,
+            extraEdges: [] as typeof edges,
+            removedEdgeIds: new Set<string>(),
+            removedNodeIds: new Set<string>(),
+        };
         if (mode !== 'run' || !dynamicRuntimeTasks.length) return empty;
 
         const forkNodes = nodes.filter(n => n.type === 'forkNode' && n.data.taskType === 'FORK_JOIN_DYNAMIC');
@@ -189,33 +196,56 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         if (forkNodes.length > 1) return empty;
 
         const forkNode = forkNodes[0];
-        const directEdge = edges.find(e => e.source === forkNode.id && e.id.endsWith('-dynamic'));
-        if (!directEdge) return empty;
+        const placeholderId = `${forkNode.id}_dynamic_placeholder`;
 
-        const joinNodeId = directEdge.target;
+        // 找占位节点 → join 的 -dynamic 边
+        const dynamicEdge = edges.find(e => e.source === placeholderId && e.id.endsWith('-dynamic'));
+        if (!dynamicEdge) return empty;
+
+        const joinNodeId = dynamicEdge.target;
         const joinNode = nodes.find(n => n.id === joinNodeId);
         if (!joinNode) return empty;
 
+        const forkToPlaceholderEdge = edges.find(e => e.target === placeholderId);
+        const placeholderNode = nodes.find(n => n.id === placeholderId);
+
+        const removedEdgeIds = new Set<string>(
+            [dynamicEdge.id, forkToPlaceholderEdge?.id].filter(Boolean) as string[]
+        );
+        const removedNodeIds = new Set<string>([placeholderId]);
+
+        // 按 referenceTaskName 去重（同一任务多次重试有不同 taskId，只生成一个节点）
+        const uniqueTasks = dynamicRuntimeTasks.filter((t, i, arr) =>
+            arr.findIndex(x => x.referenceTaskName === t.referenceTaskName) === i
+        );
+
         const extraNodes: typeof nodes = [];
         const extraEdges: typeof edges = [];
-        const removedEdgeIds = new Set<string>();
         const isHorizontal = layoutDirection === 'LR';
-        const count = dynamicRuntimeTasks.length;
+        const count = uniqueTasks.length;
 
-        removedEdgeIds.add(directEdge.id);
+        // 以占位节点位置为中心分布（占位已由 dagre 定位）
+        const centerX = placeholderNode
+            ? placeholderNode.position.x + 110
+            : (forkNode.position.x + joinNode.position.x) / 2;
+        const centerY = placeholderNode
+            ? placeholderNode.position.y + 35
+            : (forkNode.position.y + joinNode.position.y) / 2;
 
-        dynamicRuntimeTasks.forEach((task, idx) => {
-            const nodeId = `dynamic_rt_${task.taskId || task.referenceTaskName}`;
-            const t = (idx + 1) / (count + 1);
-            const forkPos = forkNode.position;
-            const joinPos = joinNode.position;
+        const dynamicEdgeBase = {
+            animated: true,
+            style: { stroke: '#10b981', strokeDasharray: '4,4' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
+        };
 
+        uniqueTasks.forEach((task, idx) => {
+            const nodeId = `dynamic_rt_${task.referenceTaskName}`;
             const x = isHorizontal
-                ? forkPos.x + t * (joinPos.x - forkPos.x)
-                : forkPos.x + (idx - (count - 1) / 2) * 260;
+                ? centerX - 120
+                : forkNode.position.x + (idx - (count - 1) / 2) * 280;
             const y = isHorizontal
-                ? forkPos.y + (idx - (count - 1) / 2) * 100
-                : forkPos.y + t * (joinPos.y - forkPos.y);
+                ? centerY + (idx - (count - 1) / 2) * 110
+                : centerY - 47;
 
             extraNodes.push({
                 id: nodeId,
@@ -230,16 +260,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 position: { x, y },
             } as typeof nodes[0]);
 
-            const dynamicEdgeBase = {
-                animated: true,
-                style: { stroke: '#10b981', strokeDasharray: '4,4' },
-                markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
-            };
             extraEdges.push({ id: `e-${forkNode.id}-${nodeId}`, source: forkNode.id, target: nodeId, ...dynamicEdgeBase });
             extraEdges.push({ id: `e-${nodeId}-${joinNodeId}`, source: nodeId, target: joinNodeId, ...dynamicEdgeBase });
         });
 
-        return { extraNodes, extraEdges, removedEdgeIds };
+        return { extraNodes, extraEdges, removedEdgeIds, removedNodeIds };
     }, [mode, dynamicRuntimeTasks, nodes, edges, layoutDirection]);
 
     // 为边添加元数据和箭头标记
@@ -312,7 +337,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     const warningRefs = new Set(validationResults.warnings.filter(w => w.type === 'TASK').map(w => w.ref));
                     const query = searchQuery.toLowerCase();
 
-                    const baseNodes = nodes.map(node => {
+                    const baseNodes = nodes
+                    .filter(n => !dynamicForkData.removedNodeIds.has(n.id))
+                    .map(node => {
                         const ref = node.data.taskReferenceName;
                         return {
                             ...node,

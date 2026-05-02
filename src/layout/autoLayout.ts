@@ -29,6 +29,10 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
             width = 240;
             height = 95;
             break;
+        case 'dynamicPlaceholderNode':
+            width = 220;
+            height = 70;
+            break;
         case 'loopNode':
             // LoopNode 宽度更大，高度取决于子任务数量
             const loopOver = node.data.loopOver || node.data.task?.loopOver || [];

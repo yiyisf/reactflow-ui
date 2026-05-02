@@ -341,6 +341,35 @@ function parseForkJoinTask(task: TaskDef, startId: number, taskMap: Record<strin
     nodes.push(forkNode);
     localTaskMap[task.taskReferenceName] = task;
 
+    if (isDynamic) {
+        // 动态并行：在 Fork 与 Join 之间插入占位节点，运行时由实际任务替换
+        const placeholderId = `${task.taskReferenceName}_dynamic_placeholder`;
+        nodes.push({
+            id: placeholderId,
+            type: 'dynamicPlaceholderNode',
+            data: {
+                label: '动态分支',
+                taskReferenceName: placeholderId,
+                taskType: 'DYNAMIC_PLACEHOLDER',
+                layoutDirection: direction,
+            },
+            position: { x: 0, y: 0 },
+            sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+            targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+        });
+        edges.push({
+            id: `e-${task.taskReferenceName}-${placeholderId}`,
+            source: task.taskReferenceName,
+            target: placeholderId,
+            animated: true,
+            style: { stroke: '#10b981', strokeDasharray: '5,5', strokeWidth: 2 },
+        });
+        localTaskMap[placeholderId] = {
+            taskReferenceName: placeholderId,
+            type: 'DYNAMIC_PLACEHOLDER',
+        } as any;
+    }
+
     if (!isDynamic) {
         // 静态并行：解析并行分支
         const forkTasks = task.forkTasks || [];
@@ -498,15 +527,15 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
     if (taskIdx > 0) {
         const prevTask = allTasks[taskIdx - 1];
         if (prevTask.type === 'FORK_JOIN_DYNAMIC') {
+            const placeholderId = `${prevTask.taskReferenceName}_dynamic_placeholder`;
             edges.push({
-                id: `e-${prevTask.taskReferenceName}-${task.taskReferenceName}-dynamic`,
-                source: prevTask.taskReferenceName,
+                id: `e-${placeholderId}-${task.taskReferenceName}-dynamic`,
+                source: placeholderId,
                 target: task.taskReferenceName,
-                label: '动态分支',
                 animated: true,
                 style: {
                     stroke: '#10b981',
-                    strokeWidth: 4,
+                    strokeWidth: 2,
                     strokeDasharray: '5,5',
                     opacity: 0.8
                 }

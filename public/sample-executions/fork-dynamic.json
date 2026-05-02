@@ -1,0 +1,138 @@
+{
+    "workflowId": "wf_dynamic_fork_demo_001",
+    "status": "COMPLETED",
+    "startTime": 1704546000000,
+    "endTime": 1704546080000,
+    "input": { "region": "us-east", "services": ["auth", "payment", "notification"] },
+    "output": { "deployedCount": 3, "status": "All services deployed" },
+    "workflowDefinition": {
+        "name": "dynamic_deployment_workflow",
+        "description": "FORK_JOIN_DYNAMIC 演示：运行时动态生成并行部署任务",
+        "version": 1,
+        "tasks": [
+            {
+                "name": "prepare_deployment",
+                "taskReferenceName": "prepare_ref",
+                "type": "HTTP",
+                "inputParameters": {
+                    "uri": "https://deploy-api.example.com/prepare",
+                    "method": "POST"
+                }
+            },
+            {
+                "name": "dynamic_deploy_fork",
+                "taskReferenceName": "deploy_fork_ref",
+                "type": "FORK_JOIN_DYNAMIC",
+                "inputParameters": {
+                    "dynamicTasks": "${prepare_ref.output.tasks}",
+                    "dynamicTasksInput": "${prepare_ref.output.taskInputs}"
+                }
+            },
+            {
+                "name": "join_deployments",
+                "taskReferenceName": "deploy_join_ref",
+                "type": "JOIN",
+                "joinOn": []
+            },
+            {
+                "name": "verify_deployments",
+                "taskReferenceName": "verify_ref",
+                "type": "SIMPLE",
+                "inputParameters": {
+                    "region": "${workflow.input.region}"
+                }
+            },
+            {
+                "name": "notify_team",
+                "taskReferenceName": "notify_ref",
+                "type": "KAFKA_PUBLISH",
+                "inputParameters": {
+                    "topic": "deployment-events"
+                }
+            }
+        ],
+        "schemaVersion": 2
+    },
+    "tasks": [
+        {
+            "taskId": "task_prepare_001",
+            "referenceTaskName": "prepare_ref",
+            "status": "COMPLETED",
+            "taskType": "HTTP",
+            "startTime": 1704546000000,
+            "endTime": 1704546005000,
+            "inputData": { "uri": "https://deploy-api.example.com/prepare" },
+            "outputData": {
+                "tasks": [
+                    { "name": "deploy_auth", "taskReferenceName": "deploy_auth_ref", "type": "SIMPLE" },
+                    { "name": "deploy_payment", "taskReferenceName": "deploy_payment_ref", "type": "SIMPLE" },
+                    { "name": "deploy_notification", "taskReferenceName": "deploy_notification_ref", "type": "HTTP" }
+                ]
+            }
+        },
+        {
+            "taskId": "task_fork_001",
+            "referenceTaskName": "deploy_fork_ref",
+            "status": "COMPLETED",
+            "taskType": "FORK",
+            "startTime": 1704546006000,
+            "endTime": 1704546006100
+        },
+        {
+            "taskId": "task_deploy_auth_001",
+            "referenceTaskName": "deploy_auth_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546007000,
+            "endTime": 1704546025000,
+            "inputData": { "service": "auth", "version": "2.1.0" },
+            "outputData": { "deployed": true, "endpoint": "auth.internal:8080" }
+        },
+        {
+            "taskId": "task_deploy_payment_001",
+            "referenceTaskName": "deploy_payment_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546007000,
+            "endTime": 1704546030000,
+            "inputData": { "service": "payment", "version": "3.0.1" },
+            "outputData": { "deployed": true, "endpoint": "payment.internal:8081" }
+        },
+        {
+            "taskId": "task_deploy_notification_001",
+            "referenceTaskName": "deploy_notification_ref",
+            "status": "COMPLETED",
+            "taskType": "HTTP",
+            "startTime": 1704546007000,
+            "endTime": 1704546020000,
+            "inputData": { "service": "notification", "version": "1.5.2" },
+            "outputData": { "deployed": true, "endpoint": "notify.internal:8082" }
+        },
+        {
+            "taskId": "task_join_001",
+            "referenceTaskName": "deploy_join_ref",
+            "status": "COMPLETED",
+            "taskType": "JOIN",
+            "startTime": 1704546031000,
+            "endTime": 1704546031500
+        },
+        {
+            "taskId": "task_verify_001",
+            "referenceTaskName": "verify_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546032000,
+            "endTime": 1704546045000,
+            "outputData": { "allHealthy": true, "checks": 3 }
+        },
+        {
+            "taskId": "task_notify_001",
+            "referenceTaskName": "notify_ref",
+            "status": "COMPLETED",
+            "taskType": "KAFKA_PUBLISH",
+            "startTime": 1704546046000,
+            "endTime": 1704546048000,
+            "outputData": { "messageId": "msg_deploy_complete_123" }
+        }
+    ]
+}

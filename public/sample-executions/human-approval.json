@@ -1,0 +1,119 @@
+{
+    "workflowId": "wf_human_demo_001",
+    "status": "RUNNING",
+    "startTime": 1704546000000,
+    "input": { "requestId": "req_budget_approval", "amount": 50000, "department": "Engineering" },
+    "workflowDefinition": {
+        "name": "budget_approval_workflow",
+        "description": "HUMAN 任务演示：预算审批流，当前等待人工审批",
+        "version": 1,
+        "tasks": [
+            {
+                "name": "submit_request",
+                "taskReferenceName": "submit_ref",
+                "type": "SIMPLE",
+                "inputParameters": { "requestId": "${workflow.input.requestId}" }
+            },
+            {
+                "name": "auto_validate",
+                "taskReferenceName": "validate_ref",
+                "type": "INLINE",
+                "inputParameters": {
+                    "expression": "${workflow.input.amount} <= 100000"
+                }
+            },
+            {
+                "name": "manager_approval",
+                "taskReferenceName": "manager_approval_ref",
+                "type": "HUMAN",
+                "inputParameters": {
+                    "assignee": "manager@example.com",
+                    "taskName": "Approve Budget Request",
+                    "displayName": "Budget Approval",
+                    "formData": {
+                        "requestId": "${workflow.input.requestId}",
+                        "amount": "${workflow.input.amount}",
+                        "department": "${workflow.input.department}"
+                    }
+                }
+            },
+            {
+                "name": "route_approval_result",
+                "taskReferenceName": "route_result_ref",
+                "type": "SWITCH",
+                "inputParameters": { "switchCaseValue": "${manager_approval_ref.output.decision}" },
+                "evaluatorType": "value-param",
+                "expression": "switchCaseValue",
+                "decisionCases": {
+                    "APPROVED": [
+                        {
+                            "name": "process_approved_budget",
+                            "taskReferenceName": "process_approved_ref",
+                            "type": "HTTP",
+                            "inputParameters": {
+                                "uri": "https://finance-api.example.com/allocate",
+                                "method": "POST"
+                            }
+                        }
+                    ],
+                    "REJECTED": [
+                        {
+                            "name": "notify_rejection",
+                            "taskReferenceName": "notify_rejection_ref",
+                            "type": "EVENT",
+                            "inputParameters": { "sink": "sqs:rejection-events" }
+                        }
+                    ]
+                },
+                "defaultCase": []
+            },
+            {
+                "name": "archive_request",
+                "taskReferenceName": "archive_ref",
+                "type": "SET_VARIABLE",
+                "inputParameters": {
+                    "archived": true,
+                    "archiveTime": "${workflow.endTime}"
+                }
+            }
+        ],
+        "schemaVersion": 2
+    },
+    "tasks": [
+        {
+            "taskId": "task_submit_001",
+            "referenceTaskName": "submit_ref",
+            "status": "COMPLETED",
+            "taskType": "SIMPLE",
+            "startTime": 1704546000000,
+            "endTime": 1704546003000,
+            "inputData": { "requestId": "req_budget_approval" },
+            "outputData": { "submitted": true, "ticketId": "TKT-2024-001" }
+        },
+        {
+            "taskId": "task_validate_001",
+            "referenceTaskName": "validate_ref",
+            "status": "COMPLETED",
+            "taskType": "INLINE",
+            "startTime": 1704546004000,
+            "endTime": 1704546005000,
+            "outputData": { "result": true, "validationPassed": true }
+        },
+        {
+            "taskId": "task_human_approval_001",
+            "referenceTaskName": "manager_approval_ref",
+            "status": "IN_PROGRESS",
+            "taskType": "HUMAN",
+            "startTime": 1704546006000,
+            "inputData": {
+                "assignee": "manager@example.com",
+                "taskName": "Approve Budget Request",
+                "formData": {
+                    "requestId": "req_budget_approval",
+                    "amount": 50000,
+                    "department": "Engineering"
+                }
+            }
+        }
+    ]
+}

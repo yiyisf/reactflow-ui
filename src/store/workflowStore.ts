@@ -187,12 +187,15 @@ const useWorkflowStore = create<WorkflowStore>()(
                     // 否则若之前无 workflow，taskMap 为空，所有任务都会被误判为动态任务
                     const finalTaskMap = get().taskMap;
                     const seenTaskIds = new Set<string>();
+                    const seenRefs = new Set<string>();
                     const dynamicRuntimeTasks = tasks
                         .filter((task: any) => {
                             if (!task.referenceTaskName || !task.taskId) return false;
                             if (finalTaskMap[task.referenceTaskName]) return false;
                             if (seenTaskIds.has(task.taskId)) return false;
+                            if (seenRefs.has(task.referenceTaskName)) return false;
                             seenTaskIds.add(task.taskId);
+                            seenRefs.add(task.referenceTaskName);
                             return true;
                         })
                         .map((task: any) => task as TaskInstance);

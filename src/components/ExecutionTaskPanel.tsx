@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { ExecutionStatus } from '../types/workflow';
 
@@ -16,6 +16,12 @@ const ExecutionTaskPanel: React.FC = () => {
     } = useWorkflowStore();
 
     const [activeTab, setActiveTab] = useState<'summary' | 'input' | 'output'>('summary');
+    const panelContentRef = useRef<HTMLDivElement>(null);
+
+    const switchTab = (tab: 'summary' | 'input' | 'output') => {
+        setActiveTab(tab);
+        panelContentRef.current?.scrollTo({ top: 0 });
+    };
 
     // 如果没选中任务或不在运行模式数据中，不显示
     const isGlobal = selectedTask?.taskReferenceName === '__workflow_global__';
@@ -242,7 +248,7 @@ const ExecutionTaskPanel: React.FC = () => {
                 <button className="close-btn" onClick={handleClose}>✕</button>
             </div>
 
-            <div className="panel-content">
+            <div className="panel-content" ref={panelContentRef}>
                 {/* 尝试次数/迭代选择器 */}
                 {attempts.length > 1 && (
                     <div className="attempt-selector">
@@ -266,17 +272,19 @@ const ExecutionTaskPanel: React.FC = () => {
                 <div className="tabs">
                     <button
                         className={`tab-btn ${activeTab === 'summary' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('summary')}
+                        onClick={() => switchTab('summary')}
                     >概览</button>
                     <button
                         className={`tab-btn ${activeTab === 'input' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('input')}
+                        onClick={() => switchTab('input')}
                     >输入 (JSON)</button>
                     <button
                         className={`tab-btn ${activeTab === 'output' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('output')}
+                        onClick={() => switchTab('output')}
                     >输出 (JSON)</button>
                 </div>
+
+                <div key={activeTab}>
 
                 {activeTab === 'summary' && (
                     <>
@@ -333,6 +341,8 @@ const ExecutionTaskPanel: React.FC = () => {
                         <pre>{JSON.stringify(isGlobal ? workflowInstance?.output : currentInstance?.outputData || {}, null, 2)}</pre>
                     </div>
                 )}
+
+                </div>
             </div>
         </div>
     );

@@ -178,23 +178,24 @@ const useWorkflowStore = create<WorkflowStore>()(
                         }
                     });
 
-                    // 提取动态 fork 子任务（referenceTaskName 不在 taskMap 中的任务）
-                    const currentTaskMap = get().taskMap;
+                    // 如果探测到新的定义，先更新图表 (使用字符串化比较)
+                    if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(get().workflowDef)) {
+                        get().setWorkflow(workflowDef);
+                    }
+
+                    // 提取动态 fork 子任务：必须在 setWorkflow 之后，taskMap 已更新后再过滤
+                    // 否则若之前无 workflow，taskMap 为空，所有任务都会被误判为动态任务
+                    const finalTaskMap = get().taskMap;
                     const seenTaskIds = new Set<string>();
                     const dynamicRuntimeTasks = tasks
                         .filter((task: any) => {
                             if (!task.referenceTaskName || !task.taskId) return false;
-                            if (currentTaskMap[task.referenceTaskName]) return false;
+                            if (finalTaskMap[task.referenceTaskName]) return false;
                             if (seenTaskIds.has(task.taskId)) return false;
                             seenTaskIds.add(task.taskId);
                             return true;
                         })
                         .map((task: any) => task as TaskInstance);
-
-                    // 如果探测到新的定义，先更新图表 (使用字符串化比较)
-                    if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(get().workflowDef)) {
-                        get().setWorkflow(workflowDef);
-                    }
 
                     set({
                         executionData,

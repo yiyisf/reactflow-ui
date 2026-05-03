@@ -136,6 +136,11 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                 {!isDynamic && (!data.task?.forkTasks || data.task.forkTasks.length === 0) && (
                     <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
                 )}
+
+                {/* 动态 Fork: 单个 source Handle 连接到占位节点 */}
+                {isDynamic && (
+                    <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
+                )}
             </div>
         </NodeWrapper>
     );

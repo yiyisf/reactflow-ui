@@ -198,19 +198,29 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         const forkNode = forkNodes[0];
         const placeholderId = `${forkNode.id}_dynamic_placeholder`;
 
-        // 找占位节点 → join 的 -dynamic 边
-        const dynamicEdge = edges.find(e => e.source === placeholderId && e.id.endsWith('-dynamic'));
-        if (!dynamicEdge) return empty;
+        const placeholderNode = nodes.find(n => n.id === placeholderId);
+        const forkToPlaceholderEdge = edges.find(e => e.target === placeholderId);
 
-        const joinNodeId = dynamicEdge.target;
-        const joinNode = nodes.find(n => n.id === joinNodeId);
+        // 找占位节点发出的边（连向 JOIN），不依赖边 ID 后缀
+        const placeholderOutEdge = edges.find(e => e.source === placeholderId);
+
+        let joinNodeId: string;
+        let joinNode: typeof nodes[0] | undefined;
+
+        if (placeholderOutEdge) {
+            joinNodeId = placeholderOutEdge.target;
+            joinNode = nodes.find(n => n.id === joinNodeId);
+        } else {
+            // fallback：找跟在 forkNode 之后的 joinNode
+            joinNode = nodes.find(n => n.type === 'joinNode');
+            if (!joinNode) return empty;
+            joinNodeId = joinNode.id;
+        }
+
         if (!joinNode) return empty;
 
-        const forkToPlaceholderEdge = edges.find(e => e.target === placeholderId);
-        const placeholderNode = nodes.find(n => n.id === placeholderId);
-
         const removedEdgeIds = new Set<string>(
-            [dynamicEdge.id, forkToPlaceholderEdge?.id].filter(Boolean) as string[]
+            [placeholderOutEdge?.id, forkToPlaceholderEdge?.id].filter(Boolean) as string[]
         );
         const removedNodeIds = new Set<string>([placeholderId]);
 
@@ -218,18 +228,20 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         const uniqueTasks = dynamicRuntimeTasks.filter((t, i, arr) =>
             arr.findIndex(x => x.referenceTaskName === t.referenceTaskName) === i
         );
+        if (!uniqueTasks.length) return empty;
 
         const extraNodes: typeof nodes = [];
         const extraEdges: typeof edges = [];
         const isHorizontal = layoutDirection === 'LR';
         const count = uniqueTasks.length;
 
-        // 以占位节点位置为中心分布（占位已由 dagre 定位）
+        // 以占位节点中心为基准分布（dagre 已为占位节点定好位置）
+        // 没有占位节点时退回到 fork 和 join 的中点
         const centerX = placeholderNode
-            ? placeholderNode.position.x + 110
+            ? placeholderNode.position.x + 110   // 110 = placeholder 宽度 220 的一半
             : (forkNode.position.x + joinNode.position.x) / 2;
         const centerY = placeholderNode
-            ? placeholderNode.position.y + 35
+            ? placeholderNode.position.y + 35    // 35 = placeholder 高度 70 的一半
             : (forkNode.position.y + joinNode.position.y) / 2;
 
         const dynamicEdgeBase = {
@@ -238,14 +250,19 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
         };
 
+        // 节点半高（TaskNode 高度 95px）用于以中心对齐定位
+        const NODE_HALF_H = 47;
+        const NODE_HALF_W = 120; // TaskNode 宽度 240px 的一半
+
         uniqueTasks.forEach((task, idx) => {
             const nodeId = `dynamic_rt_${task.referenceTaskName}`;
+            // LR 布局：同列垂直散开；TB 布局：同行水平散开
             const x = isHorizontal
-                ? centerX - 120
+                ? centerX - NODE_HALF_W
                 : forkNode.position.x + (idx - (count - 1) / 2) * 280;
             const y = isHorizontal
-                ? centerY + (idx - (count - 1) / 2) * 110
-                : centerY - 47;
+                ? centerY - NODE_HALF_H + (idx - (count - 1) / 2) * 110
+                : centerY - NODE_HALF_H;
 
             extraNodes.push({
                 id: nodeId,

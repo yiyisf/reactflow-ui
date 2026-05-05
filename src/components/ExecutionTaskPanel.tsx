@@ -228,9 +228,8 @@ const ExecutionTaskPanel: React.FC = () => {
                     font-family: 'Fira Code', monospace;
                     font-size: 12px;
                     line-height: 1.5;
-                    overflow: auto;
-                    max-height: 300px;
                     color: var(--text-primary);
+                    word-break: break-all;
                 }
 
                 .error-message {

@@ -256,10 +256,10 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 onNodesChange: (changes: NodeChange[]) => {
                     const currentNodes = get().nodes;
-                    const newNodes = applyNodeChanges(changes, currentNodes);
-                    if (newNodes !== currentNodes) {
-                        set({ nodes: newNodes });
-                    }
+                    const nodeIds = new Set(currentNodes.map(n => n.id));
+                    const relevantChanges = changes.filter(c => 'id' in c && nodeIds.has((c as any).id));
+                    if (relevantChanges.length === 0) return;
+                    set({ nodes: applyNodeChanges(relevantChanges, currentNodes) });
                 },
 
                 onEdgesChange: (changes: EdgeChange[]) => {

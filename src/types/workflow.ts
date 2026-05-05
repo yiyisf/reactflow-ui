@@ -125,7 +125,7 @@ export interface WorkflowState {
     selectedTask: TaskDef | null;
     selectedTaskInstance: TaskInstance | null; // 当前选中的运行时任务实例
     executionData: Record<string, TaskExecutionData> | null;
-    dynamicRuntimeTasks: TaskInstance[]; // FORK_JOIN_DYNAMIC 运行时生成的子任务
+    dynamicRuntimeTasksByFork: Record<string, TaskInstance[]>; // key=forkRef，FORK_JOIN_DYNAMIC 按 fork 归属的运行时子任务
     validationResults: ValidationResults;
     theme: ThemeMode;
     themeColor: ThemeColor;

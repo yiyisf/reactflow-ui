@@ -83,7 +83,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         validationResults,
         setIsDetailPanelOpen,
         workflowDef,
-        dynamicRuntimeTasks,
+        dynamicRuntimeTasksByFork,
         layoutDirection,
     } = useWorkflowStore();
 
@@ -187,62 +187,19 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             removedEdgeIds: new Set<string>(),
             removedNodeIds: new Set<string>(),
         };
-        if (mode !== 'run' || !dynamicRuntimeTasks.length) return empty;
+        if (mode !== 'run') return empty;
 
         const forkNodes = nodes.filter(n => n.type === 'forkNode' && n.data.taskType === 'FORK_JOIN_DYNAMIC');
         if (!forkNodes.length) return empty;
 
-        // 多个 FORK_JOIN_DYNAMIC 时无法确定任务归属，跳过注入避免 key 冲突
-        if (forkNodes.length > 1) return empty;
+        const allExtraNodes: typeof nodes = [];
+        const allExtraEdges: typeof edges = [];
+        const allRemovedEdgeIds = new Set<string>();
+        const allRemovedNodeIds = new Set<string>();
 
-        const forkNode = forkNodes[0];
-        const placeholderId = `${forkNode.id}_dynamic_placeholder`;
-
-        const placeholderNode = nodes.find(n => n.id === placeholderId);
-        const forkToPlaceholderEdge = edges.find(e => e.target === placeholderId);
-
-        // 找占位节点发出的边（连向 JOIN），不依赖边 ID 后缀
-        const placeholderOutEdge = edges.find(e => e.source === placeholderId);
-
-        let joinNodeId: string;
-        let joinNode: typeof nodes[0] | undefined;
-
-        if (placeholderOutEdge) {
-            joinNodeId = placeholderOutEdge.target;
-            joinNode = nodes.find(n => n.id === joinNodeId);
-        } else {
-            // fallback：找跟在 forkNode 之后的 joinNode
-            joinNode = nodes.find(n => n.type === 'joinNode');
-            if (!joinNode) return empty;
-            joinNodeId = joinNode.id;
-        }
-
-        if (!joinNode) return empty;
-
-        const removedEdgeIds = new Set<string>(
-            [placeholderOutEdge?.id, forkToPlaceholderEdge?.id].filter(Boolean) as string[]
-        );
-        const removedNodeIds = new Set<string>([placeholderId]);
-
-        // 按 referenceTaskName 去重（同一任务多次重试有不同 taskId，只生成一个节点）
-        const uniqueTasks = dynamicRuntimeTasks.filter((t, i, arr) =>
-            arr.findIndex(x => x.referenceTaskName === t.referenceTaskName) === i
-        );
-        if (!uniqueTasks.length) return empty;
-
-        const extraNodes: typeof nodes = [];
-        const extraEdges: typeof edges = [];
         const isHorizontal = layoutDirection === 'LR';
-        const count = uniqueTasks.length;
-
-        // 以占位节点中心为基准分布（dagre 已为占位节点定好位置）
-        // 没有占位节点时退回到 fork 和 join 的中点
-        const centerX = placeholderNode
-            ? placeholderNode.position.x + 110   // 110 = placeholder 宽度 220 的一半
-            : (forkNode.position.x + joinNode.position.x) / 2;
-        const centerY = placeholderNode
-            ? placeholderNode.position.y + 35    // 35 = placeholder 高度 70 的一半
-            : (forkNode.position.y + joinNode.position.y) / 2;
+        const NODE_HALF_H = 47;
+        const NODE_HALF_W = 120;
 
         const dynamicEdgeBase = {
             animated: true,
@@ -250,39 +207,78 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
         };
 
-        // 节点半高（TaskNode 高度 95px）用于以中心对齐定位
-        const NODE_HALF_H = 47;
-        const NODE_HALF_W = 120; // TaskNode 宽度 240px 的一半
+        for (const forkNode of forkNodes) {
+            const forkTasks = dynamicRuntimeTasksByFork[forkNode.id] || [];
+            const placeholderId = `${forkNode.id}_dynamic_placeholder`;
+            const placeholderNode = nodes.find(n => n.id === placeholderId);
+            const forkToPlaceholderEdge = edges.find(e => e.target === placeholderId);
+            const placeholderOutEdge = edges.find(e => e.source === placeholderId);
 
-        uniqueTasks.forEach((task, idx) => {
-            const nodeId = `dynamic_rt_${task.referenceTaskName}`;
-            // LR 布局：同列垂直散开；TB 布局：同行水平散开
-            const x = isHorizontal
-                ? centerX - NODE_HALF_W
-                : forkNode.position.x + (idx - (count - 1) / 2) * 280;
-            const y = isHorizontal
-                ? centerY - NODE_HALF_H + (idx - (count - 1) / 2) * 110
-                : centerY - NODE_HALF_H;
+            let joinNodeId: string;
+            let joinNode: typeof nodes[0] | undefined;
 
-            extraNodes.push({
-                id: nodeId,
-                type: 'taskNode',
-                data: {
-                    label: task.referenceTaskName,
-                    taskReferenceName: task.referenceTaskName,
-                    taskType: task.taskType || 'SIMPLE',
-                    isDynamicRuntime: true,
-                    layoutDirection,
-                },
-                position: { x, y },
-            } as typeof nodes[0]);
+            if (placeholderOutEdge) {
+                joinNodeId = placeholderOutEdge.target;
+                joinNode = nodes.find(n => n.id === joinNodeId);
+            } else {
+                // fallback：找此 fork 之后最近的 joinNode
+                const forkIdx = nodes.indexOf(forkNode);
+                joinNode = nodes.slice(forkIdx).find(n => n.type === 'joinNode');
+                if (!joinNode) continue;
+                joinNodeId = joinNode.id;
+            }
 
-            extraEdges.push({ id: `e-${forkNode.id}-${nodeId}`, source: forkNode.id, target: nodeId, ...dynamicEdgeBase });
-            extraEdges.push({ id: `e-${nodeId}-${joinNodeId}`, source: nodeId, target: joinNodeId, ...dynamicEdgeBase });
-        });
+            if (!joinNode) continue;
 
-        return { extraNodes, extraEdges, removedEdgeIds, removedNodeIds };
-    }, [mode, dynamicRuntimeTasks, nodes, edges, layoutDirection]);
+            // 无论是否有动态任务，都移除占位节点和相关边
+            if (placeholderOutEdge) allRemovedEdgeIds.add(placeholderOutEdge.id);
+            if (forkToPlaceholderEdge) allRemovedEdgeIds.add(forkToPlaceholderEdge.id);
+            allRemovedNodeIds.add(placeholderId);
+
+            if (!forkTasks.length) continue;
+
+            const count = forkTasks.length;
+            const centerX = placeholderNode
+                ? placeholderNode.position.x + 110
+                : (forkNode.position.x + joinNode.position.x) / 2;
+            const centerY = placeholderNode
+                ? placeholderNode.position.y + 35
+                : (forkNode.position.y + joinNode.position.y) / 2;
+
+            forkTasks.forEach((task, idx) => {
+                const nodeId = `dynamic_rt_${task.referenceTaskName}`;
+                const x = isHorizontal
+                    ? centerX - NODE_HALF_W
+                    : forkNode.position.x + (idx - (count - 1) / 2) * 280;
+                const y = isHorizontal
+                    ? centerY - NODE_HALF_H + (idx - (count - 1) / 2) * 110
+                    : centerY - NODE_HALF_H;
+
+                allExtraNodes.push({
+                    id: nodeId,
+                    type: 'taskNode',
+                    data: {
+                        label: task.referenceTaskName,
+                        taskReferenceName: task.referenceTaskName,
+                        taskType: task.taskType || 'SIMPLE',
+                        isDynamicRuntime: true,
+                        layoutDirection,
+                    },
+                    position: { x, y },
+                } as typeof nodes[0]);
+
+                allExtraEdges.push({ id: `e-${forkNode.id}-${nodeId}`, source: forkNode.id, target: nodeId, ...dynamicEdgeBase });
+                allExtraEdges.push({ id: `e-${nodeId}-${joinNodeId}`, source: nodeId, target: joinNodeId, ...dynamicEdgeBase });
+            });
+        }
+
+        return {
+            extraNodes: allExtraNodes,
+            extraEdges: allExtraEdges,
+            removedEdgeIds: allRemovedEdgeIds,
+            removedNodeIds: allRemovedNodeIds,
+        };
+    }, [mode, dynamicRuntimeTasksByFork, nodes, edges, layoutDirection]);
 
     // 为边添加元数据和箭头标记
     const processedEdges = useMemo(() => {
@@ -318,8 +314,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 }
             }
 
-            // 编辑模式下使用自定义边以显示 "+" 按钮
-            const isAddable = mode === 'edit' && !isLoopBack;
+            // 编辑模式下使用自定义边以显示 "+" 按钮（占位边除外）
+            const isPlaceholderEdge =
+                edge.source.endsWith('_dynamic_placeholder') ||
+                edge.target.endsWith('_dynamic_placeholder');
+            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge;
 
             return {
                 ...edge,

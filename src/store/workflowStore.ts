@@ -4,7 +4,7 @@ import { temporal } from 'zundo';
 import { addEdge, applyNodeChanges, applyEdgeChanges, Connection, EdgeChange, NodeChange } from 'reactflow';
 import { parseWorkflow } from '../parser/conductorParser';
 import { getLayoutedElements } from '../layout/autoLayout';
-import { removeTaskFromDef, insertTaskAfter, findTaskByRef, insertFirstTaskIntoBranch, syncForkJoinOn } from '../parser/conductorGenerator';
+import { removeTaskFromDef, insertTaskAfter, findTaskByRef, insertFirstTaskIntoBranch, syncForkJoinOn, findContainerList, findJoinForFork, findForkForJoin } from '../parser/conductorGenerator';
 import { validateWorkflow } from '../utils/validator';
 import {
     WorkflowStore,
@@ -32,7 +32,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 selectedTaskInstance: null as TaskInstance | null,
                 isDetailPanelOpen: false,
                 executionData: null,
-                dynamicRuntimeTasks: [] as TaskInstance[],
+                dynamicRuntimeTasksByFork: {} as Record<string, TaskInstance[]>,
                 validationResults: { isValid: true, errors: [], warnings: [] },
 
                 // 用户喜好配置
@@ -66,7 +66,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const currentMode = get().mode;
                     // 如果从运行模式退出，清空执行数据
                     if (currentMode === 'run' && mode !== 'run') {
-                        set({ executionData: null, workflowInstance: null, dynamicRuntimeTasks: [] });
+                        set({ executionData: null, workflowInstance: null, dynamicRuntimeTasksByFork: {} });
                     }
                     set({ mode });
 
@@ -81,7 +81,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 setExecutionData: (data: Record<string, TaskExecutionData> | null) => set({
                     executionData: data,
-                    dynamicRuntimeTasks: data === null ? [] : get().dynamicRuntimeTasks
+                    dynamicRuntimeTasksByFork: data === null ? {} : get().dynamicRuntimeTasksByFork
                 }),
 
                 updateTaskStatus: (taskRef: string, status: ExecutionStatus) => {
@@ -183,26 +183,47 @@ const useWorkflowStore = create<WorkflowStore>()(
                         get().setWorkflow(workflowDef);
                     }
 
-                    // 提取动态 fork 子任务：必须在 setWorkflow 之后，taskMap 已更新后再过滤
-                    // 否则若之前无 workflow，taskMap 为空，所有任务都会被误判为动态任务
+                    // 按 fork 节点归属提取动态子任务：必须在 setWorkflow 之后，taskMap 已更新后再过滤
                     const finalTaskMap = get().taskMap;
-                    const seenTaskIds = new Set<string>();
-                    const seenRefs = new Set<string>();
-                    const dynamicRuntimeTasks = tasks
-                        .filter((task: any) => {
-                            if (!task.referenceTaskName || !task.taskId) return false;
-                            if (finalTaskMap[task.referenceTaskName]) return false;
-                            if (seenTaskIds.has(task.taskId)) return false;
-                            if (seenRefs.has(task.referenceTaskName)) return false;
-                            seenTaskIds.add(task.taskId);
-                            seenRefs.add(task.referenceTaskName);
-                            return true;
-                        })
-                        .map((task: any) => task as TaskInstance);
+                    const currentDef = get().workflowDef;
+                    const allDefTasks = currentDef?.tasks || [];
+
+                    // 找所有顶层 FORK_JOIN_DYNAMIC → JOIN 配对
+                    const forkJoinPairs: Array<{ forkRef: string; joinRef: string }> = [];
+                    allDefTasks.forEach((t: any, i: number) => {
+                        if (t.type === 'FORK_JOIN_DYNAMIC') {
+                            for (let j = i + 1; j < allDefTasks.length; j++) {
+                                if (allDefTasks[j].type === 'JOIN' || allDefTasks[j].type === 'EXCLUSIVE_JOIN') {
+                                    forkJoinPairs.push({ forkRef: t.taskReferenceName, joinRef: allDefTasks[j].taskReferenceName });
+                                    break;
+                                }
+                            }
+                        }
+                    });
+
+                    // 对每对，按执行顺序（数组索引）切片，过滤出动态任务并去重
+                    const dynamicRuntimeTasksByFork: Record<string, TaskInstance[]> = {};
+                    forkJoinPairs.forEach(({ forkRef, joinRef }) => {
+                        const forkIdx = tasks.findIndex((t: any) => t.referenceTaskName === forkRef);
+                        const joinIdx = tasks.findIndex((t: any) => t.referenceTaskName === joinRef);
+                        if (forkIdx < 0 || joinIdx < 0) return;
+
+                        const seenRefs = new Set<string>();
+                        dynamicRuntimeTasksByFork[forkRef] = tasks
+                            .slice(forkIdx + 1, joinIdx)
+                            .filter((t: any) => {
+                                if (!t.referenceTaskName || !t.taskId) return false;
+                                if (finalTaskMap[t.referenceTaskName]) return false;
+                                if (seenRefs.has(t.referenceTaskName)) return false;
+                                seenRefs.add(t.referenceTaskName);
+                                return true;
+                            })
+                            .map((t: any) => t as TaskInstance);
+                    });
 
                     set({
                         executionData,
-                        dynamicRuntimeTasks,
+                        dynamicRuntimeTasksByFork,
                         workflowInstance,
                         mode: 'run'
                     });
@@ -449,10 +470,24 @@ const useWorkflowStore = create<WorkflowStore>()(
                 },
 
                 removeNode: (nodeId: string) => {
-                    const { workflowDef, layoutDirection } = get();
+                    const { workflowDef, layoutDirection, nodes: currentNodes } = get();
                     if (!workflowDef) return;
 
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
+
+                    // Fork/Join 成组删除：FORK_JOIN* 删除时同时删配对 JOIN，反之亦然
+                    const container = findContainerList(newDef.tasks, nodeId);
+                    if (container) {
+                        const taskType = currentNodes.find(n => n.id === nodeId)?.data?.taskType as string | undefined;
+                        if (taskType === 'FORK_JOIN' || taskType === 'FORK_JOIN_DYNAMIC') {
+                            const joinRef = findJoinForFork(container, nodeId);
+                            if (joinRef) removeTaskFromDef(newDef.tasks, joinRef);
+                        } else if (taskType === 'JOIN' || taskType === 'EXCLUSIVE_JOIN') {
+                            const forkRef = findForkForJoin(container, nodeId);
+                            if (forkRef) removeTaskFromDef(newDef.tasks, forkRef);
+                        }
+                    }
+
                     removeTaskFromDef(newDef.tasks, nodeId);
                     syncForkJoinOn(newDef.tasks);
 

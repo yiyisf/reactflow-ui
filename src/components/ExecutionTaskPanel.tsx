@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { ExecutionStatus } from '../types/workflow';
 
@@ -20,8 +20,11 @@ const ExecutionTaskPanel: React.FC = () => {
 
     const switchTab = (tab: 'summary' | 'input' | 'output') => {
         setActiveTab(tab);
-        panelContentRef.current?.scrollTo({ top: 0 });
     };
+
+    useEffect(() => {
+        panelContentRef.current?.scrollTo({ top: 0 });
+    }, [activeTab]);
 
     // 如果没选中任务或不在运行模式数据中，不显示
     const isGlobal = selectedTask?.taskReferenceName === '__workflow_global__';
@@ -119,6 +122,7 @@ const ExecutionTaskPanel: React.FC = () => {
 
                 .panel-content {
                     flex: 1;
+                    min-height: 0;
                     overflow-y: auto;
                     padding: 20px;
                 }

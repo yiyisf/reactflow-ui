@@ -72,6 +72,62 @@ export function removeTaskFromDef(tasks: TaskDef[] | undefined, taskRef: string)
 }
 
 /**
+ * 递归搜索包含 taskRef 的平铺 tasks 层，返回该层列表
+ */
+export function findContainerList(
+    tasks: TaskDef[] | undefined,
+    taskRef: string
+): TaskDef[] | null {
+    if (!tasks) return null;
+    if (tasks.some(t => t.taskReferenceName === taskRef)) return tasks;
+    for (const task of tasks) {
+        if (task.decisionCases) {
+            for (const branch of Object.values(task.decisionCases)) {
+                const found = findContainerList(branch, taskRef);
+                if (found) return found;
+            }
+            const found = findContainerList(task.defaultCase, taskRef);
+            if (found) return found;
+        }
+        if (task.forkTasks) {
+            for (const branch of task.forkTasks) {
+                const found = findContainerList(branch, taskRef);
+                if (found) return found;
+            }
+        }
+        if (task.loopOver) {
+            const found = findContainerList(task.loopOver, taskRef);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+/** 在同一 tasks 层中，找 forkRef 之后最近的 JOIN/EXCLUSIVE_JOIN */
+export function findJoinForFork(tasks: TaskDef[], forkRef: string): string | null {
+    const idx = tasks.findIndex(t => t.taskReferenceName === forkRef);
+    if (idx < 0) return null;
+    for (let i = idx + 1; i < tasks.length; i++) {
+        if (tasks[i].type === 'JOIN' || tasks[i].type === 'EXCLUSIVE_JOIN') {
+            return tasks[i].taskReferenceName;
+        }
+    }
+    return null;
+}
+
+/** 在同一 tasks 层中，找 joinRef 之前最近的 FORK_JOIN/FORK_JOIN_DYNAMIC */
+export function findForkForJoin(tasks: TaskDef[], joinRef: string): string | null {
+    const idx = tasks.findIndex(t => t.taskReferenceName === joinRef);
+    if (idx < 0) return null;
+    for (let i = idx - 1; i >= 0; i--) {
+        if (tasks[i].type === 'FORK_JOIN' || tasks[i].type === 'FORK_JOIN_DYNAMIC') {
+            return tasks[i].taskReferenceName;
+        }
+    }
+    return null;
+}
+
+/**
  * 在指定的 sourceRef 之后插入一个新任务
  */
 export function insertTaskAfter(tasks: TaskDef[] | undefined, sourceRef: string, newTask: TaskDef): boolean {

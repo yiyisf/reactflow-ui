@@ -287,7 +287,7 @@ const ExecutionTaskPanel: React.FC = () => {
                     >输出 (JSON)</button>
                 </div>
 
-                <div key={activeTab}>
+                <div>
 
                 {activeTab === 'summary' && (
                     <>

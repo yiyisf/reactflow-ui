@@ -259,6 +259,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     type: 'taskNode',
                     data: {
                         label: task.referenceTaskName,
+                        task: {
+                            name: task.referenceTaskName,
+                            taskReferenceName: task.referenceTaskName,
+                            type: task.taskType || 'SIMPLE',
+                        },
                         taskReferenceName: task.referenceTaskName,
                         taskType: task.taskType || 'SIMPLE',
                         isDynamicRuntime: true,

@@ -40,26 +40,17 @@ const NodeWrapper = ({
 
     const showDelete = mode === 'edit' && !isStartOrEnd;
 
-    const wrapperClass = isDecision
-        ? `decision-node-wrapper ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`
-        : `node-wrapper-glass ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`;
+    const baseClass = isDecision ? 'decision-node-wrapper' : 'node-wrapper-glass';
+    const wrapperClass = [
+        baseClass,
+        selected ? 'node-wrapper-selected' : '',
+        isHighlighted ? 'node-wrapper-highlighted' : '',
+        simRunning ? 'node-sim-running' : '',
+        simDone ? 'node-sim-done' : '',
+    ].filter(Boolean).join(' ');
 
     // 运行态执行状态边框样式
     const executionStyle = useMemo<React.CSSProperties>(() => {
-        // 模拟执行状态（优先级高于 run 模式）
-        if (simRunning) {
-            return {
-                borderColor: 'var(--status-in-progress)',
-                animation: 'status-pulse 1.5s ease-in-out infinite',
-            };
-        }
-        if (simDone) {
-            return {
-                borderColor: 'var(--status-completed)',
-                boxShadow: '0 0 8px rgba(34, 197, 94, 0.35)',
-            };
-        }
-
         if (mode !== 'run') return {};
 
         // 未到达的节点（无执行数据）
@@ -100,7 +91,7 @@ const NodeWrapper = ({
             default:
                 return {};
         }
-    }, [mode, executionStatus, simRunning, simDone]);
+    }, [mode, executionStatus]);
 
     return (
         <div className={wrapperClass} style={{ position: 'relative', ...executionStyle }}>

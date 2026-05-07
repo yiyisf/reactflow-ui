@@ -7,6 +7,7 @@ import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage, AIServiceCon
 import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates';
 import { AIChatMessage } from '../../types/workflow';
 import { applyWorkflowDiff, parseDiffFromAIResponse } from '../../utils/workflowDiff';
+import { TaskType } from '../../types/conductor';
 
 interface AIChatPanelProps {
     aiConfig?: Partial<AIServiceConfig>;
@@ -180,14 +181,33 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
             if (!apiKey) {
                 setTimeout(() => {
                     if (controller.signal.aborted) return;
+                    const demoWorkflow = {
+                        name: 'demo_approval_workflow',
+                        description: '演示审批流程',
+                        tasks: [
+                            { name: 'submit_request', taskReferenceName: 'submit_request', type: 'SIMPLE' as TaskType, inputParameters: {} },
+                            { name: 'human_approval', taskReferenceName: 'human_approval', type: 'HUMAN' as TaskType, inputParameters: {} },
+                            { name: 'process_result', taskReferenceName: 'process_result', type: 'SIMPLE' as TaskType, inputParameters: {} },
+                        ],
+                    };
                     const aiMsg: AIChatMessage = {
                         id: (Date.now() + 1).toString(),
                         role: 'ai',
-                        content: '由于未检测到 API Key，我为您模拟了一个简单的审批流程（仅演示）。请在设置中配置 API Key 以启用真实 AI 能力。',
+                        content: '**演示模式**：未检测到 API Key，以下是一个示例审批流程供体验。请在标题栏 🤖 按钮中配置真实 API Key 以启用 AI 功能。',
+                        diff: {
+                            kind: 'replace',
+                            summary: '生成三步审批流程（演示）',
+                            rows: [
+                                { kind: 'add', desc: 'submit_request — 提交申请任务' },
+                                { kind: 'add', desc: 'human_approval — 人工审批任务' },
+                                { kind: 'add', desc: 'process_result — 处理审批结果' },
+                            ],
+                            payload: demoWorkflow,
+                        },
                     };
                     setMessages(prev => [...prev, aiMsg]);
                     setIsLoading(false);
-                }, 1000);
+                }, 800);
                 return;
             }
 

@@ -159,7 +159,10 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
         return maxIter;
     }, [isRunning, executionData, loopOver]);
 
-    const meta = getNodeMeta('DO_WHILE', data, viewMode, `Condition: ${data.loopCondition || 'None'}`);
+    const conditionFallback = `Condition: ${data.loopCondition || 'None'}`;
+    const meta = viewMode === 'business'
+        ? getNodeMeta('DO_WHILE', data, viewMode, '循环执行')
+        : getNodeMeta('DO_WHILE', data, viewMode, conditionFallback);
 
     return (
         <NodeWrapper

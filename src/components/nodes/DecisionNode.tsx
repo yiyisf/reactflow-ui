@@ -6,6 +6,7 @@ import { WorkflowNodeData } from '../../types/workflow';
 import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
+import { truncate } from '../../utils/nodeMeta';
 
 type DecisionNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -16,7 +17,7 @@ type DecisionNodeProps = NodeProps<WorkflowNodeData>;
 const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     const { layoutDirection } = useNodeLayout(data);
     const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
-    const { addDecisionBranch, removeDecisionBranch } = useWorkflowStore();
+    const { addDecisionBranch, removeDecisionBranch, viewMode } = useWorkflowStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     // 根据布局方向确定主要的 Handle 位置
@@ -240,6 +241,29 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                         >
                             + 添加新分支
                         </button>
+                    </div>
+                )}
+
+                {/* 开发者模式：在菱形下方显示分支表达式 */}
+                {viewMode === 'developer' && (data.task?.caseExpression || data.task?.caseValueParam) && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '158px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        textAlign: 'center',
+                        fontSize: 10,
+                        color: 'var(--text-secondary)',
+                        maxWidth: 140,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        fontFamily: 'var(--font-mono, monospace)',
+                    }}>
+                        {data.task?.caseExpression
+                            ? truncate(data.task.caseExpression, 22)
+                            : `param: ${data.task?.caseValueParam}`}
                     </div>
                 )}
 

@@ -7,6 +7,8 @@ import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { Activity } from 'lucide-react';
+import useWorkflowStore from '../../store/workflowStore';
+import { getNodeMeta } from '../../utils/nodeMeta';
 
 type TaskNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -17,6 +19,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     const taskType = data.taskType || 'SIMPLE';
     const { sourcePosition, targetPosition } = useNodeLayout(data);
     const { execution, isRunning, retryCount } = useNodeExecution(data.taskReferenceName);
+    const viewMode = useWorkflowStore(s => s.viewMode);
 
     // 获取图标和标签
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === taskType), [taskType]);
@@ -26,19 +29,21 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     const isDynamicRuntime = data.isDynamicRuntime === true;
     const color = isNoop ? 'var(--text-secondary)' : 'var(--color-accent)';
 
-    // 生成 Meta 信息
+    // 生成 Meta 信息（随 viewMode 变化）
     const meta = useMemo(() => {
-        if (isDynamicRuntime) return `Dynamic (${taskType})`;
-        if (taskType === 'SIMPLE') return data.label === 'Worker Task' ? 'Execute on Worker' : 'Worker Task';
-        if (taskType === 'HTTP') return 'REST API Call';
-        if (taskType === 'JSON_JQ_TRANSFORM') return 'JQ Expression';
-        if (taskType === 'INLINE' || taskType === 'LAMBDA') return 'Inline Script';
-        if (taskType === 'START_WORKFLOW') return 'Launch Workflow (no wait)';
-        if (taskType === 'DYNAMIC') return 'Dynamic Task Type';
-        if (taskType === 'HUMAN') return 'Human Approval';
-        if (taskType === 'NOOP') return 'No Operation';
-        return taskConfig?.label || taskType;
-    }, [taskType, taskConfig, data.label, isDynamicRuntime]);
+        let fallback: string;
+        if (isDynamicRuntime) fallback = `Dynamic (${taskType})`;
+        else if (taskType === 'SIMPLE') fallback = data.label === 'Worker Task' ? 'Execute on Worker' : 'Worker Task';
+        else if (taskType === 'HTTP') fallback = 'REST API Call';
+        else if (taskType === 'JSON_JQ_TRANSFORM') fallback = 'JQ Expression';
+        else if (taskType === 'INLINE' || taskType === 'LAMBDA') fallback = 'Inline Script';
+        else if (taskType === 'START_WORKFLOW') fallback = 'Launch Workflow (no wait)';
+        else if (taskType === 'DYNAMIC') fallback = 'Dynamic Task Type';
+        else if (taskType === 'HUMAN') fallback = 'Human Approval';
+        else if (taskType === 'NOOP') fallback = 'No Operation';
+        else fallback = taskConfig?.label || taskType;
+        return getNodeMeta(taskType, data, viewMode, fallback);
+    }, [taskType, taskConfig, data, viewMode, isDynamicRuntime]);
 
     return (
         <NodeWrapper

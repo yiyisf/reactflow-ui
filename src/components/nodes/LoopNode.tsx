@@ -9,6 +9,7 @@ import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { Repeat } from 'lucide-react';
+import { getNodeMeta } from '../../utils/nodeMeta';
 
 type LoopNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -21,7 +22,7 @@ const LOOP_COLOR = 'var(--color-accent)';
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
     const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
-    const { removeLoopTask, executionData, selectTaskAction } = useWorkflowStore();
+    const { removeLoopTask, executionData, selectTaskAction, viewMode } = useWorkflowStore();
 
     // 获取循环体任务信息
     const loopOver = data.loopOver || data.task?.loopOver || [];
@@ -158,7 +159,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
         return maxIter;
     }, [isRunning, executionData, loopOver]);
 
-    const meta = `Condition: ${data.loopCondition || 'None'}`;
+    const meta = getNodeMeta('DO_WHILE', data, viewMode, `Condition: ${data.loopCondition || 'None'}`);
 
     return (
         <NodeWrapper

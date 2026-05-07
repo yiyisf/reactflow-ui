@@ -1,28 +1,21 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './AIChatPanel.css';
-
-interface Message {
-    id: string;
-    role: 'user' | 'ai';
-    content: string;
-    type?: 'text' | 'change_suggestion';
-    payload?: any;
-    error?: boolean;
-}
+import DiffCard from './DiffCard';
 
 import useWorkflowStore from '../../store/workflowStore';
 import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage, AIServiceConfig } from '../../services/aiService';
 import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates';
+import { AIChatMessage } from '../../types/workflow';
+import { applyWorkflowDiff, parseDiffFromAIResponse } from '../../utils/workflowDiff';
 
 interface AIChatPanelProps {
     aiConfig?: Partial<AIServiceConfig>;
 }
 
-const WELCOME_MESSAGE: Message = {
+const WELCOME_MESSAGE: AIChatMessage = {
     id: '1',
     role: 'ai',
     content: '你好！我是您的流程助手。我可以帮你生成工作流框架、优化逻辑或提供参数配置建议。你想实现什么样的流程？',
-    type: 'text'
 };
 
 /** Lightweight markdown renderer — no external deps */
@@ -71,16 +64,35 @@ const renderInline = (text: string): React.ReactNode => {
 };
 
 const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
-    const { workflowDef, applyAIGeneratedWorkflow } = useWorkflowStore();
+    const { workflowDef, setWorkflow } = useWorkflowStore();
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+    const [messages, setMessages] = useState<AIChatMessage[]>([WELCOME_MESSAGE]);
     const [streamingContent, setStreamingContent] = useState('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const abortRef = useRef<AbortController | null>(null);
+
+    // ─── Diff apply / undo ────────────────────────────────────────────────
+    const handleApplyDiff = useCallback((msg: AIChatMessage) => {
+        if (!msg.diff || msg.applied || !workflowDef) return;
+        const { next, inverse } = applyWorkflowDiff(workflowDef, msg.diff);
+        setWorkflow(next);
+        setMessages((prev) =>
+            prev.map((m) => (m.id === msg.id ? { ...m, applied: true, inverse } : m)),
+        );
+    }, [workflowDef, setWorkflow]);
+
+    const handleUndoDiff = useCallback((msg: AIChatMessage) => {
+        if (!msg.inverse || !msg.applied || !workflowDef) return;
+        const { next } = applyWorkflowDiff(workflowDef, msg.inverse);
+        setWorkflow(next);
+        setMessages((prev) =>
+            prev.map((m) => (m.id === msg.id ? { ...m, applied: false, inverse: undefined } : m)),
+        );
+    }, [workflowDef, setWorkflow]);
 
     const autoResize = () => {
         const el = textareaRef.current;
@@ -124,9 +136,9 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
         ];
 
         for (const msg of messages) {
-            if (msg.role === 'user') {
+            if (msg.role === 'user' && msg.content) {
                 history.push({ role: 'user', content: msg.content });
-            } else if (msg.role === 'ai' && !msg.error) {
+            } else if (msg.role === 'ai' && msg.content && !msg.thinking) {
                 history.push({ role: 'assistant', content: msg.content });
             }
         }
@@ -146,11 +158,10 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
         const controller = new AbortController();
         abortRef.current = controller;
 
-        const userMsg: Message = {
+        const userMsg: AIChatMessage = {
             id: Date.now().toString(),
             role: 'user',
             content: text,
-            type: 'text'
         };
 
         if (!retryContent) {
@@ -169,18 +180,10 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
             if (!apiKey) {
                 setTimeout(() => {
                     if (controller.signal.aborted) return;
-                    const aiMsg: Message = {
+                    const aiMsg: AIChatMessage = {
                         id: (Date.now() + 1).toString(),
                         role: 'ai',
-                        content: '由于未检测到 API Key，我为您模拟了一个简单的审批流程：',
-                        type: 'change_suggestion',
-                        payload: {
-                            name: 'demo_approval',
-                            tasks: [
-                                { name: 'submit_request', taskReferenceName: 'submit_1', type: 'SIMPLE' },
-                                { name: 'manager_approve', taskReferenceName: 'approve_1', type: 'SIMPLE' }
-                            ]
-                        }
+                        content: '由于未检测到 API Key，我为您模拟了一个简单的审批流程（仅演示）。请在设置中配置 API Key 以启用真实 AI 能力。',
                     };
                     setMessages(prev => [...prev, aiMsg]);
                     setIsLoading(false);
@@ -204,15 +207,30 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                 controller.signal
             );
 
-            const jsonMatch = fullResponse.match(/```json\n([\s\S]*?)\n```/);
-            const suggestedJson = jsonMatch ? JSON.parse(jsonMatch[1]) : null;
+            // 优先解析 diff-json 块（结构化 diff），否则降级到全量 json 替换
+            const diff = parseDiffFromAIResponse(fullResponse);
+            let parsedDiff = diff;
+            if (!parsedDiff) {
+                const jsonMatch = fullResponse.match(/```json\n([\s\S]*?)\n```/);
+                if (jsonMatch) {
+                    try {
+                        const payload = JSON.parse(jsonMatch[1]);
+                        parsedDiff = {
+                            kind: 'replace',
+                            summary: '应用 AI 生成的工作流',
+                            rows: [{ kind: 'add', desc: '全量替换为 AI 生成的工作流定义' }],
+                            payload,
+                        };
+                    } catch { /* ignore */ }
+                }
+            }
 
-            const aiMsg: Message = {
+            const aiMsg: AIChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
                 content: fullResponse,
-                type: suggestedJson ? 'change_suggestion' : 'text',
-                payload: suggestedJson
+                diff: parsedDiff ?? undefined,
+                applied: false,
             };
 
             setMessages(prev => [...prev, aiMsg]);
@@ -222,22 +240,20 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                 // User stopped generation — save what we have
                 setStreamingContent(prev => {
                     if (prev) {
-                        const interruptedMsg: Message = {
+                        const interruptedMsg: AIChatMessage = {
                             id: (Date.now() + 1).toString(),
                             role: 'ai',
                             content: prev,
-                            type: 'text'
                         };
                         setMessages(p => [...p, interruptedMsg]);
                     }
                     return '';
                 });
             } else {
-                const errorMsg: Message = {
+                const errorMsg: AIChatMessage = {
                     id: Date.now().toString(),
                     role: 'ai',
                     content: `抱歉，目前无法连接到 AI 服务: ${err.message}`,
-                    error: true
                 };
                 setMessages(prev => [...prev, errorMsg]);
                 setStreamingContent('');
@@ -258,27 +274,10 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
         setIsLoading(false);
     };
 
-    const handleCopy = (msg: Message) => {
-        navigator.clipboard.writeText(msg.content);
+    const handleCopy = (msg: AIChatMessage) => {
+        navigator.clipboard.writeText(msg.content ?? '');
         setCopiedId(msg.id);
         setTimeout(() => setCopiedId(null), 1500);
-    };
-
-    const handleRetry = () => {
-        // Find last user message to retry
-        const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-        if (!lastUserMsg) return;
-        // Remove last error message
-        setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last?.error) return prev.slice(0, -1);
-            return prev;
-        });
-        handleSend(lastUserMsg.content);
-    };
-
-    const applySuggestion = (payload: any) => {
-        applyAIGeneratedWorkflow(payload);
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -317,20 +316,28 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
 
             <div className="ai-messages">
                 {messages.map((msg) => (
-                    <div key={msg.id} className={`message ${msg.role}${msg.error ? ' error' : ''}`}>
+                    <div key={msg.id} className={`message ${msg.role}`}>
                         <div className="message-content">
-                            {msg.role === 'ai' ? renderMessageContent(msg.content) : msg.content}
-                        </div>
-                        {msg.type === 'change_suggestion' && msg.payload && (
-                            <div className="change-card">
-                                <div className="card-header">工作流修改建议</div>
-                                <div className="card-actions">
-                                    <button className="card-btn">预览</button>
-                                    <button className="card-btn apply" onClick={() => applySuggestion(msg.payload)}>应用</button>
+                            {msg.thinking ? (
+                                <div className="thinking-skeleton">
+                                    <div className="skeleton-line" style={{ width: '80%' }} />
+                                    <div className="skeleton-line" style={{ width: '60%' }} />
                                 </div>
-                            </div>
+                            ) : msg.role === 'ai' ? (
+                                renderMessageContent(msg.content ?? '')
+                            ) : (
+                                msg.content
+                            )}
+                        </div>
+                        {msg.diff && !msg.thinking && (
+                            <DiffCard
+                                diff={msg.diff}
+                                applied={msg.applied ?? false}
+                                onApply={() => handleApplyDiff(msg)}
+                                onUndo={() => handleUndoDiff(msg)}
+                            />
                         )}
-                        {msg.role === 'ai' && !msg.error && (
+                        {msg.role === 'ai' && msg.content && (
                             <button
                                 className="copy-btn"
                                 onClick={() => handleCopy(msg)}
@@ -338,9 +345,6 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                             >
                                 {copiedId === msg.id ? '✓' : '📋'}
                             </button>
-                        )}
-                        {msg.error && (
-                            <button className="retry-btn" onClick={handleRetry}>重试</button>
                         )}
                     </div>
                 ))}

@@ -13,9 +13,11 @@ import {
     ThemeMode,
     ThemeColor,
     ExecutionStatus,
-    TaskExecutionData
+    TaskExecutionData,
+    ViewMode
 } from '../types/workflow';
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from '../types/conductor';
+import { buildExecutionWaves } from '../utils/simulateWorkflow';
 
 const useWorkflowStore = create<WorkflowStore>()(
     persist(
@@ -41,6 +43,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                 edgeType: 'smoothstep',
                 nodesLocked: true,
                 copiedTask: null as TaskDef | null,
+                viewMode: 'standard' as ViewMode,
+
+                // 模拟执行状态
+                simState: {} as Record<string, 'idle' | 'running' | 'done'>,
+                isSimRunning: false,
 
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
@@ -664,6 +671,56 @@ const useWorkflowStore = create<WorkflowStore>()(
                 setThemeColor: (themeColor: ThemeColor) => set({ themeColor }),
                 setEdgeType: (edgeType: string) => set({ edgeType }),
                 setNodesLocked: (nodesLocked: boolean) => set({ nodesLocked }),
+                setViewMode: (viewMode: ViewMode) => set({ viewMode }),
+
+                startSimulation: () => {
+                    const { edges, nodes, isSimRunning } = get();
+                    if (isSimRunning) return;
+
+                    const taskRefs = nodes
+                        .filter((n) => !['plusNode', 'dynamicPlaceholderNode'].includes(n.type ?? ''))
+                        .map((n) => n.id);
+                    const edgePairs = edges.map((e) => ({ source: e.source, target: e.target }));
+                    const waves = buildExecutionWaves(taskRefs, edgePairs);
+
+                    set({ isSimRunning: true, simState: {} });
+
+                    // 用可变对象保存最新 timer ID，方便 stopSimulation 取消
+                    const handle = { timer: null as ReturnType<typeof setTimeout> | null };
+                    (get() as any).__simHandle = handle;
+
+                    let idx = 0;
+                    const tick = () => {
+                        if (idx >= waves.length || !get().isSimRunning) {
+                            set({ isSimRunning: false });
+                            return;
+                        }
+                        const wave = waves[idx];
+                        set((s) => {
+                            const next = { ...s.simState };
+                            wave.forEach((r) => (next[r] = 'running'));
+                            return { simState: next };
+                        });
+                        handle.timer = setTimeout(() => {
+                            if (!get().isSimRunning) return;
+                            set((s) => {
+                                const next = { ...s.simState };
+                                wave.forEach((r) => (next[r] = 'done'));
+                                return { simState: next };
+                            });
+                            idx++;
+                            handle.timer = setTimeout(tick, 280);
+                        }, 700);
+                    };
+
+                    tick();
+                },
+
+                stopSimulation: () => {
+                    const handle = (get() as any).__simHandle as { timer: ReturnType<typeof setTimeout> | null } | undefined;
+                    if (handle?.timer) clearTimeout(handle.timer);
+                    set({ isSimRunning: false, simState: {} });
+                },
 
                 createBlankWorkflow: (name?: string) => {
                     const blankDef: WorkflowDef = {
@@ -733,7 +790,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                 layoutDirection: state.layoutDirection,
                 edgeType: state.edgeType,
                 nodesLocked: state.nodesLocked,
-                copiedTask: state.copiedTask
+                copiedTask: state.copiedTask,
+                viewMode: state.viewMode,
             }),
         }
     )

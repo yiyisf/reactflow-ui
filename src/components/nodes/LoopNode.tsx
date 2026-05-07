@@ -168,6 +168,8 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             hasWarning={data.hasWarning}
             isHighlighted={data.isHighlighted}
             executionStatus={execution?.status}
+            simRunning={data.simRunning}
+            simDone={data.simDone}
         >
             <div
                 style={{

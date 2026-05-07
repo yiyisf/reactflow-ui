@@ -48,6 +48,8 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
             hasWarning={data.hasWarning}
             isHighlighted={data.isHighlighted}
             executionStatus={execution?.status}
+            simRunning={data.simRunning}
+            simDone={data.simDone}
         >
             <div style={{
                 borderRadius: '8px',

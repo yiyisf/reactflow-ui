@@ -13,6 +13,8 @@ interface NodeWrapperProps {
     isDecision?: boolean;
     isHighlighted?: boolean;
     executionStatus?: ExecutionStatus;
+    simRunning?: boolean;
+    simDone?: boolean;
 }
 
 const NodeWrapper = ({
@@ -24,7 +26,9 @@ const NodeWrapper = ({
     hasWarning = false,
     isDecision = false,
     isHighlighted = false,
-    executionStatus
+    executionStatus,
+    simRunning = false,
+    simDone = false,
 }: NodeWrapperProps) => {
     const { mode, removeNode } = useWorkflowStore();
     const [showConfirm, setShowConfirm] = useState(false);
@@ -42,6 +46,20 @@ const NodeWrapper = ({
 
     // 运行态执行状态边框样式
     const executionStyle = useMemo<React.CSSProperties>(() => {
+        // 模拟执行状态（优先级高于 run 模式）
+        if (simRunning) {
+            return {
+                borderColor: 'var(--status-in-progress)',
+                animation: 'status-pulse 1.5s ease-in-out infinite',
+            };
+        }
+        if (simDone) {
+            return {
+                borderColor: 'var(--status-completed)',
+                boxShadow: '0 0 8px rgba(34, 197, 94, 0.35)',
+            };
+        }
+
         if (mode !== 'run') return {};
 
         // 未到达的节点（无执行数据）
@@ -82,7 +100,7 @@ const NodeWrapper = ({
             default:
                 return {};
         }
-    }, [mode, executionStatus]);
+    }, [mode, executionStatus, simRunning, simDone]);
 
     return (
         <div className={wrapperClass} style={{ position: 'relative', ...executionStyle }}>

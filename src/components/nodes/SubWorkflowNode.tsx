@@ -34,6 +34,8 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
             hasWarning={data.hasWarning}
             isHighlighted={data.isHighlighted}
             executionStatus={execution?.status}
+            simRunning={data.simRunning}
+            simDone={data.simDone}
         >
             <div
                 style={{

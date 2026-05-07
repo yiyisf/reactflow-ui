@@ -4,10 +4,12 @@ import ReactFlow, {
     Panel,
     MarkerType,
     useReactFlow,
+    Edge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 import useWorkflowStore from '../store/workflowStore';
+import { TASK_TYPES, CATEGORY_VISIBILITY } from '../config/taskTypes';
 import TaskNode from './nodes/TaskNode';
 import DecisionNode from './nodes/DecisionNode';
 import ForkJoinNode from './nodes/ForkJoinNode';
@@ -73,6 +75,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         onEdgesChange,
         onConnect,
         mode,
+        viewMode,
         selectedTask,
         setSelectedTask,
         theme,
@@ -85,7 +88,72 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         workflowDef,
         dynamicRuntimeTasksByFork,
         layoutDirection,
+        simState,
     } = useWorkflowStore();
+
+    // ─── 视图模式过滤：计算可见节点 ID 集合 ─────────────────────────────
+    const visibleNodeIdSet = useMemo(() => {
+        // run 模式和 edit 模式始终显示所有节点，避免影响编辑/监控
+        if (mode === 'run' || mode === 'edit') {
+            return new Set(nodes.map((n) => n.id));
+        }
+        const allowed = CATEGORY_VISIBILITY[viewMode];
+        const visible = new Set<string>();
+        nodes.forEach((n) => {
+            // 工具节点（plusNode / placeholder）不受视图模式控制
+            if (n.type === 'plusNode' || n.type === 'dynamicPlaceholderNode') {
+                visible.add(n.id);
+                return;
+            }
+            const cfg = TASK_TYPES.find((t) => t.type === n.data.taskType);
+            const cat = cfg?.viewCategory ?? 'business';
+            if (allowed.includes(cat)) visible.add(n.id);
+        });
+        return visible;
+    }, [nodes, viewMode, mode]);
+
+    // 在业务/标准模式下，折叠经过隐藏节点的边（BFS 穿越）
+    const collapseEdgesOverHidden = useCallback(
+        (rawEdges: Edge[]): Edge[] => {
+            if (visibleNodeIdSet.size === nodes.length) return rawEdges; // 全可见，无需处理
+            const adjacency: Record<string, Edge[]> = {};
+            rawEdges.forEach((e) => {
+                if (!adjacency[e.source]) adjacency[e.source] = [];
+                adjacency[e.source].push(e);
+            });
+            const result: Edge[] = [];
+            const seen = new Set<string>();
+            rawEdges.forEach((e) => {
+                if (!visibleNodeIdSet.has(e.source)) return;
+                if (visibleNodeIdSet.has(e.target)) {
+                    const key = `${e.source}->${e.target}`;
+                    if (!seen.has(key)) { seen.add(key); result.push(e); }
+                    return;
+                }
+                // BFS 找第一个可见目标
+                const queue: Array<{ to: string; label?: string }> = [{ to: e.target, label: e.label as string | undefined }];
+                const localSeen = new Set<string>();
+                while (queue.length) {
+                    const cur = queue.shift()!;
+                    if (localSeen.has(cur.to)) continue;
+                    localSeen.add(cur.to);
+                    if (visibleNodeIdSet.has(cur.to)) {
+                        const key = `${e.source}->${cur.to}`;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            result.push({ ...e, id: key, target: cur.to, label: cur.label ?? e.label });
+                        }
+                        continue;
+                    }
+                    (adjacency[cur.to] ?? []).forEach((n2) =>
+                        queue.push({ to: n2.target, label: cur.label ?? (n2.label as string | undefined) }),
+                    );
+                }
+            });
+            return result;
+        },
+        [visibleNodeIdSet, nodes.length],
+    );
 
     const { fitView } = useReactFlow();
     const [showSelector, setShowSelector] = useState(false);
@@ -287,8 +355,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
     // 为边添加元数据和箭头标记
     const processedEdges = useMemo(() => {
-        const mappedEdges = edges
-          .filter(edge => !dynamicForkData.removedEdgeIds.has(edge.id))
+        // 先折叠经过隐藏节点的边，再处理样式
+        const visibleEdges = collapseEdgesOverHidden(
+            edges.filter(edge => !dynamicForkData.removedEdgeIds.has(edge.id))
+        );
+        const mappedEdges = visibleEdges
           .map((edge) => {
             const isLoopBack = edge.id.includes('loop-back');
             const baseStyle = {
@@ -345,7 +416,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             };
         });
         return [...mappedEdges, ...dynamicForkData.extraEdges];
-    }, [edges, edgeType, theme, mode, executionData, dynamicForkData]);
+    }, [edges, edgeType, theme, mode, executionData, dynamicForkData, collapseEdgesOverHidden]);
 
     // 背景颜色 - 使用 CSS变量
     const backgroundColor = 'var(--bg-secondary)';
@@ -359,9 +430,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     const query = searchQuery.toLowerCase();
 
                     const baseNodes = nodes
-                    .filter(n => !dynamicForkData.removedNodeIds.has(n.id))
+                    .filter(n => !dynamicForkData.removedNodeIds.has(n.id) && visibleNodeIdSet.has(n.id))
                     .map(node => {
                         const ref = node.data.taskReferenceName;
+                        const sim = simState[ref];
                         return {
                             ...node,
                             selected: selectedTask?.taskReferenceName === ref,
@@ -372,7 +444,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                 isHighlighted: searchQuery ? (
                                     node.data.label.toLowerCase().includes(query) ||
                                     node.data.taskReferenceName.toLowerCase().includes(query)
-                                ) : false
+                                ) : false,
+                                simRunning: sim === 'running',
+                                simDone: sim === 'done',
                             }
                         };
                     });
@@ -381,7 +455,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         ...node,
                         data: { ...node.data, isError: false, hasWarning: false, isHighlighted: false },
                     })) as typeof baseNodes);
-                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData])}
+                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState])}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}

@@ -1,0 +1,526 @@
+/* ─── AiWorkflowIDE 全局样式 ──────────────────────────────────────────────── */
+
+.ai-workflow-ide {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* ─── 左侧 AI 面板 ───────────────────────────────────────────────────────── */
+
+.ai-chat-side {
+    display: flex;
+    flex-direction: column;
+    width: 420px;
+    min-width: 320px;
+    max-width: 600px;
+    border-right: 1px solid var(--border);
+    background: var(--bg-primary);
+    transition: width 0.3s ease, min-width 0.3s ease, opacity 0.3s ease;
+    position: relative;
+    z-index: 10;
+}
+
+.ai-chat-side.collapsed {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    border-right: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 收起/展开按钮 */
+.ai-toggle-btn {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    width: 24px;
+    height: 48px;
+    border-radius: 0 8px 8px 0;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-left: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    transition: background 0.2s;
+}
+
+.ai-toggle-btn:hover {
+    background: var(--color-accent);
+    color: #fff;
+}
+
+/* ─── Chat Header ────────────────────────────────────────────────────────── */
+
+.ai-cc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.ai-cc-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.ai-cc-title-icon {
+    font-size: 18px;
+}
+
+.ai-cc-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.ai-cc-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.ai-cc-actions button:hover {
+    background: var(--bg-tertiary);
+}
+
+/* ─── Messages ───────────────────────────────────────────────────────────── */
+
+.ai-cc-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ai-cc-msg {
+    max-width: 95%;
+    line-height: 1.6;
+    font-size: 13px;
+}
+
+.ai-cc-msg.user {
+    align-self: flex-end;
+    background: var(--color-accent);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 16px 16px 4px 16px;
+}
+
+.ai-cc-msg.assistant {
+    align-self: flex-start;
+    background: var(--bg-tertiary);
+    padding: 12px 16px;
+    border-radius: 4px 16px 16px 16px;
+    border: 1px solid var(--border);
+}
+
+.ai-cc-msg.assistant pre {
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 10px;
+    overflow-x: auto;
+    font-size: 12px;
+    margin: 8px 0;
+}
+
+.ai-cc-msg.assistant code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+}
+
+.ai-cc-msg.assistant strong {
+    color: var(--color-accent);
+}
+
+/* ─── Streaming indicator ────────────────────────────────────────────────── */
+
+.ai-cc-streaming {
+    align-self: flex-start;
+    background: var(--bg-tertiary);
+    padding: 12px 16px;
+    border-radius: 4px 16px 16px 16px;
+    border: 1px solid var(--border);
+    opacity: 0.9;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.ai-streaming-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background: var(--color-accent);
+    margin-left: 2px;
+    animation: blink 1s infinite;
+    vertical-align: text-bottom;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* ─── Thinking skeleton ──────────────────────────────────────────────────── */
+
+.ai-cc-thinking {
+    align-self: flex-start;
+    padding: 12px 16px;
+    border-radius: 4px 16px 16px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 70%;
+}
+
+.ai-skeleton-line {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg,
+        var(--border) 25%,
+        var(--bg-secondary) 50%,
+        var(--border) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ─── Input Area ─────────────────────────────────────────────────────────── */
+
+.ai-cc-input-area {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.ai-cc-input-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    transition: border-color 0.2s;
+}
+
+.ai-cc-input-container:focus-within {
+    border-color: var(--color-accent);
+}
+
+.ai-cc-input-container textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    line-height: 1.5;
+    max-height: 120px;
+}
+
+.ai-cc-input-container textarea::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.ai-cc-send-btn {
+    background: var(--color-accent);
+    border: none;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: transform 0.1s, opacity 0.2s;
+}
+
+.ai-cc-send-btn:hover { transform: scale(1.05); }
+.ai-cc-send-btn:active { transform: scale(0.95); }
+.ai-cc-send-btn.stop { background: var(--status-failed); }
+
+/* ─── Right side (canvas + review) ───────────────────────────────────────── */
+
+.ai-canvas-side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ─── Review Bar ─────────────────────────────────────────────────────────── */
+
+.ai-review-bar {
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+    padding: 12px 16px;
+    flex-shrink: 0;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.ai-review-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.ai-review-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ai-review-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.ai-review-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ai-review-btn.accept {
+    background: var(--color-accent);
+    color: #fff;
+}
+
+.ai-review-btn.accept:hover { filter: brightness(1.1); }
+
+.ai-review-btn.reject {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.ai-review-btn.reject:hover {
+    border-color: var(--status-failed);
+    color: var(--status-failed);
+}
+
+/* ─── Operation Card ─────────────────────────────────────────────────────── */
+
+.ai-review-ops {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ai-op-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    transition: all 0.15s;
+}
+
+.ai-op-card.accepted {
+    border-color: var(--status-completed);
+    background: color-mix(in srgb, var(--status-completed) 8%, transparent);
+}
+
+.ai-op-card.rejected {
+    border-color: var(--status-failed);
+    background: color-mix(in srgb, var(--status-failed) 8%, transparent);
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.ai-op-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.ai-op-desc {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+.ai-op-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.ai-op-toggle:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+.ai-op-toggle.checked {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+}
+
+/* ─── Config Panel ───────────────────────────────────────────────────────── */
+
+.ai-config-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.ai-config-dialog {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.ai-config-dialog h3 {
+    margin: 0 0 20px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-config-field {
+    margin-bottom: 14px;
+}
+
+.ai-config-field label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ai-config-field input,
+.ai-config-field select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.ai-config-field input:focus,
+.ai-config-field select:focus {
+    border-color: var(--color-accent);
+}
+
+.ai-config-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.ai-config-btns button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+}
+
+.ai-config-btns .save {
+    background: var(--color-accent);
+    color: #fff;
+}
+
+.ai-config-btns .cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}

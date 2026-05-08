@@ -1,0 +1,107 @@
+/**
+ * AI Intent Classifier — 本地规则快速分类用户意图
+ *
+ * 不消耗 AI token，通过关键词匹配快速判断用户输入的意图类型，
+ * 用于动态调整上下文注入粒度和 prompt 模板。
+ */
+
+export type Intent =
+    | 'CREATE'    // 从零创建工作流
+    | 'ADD'       // 新增节点
+    | 'MODIFY'    // 修改属性
+    | 'DELETE'    // 删除节点
+    | 'REFACTOR'  // 重构拓扑
+    | 'EXPLAIN'   // 解释说明
+    | 'DEBUG'     // 调试/诊断
+    | 'OPTIMIZE'  // 优化建议
+    | 'GENERAL';  // 通用/兜底
+
+interface IntentRule {
+    intent: Intent;
+    keywords: string[];
+    patterns?: RegExp[];
+}
+
+const RULES: IntentRule[] = [
+    {
+        intent: 'CREATE',
+        keywords: ['创建', '新建', '生成', '设计', '搭建', '构建'],
+        patterns: [/创建.*流程/, /生成.*工作流/, /设计.*workflow/, /从零/],
+    },
+    {
+        intent: 'ADD',
+        keywords: ['添加', '加一个', '新增', '插入', '追加'],
+        patterns: [/加.*任务/, /添加.*节点/, /插入.*后面/, /增加/],
+    },
+    {
+        intent: 'DELETE',
+        keywords: ['删除', '移除', '去掉', '删掉', '干掉'],
+        patterns: [/删[除掉]/, /移除/, /去掉/],
+    },
+    {
+        intent: 'MODIFY',
+        keywords: ['修改', '更改', '设置', '把…改', '调整', '配置', '设为', '改为', '改成'],
+        patterns: [/[改设].*为/, /[改设].*成/, /修改/, /超时/, /重试/, /参数/],
+    },
+    {
+        intent: 'REFACTOR',
+        keywords: ['重构', '并行', '串行', '拆分', '合并', '改成并行', '改成串行'],
+        patterns: [/改成并行/, /改成串行/, /拆分/, /合并/, /重构/],
+    },
+    {
+        intent: 'EXPLAIN',
+        keywords: ['解释', '说明', '什么意思', '怎么理解', '是什么', '做什么'],
+        patterns: [/解释/, /什么意思/, /干什么/, /是什么/, /怎么[理解|工作]/],
+    },
+    {
+        intent: 'DEBUG',
+        keywords: ['失败', '错误', '为什么', '报错', '异常', '不工作', '问题'],
+        patterns: [/为什么.*失败/, /出[了]?错/, /报错/, /不[工作|运行]/, /怎么回事/],
+    },
+    {
+        intent: 'OPTIMIZE',
+        keywords: ['优化', '改进', '提升', '性能', '最佳实践', '建议'],
+        patterns: [/优化/, /改进/, /有什么建议/, /最佳实践/],
+    },
+];
+
+/**
+ * 对用户输入进行意图分类
+ */
+export function classifyIntent(input: string): Intent {
+    const normalized = input.toLowerCase().trim();
+
+    // 先检查正则模式（更精准）
+    for (const rule of RULES) {
+        if (rule.patterns) {
+            for (const pattern of rule.patterns) {
+                if (pattern.test(normalized)) return rule.intent;
+            }
+        }
+    }
+
+    // 再检查关键词（更宽泛）
+    for (const rule of RULES) {
+        for (const kw of rule.keywords) {
+            if (normalized.includes(kw)) return rule.intent;
+        }
+    }
+
+    return 'GENERAL';
+}
+
+/**
+ * 根据意图决定上下文注入粒度
+ */
+export function getContextOptions(intent: Intent): { includeFull: boolean } {
+    switch (intent) {
+        case 'CREATE':
+            return { includeFull: false };   // 创建无需上下文
+        case 'REFACTOR':
+        case 'OPTIMIZE':
+        case 'DEBUG':
+            return { includeFull: true };    // 需要全量上下文
+        default:
+            return { includeFull: false };   // 精简上下文即可
+    }
+}

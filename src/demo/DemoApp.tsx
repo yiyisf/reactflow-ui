@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { WorkflowIDE } from '../WorkflowIDE';
 import type { WorkflowIDERef } from '../WorkflowIDE';
+import type { ViewMode } from '../types/workflow';
 import type { WorkflowDef } from '../types/conductor';
 import { useTheme } from '../hooks/useTheme';
 import { ThemeControls } from '../components/ThemeControls';
@@ -16,6 +17,9 @@ function DemoApp() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
+  const [viewMode, setViewMode] = useState<ViewMode>('developer');
 
   // AI config from localStorage (editable in demo header)
   const [aiConfig, setAiConfig] = useState(() => ({
@@ -165,6 +169,44 @@ function DemoApp() {
           </div>
 
           <div className="header-actions">
+            {/* 视图模式切换（运行态自动锁定为开发模式） */}
+            {!workflowExecution && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-tertiary)', borderRadius: 8, padding: 3, border: '1px solid var(--border-primary)' }}>
+                {(['business', 'standard', 'developer'] as ViewMode[]).map((m) => {
+                  const labels: Record<ViewMode, string> = { business: '业务', standard: '标准', developer: '开发' };
+                  const titles: Record<ViewMode, string> = { business: '仅展示核心业务节点', standard: '业务 + 控制流节点', developer: '展示所有节点（含数据转换）' };
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => setViewMode(m)}
+                      title={titles[m]}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        fontFamily: 'inherit',
+                        background: viewMode === m ? 'var(--color-accent)' : 'transparent',
+                        color: viewMode === m ? '#fff' : 'var(--text-secondary)',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {labels[m]}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {workflowExecution && (
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '4px 8px', background: 'var(--bg-tertiary)', borderRadius: 6, border: '1px solid var(--border-primary)' }}>
+                运行态 · 开发模式
+              </span>
+            )}
+
+            <div className="divider"></div>
+
             <button
               className={`mode-btn ${isReadOnly ? 'active' : ''}`}
               onClick={() => setIsReadOnly(!isReadOnly)}
@@ -336,6 +378,7 @@ function DemoApp() {
           themeColor={themeColor}
           layoutDirection="LR"
           searchQuery={searchQuery}
+          viewMode={viewMode}
           aiConfig={aiConfig}
           onSave={handleSave}
           onWorkflowChange={handleWorkflowChange}

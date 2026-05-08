@@ -5,9 +5,8 @@ import TaskDetailPanel from './components/TaskDetailPanel';
 import HealthCheckPanel from './components/HealthCheckPanel';
 import ExecutionTaskPanel from './components/ExecutionTaskPanel';
 import AIChatPanel from './components/AICopilot/AIChatPanel';
-import ModeSlider from './components/Controls/ModeSlider';
 import useWorkflowStore from './store/workflowStore';
-import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions } from './types/workflow';
+import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions, ViewMode } from './types/workflow';
 import { WorkflowDef } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
 import './styles/tokens.css';
@@ -102,6 +101,15 @@ export interface WorkflowIDEProps {
     executionActions?: ExecutionActions;
 
     /**
+     * 视图模式（仅在编辑/查看态生效，运行态强制为 developer）。
+     * - `business`：仅展示核心业务节点
+     * - `standard`：业务 + 控制流节点
+     * - `developer`：展示所有节点（含数据转换）
+     * @default 'developer'
+     */
+    viewMode?: ViewMode;
+
+    /**
      * AI 配置。通过 Props 注入优先于 localStorage 配置。
      */
     aiConfig?: Partial<AIServiceConfig>;
@@ -133,12 +141,13 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     readOnly = false,
     theme = 'dark',
     themeColor = 'blue',
-    layoutDirection = 'LR', // Default per user request
+    layoutDirection = 'LR',
     searchQuery = '',
     workflowExecution,
     onRequestImport,
     executionActions,
     aiConfig,
+    viewMode = 'developer',
     onSave,
     onWorkflowChange,
     height = '100%'
@@ -154,6 +163,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         edgeType,
         importExecutionJSON,
         setMode,
+        setViewMode,
         isDetailPanelOpen,
         setIsDetailPanelOpen,
         selectTaskAction,
@@ -191,6 +201,11 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         setLayoutDirection(layoutDirection);
         setNodesLocked(readOnly || !!workflowExecution);
     }, [theme, themeColor, layoutDirection, readOnly, workflowExecution, setTheme, setThemeColor, setLayoutDirection, setNodesLocked]);
+
+    // 运行态强制 developer 模式；否则跟随 viewMode prop
+    useEffect(() => {
+        setViewMode(workflowExecution ? 'developer' : viewMode);
+    }, [viewMode, workflowExecution, setViewMode]);
 
     // Handle initial workflow load
     useEffect(() => {
@@ -255,7 +270,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             data-brand={themeColor}
             style={{ width: '100%', height: height, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
         >
-            {/* 顶部工具栏：视图模式滑块 + 操作按钮 */}
+            {/* 顶部工具栏：操作按钮 */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -266,7 +281,6 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 flexShrink: 0,
                 flexWrap: 'wrap',
             }}>
-                <ModeSlider />
                 <div style={{ flex: 1 }} />
                 {/* 模拟运行按钮（非 run 模式下可用） */}
                 {mode !== 'run' && storeWorkflowDef && (

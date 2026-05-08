@@ -13,6 +13,8 @@ interface NodeWrapperProps {
     isDecision?: boolean;
     isHighlighted?: boolean;
     executionStatus?: ExecutionStatus;
+    simRunning?: boolean;
+    simDone?: boolean;
 }
 
 const NodeWrapper = ({
@@ -24,7 +26,9 @@ const NodeWrapper = ({
     hasWarning = false,
     isDecision = false,
     isHighlighted = false,
-    executionStatus
+    executionStatus,
+    simRunning = false,
+    simDone = false,
 }: NodeWrapperProps) => {
     const { mode, removeNode } = useWorkflowStore();
     const [showConfirm, setShowConfirm] = useState(false);
@@ -36,9 +40,14 @@ const NodeWrapper = ({
 
     const showDelete = mode === 'edit' && !isStartOrEnd;
 
-    const wrapperClass = isDecision
-        ? `decision-node-wrapper ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`
-        : `node-wrapper-glass ${selected ? 'node-wrapper-selected' : ''} ${isHighlighted ? 'node-wrapper-highlighted' : ''}`;
+    const baseClass = isDecision ? 'decision-node-wrapper' : 'node-wrapper-glass';
+    const wrapperClass = [
+        baseClass,
+        selected ? 'node-wrapper-selected' : '',
+        isHighlighted ? 'node-wrapper-highlighted' : '',
+        simRunning ? 'node-sim-running' : '',
+        simDone ? 'node-sim-done' : '',
+    ].filter(Boolean).join(' ');
 
     // 运行态执行状态边框样式
     const executionStyle = useMemo<React.CSSProperties>(() => {

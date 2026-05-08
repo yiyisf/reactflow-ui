@@ -76,6 +76,18 @@
     }
 }
 
+/* ---- Simulation State Classes ---- */
+
+.node-sim-running {
+    border-color: var(--status-in-progress) !important;
+    animation: status-pulse 1.5s ease-in-out infinite !important;
+}
+
+.node-sim-done {
+    border-color: var(--status-completed) !important;
+    box-shadow: 0 0 12px rgba(10, 173, 118, 0.5) !important;
+}
+
 /* ---- Status Node Classes ---- */
 
 .execution-node-scheduled {

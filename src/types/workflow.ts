@@ -1,6 +1,50 @@
 import { Node, Edge, Position } from 'reactflow';
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from './conductor';
 
+// ─── 视图模式 ───────────────────────────────────────────────────────────────
+
+/**
+ * 视图详情级别（独立于编辑模式）
+ * - `business`：仅展示核心业务节点，控制/数据节点折叠为边标签
+ * - `standard`：业务 + 控制流节点
+ * - `developer`：全部节点（含数据转换等）
+ */
+export type ViewMode = 'business' | 'standard' | 'developer';
+
+// ─── AI Diff 类型 ─────────────────────────────────────────────────────────
+
+export interface WorkflowDiffRow {
+    kind: 'add' | 'mod' | 'del';
+    desc: string;
+}
+
+export type WorkflowPatchOp =
+    | { op: 'patchTask'; ref: string; set: Partial<TaskDef> }
+    | { op: 'insertAfter'; after: string; edgeTo: string; task: TaskDef }
+    | { op: 'insertBefore'; before: string; task: TaskDef }
+    | { op: 'addTask'; task: TaskDef; extraEdges?: Array<{ from: string; to: string; label?: string }>; removeEdges?: Array<{ from: string; to: string }> }
+    | { op: 'removeTask'; ref: string }
+    | { op: 'addEdge'; from: string; to: string; label?: string }
+    | { op: 'removeEdge'; from: string; to: string };
+
+export interface WorkflowDiff {
+    kind: 'add' | 'mod' | 'del' | 'replace';
+    summary: string;
+    rows: WorkflowDiffRow[];
+    patch?: WorkflowPatchOp[];
+    payload?: WorkflowDef; // 全量替换时使用
+}
+
+export interface AIChatMessage {
+    id: string;
+    role: 'user' | 'ai';
+    content?: string;
+    thinking?: boolean;
+    diff?: WorkflowDiff;
+    applied?: boolean;
+    inverse?: WorkflowDiff;
+}
+
 /**
  * 布局方向
  */
@@ -90,6 +134,8 @@ export interface WorkflowNodeData {
     parentRef?: string; // 父节点引用名（用于 Join/plusNode 查找上游节点）
     edgeData?: Record<string, any>; // plusNode 专用：携带边的附加信息
     isDynamicRuntime?: boolean; // FORK_JOIN_DYNAMIC 运行时动态生成的子任务节点
+    simRunning?: boolean; // 模拟执行中：蓝色脉冲
+    simDone?: boolean;    // 模拟执行完成：绿色
 }
 
 /**
@@ -116,6 +162,7 @@ export type ThemeColor = 'blue' | 'orange';
  */
 export interface WorkflowState {
     mode: EditorMode;
+    viewMode: ViewMode;
     workflowDef: WorkflowDef | null;
     workflowInstance: WorkflowInstance | null;
     nodes: WorkflowNode[];
@@ -133,6 +180,8 @@ export interface WorkflowState {
     nodesLocked: boolean;
     copiedTask: TaskDef | null;
     isDetailPanelOpen: boolean;
+    simState: Record<string, 'idle' | 'running' | 'done'>;
+    isSimRunning: boolean;
 }
 
 /**
@@ -171,6 +220,9 @@ export interface WorkflowActions {
     applyAIGeneratedWorkflow: (workflowJson: any) => void;
     setIsDetailPanelOpen: (isOpen: boolean) => void;
     selectTaskAction: (task: TaskDef | null, openPanel?: boolean) => void;
+    setViewMode: (viewMode: ViewMode) => void;
+    startSimulation: () => void;
+    stopSimulation: () => void;
 }
 
 /**

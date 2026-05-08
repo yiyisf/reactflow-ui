@@ -8,6 +8,7 @@ import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { GitBranch, GitMerge } from 'lucide-react';
+import { getNodeMeta } from '../../utils/nodeMeta';
 
 type ForkJoinNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -30,6 +31,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     }, [branchCount, id, updateNodeInternals]);
 
     const isDynamic = data.isDynamic || data.taskType === 'FORK_JOIN_DYNAMIC';
+    const viewMode = useWorkflowStore(s => s.viewMode);
 
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'FORK_JOIN'), []);
     const IconComponent = taskConfig?.icon || GitBranch;
@@ -41,6 +43,8 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             isError={data.isError}
             hasWarning={data.hasWarning}
             executionStatus={execution?.status}
+            simRunning={data.simRunning}
+            simDone={data.simDone}
         >
             <div
                 className={`fork-node ${isDynamic ? 'dynamic' : 'static'}`}
@@ -55,7 +59,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     icon={IconComponent}
                     header={isDynamic ? "DYNAMIC FORK" : "FORK"}
                     title={data.taskReferenceName}
-                    meta={isDynamic ? 'Dynamic Parallel Execution' : 'Parallel Execution'}
+                    meta={getNodeMeta(data.taskType, data, viewMode, isDynamic ? 'Dynamic Parallel Execution' : 'Parallel Execution')}
                     color={FORK_JOIN_COLOR}
                     status={execution?.status}
                     isRunning={isRunning}
@@ -154,6 +158,7 @@ ForkNode.displayName = 'ForkNode';
 export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
     const { execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const viewMode = useWorkflowStore(s => s.viewMode);
 
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'JOIN'), []);
     const IconComponent = taskConfig?.icon || GitMerge;
@@ -165,6 +170,8 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             isError={data.isError}
             hasWarning={data.hasWarning}
             executionStatus={execution?.status}
+            simRunning={data.simRunning}
+            simDone={data.simDone}
         >
             <div
                 style={{
@@ -177,7 +184,7 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     icon={IconComponent}
                     header={data.taskType === 'EXCLUSIVE_JOIN' ? 'EXCLUSIVE JOIN' : 'JOIN'}
                     title={data.taskReferenceName}
-                    meta={data.taskType === 'EXCLUSIVE_JOIN' ? 'Wait for any task' : 'Wait for tasks'}
+                    meta={getNodeMeta(data.taskType, data, viewMode, data.taskType === 'EXCLUSIVE_JOIN' ? 'Wait for any task' : 'Wait for tasks')}
                     color={FORK_JOIN_COLOR}
                     status={execution?.status}
                     isRunning={isRunning}

@@ -1,4 +1,4 @@
-import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
@@ -6,7 +6,7 @@ import HealthCheckPanel from './components/HealthCheckPanel';
 import ExecutionTaskPanel from './components/ExecutionTaskPanel';
 import AIChatPanel from './components/AICopilot/AIChatPanel';
 import useWorkflowStore from './store/workflowStore';
-import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions } from './types/workflow';
+import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions, ViewMode } from './types/workflow';
 import { WorkflowDef } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
 import './styles/tokens.css';
@@ -101,6 +101,15 @@ export interface WorkflowIDEProps {
     executionActions?: ExecutionActions;
 
     /**
+     * 视图模式（仅在编辑/查看态生效，运行态强制为 developer）。
+     * - `business`：仅展示核心业务节点
+     * - `standard`：业务 + 控制流节点
+     * - `developer`：展示所有节点（含数据转换）
+     * @default 'developer'
+     */
+    viewMode?: ViewMode;
+
+    /**
      * AI 配置。通过 Props 注入优先于 localStorage 配置。
      */
     aiConfig?: Partial<AIServiceConfig>;
@@ -132,12 +141,13 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     readOnly = false,
     theme = 'dark',
     themeColor = 'blue',
-    layoutDirection = 'LR', // Default per user request
+    layoutDirection = 'LR',
     searchQuery = '',
     workflowExecution,
     onRequestImport,
     executionActions,
     aiConfig,
+    viewMode = 'developer',
     onSave,
     onWorkflowChange,
     height = '100%'
@@ -149,17 +159,40 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         setLayoutDirection,
         setNodesLocked,
         selectedTask,
-
         setSelectedTask,
         edgeType,
         importExecutionJSON,
         setMode,
+        setViewMode,
         isDetailPanelOpen,
         setIsDetailPanelOpen,
-        selectTaskAction
+        selectTaskAction,
+        workflowDef: storeWorkflowDef,
+        isSimRunning,
+        startSimulation,
+        stopSimulation,
+        mode,
     } = useWorkflowStore();
 
     const [showHealthCheck, setShowHealthCheck] = React.useState(false);
+
+    // 导出 JSON
+    const handleExportJson = useCallback(() => {
+        if (!storeWorkflowDef) return;
+        const blob = new Blob([JSON.stringify(storeWorkflowDef, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${storeWorkflowDef.name || 'workflow'}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [storeWorkflowDef]);
+
+    // 复制 Conductor DSL
+    const handleCopyDsl = useCallback(() => {
+        if (!storeWorkflowDef) return;
+        navigator.clipboard.writeText(JSON.stringify(storeWorkflowDef, null, 2));
+    }, [storeWorkflowDef]);
 
     // Initialize Store from Props
     useEffect(() => {
@@ -168,6 +201,11 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         setLayoutDirection(layoutDirection);
         setNodesLocked(readOnly || !!workflowExecution);
     }, [theme, themeColor, layoutDirection, readOnly, workflowExecution, setTheme, setThemeColor, setLayoutDirection, setNodesLocked]);
+
+    // 运行态强制 developer 模式；否则跟随 viewMode prop
+    useEffect(() => {
+        setViewMode(workflowExecution ? 'developer' : viewMode);
+    }, [viewMode, workflowExecution, setViewMode]);
 
     // Handle initial workflow load
     useEffect(() => {
@@ -230,9 +268,98 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             className={`workflow-ide ${theme === 'light' ? 'light-theme' : ''}`}
             data-mode={theme}
             data-brand={themeColor}
-            style={{ width: '100%', height: height, display: 'flex', position: 'relative', overflow: 'hidden' }}
+            style={{ width: '100%', height: height, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
         >
-            <div className="workflow-viewer" style={{ flex: 1, position: 'relative' }}>
+            {/* 顶部工具栏：操作按钮 */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 12px',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--bg-primary)',
+                flexShrink: 0,
+                flexWrap: 'wrap',
+            }}>
+                <div style={{ flex: 1 }} />
+                {/* 模拟运行按钮（非 run 模式下可用） */}
+                {mode !== 'run' && storeWorkflowDef && (
+                    isSimRunning ? (
+                        <button
+                            onClick={stopSimulation}
+                            style={{
+                                height: 28, padding: '0 10px',
+                                background: 'color-mix(in srgb, var(--status-failed) 15%, transparent)',
+                                color: 'var(--status-failed)',
+                                border: '1px solid color-mix(in srgb, var(--status-failed) 30%, transparent)',
+                                borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                                display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                            }}
+                            title="停止模拟"
+                        >
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="4" width="8" height="8" rx="1" /></svg>
+                            停止
+                        </button>
+                    ) : (
+                        <button
+                            onClick={startSimulation}
+                            style={{
+                                height: 28, padding: '0 10px',
+                                background: 'color-mix(in srgb, var(--status-completed) 15%, transparent)',
+                                color: 'var(--status-completed)',
+                                border: '1px solid color-mix(in srgb, var(--status-completed) 30%, transparent)',
+                                borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                                display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                            }}
+                            title="模拟执行工作流"
+                        >
+                            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5z" /></svg>
+                            模拟运行
+                        </button>
+                    )
+                )}
+                {/* 导出 / 复制 DSL */}
+                {storeWorkflowDef && (
+                    <>
+                        <button
+                            onClick={handleExportJson}
+                            style={{
+                                height: 28, padding: '0 10px',
+                                background: 'transparent',
+                                color: 'var(--text-secondary)',
+                                border: '1px solid var(--border-strong)',
+                                borderRadius: 6, cursor: 'pointer', fontSize: 12,
+                                display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                            }}
+                            title="导出工作流 JSON 文件"
+                        >
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <path d="M3 10v2.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V10M5 7l3 3 3-3M8 2v8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            导出 JSON
+                        </button>
+                        <button
+                            onClick={handleCopyDsl}
+                            style={{
+                                height: 28, padding: '0 10px',
+                                background: 'transparent',
+                                color: 'var(--text-secondary)',
+                                border: '1px solid var(--border-strong)',
+                                borderRadius: 6, cursor: 'pointer', fontSize: 12,
+                                display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                            }}
+                            title="复制 Conductor DSL 到剪贴板"
+                        >
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <rect x="4" y="4" width="9" height="10" rx="1" /><path d="M2 10V3a1 1 0 0 1 1-1h7" strokeLinecap="round" />
+                            </svg>
+                            复制 DSL
+                        </button>
+                    </>
+                )}
+            </div>
+
+            <div className="workflow-viewer" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                 <ReactFlowProvider>
                     <WorkflowDesigner
                         onNodeClick={handleNodeClick}
@@ -245,12 +372,6 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         executionActions={executionActions}
                     />
                 </ReactFlowProvider>
-
-                {/* Internal Controls overlay if needed, or exposed via Slots later */}
-                <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', gap: 8 }}>
-                    {/* Redundant button removed as it is now in ActionBar */}
-                    {/* <button ... /> */}
-                </div>
             </div>
 
             <TaskDetailPanel

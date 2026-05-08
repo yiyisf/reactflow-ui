@@ -1,0 +1,155 @@
+.diff-card {
+    margin-top: 8px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-primary);
+    font-size: 12px;
+}
+
+.diff-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.diff-badge {
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.diff-badge.add {
+    background: color-mix(in srgb, var(--status-completed) 15%, transparent);
+    color: var(--status-completed);
+}
+
+.diff-badge.mod {
+    background: color-mix(in srgb, #fbbf24 15%, transparent);
+    color: #fbbf24;
+}
+
+.diff-badge.del {
+    background: color-mix(in srgb, var(--status-failed) 15%, transparent);
+    color: var(--status-failed);
+}
+
+.diff-summary {
+    flex: 1;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+}
+
+.diff-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.diff-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 10px;
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.diff-row:first-child {
+    border-top: 0;
+}
+
+.diff-marker {
+    width: 14px;
+    height: 14px;
+    display: grid;
+    place-items: center;
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.diff-row.add .diff-marker {
+    background: color-mix(in srgb, var(--status-completed) 15%, transparent);
+    color: var(--status-completed);
+}
+
+.diff-row.mod .diff-marker {
+    background: color-mix(in srgb, #fbbf24 15%, transparent);
+    color: #fbbf24;
+}
+
+.diff-row.del .diff-marker {
+    background: color-mix(in srgb, var(--status-failed) 15%, transparent);
+    color: var(--status-failed);
+}
+
+.diff-desc {
+    flex: 1;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.diff-actions {
+    display: flex;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.diff-btn {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    font-family: inherit;
+}
+
+.diff-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+.diff-btn.apply {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border-color: var(--text-primary);
+}
+
+.diff-btn.apply:hover {
+    background: white;
+}
+
+.diff-btn.applied {
+    background: color-mix(in srgb, var(--status-completed) 15%, transparent);
+    color: var(--status-completed);
+    border-color: color-mix(in srgb, var(--status-completed) 30%, transparent);
+    cursor: default;
+}
+
+.diff-btn.undo:hover:not(:disabled) {
+    color: var(--status-failed);
+    border-color: color-mix(in srgb, var(--status-failed) 30%, transparent);
+}

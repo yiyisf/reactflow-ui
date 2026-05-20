@@ -389,6 +389,15 @@ function DemoApp() {
             input.onchange = (e) => handleFileUpload(e as any);
             input.click();
           }}
+          executionActions={workflowExecution ? {
+            onPause: (wfId) => console.log('[demo] 暂停工作流', wfId),
+            onResume: (wfId) => console.log('[demo] 继续工作流', wfId),
+            onTerminate: (wfId) => console.log('[demo] 终止工作流', wfId),
+            onRetry: (wfId) => console.log('[demo] 重试工作流', wfId),
+            onRestart: (wfId, opts) => console.log('[demo] 重启工作流', wfId, opts?.useLatestDef ? '（最新版本）' : '（执行版本）'),
+            onRerunFromTask: (wfId, ref) => console.log('[demo] 从任务重新运行', wfId, ref),
+            onSkipTask: (wfId, ref) => console.log('[demo] 跳过任务', wfId, ref),
+          } : undefined}
         />
       </div>
     </div>

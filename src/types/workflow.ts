@@ -226,16 +226,45 @@ export interface WorkflowActions {
 }
 
 /**
+ * 重启选项
+ * - `useLatestDef: true`  使用当前最新工作流定义版本重启
+ * - `useLatestDef: false` 使用本次执行时的定义版本重启（默认）
+ */
+export interface RestartOptions {
+    useLatestDef?: boolean;
+}
+
+/**
  * 运行态操作回调
- * 集成方通过此接口注入工作流执行操作（暂停/恢复/停止/重试/重启）的回调函数。
- * 未传入的回调对应的按钮不会渲染。
+ * 集成方通过此接口注入工作流执行操作的回调函数；未传入的回调对应的按钮不会渲染。
+ *
+ * 工作流级别操作：暂停、继续、终止、重试、重新运行（支持版本选择）
+ * 任务级别操作：从指定任务重新运行、跳过任务
  */
 export interface ExecutionActions {
-    onRestart?: (workflowId: string) => void;
+    /** 暂停工作流（RUNNING → PAUSED） */
     onPause?: (workflowId: string) => void;
+    /** 继续执行暂停中的工作流（PAUSED → RUNNING） */
     onResume?: (workflowId: string) => void;
+    /** 终止工作流（RUNNING/PAUSED → TERMINATED） */
     onTerminate?: (workflowId: string) => void;
+    /** 重试失败的工作流（FAILED/TIMED_OUT/TERMINATED） */
     onRetry?: (workflowId: string) => void;
+    /**
+     * 重新运行工作流（需要 workflowDef.restartable = true）
+     * @param options.useLatestDef true=使用最新定义版本；false=使用执行时的版本（默认）
+     */
+    onRestart?: (workflowId: string, options?: RestartOptions) => void;
+    /**
+     * 从指定任务重新运行（工作流须处于终态：FAILED/TERMINATED/COMPLETED）
+     * @param taskReferenceName 目标任务的引用名
+     */
+    onRerunFromTask?: (workflowId: string, taskReferenceName: string) => void;
+    /**
+     * 跳过指定任务（任务须处于 SCHEDULED 或 IN_PROGRESS 状态）
+     * @param taskReferenceName 目标任务的引用名
+     */
+    onSkipTask?: (workflowId: string, taskReferenceName: string) => void;
 }
 
 /**

@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
-import { ExecutionStatus } from '../types/workflow';
+import { ExecutionActions, ExecutionStatus } from '../types/workflow';
+
+interface ExecutionTaskPanelProps {
+    executionActions?: ExecutionActions;
+}
 
 /**
  * 运行态任务详情面板
  */
-const ExecutionTaskPanel: React.FC = () => {
+const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionActions }) => {
     const {
         selectedTask,
         selectedTaskInstance,
@@ -26,14 +30,12 @@ const ExecutionTaskPanel: React.FC = () => {
         panelContentRef.current?.scrollTo({ top: 0 });
     }, [activeTab]);
 
-    // 如果没选中任务或不在运行模式数据中，不显示
     const isGlobal = selectedTask?.taskReferenceName === '__workflow_global__';
     const taskExecution = selectedTask ? executionData?.[selectedTask.taskReferenceName] : null;
 
     if (!selectedTask || (!taskExecution && !isGlobal)) return null;
 
     const attempts = taskExecution?.attempts || [];
-    // 默认显示最新的一次尝试，除非已经手动选中了某一次
     const currentInstance = selectedTaskInstance || attempts[attempts.length - 1];
 
     const handleClose = () => {
@@ -41,7 +43,6 @@ const ExecutionTaskPanel: React.FC = () => {
         setSelectedTaskInstance(null);
     };
 
-    // 格式化耗时
     const formatDuration = (start?: number, end?: number) => {
         if (!start) return '-';
         const endTime = end || Date.now();
@@ -50,7 +51,6 @@ const ExecutionTaskPanel: React.FC = () => {
         return `${(durationMs / 1000).toFixed(2)}s`;
     };
 
-    // 状态样式映射
     const getStatusColor = (status: ExecutionStatus) => {
         const colors: Record<string, string> = {
             'COMPLETED': 'var(--status-completed)',
@@ -59,9 +59,26 @@ const ExecutionTaskPanel: React.FC = () => {
             'SCHEDULED': 'var(--status-scheduled)',
             'TIMED_OUT': 'var(--status-timed-out)',
             'CANCELED': 'var(--status-canceled)',
+            'SKIPPED': 'var(--text-secondary)',
         };
         return colors[status] || 'var(--text-secondary)';
     };
+
+    const wfId = workflowInstance?.workflowId ?? '';
+    const wfStatus = workflowInstance?.status;
+    const taskStatus = taskExecution?.status;
+
+    // Task-level operation availability
+    const canSkip = !isGlobal
+        && executionActions?.onSkipTask
+        && (taskStatus === 'SCHEDULED' || taskStatus === 'IN_PROGRESS')
+        && (wfStatus === 'RUNNING' || wfStatus === 'PAUSED');
+
+    const canRerunFromTask = !isGlobal
+        && executionActions?.onRerunFromTask
+        && (wfStatus === 'FAILED' || wfStatus === 'TERMINATED' || wfStatus === 'COMPLETED' || wfStatus === 'TIMED_OUT');
+
+    const hasTaskOps = canSkip || canRerunFromTask;
 
     return (
         <div className="execution-details-panel">
@@ -241,6 +258,58 @@ const ExecutionTaskPanel: React.FC = () => {
                     font-size: 12px;
                     color: var(--status-failed);
                 }
+
+                .task-ops-section {
+                    margin-top: 20px;
+                    padding: 14px;
+                    background: var(--bg-tertiary);
+                    border-radius: 12px;
+                    border: 1px solid var(--border-primary);
+                }
+
+                .task-ops-label {
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--text-secondary);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 10px;
+                    display: block;
+                }
+
+                .task-ops-buttons {
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+
+                .task-op-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 12px;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    border: 1px solid var(--border-primary);
+                    background: var(--bg-secondary);
+                    color: var(--text-primary);
+                    transition: all 0.15s;
+                    font-family: inherit;
+                }
+
+                .task-op-btn:hover {
+                    background: var(--bg-primary);
+                    border-color: var(--color-accent);
+                    color: var(--color-accent);
+                }
+
+                .task-op-btn.danger:hover {
+                    border-color: var(--status-failed);
+                    color: var(--status-failed);
+                    background: rgba(239, 68, 68, 0.08);
+                }
             `}</style>
 
             <div className="panel-header">
@@ -330,6 +399,39 @@ const ExecutionTaskPanel: React.FC = () => {
                             <label>{isGlobal ? 'Workflow ID' : 'Task ID'}</label>
                             <span style={{ fontSize: '11px', fontFamily: 'monospace', opacity: 0.7 }}>{isGlobal ? workflowInstance?.workflowId : currentInstance?.taskId}</span>
                         </div>
+
+                        {/* 任务级别操作区 */}
+                        {hasTaskOps && (
+                            <div className="task-ops-section">
+                                <span className="task-ops-label">任务操作</span>
+                                <div className="task-ops-buttons">
+                                    {canRerunFromTask && (
+                                        <button
+                                            className="task-op-btn"
+                                            title={`从任务 ${selectedTask.taskReferenceName} 处重新运行工作流`}
+                                            onClick={() => executionActions!.onRerunFromTask!(wfId, selectedTask.taskReferenceName)}
+                                        >
+                                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                                <path d="M3 14v-4h4" /><path d="M3 10A7 7 0 1 1 6.5 13.5" />
+                                            </svg>
+                                            从此处重新运行
+                                        </button>
+                                    )}
+                                    {canSkip && (
+                                        <button
+                                            className="task-op-btn danger"
+                                            title={`跳过任务 ${selectedTask.taskReferenceName}`}
+                                            onClick={() => executionActions!.onSkipTask!(wfId, selectedTask.taskReferenceName)}
+                                        >
+                                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                                <path d="M4 4l8 8M12 4l-8 8" />
+                                            </svg>
+                                            跳过此任务
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
 

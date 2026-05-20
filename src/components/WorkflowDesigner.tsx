@@ -503,7 +503,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 )}
 
                 {/* 运行态详情面板 */}
-                {mode === 'run' && <ExecutionTaskPanel />}
+                {mode === 'run' && <ExecutionTaskPanel executionActions={executionActions} />}
 
                 <HealthCheckPanel
                     isOpen={showHealthCheck}

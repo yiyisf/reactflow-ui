@@ -3,8 +3,18 @@
     "status": "COMPLETED",
     "startTime": 1704546000000,
     "endTime": 1704546120000,
-    "input": { "maxRetries": 3, "dataItems": ["A", "B", "C"] },
-    "output": { "processedCount": 3, "status": "All items processed" },
+    "input": {
+        "maxRetries": 3,
+        "dataItems": [
+            "A",
+            "B",
+            "C"
+        ]
+    },
+    "output": {
+        "processedCount": 3,
+        "status": "All items processed"
+    },
     "workflowDefinition": {
         "name": "data_processing_loop",
         "description": "DO_WHILE 循环演示：逐项处理数据，循环 3 次",
@@ -60,7 +70,8 @@
                 }
             }
         ],
-        "schemaVersion": 2
+        "schemaVersion": 2,
+        "restartable": true
     },
     "tasks": [
         {
@@ -70,8 +81,18 @@
             "taskType": "HTTP",
             "startTime": 1704546000000,
             "endTime": 1704546003000,
-            "inputData": { "uri": "https://api.example.com/data", "method": "GET" },
-            "outputData": { "items": ["A", "B", "C"], "count": 3 }
+            "inputData": {
+                "uri": "https://api.example.com/data",
+                "method": "GET"
+            },
+            "outputData": {
+                "items": [
+                    "A",
+                    "B",
+                    "C"
+                ],
+                "count": 3
+            }
         },
         {
             "taskId": "task_loop_001",
@@ -89,8 +110,13 @@
             "iteration": 1,
             "startTime": 1704546005000,
             "endTime": 1704546015000,
-            "inputData": { "item": "A" },
-            "outputData": { "processedItem": "A_processed", "success": true }
+            "inputData": {
+                "item": "A"
+            },
+            "outputData": {
+                "processedItem": "A_processed",
+                "success": true
+            }
         },
         {
             "taskId": "task_validate_item_iter1",
@@ -100,8 +126,12 @@
             "iteration": 1,
             "startTime": 1704546016000,
             "endTime": 1704546018000,
-            "inputData": { "expression": "$.processedItem !== null" },
-            "outputData": { "result": true }
+            "inputData": {
+                "expression": "$.processedItem !== null"
+            },
+            "outputData": {
+                "result": true
+            }
         },
         {
             "taskId": "task_process_item_iter2",
@@ -111,8 +141,13 @@
             "iteration": 2,
             "startTime": 1704546020000,
             "endTime": 1704546030000,
-            "inputData": { "item": "B" },
-            "outputData": { "processedItem": "B_processed", "success": true }
+            "inputData": {
+                "item": "B"
+            },
+            "outputData": {
+                "processedItem": "B_processed",
+                "success": true
+            }
         },
         {
             "taskId": "task_validate_item_iter2",
@@ -122,8 +157,12 @@
             "iteration": 2,
             "startTime": 1704546031000,
             "endTime": 1704546033000,
-            "inputData": { "expression": "$.processedItem !== null" },
-            "outputData": { "result": true }
+            "inputData": {
+                "expression": "$.processedItem !== null"
+            },
+            "outputData": {
+                "result": true
+            }
         },
         {
             "taskId": "task_process_item_iter3",
@@ -133,8 +172,13 @@
             "iteration": 3,
             "startTime": 1704546035000,
             "endTime": 1704546055000,
-            "inputData": { "item": "C" },
-            "outputData": { "processedItem": "C_processed", "success": true }
+            "inputData": {
+                "item": "C"
+            },
+            "outputData": {
+                "processedItem": "C_processed",
+                "success": true
+            }
         },
         {
             "taskId": "task_validate_item_iter3",
@@ -144,8 +188,12 @@
             "iteration": 3,
             "startTime": 1704546056000,
             "endTime": 1704546058000,
-            "inputData": { "expression": "$.processedItem !== null" },
-            "outputData": { "result": true }
+            "inputData": {
+                "expression": "$.processedItem !== null"
+            },
+            "outputData": {
+                "result": true
+            }
         },
         {
             "taskId": "task_aggregate_001",
@@ -154,7 +202,9 @@
             "taskType": "JSON_JQ_TRANSFORM",
             "startTime": 1704546092000,
             "endTime": 1704546094000,
-            "outputData": { "count": 3 }
+            "outputData": {
+                "count": 3
+            }
         },
         {
             "taskId": "task_event_001",
@@ -163,7 +213,9 @@
             "taskType": "EVENT",
             "startTime": 1704546095000,
             "endTime": 1704546097000,
-            "outputData": { "eventId": "evt_12345" }
+            "outputData": {
+                "eventId": "evt_12345"
+            }
         }
     ]
 }

@@ -18,7 +18,6 @@ import SubWorkflowNode from './nodes/SubWorkflowNode';
 import PlusNode from './nodes/PlusNode';
 import DynamicPlaceholderNode from './nodes/DynamicPlaceholderNode';
 import NodeSelector from './Editor/NodeSelector';
-import ExecutionTaskPanel from './ExecutionTaskPanel';
 import ExecutionStatusBar from './ExecutionStatusBar';
 import HealthCheckPanel from './HealthCheckPanel';
 import AddableEdge from './edges/AddableEdge';
@@ -501,9 +500,6 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         <ExecutionStatusBar />
                     </Panel>
                 )}
-
-                {/* 运行态详情面板 */}
-                {mode === 'run' && <ExecutionTaskPanel executionActions={executionActions} />}
 
                 <HealthCheckPanel
                     isOpen={showHealthCheck}

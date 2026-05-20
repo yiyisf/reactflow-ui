@@ -393,7 +393,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
 
             {
                 workflowExecution && (
-                    <ExecutionTaskPanel />
+                    <ExecutionTaskPanel executionActions={executionActions} />
                 )
             }
 

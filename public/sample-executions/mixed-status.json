@@ -1,12 +1,15 @@
 {
     "workflowId": "wf_mixed_status_demo_001",
-    "status": "RUNNING",
+    "status": "FAILED",
     "startTime": 1704546000000,
+    "endTime": 1704546050000,
+    "reasonForIncompletion": "Workflow failed: integration tests failed, blocking downstream tasks",
     "input": { "environment": "production", "version": "3.2.1" },
     "workflowDefinition": {
         "name": "cicd_pipeline_workflow",
         "description": "混合状态演示：CI/CD 流水线，包含完成、运行中、失败和等待中的任务",
         "version": 1,
+        "restartable": true,
         "tasks": [
             {
                 "name": "checkout_code",
@@ -146,9 +149,10 @@
         {
             "taskId": "task_build_001",
             "referenceTaskName": "build_ref",
-            "status": "IN_PROGRESS",
+            "status": "CANCELED",
             "taskType": "SIMPLE",
             "startTime": 1704546047000,
+            "endTime": 1704546048000,
             "inputData": { "version": "3.2.1", "skipTests": true }
         }
     ]

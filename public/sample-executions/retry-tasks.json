@@ -3,8 +3,14 @@
     "status": "COMPLETED",
     "startTime": 1704546000000,
     "endTime": 1704546180000,
-    "input": { "orderId": "ord_9876", "maxRetries": 3 },
-    "output": { "orderStatus": "PROCESSED", "transactionId": "txn_abc123" },
+    "input": {
+        "orderId": "ord_9876",
+        "maxRetries": 3
+    },
+    "output": {
+        "orderStatus": "PROCESSED",
+        "transactionId": "txn_abc123"
+    },
     "workflowDefinition": {
         "name": "payment_processing_workflow",
         "description": "重试机制演示：支付任务重试 2 次后成功，通知任务首次成功",
@@ -14,7 +20,9 @@
                 "name": "validate_order",
                 "taskReferenceName": "validate_order_ref",
                 "type": "SIMPLE",
-                "inputParameters": { "orderId": "${workflow.input.orderId}" }
+                "inputParameters": {
+                    "orderId": "${workflow.input.orderId}"
+                }
             },
             {
                 "name": "process_payment",
@@ -25,7 +33,9 @@
                 "inputParameters": {
                     "uri": "https://payment-api.example.com/charge",
                     "method": "POST",
-                    "body": { "orderId": "${workflow.input.orderId}" }
+                    "body": {
+                        "orderId": "${workflow.input.orderId}"
+                    }
                 }
             },
             {
@@ -33,7 +43,9 @@
                 "taskReferenceName": "update_inventory_ref",
                 "type": "SIMPLE",
                 "retryCount": 2,
-                "inputParameters": { "orderId": "${workflow.input.orderId}" }
+                "inputParameters": {
+                    "orderId": "${workflow.input.orderId}"
+                }
             },
             {
                 "name": "send_confirmation",
@@ -45,7 +57,8 @@
                 }
             }
         ],
-        "schemaVersion": 2
+        "schemaVersion": 2,
+        "restartable": true
     },
     "tasks": [
         {
@@ -55,8 +68,13 @@
             "taskType": "SIMPLE",
             "startTime": 1704546000000,
             "endTime": 1704546005000,
-            "inputData": { "orderId": "ord_9876" },
-            "outputData": { "valid": true, "amount": 99.99 }
+            "inputData": {
+                "orderId": "ord_9876"
+            },
+            "outputData": {
+                "valid": true,
+                "amount": 99.99
+            }
         },
         {
             "taskId": "task_payment_retry0",
@@ -66,7 +84,10 @@
             "retryCount": 0,
             "startTime": 1704546006000,
             "endTime": 1704546016000,
-            "inputData": { "orderId": "ord_9876", "amount": 99.99 },
+            "inputData": {
+                "orderId": "ord_9876",
+                "amount": 99.99
+            },
             "reasonForIncompletion": "Connection timeout: payment gateway unreachable"
         },
         {
@@ -77,7 +98,10 @@
             "retryCount": 1,
             "startTime": 1704546026000,
             "endTime": 1704546036000,
-            "inputData": { "orderId": "ord_9876", "amount": 99.99 },
+            "inputData": {
+                "orderId": "ord_9876",
+                "amount": 99.99
+            },
             "reasonForIncompletion": "HTTP 503: Service Temporarily Unavailable"
         },
         {
@@ -88,8 +112,14 @@
             "retryCount": 2,
             "startTime": 1704546046000,
             "endTime": 1704546056000,
-            "inputData": { "orderId": "ord_9876", "amount": 99.99 },
-            "outputData": { "transactionId": "txn_abc123", "status": "APPROVED" }
+            "inputData": {
+                "orderId": "ord_9876",
+                "amount": 99.99
+            },
+            "outputData": {
+                "transactionId": "txn_abc123",
+                "status": "APPROVED"
+            }
         },
         {
             "taskId": "task_inventory_retry0",
@@ -109,7 +139,10 @@
             "retryCount": 1,
             "startTime": 1704546077000,
             "endTime": 1704546085000,
-            "outputData": { "updated": true, "newStock": 42 }
+            "outputData": {
+                "updated": true,
+                "newStock": 42
+            }
         },
         {
             "taskId": "task_confirm_001",
@@ -118,7 +151,10 @@
             "taskType": "HTTP",
             "startTime": 1704546086000,
             "endTime": 1704546090000,
-            "outputData": { "emailSent": true, "messageId": "msg_confirm_456" }
+            "outputData": {
+                "emailSent": true,
+                "messageId": "msg_confirm_456"
+            }
         }
     ]
 }

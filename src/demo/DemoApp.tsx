@@ -268,12 +268,12 @@ function DemoApp() {
               style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }}
             >
               <option value="">运行态示例...</option>
-              <option value="loop-iterations">DO_WHILE 循环迭代 (×3)</option>
-              <option value="fork-dynamic">FORK_JOIN_DYNAMIC 动态并行</option>
-              <option value="retry-tasks">任务重试机制</option>
-              <option value="switch-branches">SWITCH 分支执行</option>
-              <option value="human-approval">HUMAN 人工审批（进行中）</option>
-              <option value="mixed-status">CI/CD 流水线（混合状态）</option>
+              <option value="human-approval">▶ HUMAN 人工审批（RUNNING · 暂停/终止/跳过任务）</option>
+              <option value="mixed-status">✗ CI/CD 流水线（FAILED · 重试/重启）</option>
+              <option value="loop-iterations">✓ DO_WHILE 循环迭代 ×3（COMPLETED · 重启）</option>
+              <option value="retry-tasks">✓ 任务重试机制（COMPLETED · 重启）</option>
+              <option value="fork-dynamic">✓ FORK_JOIN_DYNAMIC 动态并行（COMPLETED · 重启）</option>
+              <option value="switch-branches">✓ SWITCH 分支执行（COMPLETED · 重启）</option>
             </select>
 
             <label className="upload-btn">
@@ -389,6 +389,15 @@ function DemoApp() {
             input.onchange = (e) => handleFileUpload(e as any);
             input.click();
           }}
+          executionActions={workflowExecution ? {
+            onPause: (wfId) => console.log('[demo] 暂停工作流', wfId),
+            onResume: (wfId) => console.log('[demo] 继续工作流', wfId),
+            onTerminate: (wfId) => console.log('[demo] 终止工作流', wfId),
+            onRetry: (wfId) => console.log('[demo] 重试工作流', wfId),
+            onRestart: (wfId, opts) => console.log('[demo] 重启工作流', wfId, opts?.useLatestDef ? '（最新版本）' : '（执行版本）'),
+            onRerunFromTask: (wfId, ref) => console.log('[demo] 从任务重新运行', wfId, ref),
+            onSkipTask: (wfId, ref) => console.log('[demo] 跳过任务', wfId, ref),
+          } : undefined}
         />
       </div>
     </div>

@@ -199,9 +199,40 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
         const handleLoopAddNode = (event: any) => {
             if (mode === 'edit') {
+                const { loopId, afterRef } = event.detail;
+                if (afterRef) {
+                    // Append after the last task in the loop body
+                    setActiveEdgeData({ sourceId: afterRef, edgeData: {} });
+                } else {
+                    // Empty loop: insert first task
+                    setActiveEdgeData({ sourceId: loopId, edgeData: { isLoopAdd: true } });
+                }
+                setShowSelector(true);
+            }
+        };
+
+        const handleLoopInsertAfter = (event: any) => {
+            if (mode === 'edit') {
+                setActiveEdgeData({ sourceId: event.detail.afterRef, edgeData: {} });
+                setShowSelector(true);
+            }
+        };
+
+        const handleLoopBranchAdd = (event: any) => {
+            if (mode === 'edit') {
                 setActiveEdgeData({
-                    sourceId: event.detail.loopId,
-                    edgeData: { isLoopAdd: true }
+                    sourceId: event.detail.parentRef,
+                    edgeData: { branchCase: event.detail.branchCase }
+                });
+                setShowSelector(true);
+            }
+        };
+
+        const handleLoopForkAdd = (event: any) => {
+            if (mode === 'edit') {
+                setActiveEdgeData({
+                    sourceId: event.detail.parentRef,
+                    edgeData: { forkIndex: event.detail.forkIndex }
                 });
                 setShowSelector(true);
             }
@@ -221,11 +252,17 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
         document.addEventListener('miniTaskClick', handleMiniTaskClick);
         document.addEventListener('loopAddNodeRequested', handleLoopAddNode);
+        document.addEventListener('loopInsertAfterRequested', handleLoopInsertAfter);
+        document.addEventListener('loopBranchAddRequested', handleLoopBranchAdd);
+        document.addEventListener('loopForkAddRequested', handleLoopForkAdd);
         window.addEventListener('edgeAddNode', handleEdgeAddNode as any);
 
         return () => {
             document.removeEventListener('miniTaskClick', handleMiniTaskClick);
             document.removeEventListener('loopAddNodeRequested', handleLoopAddNode);
+            document.removeEventListener('loopInsertAfterRequested', handleLoopInsertAfter);
+            document.removeEventListener('loopBranchAddRequested', handleLoopBranchAdd);
+            document.removeEventListener('loopForkAddRequested', handleLoopForkAdd);
             window.removeEventListener('edgeAddNode', handleEdgeAddNode as any);
         };
     }, [mode, onNodeClickProp]);

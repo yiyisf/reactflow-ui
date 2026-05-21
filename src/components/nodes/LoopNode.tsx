@@ -13,22 +13,33 @@ import { getNodeMeta } from '../../utils/nodeMeta';
 
 type LoopNodeProps = NodeProps<WorkflowNodeData>;
 
-// 使用 CSS 变量以支持主题切换
 const LOOP_COLOR = 'var(--color-accent)';
 
-/**
- * 循环节点组件（DO_WHILE）
- */
+// Task type → badge color
+const TYPE_BADGE_COLORS: Record<string, string> = {
+    SWITCH: '#8b5cf6',
+    DECISION: '#8b5cf6',
+    FORK_JOIN: '#0891b2',
+    JOIN: '#64748b',
+    EXCLUSIVE_JOIN: '#64748b',
+    HTTP: '#059669',
+    DO_WHILE: 'var(--color-accent)',
+    SUB_WORKFLOW: '#d97706',
+    FORK_JOIN_DYNAMIC: '#0891b2',
+};
+
+function getTypeBadgeColor(type: string): string {
+    return TYPE_BADGE_COLORS[type] || 'var(--color-accent)';
+}
+
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
     const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
-    const { removeLoopTask, executionData, selectTaskAction, viewMode } = useWorkflowStore();
+    const { removeLoopTask, addDecisionBranch, addForkBranch, executionData, selectTaskAction, viewMode } = useWorkflowStore();
 
-    // 获取循环体任务信息
     const loopOver = data.loopOver || data.task?.loopOver || [];
     const loopTaskCount = loopOver.length;
 
-    // 处理迷你任务节点点击
     const handleMiniTaskClick = useCallback((task: TaskDef, event: React.MouseEvent) => {
         event.stopPropagation();
         const customEvent = new CustomEvent('miniTaskClick', {
@@ -38,7 +49,6 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
         document.dispatchEvent(customEvent);
     }, []);
 
-    // 处理删除循环内任务
     const handleRemoveTask = (e: React.MouseEvent, taskRef: string) => {
         e.stopPropagation();
         if (window.confirm('确定要从循环中删除此任务吗？')) {
@@ -46,42 +56,181 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
         }
     };
 
+    // Dispatch "insert after specific task" event
+    const handleInsertAfter = (e: React.MouseEvent, afterRef: string) => {
+        e.stopPropagation();
+        document.dispatchEvent(new CustomEvent('loopInsertAfterRequested', {
+            detail: { afterRef }
+        }));
+    };
+
+    // Dispatch "add task to SWITCH/DECISION branch" event
+    const handleBranchAdd = (e: React.MouseEvent, parentRef: string, branchCase: string) => {
+        e.stopPropagation();
+        document.dispatchEvent(new CustomEvent('loopBranchAddRequested', {
+            detail: { parentRef, branchCase }
+        }));
+    };
+
+    // Dispatch "add task to FORK branch" event
+    const handleForkBranchAdd = (e: React.MouseEvent, parentRef: string, forkIndex: number) => {
+        e.stopPropagation();
+        document.dispatchEvent(new CustomEvent('loopForkAddRequested', {
+            detail: { parentRef, forkIndex }
+        }));
+    };
+
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'DO_WHILE'), []);
     const IconComponent = taskConfig?.icon || Repeat;
 
-    // 渲染迷你任务节点
+    // Render a branch pill for SWITCH/FORK tasks
+    const renderBranchPill = (label: string, count: number, onClick: (e: React.MouseEvent) => void) => (
+        <button
+            key={label}
+            onClick={onClick}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                border: '1px solid var(--border-secondary)',
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-secondary)',
+                fontSize: '9px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+            }}
+        >
+            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{label}</span>
+            <span>({count})</span>
+            <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '11px' }}>+</span>
+        </button>
+    );
+
+    // Insert-after "+" button shown between tasks in edit mode
+    const renderInsertAfterBtn = (afterRef: string) => (
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0', zIndex: 1 }}>
+            <div
+                onClick={(e) => handleInsertAfter(e, afterRef)}
+                title="在此处插入任务"
+                style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: 'var(--bg-secondary)',
+                    border: '1px dashed var(--color-accent)',
+                    color: 'var(--color-accent)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    lineHeight: 1,
+                }}
+            >
+                +
+            </div>
+        </div>
+    );
+
     const renderMiniTask = (task: TaskDef, index: number) => {
         const isHorizontal = layoutDirection === 'LR';
-        const bgColor = 'var(--bg-tertiary)';
-        const borderColor = 'var(--border-secondary)';
-        const textColor = 'var(--text-primary)';
+        const isSwitchTask = task.type === 'DECISION' || task.type === 'SWITCH';
+        const isForkTask = task.type === 'FORK_JOIN' || task.type === 'FORK_JOIN_DYNAMIC';
+        const isJoinTask = task.type === 'JOIN' || task.type === 'EXCLUSIVE_JOIN';
+        const isLoopTask = task.type === 'DO_WHILE';
+        const isSimpleType = task.type === 'SIMPLE' || !task.type;
+        const badgeColor = getTypeBadgeColor(task.type);
+        const isLast = index === loopTaskCount - 1;
+
+        // JOIN tasks are companion to FORK — show as a lighter connector indicator
+        if (isJoinTask) {
+            return (
+                <div key={index} style={{
+                    position: 'relative',
+                    marginBottom: !isHorizontal && !isLast ? '4px' : 0,
+                    marginRight: isHorizontal && !isLast ? '4px' : 0,
+                    display: isHorizontal ? 'inline-block' : 'block',
+                }}>
+                    <div
+                        onClick={(e) => handleMiniTaskClick(task, e)}
+                        title={`JOIN: ${task.taskReferenceName}`}
+                        style={{
+                            background: 'var(--bg-primary)',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            fontSize: '9px',
+                            color: 'var(--text-tertiary)',
+                            border: '1px dashed var(--border-secondary)',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            fontStyle: 'italic',
+                        }}
+                    >
+                        ⊕ join
+                    </div>
+                    {/* Connector arrow in view/run mode */}
+                    {!isLast && mode !== 'edit' && (
+                        isHorizontal ? (
+                            <div style={{
+                                position: 'absolute', right: '-8px', top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '8px', height: '2px',
+                                background: 'var(--border-secondary)', pointerEvents: 'none'
+                            }} />
+                        ) : (
+                            <div style={{
+                                position: 'absolute', left: '50%', bottom: '-8px',
+                                transform: 'translateX(-50%)',
+                                width: '2px', height: '8px',
+                                background: 'var(--border-secondary)', pointerEvents: 'none'
+                            }} />
+                        )
+                    )}
+                    {/* Insert after in edit mode */}
+                    {mode === 'edit' && !isLast && renderInsertAfterBtn(task.taskReferenceName)}
+                </div>
+            );
+        }
+
+        const branches = isSwitchTask
+            ? [
+                ...Object.entries(task.decisionCases || {}).map(([k, v]) => ({ label: k, count: (v as TaskDef[]).length, key: k })),
+                { label: 'default', count: (task.defaultCase || []).length, key: 'default' },
+            ]
+            : isForkTask
+            ? (task.forkTasks || []).map((b, i) => ({ label: `Branch ${i + 1}`, count: b.length, key: String(i) }))
+            : [];
 
         return (
             <div key={index} style={{
                 position: 'relative',
-                marginBottom: !isHorizontal && (index < loopTaskCount - 1 || mode === 'edit') ? '8px' : '0',
-                marginRight: isHorizontal && (index < loopTaskCount - 1 || mode === 'edit') ? '8px' : '0',
-                display: isHorizontal ? 'inline-block' : 'block'
+                marginBottom: !isHorizontal && !isLast && mode !== 'edit' ? '8px' : 0,
+                marginRight: isHorizontal && !isLast && mode !== 'edit' ? '8px' : 0,
+                display: isHorizontal ? 'inline-block' : 'block',
             }}>
                 <div
                     onClick={(e) => handleMiniTaskClick(task, e)}
                     style={{
-                        background: bgColor,
+                        background: 'var(--bg-tertiary)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '10px',
-                        color: textColor,
-                        border: `1px solid ${borderColor}`,
+                        color: 'var(--text-primary)',
+                        border: `1px solid ${(isSwitchTask || isForkTask || isLoopTask) ? badgeColor + '66' : 'var(--border-secondary)'}`,
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         minWidth: isHorizontal ? '80px' : 'auto',
-                        textAlign: 'center',
-                        position: 'relative'
+                        position: 'relative',
                     }}
                 >
+                    {/* Delete button (not for JOIN tasks) */}
                     {mode === 'edit' && (
                         <div
                             onClick={(e) => handleRemoveTask(e, task.taskReferenceName)}
+                            title="从循环中删除"
                             style={{
                                 position: 'absolute',
                                 top: '-6px',
@@ -94,57 +243,145 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontSize: '10px',
-                                border: '1px solid white'
+                                border: '1px solid white',
+                                zIndex: 1,
                             }}
                         >
                             ×
                         </div>
                     )}
+
+                    {/* Type badge (hidden for plain SIMPLE tasks) */}
+                    {!isSimpleType && (
+                        <div style={{
+                            display: 'inline-block',
+                            fontSize: '8px',
+                            fontWeight: 700,
+                            color: '#fff',
+                            background: badgeColor,
+                            borderRadius: '3px',
+                            padding: '1px 4px',
+                            marginBottom: '3px',
+                            letterSpacing: '0.03em',
+                        }}>
+                            {task.type}
+                        </div>
+                    )}
+
+                    {/* Task name */}
                     <div style={{
-                        fontWeight: '600',
-                        marginBottom: '2px',
+                        fontWeight: 600,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        maxWidth: '100px'
+                        maxWidth: '120px',
                     }}>
                         {task.name || task.taskReferenceName}
                     </div>
+
+                    {/* SWITCH/DECISION branches */}
+                    {isSwitchTask && mode === 'edit' && branches.length > 0 && (
+                        <div style={{
+                            marginTop: '6px',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '3px',
+                            borderTop: '1px solid var(--border-secondary)',
+                            paddingTop: '5px',
+                        }}>
+                            {branches.map(b => renderBranchPill(b.label, b.count, (e) => handleBranchAdd(e, task.taskReferenceName, b.key)))}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const caseName = prompt('新分支名称:');
+                                    if (caseName) addDecisionBranch(task.taskReferenceName, caseName);
+                                }}
+                                style={{
+                                    padding: '2px 5px',
+                                    borderRadius: '4px',
+                                    border: '1px dashed var(--border-secondary)',
+                                    background: 'transparent',
+                                    color: 'var(--text-tertiary)',
+                                    fontSize: '9px',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                + 分支
+                            </button>
+                        </div>
+                    )}
+
+                    {/* FORK_JOIN branches */}
+                    {isForkTask && mode === 'edit' && branches.length > 0 && (
+                        <div style={{
+                            marginTop: '6px',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '3px',
+                            borderTop: '1px solid var(--border-secondary)',
+                            paddingTop: '5px',
+                        }}>
+                            {branches.map((b, i) => renderBranchPill(b.label, b.count, (e) => handleForkBranchAdd(e, task.taskReferenceName, i)))}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    addForkBranch(task.taskReferenceName);
+                                }}
+                                style={{
+                                    padding: '2px 5px',
+                                    borderRadius: '4px',
+                                    border: '1px dashed var(--border-secondary)',
+                                    background: 'transparent',
+                                    color: 'var(--text-tertiary)',
+                                    fontSize: '9px',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                + 并行
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Nested DO_WHILE indicator */}
+                    {isLoopTask && (
+                        <div style={{
+                            marginTop: '4px',
+                            fontSize: '9px',
+                            color: 'var(--text-tertiary)',
+                            fontStyle: 'italic',
+                        }}>
+                            {(task.loopOver || []).length} 个子任务
+                        </div>
+                    )}
                 </div>
 
-                {/* 连接箭头 */}
-                {index < loopTaskCount - 1 && (
+                {/* Connector arrow in view/run mode */}
+                {!isLast && mode !== 'edit' && (
                     isHorizontal ? (
                         <div style={{
-                            position: 'absolute',
-                            right: '-8px',
-                            top: '50%',
+                            position: 'absolute', right: '-8px', top: '50%',
                             transform: 'translateY(-50%)',
-                            width: '8px',
-                            height: '2px',
-                            background: 'var(--border-secondary)',
-                            pointerEvents: 'none'
+                            width: '8px', height: '2px',
+                            background: 'var(--border-secondary)', pointerEvents: 'none'
                         }} />
                     ) : (
                         <div style={{
-                            position: 'absolute',
-                            left: '50%',
-                            bottom: '-8px',
+                            position: 'absolute', left: '50%', bottom: '-8px',
                             transform: 'translateX(-50%)',
-                            width: '2px',
-                            height: '8px',
-                            background: 'var(--border-secondary)',
-                            pointerEvents: 'none'
+                            width: '2px', height: '8px',
+                            background: 'var(--border-secondary)', pointerEvents: 'none'
                         }} />
                     )
                 )}
+
+                {/* Insert after button in edit mode (between tasks) */}
+                {mode === 'edit' && !isLast && renderInsertAfterBtn(task.taskReferenceName)}
             </div>
         );
     };
 
     const isHorizontal = layoutDirection === 'LR';
 
-    // 从循环体子任务的 executionData 中推断总迭代次数
     const totalIterations = useMemo(() => {
         if (!isRunning || !executionData || loopOver.length === 0) return 0;
         let maxIter = 0;
@@ -179,7 +416,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 style={{
                     borderRadius: '8px',
                     background: 'var(--bg-secondary)',
-                    minWidth: isHorizontal ? (layoutDirection === 'LR' ? '320px' : '240px') : '240px',
+                    minWidth: isHorizontal ? '320px' : '240px',
                     position: 'relative',
                     overflow: 'visible',
                 }}
@@ -194,55 +431,59 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     isRunning={isRunning}
                     width="100%"
                 >
-                    {/* 循环体迷你流程图 (作为 Children 传入) */}
                     {(loopTaskCount > 0 || mode === 'edit') && (
                         <div style={{
-                            background: 'var(--bg-primary)', // Slightly darker/lighter
+                            background: 'var(--bg-primary)',
                             borderRadius: '6px',
-                            padding: '12px',
+                            padding: '10px',
                             marginTop: '8px',
                             border: '1px dashed var(--border-secondary)',
                             display: 'flex',
                             flexDirection: isHorizontal ? 'row' : 'column',
-                            alignItems: isHorizontal ? 'center' : 'stretch',
-                            flexWrap: isHorizontal ? 'nowrap' : 'nowrap', // 修复：LR 模式下不换行，保持横向
-                            gap: '8px',
-                            justifyContent: 'flex-start'
+                            alignItems: isHorizontal ? 'flex-start' : 'stretch',
+                            gap: mode === 'edit' ? '0' : '8px',
+                            justifyContent: 'flex-start',
                         }}>
                             {loopOver.map((task, index) => renderMiniTask(task, index))}
 
+                            {/* Append-to-end button */}
                             {mode === 'edit' && (
-                                <div
-                                    onClick={() => {
-                                        const event = new CustomEvent('loopAddNodeRequested', {
-                                            detail: { loopId: id }
-                                        });
-                                        document.dispatchEvent(event);
-                                    }}
-                                    style={{
-                                        background: 'var(--color-accent)',
-                                        color: '#fff',
-                                        borderRadius: '50%',
-                                        width: '24px',
-                                        height: '24px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        marginLeft: '0',
-                                        marginRight: '0',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    +
+                                <div style={{ display: 'flex', justifyContent: isHorizontal ? 'flex-start' : 'center', marginTop: loopTaskCount > 0 ? '4px' : 0 }}>
+                                    <div
+                                        onClick={() => {
+                                            // If loop has tasks, append after the last one; otherwise insert first
+                                            const lastTask = loopOver.length > 0 ? loopOver[loopOver.length - 1] : null;
+                                            const event = new CustomEvent('loopAddNodeRequested', {
+                                                detail: {
+                                                    loopId: id,
+                                                    afterRef: lastTask?.taskReferenceName ?? null,
+                                                }
+                                            });
+                                            document.dispatchEvent(event);
+                                        }}
+                                        title="追加任务到循环末尾"
+                                        style={{
+                                            background: 'var(--color-accent)',
+                                            color: '#fff',
+                                            borderRadius: '50%',
+                                            width: '22px',
+                                            height: '22px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            fontSize: '15px',
+                                            fontWeight: 'bold',
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        +
+                                    </div>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* 运行态迭代进度 */}
                     {isRunning && totalIterations > 0 && (
                         <div
                             onClick={() => selectTaskAction(data.task || null)}
@@ -265,7 +506,6 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 </NodeLayout>
 
                 <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
-
                 <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
             </div>
         </NodeWrapper>

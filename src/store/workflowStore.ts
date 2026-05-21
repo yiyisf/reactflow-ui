@@ -541,7 +541,19 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     const loopTask = findTaskByRef(newDef.tasks, loopRef);
                     if (loopTask && loopTask.type === 'DO_WHILE' && loopTask.loopOver) {
-                        loopTask.loopOver = loopTask.loopOver.filter(t => t.taskReferenceName !== taskRef);
+                        // Also remove companion JOIN when removing a FORK task (and vice versa)
+                        const container = findContainerList(loopTask.loopOver, taskRef);
+                        if (container) {
+                            const task = container.find(t => t.taskReferenceName === taskRef);
+                            if (task?.type === 'FORK_JOIN' || task?.type === 'FORK_JOIN_DYNAMIC') {
+                                const joinRef = findJoinForFork(container, taskRef);
+                                if (joinRef) removeTaskFromDef(loopTask.loopOver, joinRef);
+                            } else if (task?.type === 'JOIN' || task?.type === 'EXCLUSIVE_JOIN') {
+                                const forkRef = findForkForJoin(container, taskRef);
+                                if (forkRef) removeTaskFromDef(loopTask.loopOver, forkRef);
+                            }
+                        }
+                        removeTaskFromDef(loopTask.loopOver, taskRef);
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });

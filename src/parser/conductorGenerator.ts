@@ -204,6 +204,9 @@ export function insertFirstTaskIntoBranch(tasks: TaskDef[] | undefined, parentRe
                 if (insertFirstTaskIntoBranch(branch, parentRef, branchInfo, newTask)) return true;
             }
         }
+        if (task.loopOver) {
+            if (insertFirstTaskIntoBranch(task.loopOver, parentRef, branchInfo, newTask)) return true;
+        }
     }
     return false;
 }

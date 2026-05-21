@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { Handle, NodeProps } from 'reactflow';
 import useWorkflowStore from '../../store/workflowStore';
 import NodeWrapper from './NodeWrapper';

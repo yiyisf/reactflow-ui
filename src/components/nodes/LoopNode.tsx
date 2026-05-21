@@ -100,15 +100,18 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'DO_WHILE'), []);
     const IconComponent = taskConfig?.icon || Repeat;
 
-    // Shared branch pill component
+    const isHorizontal = layoutDirection === 'LR';
+    const isEditMode = mode === 'edit';
+    const isRunMode = mode === 'run';
+
+    // ─── Shared branch pill component ───────────────────────────────────────
     const renderBranchPill = (
         label: string,
         count: number | null,
         status: string | undefined,
         onClick: ((e: React.MouseEvent) => void) | null
     ) => {
-        const isRunPill = mode === 'run';
-        const pillColor = isRunPill
+        const pillColor = isRunMode
             ? (status === 'COMPLETED' ? 'var(--status-completed)'
                 : status === 'FAILED' || status === 'FAILED_WITH_TERMINAL_ERROR' ? 'var(--status-failed)'
                 : status === 'IN_PROGRESS' || status === 'SCHEDULED' ? 'var(--status-in-progress)'
@@ -127,31 +130,102 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     borderRadius: '4px',
                     border: `1px solid ${pillColor}`,
                     background: 'var(--bg-secondary)',
-                    color: isRunPill ? pillColor : 'var(--text-secondary)',
+                    color: isRunMode ? pillColor : 'var(--text-secondary)',
                     fontSize: '9px',
                     cursor: onClick ? 'pointer' : 'default',
                     whiteSpace: 'nowrap',
-                    fontWeight: isRunPill && status === 'COMPLETED' ? 700 : 500,
+                    fontWeight: isRunMode && status === 'COMPLETED' ? 700 : 500,
                 }}
             >
                 <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{label}</span>
                 {count !== null && <span>({count})</span>}
-                {!isRunPill && onClick && <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '11px' }}>+</span>}
-                {isRunPill && status === 'COMPLETED' && <span style={{ fontSize: '9px' }}>✓</span>}
+                {!isRunMode && onClick && <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: '11px' }}>+</span>}
+                {isRunMode && status === 'COMPLETED' && <span style={{ fontSize: '9px' }}>✓</span>}
             </button>
         );
     };
 
+    // ─── Connector between tasks (replaces absolute-positioned arrows) ──────
+    const renderConnector = (connectorColor: string) => {
+        if (isHorizontal) {
+            return (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexShrink: 0,
+                    padding: '0 2px',
+                    alignSelf: 'center',
+                }}>
+                    <div style={{
+                        width: '14px',
+                        height: '2px',
+                        background: connectorColor,
+                        position: 'relative',
+                    }}>
+                        {/* Arrowhead */}
+                        <div style={{
+                            position: 'absolute',
+                            right: '-1px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: 0,
+                            height: 0,
+                            borderLeft: `5px solid ${connectorColor}`,
+                            borderTop: '3px solid transparent',
+                            borderBottom: '3px solid transparent',
+                        }} />
+                    </div>
+                </div>
+            );
+        }
+        return (
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                flexShrink: 0,
+                padding: '2px 0',
+            }}>
+                <div style={{
+                    width: '2px',
+                    height: '14px',
+                    background: connectorColor,
+                    position: 'relative',
+                }}>
+                    {/* Arrowhead */}
+                    <div style={{
+                        position: 'absolute',
+                        bottom: '-1px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: 0,
+                        height: 0,
+                        borderTop: `5px solid ${connectorColor}`,
+                        borderLeft: '3px solid transparent',
+                        borderRight: '3px solid transparent',
+                    }} />
+                </div>
+            </div>
+        );
+    };
+
+    // ─── Insert-after button (edit mode) ────────────────────────────────────
     const renderInsertAfterBtn = (afterRef: string) => (
-        <div style={{ display: 'flex', justifyContent: 'center', margin: '2px 0' }}>
+        <div style={{
+            display: 'flex',
+            justifyContent: isHorizontal ? 'center' : 'center',
+            alignItems: 'center',
+            padding: isHorizontal ? '0 4px' : '4px 0',
+            flexShrink: 0,
+        }}>
             <div
                 onClick={(e) => handleInsertAfter(e, afterRef)}
                 title="在此处插入任务"
                 style={{
-                    width: '18px', height: '18px', borderRadius: '50%',
+                    width: '20px', height: '20px', borderRadius: '50%',
                     background: 'var(--bg-secondary)', border: '1px dashed var(--color-accent)',
                     color: 'var(--color-accent)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                    justifyContent: 'center', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
+                    flexShrink: 0,
                 }}
             >
                 +
@@ -159,25 +233,22 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
         </div>
     );
 
+    // ─── Mini task card (card only, no connector/insert logic inside) ────────
     const renderMiniTask = (task: TaskDef, index: number) => {
-        const isHorizontal = layoutDirection === 'LR';
         const isSwitchTask = task.type === 'DECISION' || task.type === 'SWITCH';
         const isForkTask = task.type === 'FORK_JOIN' || task.type === 'FORK_JOIN_DYNAMIC';
         const isJoinTask = task.type === 'JOIN' || task.type === 'EXCLUSIVE_JOIN';
         const isLoopTask = task.type === 'DO_WHILE';
         const isSimpleType = task.type === 'SIMPLE' || !task.type;
+        const isComplexTask = isSwitchTask || isForkTask || isLoopTask;
         const badgeColor = getTypeBadgeColor(task.type);
-        const isLast = index === loopTaskCount - 1;
-        const isEditMode = mode === 'edit';
-        const isRunMode = mode === 'run';
 
         // Runtime execution data for this specific sub-task
         const execData = (isRunMode && executionData) ? executionData[task.taskReferenceName] : null;
         const taskStatus = execData?.status;
         const cardStatusStyle = getStatusCardStyle(taskStatus, isRunMode);
-        const connectorColor = getConnectorColor(taskStatus, isRunMode);
 
-        // SWITCH: determine which branches were executed (run mode) — inline, no hook
+        // SWITCH: determine which branches were executed (run mode)
         const executedCases = new Set<string>();
         if (isSwitchTask && isRunMode && executionData) {
             Object.entries(task.decisionCases || {}).forEach(([caseName, caseTasks]) => {
@@ -186,7 +257,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             if ((task.defaultCase || []).some(t => executionData![t.taskReferenceName])) executedCases.add('default');
         }
 
-        // FORK: branch statuses (run mode) — inline, no hook
+        // FORK: branch statuses (run mode)
         const forkBranchStatuses: (string | undefined)[] = isForkTask && isRunMode && executionData
             ? (task.forkTasks || []).map(branch => {
                 const last = branch[branch.length - 1];
@@ -199,41 +270,30 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             const joinExec = (isRunMode && executionData) ? executionData[task.taskReferenceName] : null;
             const joinStyle = getStatusCardStyle(joinExec?.status, isRunMode);
             return (
-                <div key={index} style={{
-                    position: 'relative',
-                    marginBottom: !isHorizontal && !isLast && !isEditMode ? '4px' : 0,
-                    marginRight: isHorizontal && !isLast && !isEditMode ? '4px' : 0,
-                    display: isHorizontal ? 'inline-block' : 'block',
-                }}>
-                    <div
-                        onClick={(e) => handleMiniTaskClick(task, e)}
-                        title={`JOIN: ${task.taskReferenceName}${joinExec ? ` · ${joinExec.status}` : ''}`}
-                        style={{
-                            background: 'var(--bg-primary)',
-                            borderRadius: '4px',
-                            padding: '3px 8px',
-                            fontSize: '9px',
-                            color: 'var(--text-tertiary)',
-                            border: '1px dashed var(--border-secondary)',
-                            cursor: 'pointer',
-                            textAlign: 'center',
-                            fontStyle: 'italic',
-                            ...joinStyle,
-                        }}
-                    >
-                        ⊕ join{joinExec?.status === 'COMPLETED' ? ' ✓' : ''}
-                    </div>
-                    {!isLast && !isEditMode && (
-                        isHorizontal
-                            ? <div style={{ position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%)', width: '8px', height: '2px', background: connectorColor, pointerEvents: 'none' }} />
-                            : <div style={{ position: 'absolute', left: '50%', bottom: '-8px', transform: 'translateX(-50%)', width: '2px', height: '8px', background: connectorColor, pointerEvents: 'none' }} />
-                    )}
-                    {isEditMode && !isLast && renderInsertAfterBtn(task.taskReferenceName)}
+                <div
+                    key={`card-${index}`}
+                    onClick={(e) => handleMiniTaskClick(task, e)}
+                    title={`JOIN: ${task.taskReferenceName}${joinExec ? ` · ${joinExec.status}` : ''}`}
+                    style={{
+                        background: 'var(--bg-primary)',
+                        borderRadius: '4px',
+                        padding: '3px 8px',
+                        fontSize: '9px',
+                        color: 'var(--text-tertiary)',
+                        border: '1px dashed var(--border-secondary)',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        fontStyle: 'italic',
+                        alignSelf: isHorizontal ? 'center' : 'stretch',
+                        ...joinStyle,
+                    }}
+                >
+                    ⊕ join{joinExec?.status === 'COMPLETED' ? ' ✓' : ''}
                 </div>
             );
         }
 
-        // Branch section content — same structure for both edit & run, different controls
+        // Branch section content for SWITCH/FORK
         const branchSection = () => {
             if (!isSwitchTask && !isForkTask) return null;
             const showSection = isEditMode || (isRunMode && executionData != null);
@@ -248,7 +308,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     marginTop: '6px',
                     display: 'flex',
                     flexWrap: 'wrap',
-                    gap: '3px',
+                    gap: '4px',
                     borderTop: '1px solid var(--border-secondary)',
                     paddingTop: '5px',
                 }}>
@@ -292,109 +352,99 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             );
         };
 
+        // Minimum card width: wider for complex tasks that have branch section
+        const cardMinWidth = isHorizontal
+            ? (isComplexTask ? '140px' : '90px')
+            : (isComplexTask ? '100%' : 'auto');
+
         return (
-            <div key={index} style={{
-                position: 'relative',
-                marginBottom: !isHorizontal && !isLast && !isEditMode ? '8px' : 0,
-                marginRight: isHorizontal && !isLast && !isEditMode ? '8px' : 0,
-                display: isHorizontal ? 'inline-block' : 'block',
-            }}>
-                <div
-                    onClick={(e) => handleMiniTaskClick(task, e)}
-                    style={{
-                        background: 'var(--bg-tertiary)',
-                        borderRadius: '6px',
-                        padding: '6px 10px',
-                        fontSize: '10px',
-                        color: 'var(--text-primary)',
-                        border: `1px solid ${(isSwitchTask || isForkTask || isLoopTask) ? badgeColor + '66' : 'var(--border-secondary)'}`,
-                        cursor: 'pointer',
-                        transition: 'border-color 0.2s ease',
-                        minWidth: isHorizontal ? '80px' : 'auto',
-                        position: 'relative',
-                        ...cardStatusStyle,
-                    }}
-                >
-                    {/* Execution status badge (run mode, top-right corner) */}
-                    {isRunMode && taskStatus && (
-                        <div style={{
-                            position: 'absolute', top: '-5px', right: isEditMode ? '14px' : '-5px',
-                            width: '10px', height: '10px', borderRadius: '50%',
-                            background: taskStatus === 'COMPLETED' ? 'var(--status-completed)'
-                                : taskStatus === 'FAILED' || taskStatus === 'FAILED_WITH_TERMINAL_ERROR' ? 'var(--status-failed)'
-                                : taskStatus === 'IN_PROGRESS' || taskStatus === 'SCHEDULED' ? 'var(--status-in-progress)'
-                                : 'var(--border-secondary)',
-                            border: '1px solid var(--bg-secondary)',
-                        }} />
-                    )}
-
-                    {/* Delete button (edit mode only, not for JOIN) */}
-                    {isEditMode && (
-                        <div
-                            onClick={(e) => handleRemoveTask(e, task.taskReferenceName)}
-                            title="从循环中删除"
-                            style={{
-                                position: 'absolute', top: '-6px', right: '-6px',
-                                width: '16px', height: '16px', borderRadius: '50%',
-                                backgroundColor: '#ef4444', display: 'flex', alignItems: 'center',
-                                justifyContent: 'center', fontSize: '10px', border: '1px solid white', zIndex: 1,
-                            }}
-                        >×</div>
-                    )}
-
-                    {/* Type badge (hidden for SIMPLE tasks) */}
-                    {!isSimpleType && (
-                        <div style={{
-                            display: 'inline-block', fontSize: '8px', fontWeight: 700, color: '#fff',
-                            background: badgeColor, borderRadius: '3px', padding: '1px 4px',
-                            marginBottom: '3px', letterSpacing: '0.03em',
-                        }}>
-                            {task.type}
-                        </div>
-                    )}
-
-                    {/* Task name */}
+            <div
+                key={`card-${index}`}
+                onClick={(e) => handleMiniTaskClick(task, e)}
+                style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: '6px',
+                    padding: '6px 10px',
+                    fontSize: '10px',
+                    color: 'var(--text-primary)',
+                    border: `1px solid ${isComplexTask ? badgeColor + '66' : 'var(--border-secondary)'}`,
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s ease',
+                    minWidth: cardMinWidth,
+                    position: 'relative',
+                    alignSelf: isHorizontal ? 'flex-start' : 'stretch',
+                    flexShrink: isHorizontal ? 0 : undefined,
+                    ...cardStatusStyle,
+                }}
+            >
+                {/* Execution status badge (run mode, top-right corner) */}
+                {isRunMode && taskStatus && (
                     <div style={{
-                        fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap', maxWidth: '120px',
-                    }}>
-                        {task.name || task.taskReferenceName}
-                    </div>
-
-                    {/* Retry/iteration info in run mode */}
-                    {isRunMode && execData && execData.attempts.length > 1 && !execData.attempts.some(a => (a.iteration ?? 0) > 0) && (
-                        <div style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
-                            重试 ×{execData.attempts.length - 1}
-                        </div>
-                    )}
-
-                    {/* Nested DO_WHILE: show iteration count */}
-                    {isLoopTask && (
-                        <div style={{ marginTop: '4px', fontSize: '9px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
-                            {isRunMode && execData
-                                ? `执行中 / 已完成`
-                                : `${(task.loopOver || []).length} 个子任务`}
-                        </div>
-                    )}
-
-                    {/* Branch section (SWITCH/FORK) */}
-                    {branchSection()}
-                </div>
-
-                {/* Connector arrow (view/run mode) with status-based color */}
-                {!isLast && !isEditMode && (
-                    isHorizontal
-                        ? <div style={{ position: 'absolute', right: '-8px', top: '50%', transform: 'translateY(-50%)', width: '8px', height: '2px', background: connectorColor, pointerEvents: 'none' }} />
-                        : <div style={{ position: 'absolute', left: '50%', bottom: '-8px', transform: 'translateX(-50%)', width: '2px', height: '8px', background: connectorColor, pointerEvents: 'none' }} />
+                        position: 'absolute', top: '-5px', right: '-5px',
+                        width: '10px', height: '10px', borderRadius: '50%',
+                        background: taskStatus === 'COMPLETED' ? 'var(--status-completed)'
+                            : taskStatus === 'FAILED' || taskStatus === 'FAILED_WITH_TERMINAL_ERROR' ? 'var(--status-failed)'
+                            : taskStatus === 'IN_PROGRESS' || taskStatus === 'SCHEDULED' ? 'var(--status-in-progress)'
+                            : 'var(--border-secondary)',
+                        border: '1px solid var(--bg-secondary)',
+                    }} />
                 )}
 
-                {/* Insert after button (edit mode only, between tasks) */}
-                {isEditMode && !isLast && renderInsertAfterBtn(task.taskReferenceName)}
+                {/* Delete button (edit mode only) */}
+                {isEditMode && (
+                    <div
+                        onClick={(e) => handleRemoveTask(e, task.taskReferenceName)}
+                        title="从循环中删除"
+                        style={{
+                            position: 'absolute', top: '-6px', right: '-6px',
+                            width: '16px', height: '16px', borderRadius: '50%',
+                            backgroundColor: '#ef4444', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', fontSize: '10px', border: '1px solid white', zIndex: 1,
+                            color: '#fff', lineHeight: 1,
+                        }}
+                    >×</div>
+                )}
+
+                {/* Type badge (hidden for SIMPLE tasks) */}
+                {!isSimpleType && (
+                    <div style={{
+                        display: 'inline-block', fontSize: '8px', fontWeight: 700, color: '#fff',
+                        background: badgeColor, borderRadius: '3px', padding: '1px 4px',
+                        marginBottom: '3px', letterSpacing: '0.03em',
+                    }}>
+                        {task.type}
+                    </div>
+                )}
+
+                {/* Task name */}
+                <div style={{
+                    fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap', maxWidth: isHorizontal ? '130px' : '180px',
+                }}>
+                    {task.name || task.taskReferenceName}
+                </div>
+
+                {/* Retry/iteration info in run mode */}
+                {isRunMode && execData && execData.attempts.length > 1 && !execData.attempts.some(a => (a.iteration ?? 0) > 0) && (
+                    <div style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        重试 ×{execData.attempts.length - 1}
+                    </div>
+                )}
+
+                {/* Nested DO_WHILE: show iteration count */}
+                {isLoopTask && (
+                    <div style={{ marginTop: '4px', fontSize: '9px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                        {isRunMode && execData
+                            ? `执行中 / 已完成`
+                            : `${(task.loopOver || []).length} 个子任务`}
+                    </div>
+                )}
+
+                {/* Branch section (SWITCH/FORK) */}
+                {branchSection()}
             </div>
         );
     };
-
-    const isHorizontal = layoutDirection === 'LR';
 
     const totalIterations = useMemo(() => {
         if (!isRunning || !executionData || loopOver.length === 0) return 0;
@@ -429,7 +479,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             <div style={{
                 borderRadius: '8px',
                 background: 'var(--bg-secondary)',
-                minWidth: isHorizontal ? '320px' : '240px',
+                minWidth: isHorizontal ? '320px' : '260px',
                 position: 'relative',
                 overflow: 'visible',
             }}>
@@ -443,24 +493,50 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     isRunning={isRunning}
                     width="100%"
                 >
-                    {(loopTaskCount > 0 || mode === 'edit') && (
+                    {(loopTaskCount > 0 || isEditMode) && (
                         <div style={{
                             background: 'var(--bg-primary)',
                             borderRadius: '6px',
                             padding: '10px',
                             marginTop: '8px',
                             border: '1px dashed var(--border-secondary)',
+                            // flex container — direction matches layout
                             display: 'flex',
                             flexDirection: isHorizontal ? 'row' : 'column',
                             alignItems: isHorizontal ? 'flex-start' : 'stretch',
-                            gap: mode === 'edit' ? '0' : '8px',
+                            // Use 0 gap; spacing is handled by connector/insert-btn elements between cards
+                            gap: 0,
                             justifyContent: 'flex-start',
                         }}>
-                            {loopOver.map((task, index) => renderMiniTask(task, index))}
+                            {loopOver.map((task, index) => {
+                                const isLast = index === loopTaskCount - 1;
+                                const execData = (isRunMode && executionData) ? executionData[task.taskReferenceName] : null;
+                                const connColor = getConnectorColor(execData?.status, isRunMode);
+
+                                return (
+                                    <React.Fragment key={`frag-${task.taskReferenceName}-${index}`}>
+                                        {/* Card */}
+                                        {renderMiniTask(task, index)}
+
+                                        {/* Between-card element: connector (view/run) or insert button (edit) */}
+                                        {!isLast && (
+                                            isEditMode
+                                                ? renderInsertAfterBtn(task.taskReferenceName)
+                                                : renderConnector(connColor)
+                                        )}
+                                    </React.Fragment>
+                                );
+                            })}
 
                             {/* Append-to-end (+) button, edit mode only */}
-                            {mode === 'edit' && (
-                                <div style={{ display: 'flex', justifyContent: isHorizontal ? 'flex-start' : 'center', marginTop: loopTaskCount > 0 ? '4px' : 0 }}>
+                            {isEditMode && (
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: isHorizontal ? 'flex-start' : 'center',
+                                    alignItems: 'center',
+                                    marginTop: isHorizontal ? 0 : (loopTaskCount > 0 ? '6px' : 0),
+                                    marginLeft: isHorizontal ? (loopTaskCount > 0 ? '6px' : 0) : 0,
+                                }}>
                                     <div
                                         onClick={() => {
                                             const lastTask = loopOver.length > 0 ? loopOver[loopOver.length - 1] : null;

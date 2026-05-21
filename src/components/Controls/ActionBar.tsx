@@ -45,6 +45,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
     const isCompleted = status === 'COMPLETED';
     const canRestart = workflowDef?.restartable === true && (isTerminal || isCompleted);
 
+    // 操作权限：allowOperations 未设置或为 true 时允许，false 时禁用所有操作
+    const allowOperations = executionActions?.allowOperations !== false;
+
     return (
         <div className="action-bar" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {mode === 'edit' && (
@@ -86,8 +89,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         <ControlButton
                             icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5z" /></svg>}
                             label="继续"
-                            title="继续执行工作流"
-                            onClick={() => executionActions.onResume!(wfId)}
+                            title={!allowOperations ? "操作权限受限" : "继续执行工作流"}
+                            onClick={() => allowOperations && executionActions.onResume!(wfId)}
+                            disabled={!allowOperations}
                             variant="primary"
                         />
                     )}
@@ -97,8 +101,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         <ControlButton
                             icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="3" width="3" height="10" rx="1" /><rect x="9" y="3" width="3" height="10" rx="1" /></svg>}
                             label="暂停"
-                            title="暂停工作流执行"
-                            onClick={() => executionActions.onPause!(wfId)}
+                            title={!allowOperations ? "操作权限受限" : "暂停工作流执行"}
+                            onClick={() => allowOperations && executionActions.onPause!(wfId)}
+                            disabled={!allowOperations}
                         />
                     )}
 
@@ -107,8 +112,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         <ControlButton
                             icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1" /></svg>}
                             label="终止"
-                            title="终止工作流执行"
-                            onClick={() => executionActions.onTerminate!(wfId)}
+                            title={!allowOperations ? "操作权限受限" : "终止工作流执行"}
+                            onClick={() => allowOperations && executionActions.onTerminate!(wfId)}
+                            disabled={!allowOperations}
                             variant="danger"
                         />
                     )}
@@ -118,8 +124,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         <ControlButton
                             icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M13 2v4h-4" /><path d="M13 6A7 7 0 1 1 9.5 2.5" /></svg>}
                             label="重试"
-                            title="重试失败的工作流"
-                            onClick={() => executionActions.onRetry!(wfId)}
+                            title={!allowOperations ? "操作权限受限" : "重试失败的工作流"}
+                            onClick={() => allowOperations && executionActions.onRetry!(wfId)}
+                            disabled={!allowOperations}
                             variant="primary"
                         />
                     )}
@@ -129,8 +136,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         <div ref={restartMenuRef} style={{ position: 'relative', display: 'flex' }}>
                             {/* 主按钮：使用最新版本重启 */}
                             <button
-                                onClick={() => executionActions.onRestart!(wfId, { useLatestDef: true })}
-                                title="使用当前最新定义版本重新运行"
+                                disabled={!allowOperations}
+                                onClick={() => allowOperations && executionActions.onRestart!(wfId, { useLatestDef: true })}
+                                title={!allowOperations ? "操作权限受限" : "使用当前最新定义版本重新运行"}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -141,7 +149,8 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                                     borderRight: 'none',
                                     borderRadius: '6px 0 0 6px',
                                     padding: '6px 10px',
-                                    cursor: 'pointer',
+                                    cursor: !allowOperations ? 'not-allowed' : 'pointer',
+                                    opacity: !allowOperations ? 0.5 : 1,
                                     fontSize: '13px',
                                     fontWeight: 500,
                                     height: '32px',
@@ -152,18 +161,20 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                             </button>
                             {/* 下拉触发器：展开版本选项 */}
                             <button
-                                onClick={() => setShowRestartMenu(v => !v)}
-                                title="展开重启版本选项"
+                                disabled={!allowOperations}
+                                onClick={() => allowOperations && setShowRestartMenu(v => !v)}
+                                title={!allowOperations ? "操作权限受限" : "展开重启版本选项"}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: showRestartMenu ? 'var(--bg-secondary)' : 'var(--bg-tertiary)',
+                                    background: !allowOperations ? 'var(--bg-tertiary)' : (showRestartMenu ? 'var(--bg-secondary)' : 'var(--bg-tertiary)'),
                                     color: 'var(--text-secondary)',
                                     border: '1px solid var(--border-primary)',
                                     borderRadius: '0 6px 6px 0',
                                     padding: '6px 6px',
-                                    cursor: 'pointer',
+                                    cursor: !allowOperations ? 'not-allowed' : 'pointer',
+                                    opacity: !allowOperations ? 0.5 : 1,
                                     height: '32px',
                                     width: '22px',
                                     fontSize: '10px',

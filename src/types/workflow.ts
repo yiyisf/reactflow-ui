@@ -242,6 +242,14 @@ export interface RestartOptions {
  * 任务级别操作：从指定任务重新运行、跳过任务
  */
 export interface ExecutionActions {
+    /**
+     * 是否允许操作。
+     * - `true`（默认）：所有操作按钮正常可用。
+     * - `false`：所有操作按钮置灰并提示"操作权限受限"。
+     * @default true
+     */
+    allowOperations?: boolean;
+
     /** 暂停工作流（RUNNING → PAUSED） */
     onPause?: (workflowId: string) => void;
     /** 继续执行暂停中的工作流（PAUSED → RUNNING） */
@@ -257,14 +265,25 @@ export interface ExecutionActions {
     onRestart?: (workflowId: string, options?: RestartOptions) => void;
     /**
      * 从指定任务重新运行（工作流须处于终态：FAILED/TERMINATED/COMPLETED）
-     * @param taskReferenceName 目标任务的引用名
+     *
+     * 对应 Conductor OSS API：POST /workflow/{workflowId}/rerun
+     * - body: { reRunFromTaskId: taskId, taskInput: {} }
+     *
+     * @param workflowId    工作流实例 ID
+     * @param taskReferenceName 目标任务的引用名（taskReferenceName）
+     * @param taskId        目标任务实例 ID（对应 Conductor API 的 reRunFromTaskId）
      */
-    onRerunFromTask?: (workflowId: string, taskReferenceName: string) => void;
+    onRerunFromTask?: (workflowId: string, taskReferenceName: string, taskId?: string) => void;
     /**
      * 跳过指定任务（任务须处于 SCHEDULED 或 IN_PROGRESS 状态）
-     * @param taskReferenceName 目标任务的引用名
+     *
+     * 对应 Conductor OSS API：PUT /workflow/{workflowId}/skiptask/{taskReferenceName}
+     *
+     * @param workflowId        工作流实例 ID
+     * @param taskReferenceName 目标任务的引用名（URL path 参数）
+     * @param taskId            目标任务实例 ID（可用于请求体附加校验）
      */
-    onSkipTask?: (workflowId: string, taskReferenceName: string) => void;
+    onSkipTask?: (workflowId: string, taskReferenceName: string, taskId?: string) => void;
 }
 
 /**

@@ -17,6 +17,7 @@ function DemoApp() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [allowOperations, setAllowOperations] = useState(true);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
   const [viewMode, setViewMode] = useState<ViewMode>('developer');
@@ -205,6 +206,33 @@ function DemoApp() {
               </span>
             )}
 
+            {workflowExecution && (
+              <>
+                <button
+                  className={`mode-btn ${!allowOperations ? 'active' : ''}`}
+                  onClick={() => setAllowOperations(prev => !prev)}
+                  title={allowOperations ? "切换至操作受限状态" : "切换至允许操作状态"}
+                  style={{
+                    background: !allowOperations ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-tertiary)',
+                    border: !allowOperations ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border-primary)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: !allowOperations ? 'var(--status-failed)' : 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {allowOperations ? '🔓 操作授权' : '🔒 操作受限'}
+                </button>
+                <div className="divider"></div>
+              </>
+            )}
+
             <div className="divider"></div>
 
             <button
@@ -390,13 +418,14 @@ function DemoApp() {
             input.click();
           }}
           executionActions={workflowExecution ? {
+            allowOperations,
             onPause: (wfId) => console.log('[demo] 暂停工作流', wfId),
             onResume: (wfId) => console.log('[demo] 继续工作流', wfId),
             onTerminate: (wfId) => console.log('[demo] 终止工作流', wfId),
             onRetry: (wfId) => console.log('[demo] 重试工作流', wfId),
             onRestart: (wfId, opts) => console.log('[demo] 重启工作流', wfId, opts?.useLatestDef ? '（最新版本）' : '（执行版本）'),
-            onRerunFromTask: (wfId, ref) => console.log('[demo] 从任务重新运行', wfId, ref),
-            onSkipTask: (wfId, ref) => console.log('[demo] 跳过任务', wfId, ref),
+            onRerunFromTask: (wfId, ref, taskId) => console.log('[demo] 从任务重新运行', wfId, ref, 'taskId:', taskId),
+            onSkipTask: (wfId, ref, taskId) => console.log('[demo] 跳过任务', wfId, ref, 'taskId:', taskId),
           } : undefined}
         />
       </div>

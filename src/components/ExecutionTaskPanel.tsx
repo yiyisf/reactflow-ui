@@ -88,6 +88,9 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
 
     const hasTaskOps = canSkip || canRerunFromTask;
 
+    // 操作权限：allowOperations 未设置或为 true 时允许，false 时禁用所有操作
+    const allowOperations = executionActions?.allowOperations !== false;
+
     const handleClose = () => {
         setSelectedTask(null);
         setSelectedTaskInstance(null);
@@ -339,23 +342,55 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                 borderTop: `1px solid ${borderColor}`,
                             }}>
                                 <div style={{
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    color: secondaryText,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
                                     marginBottom: 12,
                                 }}>
-                                    任务操作
+                                    <div style={{
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        color: secondaryText,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                    }}>
+                                        任务操作
+                                    </div>
+                                    {/* 权限受限提示 */}
+                                    {!allowOperations && (
+                                        <div style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            padding: '2px 7px',
+                                            borderRadius: 4,
+                                            background: 'rgba(239,68,68,0.08)',
+                                            border: '1px solid rgba(239,68,68,0.25)',
+                                            color: 'var(--status-failed)',
+                                            fontSize: 10,
+                                            fontWeight: 600,
+                                        }}>
+                                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                                <circle cx="8" cy="8" r="6" />
+                                                <path d="M8 5v3M8 11v.5" />
+                                            </svg>
+                                            操作权限受限
+                                        </div>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                     {canRerunFromTask && (
                                         <button
-                                            onClick={() => executionActions!.onRerunFromTask!(wfId, selectedTask.taskReferenceName)}
-                                            title={`从任务 ${selectedTask.taskReferenceName} 处重新运行工作流`}
-                                            style={taskOpBtnStyle}
-                                            onMouseEnter={e => Object.assign(e.currentTarget.style, taskOpBtnHover)}
-                                            onMouseLeave={e => Object.assign(e.currentTarget.style, taskOpBtnStyle)}
+                                            disabled={!allowOperations}
+                                            onClick={() => allowOperations && executionActions!.onRerunFromTask!(
+                                                wfId,
+                                                selectedTask.taskReferenceName,
+                                                currentInstance?.taskId
+                                            )}
+                                            title={!allowOperations ? '操作权限受限' : `从任务 ${selectedTask.taskReferenceName} 处重新运行工作流`}
+                                            style={!allowOperations ? taskOpBtnDisabled : taskOpBtnStyle}
+                                            onMouseEnter={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnHover)}
+                                            onMouseLeave={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnStyle)}
                                         >
                                             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                                                 <path d="M3 14v-4h4" /><path d="M3 10A7 7 0 1 1 6.5 13.5" />
@@ -365,11 +400,16 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                     )}
                                     {canSkip && (
                                         <button
-                                            onClick={() => executionActions!.onSkipTask!(wfId, selectedTask.taskReferenceName)}
-                                            title={`跳过任务 ${selectedTask.taskReferenceName}`}
-                                            style={taskOpBtnStyle}
-                                            onMouseEnter={e => Object.assign(e.currentTarget.style, taskOpBtnDangerHover)}
-                                            onMouseLeave={e => Object.assign(e.currentTarget.style, taskOpBtnStyle)}
+                                            disabled={!allowOperations}
+                                            onClick={() => allowOperations && executionActions!.onSkipTask!(
+                                                wfId,
+                                                selectedTask.taskReferenceName,
+                                                currentInstance?.taskId
+                                            )}
+                                            title={!allowOperations ? '操作权限受限' : `跳过任务 ${selectedTask.taskReferenceName}`}
+                                            style={!allowOperations ? taskOpBtnDisabled : taskOpBtnStyle}
+                                            onMouseEnter={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnDangerHover)}
+                                            onMouseLeave={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnStyle)}
                                         >
                                             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                                                 <path d="M4 4l8 8M12 4l-8 8" />
@@ -442,6 +482,16 @@ const taskOpBtnDangerHover: React.CSSProperties = {
     borderColor: 'var(--status-failed)',
     color: 'var(--status-failed)',
     background: 'rgba(239,68,68,0.08)',
+};
+
+/** 操作权限受限时按钮的禁用样式 */
+const taskOpBtnDisabled: React.CSSProperties = {
+    ...taskOpBtnStyle,
+    opacity: 0.45,
+    cursor: 'not-allowed',
+    border: '1px solid var(--border-primary)',
+    background: 'var(--bg-secondary)',
+    color: 'var(--text-secondary)',
 };
 
 export default ExecutionTaskPanel;

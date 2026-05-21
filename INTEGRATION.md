@@ -88,6 +88,50 @@ const executionData = await fetch('/api/workflow/execution/123').then(res => res
 - 连线会高亮实际执行路径。
 - 点击节点将展示输入/输出详情面板。
 
+### 运行态操作与权限控制 (Runtime Actions)
+
+在运行态下，您可以通过传入 `executionActions` 属性来启用对工作流实例和任务级别的控制操作，并能够开启或限制用户操作权限：
+
+```tsx
+<WorkflowIDE
+  workflowDef={executionData.workflowDefinition}
+  workflowExecution={executionData}
+  readOnly={true}
+  executionActions={{
+    // 全局操作权限控制：若设为 false，则所有操作按钮全部置灰并展示“操作权限受限”
+    allowOperations: true, 
+
+    // 工作流级控制
+    onPause: (workflowId) => console.log('暂停工作流:', workflowId),
+    onResume: (workflowId) => console.log('继续工作流:', workflowId),
+    onTerminate: (workflowId) => console.log('终止工作流:', workflowId),
+    onRetry: (workflowId) => console.log('重试工作流:', workflowId),
+    onRestart: (workflowId, options) => console.log('重启工作流:', workflowId, options),
+
+    // 任务级别操作 — 接收 taskId 以完美适配 Conductor OSS API 的重新运行与跳过
+    onRerunFromTask: (workflowId, taskReferenceName, taskId) => {
+      console.log(`从指定任务重跑：工作流ID=${workflowId}, 任务引用名=${taskReferenceName}, 任务实例ID=${taskId}`);
+    },
+    onSkipTask: (workflowId, taskReferenceName, taskId) => {
+      console.log(`跳过指定任务：工作流ID=${workflowId}, 任务引用名=${taskReferenceName}, 任务实例ID=${taskId}`);
+    }
+  }}
+/>
+```
+
+#### `executionActions` 参数定义
+
+| 参数名 | 类型 | 说明 |
+| :--- | :--- | :--- |
+| `allowOperations` | `boolean` | (可选) 全局操作权限。默认为 `true`。若传入 `false`，则 ActionBar 及 任务详情面板中的所有执行操作按钮将全部禁用（Opacity 减淡、置灰），并在 Hover 时浮现“操作权限受限”的 Tooltip。 |
+| `onPause` | `(workflowId: string) => void` | (可选) 暂停工作流回调 |
+| `onResume` | `(workflowId: string) => void` | (可选) 恢复继续工作流回调 |
+| `onTerminate` | `(workflowId: string) => void` | (可选) 终止工作流回调 |
+| `onRetry` | `(workflowId: string) => void` | (可选) 重试失败工作流回调 |
+| `onRestart` | `(workflowId: string, options?: { useLatestDef: boolean }) => void` | (可选) 重新开始运行工作流回调（主按钮为使用最新工作流定义，下拉菜单可选使用执行时的定义） |
+| `onRerunFromTask` | `(workflowId: string, taskReferenceName: string, taskId?: string) => void` | (可选) 从指定任务节点重新运行回调。第三个参数 `taskId` 为该任务的实例 ID，对齐 Conductor API `POST /workflow/{workflowId}/rerun` 中 `reRunFromTaskId` 请求体字段。 |
+| `onSkipTask` | `(workflowId: string, taskReferenceName: string, taskId?: string) => void` | (可选) 跳过指定任务回调。第三个参数 `taskId` 为该任务实例 ID，对齐 Conductor API `PUT /workflow/{workflowId}/skiptask/{taskReferenceName}` 协议。 |
+
 ## 🔗 Ref API (命令式访问)
 
 通过 `ref` 可以在任意时刻主动读取或操作 IDE 状态：

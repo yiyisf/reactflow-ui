@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
-import { ExecutionActions, ExecutionStatus } from '../types/workflow';
+import { ExecutionActions } from '../types/workflow';
 
 interface ExecutionTaskPanelProps {
     executionActions?: ExecutionActions;

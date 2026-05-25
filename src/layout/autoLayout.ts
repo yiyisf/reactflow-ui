@@ -3,13 +3,15 @@ import { Edge, Position } from 'reactflow';
 import { WorkflowNode, LayoutDirection, EditorMode } from '../types/workflow';
 
 /**
- * 根据节点类型和布局方向获取节点尺寸
- */
-/**
  * 获取节点尺寸（用于布局计算）
  * 重构后所有节点都使用 NodeLayout，统一为横向卡片
  */
-function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB') {
+function getNodeDimensions(node: WorkflowNode, _direction: LayoutDirection = 'TB') {
+    // Check for pre-computed loop container size (set by layoutLoopChildren)
+    if (node.data?._layoutWidth && node.data?._layoutHeight) {
+        return { width: node.data._layoutWidth as number, height: node.data._layoutHeight as number };
+    }
+
     let width = 240; // NodeLayout 的 min-width
     let height = 80;  // NodeLayout 的标准高度
 
@@ -34,20 +36,9 @@ function getNodeDimensions(node: WorkflowNode, direction: LayoutDirection = 'TB'
             height = 70;
             break;
         case 'loopNode':
-            // LoopNode 宽度更大，高度取决于子任务数量
-            const loopOver = node.data.loopOver || node.data.task?.loopOver || [];
-            const loopTaskCount = loopOver.length;
-            const hasCondition = !!(node.data.loopCondition || node.data.task?.loopCondition);
-
-            if (direction === 'LR') {
-                width = 320 + (loopTaskCount * 50); // 横向布局时宽度更大
-                width = Math.min(width, 600);
-                height = 145 + (hasCondition ? 20 : 0);
-            } else {
-                width = 320; // 纵向布局时固定宽度
-                height = 120 + (loopTaskCount * 40) + (hasCondition ? 30 : 0);
-                height = Math.min(height, 400);
-            }
+            // Default fallback size for loopNode (will be overridden by _layoutWidth/_layoutHeight)
+            width = 320;
+            height = 200;
             break;
         case 'subWorkflowNode':
             // SubWorkflowNode 使用 NodeLayout
@@ -197,10 +188,70 @@ function getSnakeBlockDimensions(
     return { width, height, gridKW, gridKH, cols: columns };
 }
 
+// Constants for loop container layout
+const LOOP_HEADER_HEIGHT = 58;   // Header + padding above children
+const LOOP_PADDING_X = 20;       // Left/right padding inside loop
+const LOOP_PADDING_BOTTOM = 16;  // Bottom padding inside loop
+
 /**
- * 自动布局主函数
+ * Layout loop body children as a flat sub-graph and compute container size.
  */
-export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], options: AutoLayoutOptions = {}): { nodes: WorkflowNode[]; edges: Edge[] } {
+function layoutLoopChildren(
+    children: WorkflowNode[],
+    childEdges: Edge[],
+    direction: LayoutDirection,
+    mode: EditorMode
+): { positionedChildren: WorkflowNode[], containerWidth: number, containerHeight: number } {
+    if (children.length === 0) {
+        return {
+            positionedChildren: [],
+            containerWidth: 280,
+            containerHeight: LOOP_HEADER_HEIGHT + 50,
+        };
+    }
+
+    // Strip parentId so inner dagre layout works on a flat graph
+    const flatChildren = children.map(c => ({
+        ...c,
+        parentId: undefined as any,
+        extent: undefined as any,
+    }));
+
+    // Layout children as a flat sub-graph (disable snake for loop bodies)
+    const { nodes: laidOut } = layoutFlatGraph(flatChildren, childEdges, { direction, mode, enableSnakeLayout: false });
+
+    // Calculate bounding box
+    let maxX = 0, maxY = 0;
+    laidOut.forEach(n => {
+        const { width, height } = getNodeDimensions(n, direction);
+        maxX = Math.max(maxX, n.position.x + width);
+        maxY = Math.max(maxY, n.position.y + height);
+    });
+
+    const containerWidth = Math.max(300, maxX + LOOP_PADDING_X * 2);
+    const containerHeight = LOOP_HEADER_HEIGHT + maxY + LOOP_PADDING_BOTTOM;
+
+    // Restore parentId and apply position offset (children positioned relative to parent)
+    const positionedChildren = laidOut.map(n => {
+        const orig = children.find(c => c.id === n.id)!;
+        return {
+            ...n,
+            parentId: orig.parentId,
+            extent: orig.extent,
+            position: {
+                x: n.position.x + LOOP_PADDING_X,
+                y: n.position.y + LOOP_HEADER_HEIGHT,
+            },
+        };
+    });
+
+    return { positionedChildren, containerWidth, containerHeight };
+}
+
+/**
+ * 内部布局函数：对平铺图执行 dagre 布局（不处理 parentId）
+ */
+function layoutFlatGraph(nodes: WorkflowNode[], edges: Edge[], options: AutoLayoutOptions = {}): { nodes: WorkflowNode[]; edges: Edge[] } {
     const {
         direction = 'TB',
         mode = 'view',
@@ -314,7 +365,7 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
         if (nodeToChainIndex[node.id] === undefined) {
             const pos = dagreGraph.node(node.id);
             const refNode = originalNodeMap[node.id];
-            const { width, height } = getNodeDimensions(refNode, direction); // 重新获取尺寸，因为 originalNodeMap 里的尺寸可能不准
+            const { width, height } = getNodeDimensions(refNode, direction);
 
             refNode.position = {
                 x: pos.x - width / 2,
@@ -456,9 +507,8 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
             return edge;
         }
 
-        // ... 原有的 Handle 优化逻辑 ...
         const { width: sw, height: sh } = getNodeDimensions(sourceNode, direction);
-        const { width: tw, height: th } = getNodeDimensions(targetNode, direction); // 这里注意 targetNode 可能是 snake 里的，所以 width/height 最好重新取，或者信任 getNodeDimensions
+        const { width: tw, height: th } = getNodeDimensions(targetNode, direction);
 
         const sourceCenter = { x: sourceNode.position.x + sw / 2, y: sourceNode.position.y + sh / 2 };
         const targetCenter = { x: targetNode.position.x + tw / 2, y: targetNode.position.y + th / 2 };
@@ -485,6 +535,96 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
     });
 
     return { nodes: finalNodes, edges: finalEdges };
+}
+
+/**
+ * 自动布局主函数（支持 parentId 子节点）
+ */
+export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], options: AutoLayoutOptions = {}): { nodes: WorkflowNode[]; edges: Edge[] } {
+    const direction = options.direction || 'TB';
+    const mode = options.mode || 'view';
+
+    // Separate child nodes from main nodes
+    const childNodes = nodes.filter(n => n.parentId);
+    const mainNodes = nodes.filter(n => !n.parentId);
+
+    if (childNodes.length === 0) {
+        // No parent-child structure — use flat layout directly
+        return layoutFlatGraph(nodes, edges, options);
+    }
+
+    // Build a lookup for child nodes
+    const childNodeById = new Map(childNodes.map(n => [n.id, n]));
+
+    // Classify edges: child-only edges vs main graph edges
+    const childEdgesByParent: Record<string, Edge[]> = {};
+    const mainEdges: Edge[] = [];
+
+    edges.forEach(e => {
+        const srcNode = childNodeById.get(e.source);
+        const tgtNode = childNodeById.get(e.target);
+        // Edge is "within a loop" if both endpoints are children of the SAME parent
+        if (srcNode?.parentId && srcNode.parentId === tgtNode?.parentId) {
+            const pid = srcNode.parentId;
+            if (!childEdgesByParent[pid]) childEdgesByParent[pid] = [];
+            childEdgesByParent[pid].push(e);
+        } else {
+            mainEdges.push(e);
+        }
+    });
+
+    // Group child nodes by parent
+    const childrenByParent: Record<string, WorkflowNode[]> = {};
+    childNodes.forEach(n => {
+        const pid = n.parentId!;
+        if (!childrenByParent[pid]) childrenByParent[pid] = [];
+        childrenByParent[pid].push(n);
+    });
+
+    // Layout each loop's children and compute container sizes
+    const loopSizes: Record<string, { width: number; height: number }> = {};
+    const allPositionedChildren: WorkflowNode[] = [];
+
+    for (const [parentId, children] of Object.entries(childrenByParent)) {
+        const loopEdges = childEdgesByParent[parentId] || [];
+        const { positionedChildren, containerWidth, containerHeight } = layoutLoopChildren(children, loopEdges, direction, mode);
+        loopSizes[parentId] = { width: containerWidth, height: containerHeight };
+        allPositionedChildren.push(...positionedChildren);
+    }
+
+    // Override loop node sizes in the main node list
+    const mainNodesWithSizes = mainNodes.map(n => {
+        if (n.type === 'loopNode' && loopSizes[n.id]) {
+            const { width, height } = loopSizes[n.id];
+            return {
+                ...n,
+                // Pass sizes via data so getNodeDimensions can pick them up
+                data: { ...n.data, _layoutWidth: width, _layoutHeight: height },
+                style: { ...n.style, width, height },
+            };
+        }
+        return n;
+    });
+
+    // Layout the main graph with correct loop sizes
+    const { nodes: layoutedMain, edges: layoutedMainEdges } = layoutFlatGraph(mainNodesWithSizes, mainEdges, options);
+
+    // Re-apply style.width/height AND explicit width/height to loop nodes in the result.
+    // ReactFlow uses node.width / node.height (not style) for computing child-node
+    // absolute handle positions in the global SVG edge layer. Without these, edges
+    // between child nodes render at incorrect coordinates and appear invisible.
+    const finalMain = layoutedMain.map(n => {
+        if (n.type === 'loopNode' && loopSizes[n.id]) {
+            const { width, height } = loopSizes[n.id];
+            return { ...n, width, height, style: { ...n.style, width, height } };
+        }
+        return n;
+    });
+
+    return {
+        nodes: [...finalMain, ...allPositionedChildren],
+        edges: [...layoutedMainEdges, ...Object.values(childEdgesByParent).flat()],
+    };
 }
 
 export function relayout(nodes: WorkflowNode[], edges: Edge[], direction: LayoutDirection = 'TB', mode: EditorMode = 'view'): { nodes: WorkflowNode[]; edges: Edge[] } {

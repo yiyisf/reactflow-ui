@@ -7,38 +7,74 @@ import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
 import { truncate } from '../../utils/nodeMeta';
+import PromptDialog from '../PromptDialog';
+import ConfirmDialog from '../ConfirmDialog';
 
 type DecisionNodeProps = NodeProps<WorkflowNodeData>;
 
+/** 对话框状态类型 */
+type DialogState =
+    | { type: 'none' }
+    | { type: 'add' }
+    | { type: 'rename'; branch: string }
+    | { type: 'delete'; branch: string };
+
 /**
  * 决策/分支节点组件（菱形）
- * 支持在编辑模式下添加/删除分支
+ * 支持在编辑模式下添加/删除/重命名分支（均使用页面内 modal，不调用浏览器原生弹框）
  */
 const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     const { layoutDirection } = useNodeLayout(data);
     const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
-    const { addDecisionBranch, removeDecisionBranch, viewMode } = useWorkflowStore();
+    const { addDecisionBranch, removeDecisionBranch, renameDecisionBranch, viewMode } = useWorkflowStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [dialog, setDialog] = useState<DialogState>({ type: 'none' });
 
     // 根据布局方向确定主要的 Handle 位置
     const targetPosition = layoutDirection === 'LR' ? Position.Left : Position.Top;
 
     const branches = Object.keys(data.decisionCases || data.task?.decisionCases || {});
 
+    // ── 对话框触发 ───────────────────────────────────────────────
+
     const handleAddBranch = () => {
-        const branchName = window.prompt('请输入新分支的名称 (case value):', `case_${branches.length + 1}`);
-        if (branchName) {
-            addDecisionBranch(id, branchName);
-        }
         setIsMenuOpen(false);
+        setDialog({ type: 'add' });
     };
 
     const handleRemoveBranch = (e: React.MouseEvent, branch: string) => {
         e.stopPropagation();
-        if (window.confirm(`确定要删除分支 "${branch}" 及其下的所有任务吗？`)) {
-            removeDecisionBranch(id, branch);
-        }
+        setDialog({ type: 'delete', branch });
     };
+
+    const handleRenameBranch = (e: React.MouseEvent, branch: string) => {
+        e.stopPropagation();
+        setIsMenuOpen(false);
+        setDialog({ type: 'rename', branch });
+    };
+
+    // ── 对话框确认 ───────────────────────────────────────────────
+
+    const handleAddConfirm = (name: string) => {
+        if (name) addDecisionBranch(id, name);
+        setDialog({ type: 'none' });
+    };
+
+    const handleRenameConfirm = (newName: string) => {
+        if (dialog.type !== 'rename') return;
+        if (newName && newName !== dialog.branch) {
+            renameDecisionBranch(id, dialog.branch, newName);
+        }
+        setDialog({ type: 'none' });
+    };
+
+    const handleDeleteConfirm = () => {
+        if (dialog.type !== 'delete') return;
+        removeDecisionBranch(id, dialog.branch);
+        setDialog({ type: 'none' });
+    };
+
+    const closeDialog = () => setDialog({ type: 'none' });
 
     // 运行态 CSS 类名映射
     const getExecutionClassName = (status: string | undefined) => {
@@ -88,10 +124,10 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                         height: '150px',
                         background: isRunning && execution?.status
                             ? undefined
-                            : 'var(--bg-secondary)', // 使用与 NodeLayout 一致的背景
+                            : 'var(--bg-secondary)',
                         border: selected
                             ? '4px solid #fbbf24'
-                            : (isRunning && execution?.status ? undefined : '4px solid var(--border-primary)'), // 使用一致的边框宽度及颜色
+                            : (isRunning && execution?.status ? undefined : '4px solid var(--border-primary)'),
                         transform: 'rotate(45deg)',
                         display: 'flex',
                         alignItems: 'center',
@@ -117,7 +153,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                             justifyContent: 'center'
                         }}
                     >
-                        {/* Header (Task Type) - 样式对齐 NodeLayout */}
+                        {/* Header (Task Type) */}
                         <div style={{
                             fontSize: '14px',
                             fontWeight: 700,
@@ -130,7 +166,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                             {data.taskType}
                         </div>
 
-                        {/* Title (Label) - 样式对齐 NodeLayout */}
+                        {/* Title (Label) */}
                         <div style={{
                             fontSize: '18px',
                             fontWeight: 600,
@@ -173,7 +209,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     </div>
                 </div>
 
-                {/* 分支控制菜单 (仅编辑模式) */}
+                {/* ── 分支控制菜单 (仅编辑模式) ─────────────────── */}
                 {mode === 'edit' && isMenuOpen && (
                     <div className="glass-panel" style={{
                         position: 'absolute',
@@ -185,29 +221,72 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                         borderRadius: '8px',
                         padding: '8px',
                         zIndex: 1000,
-                        minWidth: '180px',
+                        minWidth: '200px',
                         boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
                         animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                         backdropFilter: 'blur(12px)'
                     }}>
-                        <div style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--text-secondary)', borderBottom: '1px solid var(--glass-border)', marginBottom: '4px' }}>
+                        <div style={{
+                            padding: '4px 8px 6px',
+                            fontSize: '11px',
+                            color: 'var(--text-secondary)',
+                            borderBottom: '1px solid var(--glass-border)',
+                            marginBottom: '4px',
+                            fontWeight: 600,
+                            letterSpacing: '0.05em',
+                        }}>
                             分支管理
                         </div>
+
+                        {/* 分支列表 */}
                         {branches.map(branch => (
                             <div key={branch} style={{
                                 display: 'flex',
-                                justifyContent: 'space-between',
                                 alignItems: 'center',
-                                padding: '6px 8px',
-                                fontSize: '12px',
-                                color: 'var(--text-primary)'
+                                padding: '5px 6px',
+                                borderRadius: '4px',
+                                gap: '4px',
                             }}>
-                                <span>{branch}</span>
+                                <span style={{
+                                    flex: 1,
+                                    fontSize: '12px',
+                                    color: 'var(--text-primary)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 0,
+                                }}>
+                                    {branch}
+                                </span>
+                                {/* 重命名按钮 */}
+                                <button
+                                    onClick={(e) => handleRenameBranch(e, branch)}
+                                    style={{
+                                        width: '22px',
+                                        height: '22px',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'var(--color-accent)',
+                                        color: 'white',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '11px',
+                                        padding: 0,
+                                        flexShrink: 0,
+                                        opacity: 0.85,
+                                    }}
+                                    title={`重命名分支 "${branch}"`}
+                                >
+                                    ✏
+                                </button>
+                                {/* 删除按钮 */}
                                 <button
                                     onClick={(e) => handleRemoveBranch(e, branch)}
                                     style={{
-                                        width: '20px',
-                                        height: '20px',
+                                        width: '22px',
+                                        height: '22px',
                                         borderRadius: '50%',
                                         backgroundColor: '#ef4444',
                                         color: 'white',
@@ -216,19 +295,24 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        fontSize: '12px',
-                                        padding: 0
+                                        fontSize: '13px',
+                                        padding: 0,
+                                        flexShrink: 0,
+                                        opacity: 0.9,
                                     }}
+                                    title={`删除分支 "${branch}"`}
                                 >
                                     ×
                                 </button>
                             </div>
                         ))}
+
+                        {/* 添加分支 */}
                         <button
                             onClick={handleAddBranch}
                             style={{
                                 width: '100%',
-                                marginTop: '4px',
+                                marginTop: '6px',
                                 padding: '8px',
                                 backgroundColor: 'var(--color-accent)',
                                 border: 'none',
@@ -286,6 +370,43 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     </>
                 )}
             </div>
+
+            {/* ── 页面内对话框（Portal，挂载到 document.body）────── */}
+
+            {/* 添加分支 */}
+            {dialog.type === 'add' && (
+                <PromptDialog
+                    title="添加新分支"
+                    label="分支条件值（Case Value）"
+                    defaultValue={`case_${branches.length + 1}`}
+                    placeholder="例如：approved、rejected、pending"
+                    confirmText="添加"
+                    onConfirm={handleAddConfirm}
+                    onCancel={closeDialog}
+                />
+            )}
+
+            {/* 重命名分支 */}
+            {dialog.type === 'rename' && (
+                <PromptDialog
+                    title={`重命名分支`}
+                    label={`当前名称：${dialog.branch}`}
+                    defaultValue={dialog.branch}
+                    placeholder="输入新的分支条件值"
+                    confirmText="重命名"
+                    onConfirm={handleRenameConfirm}
+                    onCancel={closeDialog}
+                />
+            )}
+
+            {/* 删除分支 */}
+            {dialog.type === 'delete' && (
+                <ConfirmDialog
+                    message={`确定要删除分支 "${dialog.branch}" 及其下的所有任务吗？此操作不可撤销。`}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={closeDialog}
+                />
+            )}
         </NodeWrapper>
     );
 };

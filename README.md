@@ -20,6 +20,8 @@
   - TypeScript 全量类型定义 (WorkflowDef, TaskDef)
   - 深色/浅色主题支持
   - 只读模式 / 编辑模式切换
+  - 运行态全局操作权限控制开关 (`allowOperations`)，支持灵活的细粒度权限管控
+  - 运行态操作参数（Rerun/Skip）完美对齐 Netflix Conductor OSS API 规范
   - 撤销/重做 & 智能剪贴板
   - 命令式 API (ref) 支持程序化创建、保存、导出
 

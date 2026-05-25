@@ -98,15 +98,24 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         }
         const allowed = CATEGORY_VISIBILITY[viewMode];
         const visible = new Set<string>();
+        // First pass: determine which non-child nodes are visible
         nodes.forEach((n) => {
             // 工具节点（plusNode / placeholder）不受视图模式控制
             if (n.type === 'plusNode' || n.type === 'dynamicPlaceholderNode') {
                 visible.add(n.id);
                 return;
             }
+            // Child nodes (loop body): will be handled in second pass based on parent visibility
+            if (n.parentId) return;
             const cfg = TASK_TYPES.find((t) => t.type === n.data.taskType);
             const cat = cfg?.viewCategory ?? 'business';
             if (allowed.includes(cat)) visible.add(n.id);
+        });
+        // Second pass: include child nodes whose parent is visible
+        nodes.forEach((n) => {
+            if (n.parentId && visible.has(n.parentId)) {
+                visible.add(n.id);
+            }
         });
         return visible;
     }, [nodes, viewMode, mode]);
@@ -199,10 +208,14 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
         const handleLoopAddNode = (event: any) => {
             if (mode === 'edit') {
-                setActiveEdgeData({
-                    sourceId: event.detail.loopId,
-                    edgeData: { isLoopAdd: true }
-                });
+                const { loopId, afterRef } = event.detail;
+                if (afterRef) {
+                    // Append after the last task in the loop body
+                    setActiveEdgeData({ sourceId: afterRef, edgeData: {} });
+                } else {
+                    // Empty loop: insert first task
+                    setActiveEdgeData({ sourceId: loopId, edgeData: { isLoopAdd: true } });
+                }
                 setShowSelector(true);
             }
         };
@@ -393,7 +406,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             const isPlaceholderEdge =
                 edge.source.endsWith('_dynamic_placeholder') ||
                 edge.target.endsWith('_dynamic_placeholder');
-            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge;
+            // __workflow_start__ / __loop_start__* 引导边由 plusNode 承担插入逻辑，
+            // 这些边本身不应显示 "+" 按钮
+            const isStartGuideEdge = edge.source === '__workflow_start__' || edge.source.startsWith('__loop_start__');
+            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge && !isStartGuideEdge;
 
             return {
                 ...edge,
@@ -468,6 +484,13 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             edgeData: node.data.edgeData || {}
                         });
                         setShowSelector(true);
+                        return;
+                    }
+                    if (node.type === 'loopNode') {
+                        // Click on loop container — show loop task details
+                        const task = node.data.task || null;
+                        setSelectedTask(task);
+                        if (onNodeClickProp) onNodeClickProp(task);
                         return;
                     }
                     const task = node.data.task || null;

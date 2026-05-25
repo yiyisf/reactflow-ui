@@ -47,16 +47,42 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
         Object.assign(taskMap, result.taskMap);
     }
 
-    // 编辑模式：在流程末尾添加 "+" 引导节点，解决单任务节点无法添加后续节点的问题
     if (!hideEmptyBranches && tasks.length > 0) {
-        const lastTask = tasks[tasks.length - 1];
-        const plusNodeId = '__workflow_end__';
+        // 编辑模式：在流程首部添加 "+" 引导节点，支持在第一个任务前插入新任务
+        const firstTask = tasks[0];
+        const startPlusId = '__workflow_start__';
         nodes.push({
-            id: plusNodeId,
+            id: startPlusId,
             type: 'plusNode',
             data: {
                 label: '+',
-                taskReferenceName: plusNodeId,
+                taskReferenceName: startPlusId,
+                taskType: 'PLUS',
+                parentRef: startPlusId,
+                edgeData: { isWorkflowStart: true },
+                layoutDirection: direction,
+            },
+            position: { x: 0, y: 0 },
+            sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+            targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+        });
+        // 连接到第一个任务
+        edges.push({
+            id: `e-${startPlusId}-${firstTask.taskReferenceName}`,
+            source: startPlusId,
+            target: firstTask.taskReferenceName,
+            animated: true,
+        });
+
+        // 编辑模式：在流程末尾添加 "+" 引导节点，解决单任务节点无法添加后续节点的问题
+        const lastTask = tasks[tasks.length - 1];
+        const endPlusId = '__workflow_end__';
+        nodes.push({
+            id: endPlusId,
+            type: 'plusNode',
+            data: {
+                label: '+',
+                taskReferenceName: endPlusId,
                 taskType: 'PLUS',
                 parentRef: lastTask.taskReferenceName,
                 layoutDirection: direction,
@@ -65,9 +91,8 @@ export function parseConductorWorkflow(workflowDef: WorkflowDef, direction: Layo
             sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
             targetPosition: direction === 'LR' ? Position.Left : Position.Top,
         });
-
         // 将所有末尾任务连接到 "+" 节点
-        connectTasks(lastTask, { taskReferenceName: plusNodeId } as any, edges, hideEmptyBranches);
+        connectTasks(lastTask, { taskReferenceName: endPlusId } as any, edges, hideEmptyBranches);
     }
 
     return { nodes, edges, taskMap };
@@ -452,6 +477,34 @@ function parseDoWhileTask(task: TaskDef, startId: number, taskMap: Record<string
             });
         });
         allChildEdges.push(...branchResult.edges);
+
+        // 编辑模式：在循环体末尾添加 "+" 引导节点，支持追加循环体任务
+        if (!hideEmptyBranches) {
+            const lastBodyTask = loopOver[loopOver.length - 1];
+            const loopEndPlusId = `__loop_end__${loopNodeId}`;
+            allChildNodes.push({
+                id: loopEndPlusId,
+                type: 'plusNode',
+                parentId: loopNodeId,
+                extent: 'parent',
+                data: {
+                    label: '+',
+                    taskReferenceName: loopEndPlusId,
+                    taskType: 'PLUS',
+                    parentRef: lastBodyTask.taskReferenceName,
+                    layoutDirection: direction,
+                },
+                position: { x: 0, y: 0 },
+                sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+                targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+            });
+            allChildEdges.push({
+                id: `e-${lastBodyTask.taskReferenceName}-${loopEndPlusId}`,
+                source: lastBodyTask.taskReferenceName,
+                target: loopEndPlusId,
+                animated: true,
+            });
+        }
     } else if (!hideEmptyBranches) {
         // 编辑模式，空循环体：添加占位 plusNode 在容器内
         const plusId = `${loopNodeId}_loop_empty_plus`;

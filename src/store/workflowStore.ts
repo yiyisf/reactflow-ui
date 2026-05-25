@@ -417,7 +417,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                             type: 'JOIN',
                             joinOn: []
                         };
-                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
+                        if (edgeData.isWorkflowStart) {
+                            // 在第一个任务前插入
+                            newDef.tasks.unshift(joinTask);
+                            newDef.tasks.unshift(newTask);
+                        } else if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
                         } else {
@@ -451,7 +455,10 @@ const useWorkflowStore = create<WorkflowStore>()(
                             newTask.inputParameters = {};
                         }
 
-                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
+                        if (edgeData.isWorkflowStart) {
+                            // 在第一个任务前插入
+                            newDef.tasks.unshift(newTask);
+                        } else if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                         } else {
                             if (newDef.tasks.length === 0) {

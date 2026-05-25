@@ -609,11 +609,14 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
     // Layout the main graph with correct loop sizes
     const { nodes: layoutedMain, edges: layoutedMainEdges } = layoutFlatGraph(mainNodesWithSizes, mainEdges, options);
 
-    // Re-apply style.width/height to loop nodes in the result (layoutFlatGraph may strip it)
+    // Re-apply style.width/height AND explicit width/height to loop nodes in the result.
+    // ReactFlow uses node.width / node.height (not style) for computing child-node
+    // absolute handle positions in the global SVG edge layer. Without these, edges
+    // between child nodes render at incorrect coordinates and appear invisible.
     const finalMain = layoutedMain.map(n => {
         if (n.type === 'loopNode' && loopSizes[n.id]) {
             const { width, height } = loopSizes[n.id];
-            return { ...n, style: { ...n.style, width, height } };
+            return { ...n, width, height, style: { ...n.style, width, height } };
         }
         return n;
     });

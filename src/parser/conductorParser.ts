@@ -93,7 +93,7 @@ function parseTask(task: TaskDef, startId: number, taskMap: Record<string, TaskD
             return parseJoinTask(task, startId, taskMap, direction, allTasks, hideEmptyBranches);
 
         case 'DO_WHILE':
-            return parseDoWhileTask(task, startId, taskMap, direction);
+            return parseDoWhileTask(task, startId, taskMap, direction, hideEmptyBranches);
 
         case 'SUB_WORKFLOW':
             return parseSubWorkflowTask(task, startId, taskMap, direction);
@@ -188,7 +188,7 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
 
         if (caseTasks && caseTasks.length > 0) {
             // 解析分支中的任务
-            const branchResult = parseBranch(caseTasks, nextId, { ...taskMap, ...localTaskMap }, direction);
+            const branchResult = parseBranch(caseTasks, nextId, { ...taskMap, ...localTaskMap }, direction, hideEmptyBranches);
             nodes.push(...branchResult.nodes);
             edges.push(...branchResult.edges);
             Object.assign(localTaskMap, branchResult.taskMap);
@@ -249,7 +249,7 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
 
     // 处理默认分支
     if (defaultCase && defaultCase.length > 0) {
-        const branchResult = parseBranch(defaultCase, nextId, { ...taskMap, ...localTaskMap }, direction);
+        const branchResult = parseBranch(defaultCase, nextId, { ...taskMap, ...localTaskMap }, direction, hideEmptyBranches);
         nodes.push(...branchResult.nodes);
         edges.push(...branchResult.edges);
         Object.assign(localTaskMap, branchResult.taskMap);
@@ -376,7 +376,7 @@ function parseForkJoinTask(task: TaskDef, startId: number, taskMap: Record<strin
 
         forkTasks.forEach((branch, branchIndex) => {
             if (branch && branch.length > 0) {
-                const branchResult = parseBranch(branch, nextId, { ...taskMap, ...localTaskMap }, direction);
+                const branchResult = parseBranch(branch, nextId, { ...taskMap, ...localTaskMap }, direction, false);
                 nodes.push(...branchResult.nodes);
                 edges.push(...branchResult.edges);
                 Object.assign(localTaskMap, branchResult.taskMap);
@@ -408,18 +408,19 @@ function parseForkJoinTask(task: TaskDef, startId: number, taskMap: Record<strin
 
 /**
  * 解析 DO_WHILE 任务
- * 循环体任务作为循环节点的内部任务，不单独创建节点
+ * 循环体任务作为真实的 ReactFlow 子节点（parentId 指向循环容器）渲染
  */
-function parseDoWhileTask(task: TaskDef, startId: number, _taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB'): ParserResult {
+function parseDoWhileTask(task: TaskDef, startId: number, taskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB', hideEmptyBranches = false): ParserResult {
     const localTaskMap: Record<string, TaskDef> = {};
+    const loopNodeId = task.taskReferenceName;
 
-    // 创建循环节点，包含循环体信息
+    // 创建循环节点容器
     const loopNode: WorkflowNode = {
-        id: task.taskReferenceName,
+        id: loopNodeId,
         type: 'loopNode',
         data: {
             label: task.name,
-            taskReferenceName: task.taskReferenceName,
+            taskReferenceName: loopNodeId,
             taskType: task.type,
             task: task,
             layoutDirection: direction,
@@ -429,20 +430,55 @@ function parseDoWhileTask(task: TaskDef, startId: number, _taskMap: Record<strin
         targetPosition: direction === 'LR' ? Position.Left : Position.Top,
     };
 
-    localTaskMap[task.taskReferenceName] = task;
+    localTaskMap[loopNodeId] = task;
 
-    // 将循环体中的任务也添加到 taskMap，但不创建节点
-    // 这样点击循环节点时可以显示循环体的详细信息
     const loopOver = task.loopOver || [];
-    loopOver.forEach(loopTask => {
-        localTaskMap[loopTask.taskReferenceName] = loopTask;
-    });
+    const allChildNodes: WorkflowNode[] = [];
+    const allChildEdges: Edge[] = [];
+    let nextId = startId + 1;
+
+    if (loopOver.length > 0) {
+        // 使用 parseBranch 解析循环体任务
+        const branchResult = parseBranch(loopOver, nextId, { ...taskMap, ...localTaskMap }, direction, hideEmptyBranches);
+        nextId = branchResult.nextId;
+        Object.assign(localTaskMap, branchResult.taskMap);
+
+        // 将所有子节点打上 parentId 标记（已有 parentId 的嵌套子节点不覆盖）
+        branchResult.nodes.forEach(n => {
+            allChildNodes.push({
+                ...n,
+                parentId: n.parentId ?? loopNodeId,
+                extent: n.parentId ? n.extent : ('parent' as const),
+            });
+        });
+        allChildEdges.push(...branchResult.edges);
+    } else if (!hideEmptyBranches) {
+        // 编辑模式，空循环体：添加占位 plusNode 在容器内
+        const plusId = `${loopNodeId}_loop_empty_plus`;
+        allChildNodes.push({
+            id: plusId,
+            type: 'plusNode',
+            parentId: loopNodeId,
+            extent: 'parent',
+            data: {
+                label: '+ 添加',
+                taskReferenceName: plusId,
+                taskType: 'PLUS',
+                parentRef: loopNodeId,
+                edgeData: { isLoopAdd: true },
+                layoutDirection: direction,
+            },
+            position: { x: 0, y: 0 },
+            sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+            targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+        });
+    }
 
     return {
-        nodes: [loopNode],
-        edges: [],
+        nodes: [loopNode, ...allChildNodes],
+        edges: allChildEdges,
         taskMap: localTaskMap,
-        nextId: startId + 1
+        nextId
     };
 }
 
@@ -606,7 +642,7 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
 /**
  * 解析分支（用于 DECISION、FORK_JOIN 等的子任务）
  */
-function parseBranch(tasks: TaskDef[], startId: number, parentTaskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB'): ParserResult {
+function parseBranch(tasks: TaskDef[], startId: number, parentTaskMap: Record<string, TaskDef>, direction: LayoutDirection = 'TB', hideEmptyBranches = false): ParserResult {
     const nodes: WorkflowNode[] = [];
     const edges: Edge[] = [];
     let nextId = startId;
@@ -616,7 +652,7 @@ function parseBranch(tasks: TaskDef[], startId: number, parentTaskMap: Record<st
         const task = tasks[i];
         // 传递包含已解析同级任务和上层任务的完整 map
         const currentTaskMap = { ...parentTaskMap, ...localTaskMap };
-        const result = parseTask(task, nextId, currentTaskMap, direction, tasks);
+        const result = parseTask(task, nextId, currentTaskMap, direction, tasks, hideEmptyBranches);
 
         nodes.push(...result.nodes);
         edges.push(...result.edges);
@@ -626,7 +662,7 @@ function parseBranch(tasks: TaskDef[], startId: number, parentTaskMap: Record<st
         // 连接分支内的任务
         if (i > 0) {
             const prevTask = tasks[i - 1];
-            connectTasks(prevTask, task, edges);
+            connectTasks(prevTask, task, edges, hideEmptyBranches);
         }
     }
 

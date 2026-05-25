@@ -25,6 +25,12 @@ const QUICK_SNIPPETS = [
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
+    // syncedRef: the taskReferenceName at the time localTask was last synced from `task`.
+    // Used to identify the "same task" even while the user is editing the ref name field.
+    const [syncedRef, setSyncedRef] = useState<string | null>(task?.taskReferenceName ?? null);
+    // pendingRefName: draft value while the user is typing in the ref name input.
+    // null means the input is not being edited; we commit to store only on blur.
+    const [pendingRefName, setPendingRefName] = useState<string | null>(null);
     const [showSnippets, setShowSnippets] = useState(false);
     const [activeTextareaRef, setActiveTextareaRef] = useState<HTMLTextAreaElement | null>(null);
     const [waitMode, setWaitMode] = useState<'duration' | 'until'>(() =>
@@ -93,6 +99,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     useEffect(() => {
         if (task) {
             setLocalTask(task);
+            setSyncedRef(task.taskReferenceName); // 记录本次同步时的引用名，用于判断 localTask 是否对应当前 task
+            setPendingRefName(null); // 清除草稿，切换到新任务时不保留旧的输入
             // 同步 WAIT 模式
             if (task.type === 'WAIT') {
                 setWaitMode(task.inputParameters?.until ? 'until' : 'duration');
@@ -113,7 +121,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     if (!task && !localTask) return null;
 
     const effectiveTask = task || localTask;
-    const displayTask = (localTask && task && localTask.taskReferenceName === task.taskReferenceName) ? localTask : effectiveTask!;
+    // syncedRef 记录了 localTask 最近一次从 task 同步时的 taskReferenceName，
+    // 用于判断 localTask 是否仍然对应当前 task（即使用户正在编辑引用名也不会误判）
+    const displayTask = (localTask && task && syncedRef === task.taskReferenceName) ? localTask : effectiveTask!;
     const panelClass = (isOpen && task) ? 'panel-enter-active' : 'panel-exit';
     const isEditMode = mode === 'edit';
 
@@ -182,7 +192,12 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
 
     const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text', placeholder?: string) => {
         const isRefName = field === 'taskReferenceName';
-        const isDuplicate = isRefName && !checkTaskRefUniqueness((displayTask as any)[field], displayTask.taskReferenceName);
+        // 引用名字段：优先使用 pendingRefName（用户正在输入的草稿），其余字段直接用 displayTask 的值
+        const currentVal = isRefName && pendingRefName !== null
+            ? pendingRefName
+            : ((displayTask as any)[field] ?? '');
+        // 重复检测：用当前展示的值（草稿 or 已保存）与其他任务对比，排除自身
+        const isDuplicate = isRefName && !checkTaskRefUniqueness(currentVal, displayTask.taskReferenceName);
         return (
             <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase' }}>
@@ -192,9 +207,34 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input
                         type={type}
-                        value={(displayTask as any)[field] ?? ''}
+                        value={currentVal}
                         placeholder={placeholder}
-                        onChange={(e) => handleChange(field, type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value)}
+                        onChange={(e) => {
+                            if (isRefName) {
+                                // 引用名字段：仅更新本地草稿，不触发 store 更新（避免每次按键重新解析）
+                                setPendingRefName(e.target.value);
+                            } else {
+                                handleChange(field, type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value);
+                            }
+                        }}
+                        onFocus={isRefName ? () => {
+                            // 聚焦时初始化草稿为当前已保存值
+                            if (pendingRefName === null) {
+                                setPendingRefName((displayTask as any).taskReferenceName ?? '');
+                            }
+                        } : undefined}
+                        onBlur={isRefName ? (e) => {
+                            // 失焦时提交：值有变化且不为空时才写入 store
+                            const newRef = e.target.value.trim();
+                            setPendingRefName(null); // 清除草稿
+                            if (newRef && newRef !== displayTask.taskReferenceName) {
+                                handleChange('taskReferenceName', newRef);
+                            }
+                        } : undefined}
+                        onKeyDown={isRefName ? (e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur(); // Enter 触发提交
+                            e.stopPropagation(); // 防止 ReactFlow 快捷键被触发
+                        } : undefined}
                         disabled={!isEditMode}
                         style={{
                             width: '100%', padding: `8px ${isEditMode && !isRefName ? '32px' : '12px'} 8px 12px`,

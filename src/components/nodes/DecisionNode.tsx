@@ -17,7 +17,7 @@ type DecisionNodeProps = NodeProps<WorkflowNodeData>;
 const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     const { layoutDirection } = useNodeLayout(data);
     const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
-    const { addDecisionBranch, removeDecisionBranch, viewMode } = useWorkflowStore();
+    const { addDecisionBranch, removeDecisionBranch, renameDecisionBranch, viewMode } = useWorkflowStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     // 根据布局方向确定主要的 Handle 位置
@@ -38,6 +38,15 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
         if (window.confirm(`确定要删除分支 "${branch}" 及其下的所有任务吗？`)) {
             removeDecisionBranch(id, branch);
         }
+    };
+
+    const handleRenameBranch = (e: React.MouseEvent, branch: string) => {
+        e.stopPropagation();
+        const newName = window.prompt(`重命名分支 "${branch}":`, branch);
+        if (newName && newName.trim() && newName.trim() !== branch) {
+            renameDecisionBranch(id, branch, newName.trim());
+        }
+        setIsMenuOpen(false);
     };
 
     // 运行态 CSS 类名映射
@@ -202,7 +211,31 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                 fontSize: '12px',
                                 color: 'var(--text-primary)'
                             }}>
-                                <span>{branch}</span>
+                                <span style={{ flex: 1, marginRight: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{branch}</span>
+                                {/* 重命名按钮 */}
+                                <button
+                                    onClick={(e) => handleRenameBranch(e, branch)}
+                                    style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'var(--color-accent)',
+                                        color: 'white',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '11px',
+                                        padding: 0,
+                                        marginRight: '4px',
+                                        flexShrink: 0,
+                                    }}
+                                    title={`重命名分支 "${branch}"`}
+                                >
+                                    ✏
+                                </button>
+                                {/* 删除按钮 */}
                                 <button
                                     onClick={(e) => handleRemoveBranch(e, branch)}
                                     style={{
@@ -217,8 +250,10 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         fontSize: '12px',
-                                        padding: 0
+                                        padding: 0,
+                                        flexShrink: 0,
                                     }}
+                                    title={`删除分支 "${branch}"`}
                                 >
                                     ×
                                 </button>

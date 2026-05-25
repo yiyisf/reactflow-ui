@@ -218,13 +218,15 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             )}
 
             {/* ── Body area (children rendered by ReactFlow) ─── */}
-            {/* pointer-events: none（继承自父容器），SVG 连线的悬停感知路径可正常接收鼠标事件。
-                使用极淡半透明背景标识循环体区域。 */}
+            {/* pointer-events: none 必须显式设置：HTML 元素不从父元素继承 pointer-events，
+                默认值始终是 'auto'。若不显式写 none，此 div 会拦截鼠标事件，
+                阻止其到达 SVG 层中边的悬停感知路径。 */}
             <div style={{
                 flex: 1,
                 position: 'relative',
                 background: 'var(--loop-body-bg, rgba(99,102,241,0.04))',
                 borderRadius: '0 0 8px 8px',
+                pointerEvents: 'none',
             }} />
 
             {/* ── Handles ─────────────────────────────────── */}

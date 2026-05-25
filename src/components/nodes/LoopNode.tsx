@@ -67,15 +67,19 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 height: '100%',
                 border: borderStyle,
                 borderRadius: '10px',
-                // 背景必须透明：ReactFlow 的边渲染在 SVG 层（DOM 中排在节点 div 之前，
-                // 默认被节点 div 覆盖）。若这里使用实色背景，循环容器会把循环体内的
-                // 子节点间连线遮住，导致连线不可见。透明背景让 SVG 连线可透过容器显示。
+                // 背景透明：ReactFlow 的边渲染在 SVG 层（DOM 中排在节点 div 之前），
+                // 透明背景让 SVG 连线可透过容器显示。
                 background: 'transparent',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
                 overflow: 'visible',
                 boxSizing: 'border-box',
+                // pointer-events: none 让鼠标事件穿透到 SVG 层（循环体内的边）。
+                // CSS 规范：none 不会影响子元素——子元素依然可以接收事件，
+                // 且子元素触发的事件照常通过 DOM 冒泡到 ReactFlow 的 .react-flow__node
+                // wrapper，节点选中与拖拽不受影响。
+                pointerEvents: 'none',
             }}
         >
             {/* ── Delete button (edit mode) ───────────────── */}
@@ -101,6 +105,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                         zIndex: 100,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                         padding: 0,
+                        pointerEvents: 'auto',  // 恢复：删除按钮需要响应点击
                     }}
                     title="删除循环任务"
                 >
@@ -116,6 +121,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     backgroundColor: '#ef4444', color: 'white', border: '2px solid white',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '14px', zIndex: 101, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    pointerEvents: 'auto',  // 恢复：错误徽章需要 title tooltip
                 }} title="此节点配置有误">❗</div>
             )}
             {!data.isError && data.hasWarning && (
@@ -125,10 +131,13 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     backgroundColor: '#f59e0b', color: 'white', border: '2px solid white',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '14px', zIndex: 101, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    pointerEvents: 'auto',  // 恢复：警告徽章需要 title tooltip
                 }} title="此节点有警告信息">⚠️</div>
             )}
 
             {/* ── Header bar ─────────────────────────────── */}
+            {/* pointerEvents: auto 恢复：header 需响应点击（选中节点、迭代次数 badge 等）
+                子元素触发的事件会通过 DOM 冒泡传到 ReactFlow wrapper，完成节点选中逻辑 */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -139,6 +148,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 borderRadius: '8px 8px 0 0',
                 flexShrink: 0,
                 minHeight: '42px',
+                pointerEvents: 'auto',
             }}>
                 {/* Loop icon */}
                 <div style={{ color: 'var(--color-accent)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -201,13 +211,15 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
+                    pointerEvents: 'auto',  // 恢复：条件展示条是不透明区域，应正常响应
                 }}>
                     until: {loopCondition}
                 </div>
             )}
 
             {/* ── Body area (children rendered by ReactFlow) ─── */}
-            {/* 使用极淡的半透明背景标识循环体区域；颜色不能实色，否则会遮住 SVG 连线 */}
+            {/* pointer-events: none（继承自父容器），SVG 连线的悬停感知路径可正常接收鼠标事件。
+                使用极淡半透明背景标识循环体区域。 */}
             <div style={{
                 flex: 1,
                 position: 'relative',
@@ -216,6 +228,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             }} />
 
             {/* ── Handles ─────────────────────────────────── */}
+            {/* ReactFlow 的 Handle CSS 自带 pointer-events: all，无需额外设置 */}
             <Handle type="target" position={targetPosition} style={{ background: 'var(--color-accent)', zIndex: 10 }} />
             <Handle type="source" position={sourcePosition} style={{ background: 'var(--color-accent)', zIndex: 10 }} />
 

@@ -98,15 +98,24 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         }
         const allowed = CATEGORY_VISIBILITY[viewMode];
         const visible = new Set<string>();
+        // First pass: determine which non-child nodes are visible
         nodes.forEach((n) => {
             // 工具节点（plusNode / placeholder）不受视图模式控制
             if (n.type === 'plusNode' || n.type === 'dynamicPlaceholderNode') {
                 visible.add(n.id);
                 return;
             }
+            // Child nodes (loop body): will be handled in second pass based on parent visibility
+            if (n.parentId) return;
             const cfg = TASK_TYPES.find((t) => t.type === n.data.taskType);
             const cat = cfg?.viewCategory ?? 'business';
             if (allowed.includes(cat)) visible.add(n.id);
+        });
+        // Second pass: include child nodes whose parent is visible
+        nodes.forEach((n) => {
+            if (n.parentId && visible.has(n.parentId)) {
+                visible.add(n.id);
+            }
         });
         return visible;
     }, [nodes, viewMode, mode]);
@@ -211,33 +220,6 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             }
         };
 
-        const handleLoopInsertAfter = (event: any) => {
-            if (mode === 'edit') {
-                setActiveEdgeData({ sourceId: event.detail.afterRef, edgeData: {} });
-                setShowSelector(true);
-            }
-        };
-
-        const handleLoopBranchAdd = (event: any) => {
-            if (mode === 'edit') {
-                setActiveEdgeData({
-                    sourceId: event.detail.parentRef,
-                    edgeData: { branchCase: event.detail.branchCase }
-                });
-                setShowSelector(true);
-            }
-        };
-
-        const handleLoopForkAdd = (event: any) => {
-            if (mode === 'edit') {
-                setActiveEdgeData({
-                    sourceId: event.detail.parentRef,
-                    edgeData: { forkIndex: event.detail.forkIndex }
-                });
-                setShowSelector(true);
-            }
-        };
-
         const handleEdgeAddNode = (event: any) => {
             if (mode === 'edit') {
                 setActiveEdgeData({
@@ -252,17 +234,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
         document.addEventListener('miniTaskClick', handleMiniTaskClick);
         document.addEventListener('loopAddNodeRequested', handleLoopAddNode);
-        document.addEventListener('loopInsertAfterRequested', handleLoopInsertAfter);
-        document.addEventListener('loopBranchAddRequested', handleLoopBranchAdd);
-        document.addEventListener('loopForkAddRequested', handleLoopForkAdd);
         window.addEventListener('edgeAddNode', handleEdgeAddNode as any);
 
         return () => {
             document.removeEventListener('miniTaskClick', handleMiniTaskClick);
             document.removeEventListener('loopAddNodeRequested', handleLoopAddNode);
-            document.removeEventListener('loopInsertAfterRequested', handleLoopInsertAfter);
-            document.removeEventListener('loopBranchAddRequested', handleLoopBranchAdd);
-            document.removeEventListener('loopForkAddRequested', handleLoopForkAdd);
             window.removeEventListener('edgeAddNode', handleEdgeAddNode as any);
         };
     }, [mode, onNodeClickProp]);
@@ -505,6 +481,13 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             edgeData: node.data.edgeData || {}
                         });
                         setShowSelector(true);
+                        return;
+                    }
+                    if (node.type === 'loopNode') {
+                        // Click on loop container — show loop task details
+                        const task = node.data.task || null;
+                        setSelectedTask(task);
+                        if (onNodeClickProp) onNodeClickProp(task);
                         return;
                     }
                     const task = node.data.task || null;

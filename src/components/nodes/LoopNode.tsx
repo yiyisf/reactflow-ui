@@ -67,7 +67,10 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 height: '100%',
                 border: borderStyle,
                 borderRadius: '10px',
-                background: 'var(--bg-secondary)',
+                // 背景必须透明：ReactFlow 的边渲染在 SVG 层（DOM 中排在节点 div 之前，
+                // 默认被节点 div 覆盖）。若这里使用实色背景，循环容器会把循环体内的
+                // 子节点间连线遮住，导致连线不可见。透明背景让 SVG 连线可透过容器显示。
+                background: 'transparent',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
@@ -153,7 +156,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     {/* viewMode-aware meta: business shows description, developer shows loop condition */}
                     {(viewMode === 'business' || viewMode === 'developer') && meta && (
                         <div style={{
-                            fontSize: '9px', color: 'var(--text-tertiary)',
+                            fontSize: '9px', color: 'var(--text-secondary)',
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                             marginTop: '1px', fontStyle: 'italic',
                         }}>
@@ -191,8 +194,8 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 <div style={{
                     padding: '3px 12px',
                     fontSize: '9px',
-                    color: 'var(--text-tertiary)',
-                    background: 'var(--bg-primary)',
+                    color: 'var(--text-secondary)',
+                    background: 'var(--bg-tertiary)',
                     borderBottom: '1px solid var(--border-primary)',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -204,7 +207,13 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             )}
 
             {/* ── Body area (children rendered by ReactFlow) ─── */}
-            <div style={{ flex: 1, position: 'relative' }} />
+            {/* 使用极淡的半透明背景标识循环体区域；颜色不能实色，否则会遮住 SVG 连线 */}
+            <div style={{
+                flex: 1,
+                position: 'relative',
+                background: 'var(--loop-body-bg, rgba(99,102,241,0.04))',
+                borderRadius: '0 0 8px 8px',
+            }} />
 
             {/* ── Handles ─────────────────────────────────── */}
             <Handle type="target" position={targetPosition} style={{ background: 'var(--color-accent)', zIndex: 10 }} />

@@ -406,7 +406,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             const isPlaceholderEdge =
                 edge.source.endsWith('_dynamic_placeholder') ||
                 edge.target.endsWith('_dynamic_placeholder');
-            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge;
+            // __workflow_start__ 引导边的 source 是特殊 ID，insertTaskAfter 无法处理，由 plusNode 承担
+            const isStartGuideEdge = edge.source === '__workflow_start__';
+            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge && !isStartGuideEdge;
 
             return {
                 ...edge,

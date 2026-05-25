@@ -453,6 +453,11 @@ function parseDoWhileTask(task: TaskDef, startId: number, taskMap: Record<string
         position: { x: 0, y: 0 },
         sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
         targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+        // ReactFlow 将此 style 传给 .react-flow__node wrapper（user style 在内部 spread 时最后写入，
+        // 会覆盖 ReactFlow 计算出的 pointerEvents: 'all'）。
+        // 必须让 wrapper 也透明，否则即使组件 div 设了 none，wrapper 仍会拦截鼠标事件，
+        // 导致循环体内 SVG 边的悬停感知路径无法接收 hover。
+        style: { pointerEvents: 'none' },
     };
 
     localTaskMap[loopNodeId] = task;
@@ -477,6 +482,37 @@ function parseDoWhileTask(task: TaskDef, startId: number, taskMap: Record<string
             });
         });
         allChildEdges.push(...branchResult.edges);
+
+        // 编辑模式：在循环体首部添加 "+" 引导节点，支持在第一个任务前插入任务
+        if (!hideEmptyBranches) {
+            const firstBodyTask = loopOver[0];
+            const loopStartPlusId = `__loop_start__${loopNodeId}`;
+            allChildNodes.push({
+                id: loopStartPlusId,
+                type: 'plusNode',
+                parentId: loopNodeId,
+                extent: 'parent',
+                data: {
+                    label: '+',
+                    taskReferenceName: loopStartPlusId,
+                    taskType: 'PLUS',
+                    // parentRef 设为循环容器自身 ID：点击时 addNode 的 sourceId = loopNodeId
+                    // 从而定位到 DO_WHILE 任务并 unshift 到 loopOver
+                    parentRef: loopNodeId,
+                    edgeData: { isLoopBodyStart: true, loopId: loopNodeId },
+                    layoutDirection: direction,
+                },
+                position: { x: 0, y: 0 },
+                sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
+                targetPosition: direction === 'LR' ? Position.Left : Position.Top,
+            });
+            allChildEdges.push({
+                id: `e-${loopStartPlusId}-${firstBodyTask.taskReferenceName}`,
+                source: loopStartPlusId,
+                target: firstBodyTask.taskReferenceName,
+                animated: true,
+            });
+        }
 
         // 编辑模式：在循环体末尾添加 "+" 引导节点，支持追加循环体任务
         if (!hideEmptyBranches) {

@@ -211,6 +211,7 @@ export interface WorkflowActions {
     removeLoopTask: (loopRef: string, taskRef: string) => void;
     addDecisionBranch: (taskRef: string, caseName: string) => void;
     removeDecisionBranch: (taskRef: string, caseName: string) => void;
+    renameDecisionBranch: (taskRef: string, oldName: string, newName: string) => void;
     addForkBranch: (taskRef: string) => void;
     copyTask: (task: TaskDef) => void;
     pasteTask: (task: TaskDef) => void;

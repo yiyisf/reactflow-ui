@@ -65,7 +65,7 @@ const renderInline = (text: string): React.ReactNode => {
 };
 
 const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
-    const { workflowDef, setWorkflow } = useWorkflowStore();
+    const { workflowDef, setWorkflow, mode } = useWorkflowStore();
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -307,6 +307,9 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
             handleSend();
         }
     };
+
+    // AI 助手仅在编辑模式下可用；只读/运行态不渲染，避免功能混乱
+    if (mode !== 'edit') return null;
 
     if (!isOpen) {
         return (

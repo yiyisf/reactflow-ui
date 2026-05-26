@@ -454,8 +454,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             selected: selectedTask?.taskReferenceName === ref,
                             data: {
                                 ...node.data,
-                                isError: errorRefs.has(ref),
-                                hasWarning: warningRefs.has(ref),
+                                // 校验徽章（❗⚠️）仅在编辑模式下显示，只读/运行态不干扰视图
+                                isError: mode === 'edit' && errorRefs.has(ref),
+                                hasWarning: mode === 'edit' && warningRefs.has(ref),
                                 isHighlighted: searchQuery ? (
                                     node.data.label.toLowerCase().includes(query) ||
                                     node.data.taskReferenceName.toLowerCase().includes(query)
@@ -470,7 +471,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         ...node,
                         data: { ...node.data, isError: false, hasWarning: false, isHighlighted: false },
                     })) as typeof baseNodes);
-                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState])}
+                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode])}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}

@@ -107,6 +107,7 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
         'input', 'output',           // start/end 节点
         'decisionNode', 'forkNode', 'joinNode', 'loopNode',  // 分支/汇合/循环节点
         'default',                   // Decision 合并节点、空分支占位节点
+        'plusNode',                  // 编辑器专用"添加"占位节点，不参与蛇形链
     ]);
     const isChainableNode = (n: WorkflowNode) =>
         !NON_CHAINABLE.has(n.type || '');
@@ -262,6 +263,9 @@ function layoutFlatGraph(nodes: WorkflowNode[], edges: Edge[], options: AutoLayo
     } = options;
 
     const nodeCount = nodes.length;
+    // 蛇形布局阈值仅计算真实业务节点，排除编辑器专用的 plusNode，
+    // 避免编辑模式因大量 plusNode 将节点数虚增而导致视图/编辑模式蛇形行为不一致
+    const realNodeCount = nodes.filter(n => n.type !== 'plusNode').length;
 
     // 1. 间距配置
     let baseRankSep = direction === 'LR' ? 150 : 120;
@@ -280,8 +284,8 @@ function layoutFlatGraph(nodes: WorkflowNode[], edges: Edge[], options: AutoLayo
         nodeSep = Math.round(baseNodeSep * nodeFactor);
     }
 
-    // 2. 检测蛇形链
-    const snakeChains = (enableSnakeLayout && nodeCount > snakeMinNodeCount) ? detectLinearChains(nodes, edges, snakeMinChainLength) : [];
+    // 2. 检测蛇形链（使用去除 plusNode 后的真实节点数作为触发阈值）
+    const snakeChains = (enableSnakeLayout && realNodeCount > snakeMinNodeCount) ? detectLinearChains(nodes, edges, snakeMinChainLength) : [];
 
     // 建立映射：节点ID -> 链索引
     const nodeToChainIndex: Record<string, number> = {};

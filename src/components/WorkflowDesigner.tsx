@@ -88,6 +88,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         dynamicRuntimeTasksByFork,
         layoutDirection,
         simState,
+        workflowLoadKey,
     } = useWorkflowStore();
 
     // ─── 视图模式过滤：计算可见节点 ID 集合 ─────────────────────────────
@@ -197,6 +198,17 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         window.addEventListener('workflow-zoom-to-fit', handleZoomToFit);
         return () => window.removeEventListener('workflow-zoom-to-fit', handleZoomToFit);
     }, [fitView]);
+
+    // 每次加载新工作流（setWorkflow 调用）自动适应屏幕
+    // workflowLoadKey 仅在 setWorkflow 时递增，updateTask 等增量操作不会触发
+    useEffect(() => {
+        if (workflowLoadKey === 0) return; // 跳过初始值
+        // 短暂延迟，等待 ReactFlow 完成节点渲染后再 fitView
+        const timer = setTimeout(() => {
+            fitView({ duration: 600, padding: 0.12 });
+        }, 50);
+        return () => clearTimeout(timer);
+    }, [workflowLoadKey, fitView]);
 
     // 监听各种自定义交互事件
     useEffect(() => {
@@ -374,15 +386,20 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         const mappedEdges = visibleEdges
           .map((edge) => {
             const isLoopBack = edge.id.includes('loop-back');
+            // 连线颜色：浅色/深色主题略有区别，加深使其更醒目
+            const edgeStroke = theme === 'light' ? '#64748b' : '#94a3b8';
             const baseStyle = {
                 ...edge.style,
-                stroke: theme === 'light' ? '#475569' : '#64748b',
+                stroke: edgeStroke,
                 strokeWidth: 2,
+                // 只有循环回退线使用虚线；其余一律实线
                 strokeDasharray: isLoopBack ? '5,5' : undefined,
             };
 
             let currentStyle = { ...baseStyle };
-            let isAnimated = !isLoopBack; // 默认循环回退线不动画，其他动画
+            // 编辑/查看模式：全部不动画（使用静态实线，减少视觉噪音）
+            // 运行模式：根据执行状态决定是否动画
+            let isAnimated = false;
 
             // 如果是运行模式且有执行数据，应用动态样式
             if (mode === 'run' && executionData) {

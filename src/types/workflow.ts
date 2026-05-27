@@ -184,6 +184,8 @@ export interface WorkflowState {
     isDetailPanelOpen: boolean;
     simState: Record<string, 'idle' | 'running' | 'done'>;
     isSimRunning: boolean;
+    /** 每次 setWorkflow() 调用时递增，用于触发 WorkflowDesigner 的 fitView */
+    workflowLoadKey: number;
 }
 
 /**

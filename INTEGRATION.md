@@ -221,18 +221,17 @@ window.dispatchEvent(new CustomEvent('open-ai-chat'));
 
 ## 🤖 AI Copilot (智能辅助)
 
-`reactflow-ui` 集成了基于大模型的智能助手，可帮助用户快速建模和配置参数。
+`reactflow-ui` 集成了基于大模型的智能助手，**仅在编辑模式下可用**。
 
 ### 启用 AI 服务
 
-组件默认使用 OpenAI 标准接口。您可以通过以下几种方式配置：
+组件默认使用 OpenAI 标准接口，兼容任意 OpenAI 兼容代理：
 
 1. **环境变量/本地存储**:
-   在应用启动前设置 `localStorage`：
    ```js
    localStorage.setItem('AI_API_KEY', 'your-openai-api-key');
    localStorage.setItem('AI_BASE_URL', 'https://api.your-proxy.com/v1'); // 可选
-   localStorage.setItem('AI_MODEL', 'gpt-4o'); // 可选，默认为 gpt-4o
+   localStorage.setItem('AI_MODEL', 'gpt-4o'); // 可选，默认 gpt-4o
    ```
 
 2. **Props 注入** (优先级高于 localStorage):
@@ -247,6 +246,56 @@ window.dispatchEvent(new CustomEvent('open-ai-chat'));
 - **自然语言建模**: 点击右下角 ✨ 图标展开对话框，输入需求即可生成 JSON 建议并一键应用。
 - **从零创建**: 空状态面板支持直接通过 AI 对话从零生成完整工作流，无需手动编排。
 - **参数智能提示**: 在节点编辑面板中，点击输入框右侧的 ✨ 图标，获取基于上下文的 JSONPath 建议。
+- **差异卡片 (Diff Card)**: AI 输出以结构化变更卡片展示，支持一键应用或撤销，变更过程可追溯。
+
+> 只读模式和运行态下 AI 助手面板不渲染，避免功能混淆。
+
+---
+
+## ✏️ 编辑体验 (v0.3.0 新增)
+
+### 全屏表达式/脚本编辑器
+
+编辑模式下，所有代码/表达式字段（INLINE 脚本、JQ 查询、JSON 参数、SWITCH caseExpression、DO_WHILE 循环条件等）右上角出现 **⛶** 按钮，点击展开全屏编辑器：
+
+- 全视口 `textarea`，适合编写复杂脚本
+- 顶部工具栏：语言类型徽章、字段标题、**Ctrl+S** 保存、**Esc** 取消
+- 底部状态栏实时显示行数、字符数和未保存状态
+
+### 任务引用名实时编辑
+
+`taskReferenceName` 输入框采用"缓冲提交"模式：
+
+- 输入过程中仅更新本地草稿，画布节点**不**实时跳动
+- 失焦或按 **Enter** 时一次性提交到 Store，工作流重新解析
+
+### SWITCH 分支管理（页面内 Modal）
+
+点击 SWITCH/Decision 节点打开分支管理菜单，支持：
+
+- **添加分支**：输入条件值（case value），Modal 内确认
+- **重命名分支**：✏ 按钮 → Modal 内输入新名称 → 连线标签同步更新
+- **删除分支**：× 按钮 → 确认 Modal → 分支及其下任务一并移除
+
+### DO_WHILE 循环体编辑
+
+- 循环体内任意两个任务间的连线支持 **+** 插入新任务
+- 支持在第一个任务**之前**插入任务（循环头部添加）
+- 支持在循环体末尾追加任务
+
+---
+
+## 👁️ 视图模式 (v0.3.0 新增)
+
+通过工具栏切换三种详情级别：
+
+| 模式 | 说明 |
+| :--- | :--- |
+| **Business** | 仅展示核心业务节点（HTTP、SIMPLE、SUB_WORKFLOW 等），控制/数据节点折叠为边标签 |
+| **Standard** | 业务 + 控制流节点，默认模式 |
+| **Developer** | 显示全部节点，SWITCH/DO_WHILE 节点上展示表达式预览 |
+
+---
 
 ## 🛠️ TypeScript 支持
 
@@ -259,6 +308,46 @@ import {
   WorkflowIDEProps,
   WorkflowDef,
   TaskDef,
-  AIServiceConfig
+  AIServiceConfig,
+  ExecutionActions,
+  RestartOptions,
+  ViewMode
 } from 'reactflow-ui';
 ```
+
+---
+
+## 📋 版本历史
+
+### v0.3.0
+
+**新功能**
+- 全屏表达式/脚本编辑器（含 Ctrl+S、Esc、行数/字符数状态栏）
+- SWITCH 分支重命名（页面内 Modal，替代 window.prompt）
+- DO_WHILE 循环体首位插入任务
+- Business / Standard / Developer 三级视图模式
+- 模拟执行（Simulation）演示
+
+**体验优化**
+- 任务引用名输入缓冲提交，避免逐字符刷新
+- 切换工作流自动 Fit View（延迟 50ms 等待渲染完成）
+- 编辑/只读模式连线改为静态实线（运行态保留动画）
+- 节点边框及阴影加深，深色模式下更清晰
+- 校验徽章（❗⚠️）仅在编辑模式显示
+- AI 助手仅在编辑模式渲染
+
+**缺陷修复**
+- 编辑模式循环体内连线「+」按钮不显示
+- SWITCH 非 default 分支条件值无法修改
+- 蛇形布局在编辑/只读模式行为不一致（plusNode 计入节点数导致错误触发）
+- 任务唯一引用名输入框每次仅能键入一个字符
+- 运行态 ExecutionTaskPanel 样式与 TaskDetailPanel 对齐
+
+### v0.2.0
+
+- 运行态操作：暂停、继续、终止、重试、重启、从指定任务重跑、跳过任务
+- `allowOperations` 全局操作权限开关
+- DO_WHILE 循环体容器化渲染（ReactFlow sub-nodes）
+- AI 差异卡片（Diff Card）
+- 视图详情级别初版
+

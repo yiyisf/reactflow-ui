@@ -3,8 +3,18 @@
     "status": "COMPLETED",
     "startTime": 1704546000000,
     "endTime": 1704546080000,
-    "input": { "region": "us-east", "services": ["auth", "payment", "notification"] },
-    "output": { "deployedCount": 3, "status": "All services deployed" },
+    "input": {
+        "region": "us-east",
+        "services": [
+            "auth",
+            "payment",
+            "notification"
+        ]
+    },
+    "output": {
+        "deployedCount": 3,
+        "status": "All services deployed"
+    },
     "workflowDefinition": {
         "name": "dynamic_deployment_workflow",
         "description": "FORK_JOIN_DYNAMIC 演示：运行时动态生成并行部署任务",
@@ -51,7 +61,8 @@
                 }
             }
         ],
-        "schemaVersion": 2
+        "schemaVersion": 2,
+        "restartable": true
     },
     "tasks": [
         {
@@ -61,12 +72,26 @@
             "taskType": "HTTP",
             "startTime": 1704546000000,
             "endTime": 1704546005000,
-            "inputData": { "uri": "https://deploy-api.example.com/prepare" },
+            "inputData": {
+                "uri": "https://deploy-api.example.com/prepare"
+            },
             "outputData": {
                 "tasks": [
-                    { "name": "deploy_auth", "taskReferenceName": "deploy_auth_ref", "type": "SIMPLE" },
-                    { "name": "deploy_payment", "taskReferenceName": "deploy_payment_ref", "type": "SIMPLE" },
-                    { "name": "deploy_notification", "taskReferenceName": "deploy_notification_ref", "type": "HTTP" }
+                    {
+                        "name": "deploy_auth",
+                        "taskReferenceName": "deploy_auth_ref",
+                        "type": "SIMPLE"
+                    },
+                    {
+                        "name": "deploy_payment",
+                        "taskReferenceName": "deploy_payment_ref",
+                        "type": "SIMPLE"
+                    },
+                    {
+                        "name": "deploy_notification",
+                        "taskReferenceName": "deploy_notification_ref",
+                        "type": "HTTP"
+                    }
                 ]
             }
         },
@@ -85,8 +110,14 @@
             "taskType": "SIMPLE",
             "startTime": 1704546007000,
             "endTime": 1704546025000,
-            "inputData": { "service": "auth", "version": "2.1.0" },
-            "outputData": { "deployed": true, "endpoint": "auth.internal:8080" }
+            "inputData": {
+                "service": "auth",
+                "version": "2.1.0"
+            },
+            "outputData": {
+                "deployed": true,
+                "endpoint": "auth.internal:8080"
+            }
         },
         {
             "taskId": "task_deploy_payment_001",
@@ -95,8 +126,14 @@
             "taskType": "SIMPLE",
             "startTime": 1704546007000,
             "endTime": 1704546030000,
-            "inputData": { "service": "payment", "version": "3.0.1" },
-            "outputData": { "deployed": true, "endpoint": "payment.internal:8081" }
+            "inputData": {
+                "service": "payment",
+                "version": "3.0.1"
+            },
+            "outputData": {
+                "deployed": true,
+                "endpoint": "payment.internal:8081"
+            }
         },
         {
             "taskId": "task_deploy_notification_001",
@@ -105,8 +142,14 @@
             "taskType": "HTTP",
             "startTime": 1704546007000,
             "endTime": 1704546020000,
-            "inputData": { "service": "notification", "version": "1.5.2" },
-            "outputData": { "deployed": true, "endpoint": "notify.internal:8082" }
+            "inputData": {
+                "service": "notification",
+                "version": "1.5.2"
+            },
+            "outputData": {
+                "deployed": true,
+                "endpoint": "notify.internal:8082"
+            }
         },
         {
             "taskId": "task_join_001",
@@ -123,7 +166,10 @@
             "taskType": "SIMPLE",
             "startTime": 1704546032000,
             "endTime": 1704546045000,
-            "outputData": { "allHealthy": true, "checks": 3 }
+            "outputData": {
+                "allHealthy": true,
+                "checks": 3
+            }
         },
         {
             "taskId": "task_notify_001",
@@ -132,7 +178,9 @@
             "taskType": "KAFKA_PUBLISH",
             "startTime": 1704546046000,
             "endTime": 1704546048000,
-            "outputData": { "messageId": "msg_deploy_complete_123" }
+            "outputData": {
+                "messageId": "msg_deploy_complete_123"
+            }
         }
     ]
 }

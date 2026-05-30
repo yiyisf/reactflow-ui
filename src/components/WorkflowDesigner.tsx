@@ -18,7 +18,6 @@ import SubWorkflowNode from './nodes/SubWorkflowNode';
 import PlusNode from './nodes/PlusNode';
 import DynamicPlaceholderNode from './nodes/DynamicPlaceholderNode';
 import NodeSelector from './Editor/NodeSelector';
-import ExecutionTaskPanel from './ExecutionTaskPanel';
 import ExecutionStatusBar from './ExecutionStatusBar';
 import HealthCheckPanel from './HealthCheckPanel';
 import AddableEdge from './edges/AddableEdge';
@@ -89,6 +88,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         dynamicRuntimeTasksByFork,
         layoutDirection,
         simState,
+        workflowLoadKey,
     } = useWorkflowStore();
 
     // ─── 视图模式过滤：计算可见节点 ID 集合 ─────────────────────────────
@@ -99,15 +99,24 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         }
         const allowed = CATEGORY_VISIBILITY[viewMode];
         const visible = new Set<string>();
+        // First pass: determine which non-child nodes are visible
         nodes.forEach((n) => {
             // 工具节点（plusNode / placeholder）不受视图模式控制
             if (n.type === 'plusNode' || n.type === 'dynamicPlaceholderNode') {
                 visible.add(n.id);
                 return;
             }
+            // Child nodes (loop body): will be handled in second pass based on parent visibility
+            if (n.parentId) return;
             const cfg = TASK_TYPES.find((t) => t.type === n.data.taskType);
             const cat = cfg?.viewCategory ?? 'business';
             if (allowed.includes(cat)) visible.add(n.id);
+        });
+        // Second pass: include child nodes whose parent is visible
+        nodes.forEach((n) => {
+            if (n.parentId && visible.has(n.parentId)) {
+                visible.add(n.id);
+            }
         });
         return visible;
     }, [nodes, viewMode, mode]);
@@ -190,6 +199,17 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         return () => window.removeEventListener('workflow-zoom-to-fit', handleZoomToFit);
     }, [fitView]);
 
+    // 每次加载新工作流（setWorkflow 调用）自动适应屏幕
+    // workflowLoadKey 仅在 setWorkflow 时递增，updateTask 等增量操作不会触发
+    useEffect(() => {
+        if (workflowLoadKey === 0) return; // 跳过初始值
+        // 短暂延迟，等待 ReactFlow 完成节点渲染后再 fitView
+        const timer = setTimeout(() => {
+            fitView({ duration: 600, padding: 0.12 });
+        }, 50);
+        return () => clearTimeout(timer);
+    }, [workflowLoadKey, fitView]);
+
     // 监听各种自定义交互事件
     useEffect(() => {
         const handleMiniTaskClick = (event: any) => {
@@ -200,10 +220,14 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
         const handleLoopAddNode = (event: any) => {
             if (mode === 'edit') {
-                setActiveEdgeData({
-                    sourceId: event.detail.loopId,
-                    edgeData: { isLoopAdd: true }
-                });
+                const { loopId, afterRef } = event.detail;
+                if (afterRef) {
+                    // Append after the last task in the loop body
+                    setActiveEdgeData({ sourceId: afterRef, edgeData: {} });
+                } else {
+                    // Empty loop: insert first task
+                    setActiveEdgeData({ sourceId: loopId, edgeData: { isLoopAdd: true } });
+                }
                 setShowSelector(true);
             }
         };
@@ -362,15 +386,20 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         const mappedEdges = visibleEdges
           .map((edge) => {
             const isLoopBack = edge.id.includes('loop-back');
+            // 连线颜色：浅色/深色主题略有区别，加深使其更醒目
+            const edgeStroke = theme === 'light' ? '#64748b' : '#94a3b8';
             const baseStyle = {
                 ...edge.style,
-                stroke: theme === 'light' ? '#475569' : '#64748b',
+                stroke: edgeStroke,
                 strokeWidth: 2,
+                // 只有循环回退线使用虚线；其余一律实线
                 strokeDasharray: isLoopBack ? '5,5' : undefined,
             };
 
             let currentStyle = { ...baseStyle };
-            let isAnimated = !isLoopBack; // 默认循环回退线不动画，其他动画
+            // 编辑/查看模式：全部不动画（使用静态实线，减少视觉噪音）
+            // 运行模式：根据执行状态决定是否动画
+            let isAnimated = false;
 
             // 如果是运行模式且有执行数据，应用动态样式
             if (mode === 'run' && executionData) {
@@ -394,7 +423,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             const isPlaceholderEdge =
                 edge.source.endsWith('_dynamic_placeholder') ||
                 edge.target.endsWith('_dynamic_placeholder');
-            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge;
+            // __workflow_start__ / __loop_start__* 引导边由 plusNode 承担插入逻辑，
+            // 这些边本身不应显示 "+" 按钮
+            const isStartGuideEdge = edge.source === '__workflow_start__' || edge.source.startsWith('__loop_start__');
+            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge && !isStartGuideEdge;
 
             return {
                 ...edge,
@@ -439,8 +471,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             selected: selectedTask?.taskReferenceName === ref,
                             data: {
                                 ...node.data,
-                                isError: errorRefs.has(ref),
-                                hasWarning: warningRefs.has(ref),
+                                // 校验徽章（❗⚠️）仅在编辑模式下显示，只读/运行态不干扰视图
+                                isError: mode === 'edit' && errorRefs.has(ref),
+                                hasWarning: mode === 'edit' && warningRefs.has(ref),
                                 isHighlighted: searchQuery ? (
                                     node.data.label.toLowerCase().includes(query) ||
                                     node.data.taskReferenceName.toLowerCase().includes(query)
@@ -455,7 +488,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         ...node,
                         data: { ...node.data, isError: false, hasWarning: false, isHighlighted: false },
                     })) as typeof baseNodes);
-                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState])}
+                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode])}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
@@ -469,6 +502,13 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             edgeData: node.data.edgeData || {}
                         });
                         setShowSelector(true);
+                        return;
+                    }
+                    if (node.type === 'loopNode') {
+                        // Click on loop container — show loop task details
+                        const task = node.data.task || null;
+                        setSelectedTask(task);
+                        if (onNodeClickProp) onNodeClickProp(task);
                         return;
                     }
                     const task = node.data.task || null;
@@ -501,9 +541,6 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         <ExecutionStatusBar />
                     </Panel>
                 )}
-
-                {/* 运行态详情面板 */}
-                {mode === 'run' && <ExecutionTaskPanel />}
 
                 <HealthCheckPanel
                     isOpen={showHealthCheck}

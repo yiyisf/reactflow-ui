@@ -2,7 +2,11 @@
     "workflowId": "wf_human_demo_001",
     "status": "RUNNING",
     "startTime": 1704546000000,
-    "input": { "requestId": "req_budget_approval", "amount": 50000, "department": "Engineering" },
+    "input": {
+        "requestId": "req_budget_approval",
+        "amount": 50000,
+        "department": "Engineering"
+    },
     "workflowDefinition": {
         "name": "budget_approval_workflow",
         "description": "HUMAN 任务演示：预算审批流，当前等待人工审批",
@@ -12,7 +16,9 @@
                 "name": "submit_request",
                 "taskReferenceName": "submit_ref",
                 "type": "SIMPLE",
-                "inputParameters": { "requestId": "${workflow.input.requestId}" }
+                "inputParameters": {
+                    "requestId": "${workflow.input.requestId}"
+                }
             },
             {
                 "name": "auto_validate",
@@ -41,7 +47,9 @@
                 "name": "route_approval_result",
                 "taskReferenceName": "route_result_ref",
                 "type": "SWITCH",
-                "inputParameters": { "switchCaseValue": "${manager_approval_ref.output.decision}" },
+                "inputParameters": {
+                    "switchCaseValue": "${manager_approval_ref.output.decision}"
+                },
                 "evaluatorType": "value-param",
                 "expression": "switchCaseValue",
                 "decisionCases": {
@@ -61,7 +69,9 @@
                             "name": "notify_rejection",
                             "taskReferenceName": "notify_rejection_ref",
                             "type": "EVENT",
-                            "inputParameters": { "sink": "sqs:rejection-events" }
+                            "inputParameters": {
+                                "sink": "sqs:rejection-events"
+                            }
                         }
                     ]
                 },
@@ -77,7 +87,8 @@
                 }
             }
         ],
-        "schemaVersion": 2
+        "schemaVersion": 2,
+        "restartable": true
     },
     "tasks": [
         {
@@ -87,8 +98,13 @@
             "taskType": "SIMPLE",
             "startTime": 1704546000000,
             "endTime": 1704546003000,
-            "inputData": { "requestId": "req_budget_approval" },
-            "outputData": { "submitted": true, "ticketId": "TKT-2024-001" }
+            "inputData": {
+                "requestId": "req_budget_approval"
+            },
+            "outputData": {
+                "submitted": true,
+                "ticketId": "TKT-2024-001"
+            }
         },
         {
             "taskId": "task_validate_001",
@@ -97,7 +113,10 @@
             "taskType": "INLINE",
             "startTime": 1704546004000,
             "endTime": 1704546005000,
-            "outputData": { "result": true, "validationPassed": true }
+            "outputData": {
+                "result": true,
+                "validationPassed": true
+            }
         },
         {
             "taskId": "task_human_approval_001",

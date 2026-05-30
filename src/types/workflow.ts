@@ -136,6 +136,8 @@ export interface WorkflowNodeData {
     isDynamicRuntime?: boolean; // FORK_JOIN_DYNAMIC 运行时动态生成的子任务节点
     simRunning?: boolean; // 模拟执行中：蓝色脉冲
     simDone?: boolean;    // 模拟执行完成：绿色
+    _layoutWidth?: number;  // 循环容器预计算宽度（由 layoutLoopChildren 设置）
+    _layoutHeight?: number; // 循环容器预计算高度（由 layoutLoopChildren 设置）
 }
 
 /**
@@ -182,6 +184,8 @@ export interface WorkflowState {
     isDetailPanelOpen: boolean;
     simState: Record<string, 'idle' | 'running' | 'done'>;
     isSimRunning: boolean;
+    /** 每次 setWorkflow() 调用时递增，用于触发 WorkflowDesigner 的 fitView */
+    workflowLoadKey: number;
 }
 
 /**
@@ -209,6 +213,7 @@ export interface WorkflowActions {
     removeLoopTask: (loopRef: string, taskRef: string) => void;
     addDecisionBranch: (taskRef: string, caseName: string) => void;
     removeDecisionBranch: (taskRef: string, caseName: string) => void;
+    renameDecisionBranch: (taskRef: string, oldName: string, newName: string) => void;
     addForkBranch: (taskRef: string) => void;
     copyTask: (task: TaskDef) => void;
     pasteTask: (task: TaskDef) => void;
@@ -226,16 +231,64 @@ export interface WorkflowActions {
 }
 
 /**
+ * 重启选项
+ * - `useLatestDef: true`  使用当前最新工作流定义版本重启
+ * - `useLatestDef: false` 使用本次执行时的定义版本重启（默认）
+ */
+export interface RestartOptions {
+    useLatestDef?: boolean;
+}
+
+/**
  * 运行态操作回调
- * 集成方通过此接口注入工作流执行操作（暂停/恢复/停止/重试/重启）的回调函数。
- * 未传入的回调对应的按钮不会渲染。
+ * 集成方通过此接口注入工作流执行操作的回调函数；未传入的回调对应的按钮不会渲染。
+ *
+ * 工作流级别操作：暂停、继续、终止、重试、重新运行（支持版本选择）
+ * 任务级别操作：从指定任务重新运行、跳过任务
  */
 export interface ExecutionActions {
-    onRestart?: (workflowId: string) => void;
+    /**
+     * 是否允许操作。
+     * - `true`（默认）：所有操作按钮正常可用。
+     * - `false`：所有操作按钮置灰并提示"操作权限受限"。
+     * @default true
+     */
+    allowOperations?: boolean;
+
+    /** 暂停工作流（RUNNING → PAUSED） */
     onPause?: (workflowId: string) => void;
+    /** 继续执行暂停中的工作流（PAUSED → RUNNING） */
     onResume?: (workflowId: string) => void;
+    /** 终止工作流（RUNNING/PAUSED → TERMINATED） */
     onTerminate?: (workflowId: string) => void;
+    /** 重试失败的工作流（FAILED/TIMED_OUT/TERMINATED） */
     onRetry?: (workflowId: string) => void;
+    /**
+     * 重新运行工作流（需要 workflowDef.restartable = true）
+     * @param options.useLatestDef true=使用最新定义版本；false=使用执行时的版本（默认）
+     */
+    onRestart?: (workflowId: string, options?: RestartOptions) => void;
+    /**
+     * 从指定任务重新运行（工作流须处于终态：FAILED/TERMINATED/COMPLETED）
+     *
+     * 对应 Conductor OSS API：POST /workflow/{workflowId}/rerun
+     * - body: { reRunFromTaskId: taskId, taskInput: {} }
+     *
+     * @param workflowId    工作流实例 ID
+     * @param taskReferenceName 目标任务的引用名（taskReferenceName）
+     * @param taskId        目标任务实例 ID（对应 Conductor API 的 reRunFromTaskId）
+     */
+    onRerunFromTask?: (workflowId: string, taskReferenceName: string, taskId?: string) => void;
+    /**
+     * 跳过指定任务（任务须处于 SCHEDULED 或 IN_PROGRESS 状态）
+     *
+     * 对应 Conductor OSS API：PUT /workflow/{workflowId}/skiptask/{taskReferenceName}
+     *
+     * @param workflowId        工作流实例 ID
+     * @param taskReferenceName 目标任务的引用名（URL path 参数）
+     * @param taskId            目标任务实例 ID（可用于请求体附加校验）
+     */
+    onSkipTask?: (workflowId: string, taskReferenceName: string, taskId?: string) => void;
 }
 
 /**

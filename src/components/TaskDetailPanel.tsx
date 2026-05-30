@@ -4,6 +4,7 @@ import { TaskDef } from '../types/conductor';
 import { AIServiceConfig, callAICopilot } from '../services/aiService';
 import { generateParameterHintPrompt } from '../services/promptTemplates';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
+import FullscreenEditor from './FullscreenEditor';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
@@ -25,6 +26,12 @@ const QUICK_SNIPPETS = [
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
+    // syncedRef: the taskReferenceName at the time localTask was last synced from `task`.
+    // Used to identify the "same task" even while the user is editing the ref name field.
+    const [syncedRef, setSyncedRef] = useState<string | null>(task?.taskReferenceName ?? null);
+    // pendingRefName: draft value while the user is typing in the ref name input.
+    // null means the input is not being edited; we commit to store only on blur.
+    const [pendingRefName, setPendingRefName] = useState<string | null>(null);
     const [showSnippets, setShowSnippets] = useState(false);
     const [activeTextareaRef, setActiveTextareaRef] = useState<HTMLTextAreaElement | null>(null);
     const [waitMode, setWaitMode] = useState<'duration' | 'until'>(() =>
@@ -44,6 +51,15 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     const [suggesterAnchor, setSuggesterAnchor] = useState<DOMRect | undefined>();
     const [currentSuggestions, setCurrentSuggestions] = useState<Suggestion[]>([]);
     const [onSelectSuggestion, setOnSelectSuggestion] = useState<(val: string) => void>(() => () => { });
+
+    // 全屏编辑器状态
+    type FullscreenState = { title: string; value: string; language: string; onSave: (v: string) => void } | null;
+    const [fullscreenEditor, setFullscreenEditor] = useState<FullscreenState>(null);
+
+    /** 打开全屏编辑器的辅助函数 */
+    const openFullscreen = (title: string, value: string, language: string, onSave: (v: string) => void) => {
+        setFullscreenEditor({ title, value, language, onSave });
+    };
 
     const mockSuggestions: Suggestion[] = [
         { label: '引用工作流输入', value: '${workflow.input.data}', description: '引用工作流启动时传入的原始数据' },
@@ -93,6 +109,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     useEffect(() => {
         if (task) {
             setLocalTask(task);
+            setSyncedRef(task.taskReferenceName); // 记录本次同步时的引用名，用于判断 localTask 是否对应当前 task
+            setPendingRefName(null); // 清除草稿，切换到新任务时不保留旧的输入
             // 同步 WAIT 模式
             if (task.type === 'WAIT') {
                 setWaitMode(task.inputParameters?.until ? 'until' : 'duration');
@@ -113,7 +131,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     if (!task && !localTask) return null;
 
     const effectiveTask = task || localTask;
-    const displayTask = (localTask && task && localTask.taskReferenceName === task.taskReferenceName) ? localTask : effectiveTask!;
+    // syncedRef 记录了 localTask 最近一次从 task 同步时的 taskReferenceName，
+    // 用于判断 localTask 是否仍然对应当前 task（即使用户正在编辑引用名也不会误判）
+    const displayTask = (localTask && task && syncedRef === task.taskReferenceName) ? localTask : effectiveTask!;
     const panelClass = (isOpen && task) ? 'panel-enter-active' : 'panel-exit';
     const isEditMode = mode === 'edit';
 
@@ -182,7 +202,12 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
 
     const renderInput = (label: string, field: string, type: 'text' | 'number' = 'text', placeholder?: string) => {
         const isRefName = field === 'taskReferenceName';
-        const isDuplicate = isRefName && !checkTaskRefUniqueness((displayTask as any)[field], displayTask.taskReferenceName);
+        // 引用名字段：优先使用 pendingRefName（用户正在输入的草稿），其余字段直接用 displayTask 的值
+        const currentVal = isRefName && pendingRefName !== null
+            ? pendingRefName
+            : ((displayTask as any)[field] ?? '');
+        // 重复检测：用当前展示的值（草稿 or 已保存）与其他任务对比，排除自身
+        const isDuplicate = isRefName && !checkTaskRefUniqueness(currentVal, displayTask.taskReferenceName);
         return (
             <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase' }}>
@@ -192,9 +217,34 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input
                         type={type}
-                        value={(displayTask as any)[field] ?? ''}
+                        value={currentVal}
                         placeholder={placeholder}
-                        onChange={(e) => handleChange(field, type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value)}
+                        onChange={(e) => {
+                            if (isRefName) {
+                                // 引用名字段：仅更新本地草稿，不触发 store 更新（避免每次按键重新解析）
+                                setPendingRefName(e.target.value);
+                            } else {
+                                handleChange(field, type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value);
+                            }
+                        }}
+                        onFocus={isRefName ? () => {
+                            // 聚焦时初始化草稿为当前已保存值
+                            if (pendingRefName === null) {
+                                setPendingRefName((displayTask as any).taskReferenceName ?? '');
+                            }
+                        } : undefined}
+                        onBlur={isRefName ? (e) => {
+                            // 失焦时提交：值有变化且不为空时才写入 store
+                            const newRef = e.target.value.trim();
+                            setPendingRefName(null); // 清除草稿
+                            if (newRef && newRef !== displayTask.taskReferenceName) {
+                                handleChange('taskReferenceName', newRef);
+                            }
+                        } : undefined}
+                        onKeyDown={isRefName ? (e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur(); // Enter 触发提交
+                            e.stopPropagation(); // 防止 ReactFlow 快捷键被触发
+                        } : undefined}
                         disabled={!isEditMode}
                         style={{
                             width: '100%', padding: `8px ${isEditMode && !isRefName ? '32px' : '12px'} 8px 12px`,
@@ -208,6 +258,63 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✨</button>
                     )}
                 </div>
+            </div>
+        );
+    };
+
+    /**
+     * 带"全屏编辑"按钮的代码/表达式文本域。
+     * 编辑模式下右上角出现 ⛶ 按钮，点击打开全屏编辑器；只读模式退化为普通 textarea。
+     */
+    const renderCodeArea = (
+        label: string,
+        value: string,
+        onChange: (v: string) => void,
+        options: {
+            rows?: number;
+            language?: string;
+            style?: React.CSSProperties;
+            placeholder?: string;
+            'data-field'?: string;
+        } = {}
+    ) => {
+        const { rows = 5, language = 'text', style: extraStyle, placeholder: ph, 'data-field': dataField } = options;
+        const baseStyle: React.CSSProperties = {
+            width: '100%', padding: '12px', borderRadius: '8px',
+            border: `1px solid ${borderColor}`, background: inputBg, color: textColor,
+            fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.5',
+            resize: 'vertical',
+            ...extraStyle,
+        };
+        return (
+            <div style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label style={{ fontSize: '10px', color: secondaryTextColor }}>{label}</label>
+                    {isEditMode && (
+                        <button
+                            onClick={() => openFullscreen(label, value, language, (v) => { onChange(v); setFullscreenEditor(null); })}
+                            title="全屏编辑"
+                            style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                fontSize: '14px', padding: '2px 4px',
+                                color: 'var(--text-secondary)', opacity: 0.7,
+                                lineHeight: 1,
+                            }}
+                        >
+                            ⛶
+                        </button>
+                    )}
+                </div>
+                <textarea
+                    value={value}
+                    placeholder={ph}
+                    onChange={(e) => onChange(e.target.value)}
+                    disabled={!isEditMode}
+                    rows={rows}
+                    data-field={dataField}
+                    onFocus={(e) => setActiveTextareaRef(e.currentTarget)}
+                    style={baseStyle}
+                />
             </div>
         );
     };
@@ -256,6 +363,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     const httpRequest = displayTask.inputParameters?.http_request || displayTask.httpRequest || {};
 
     return (
+        <>
         <div className={`detail-panel-container ${panelClass}`} style={{
             position: 'absolute', right: 0, top: 0, bottom: 0, width: '450px', zIndex: 1200,
             display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)',
@@ -346,17 +454,15 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             (displayTask as any).evaluatorType || 'graaljs',
                             (v) => handleChange('evaluatorType', v)
                         )}
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>
-                            EXPRESSION {(displayTask as any).evaluatorType === 'value-param' ? '(值引用)' : '(脚本)'}
-                        </label>
-                        <textarea
-                            value={displayTask.inputParameters?.expression || displayTask.inputParameters?.scriptExpression || ''}
-                            onChange={(e) => {
+                        {renderCodeArea(
+                            `EXPRESSION ${(displayTask as any).evaluatorType === 'value-param' ? '(值引用)' : '(脚本)'}`,
+                            displayTask.inputParameters?.expression || displayTask.inputParameters?.scriptExpression || '',
+                            (v) => {
                                 const key = displayTask.inputParameters?.scriptExpression !== undefined ? 'scriptExpression' : 'expression';
-                                handleInputParamChange(key, e.target.value);
-                            }}
-                            disabled={!isEditMode} rows={10}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: '#000', color: 'var(--color-accent)', border: '1px solid var(--color-accent)', fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.5' }} />
+                                handleInputParamChange(key, v);
+                            },
+                            { rows: 10, language: (displayTask as any).evaluatorType || 'javascript', style: { background: '#000', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' } }
+                        )}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor, fontStyle: 'italic' }}>
                             提示: 使用 $.input.key 访问输入参数，返回值作为任务输出。
                         </div>
@@ -366,11 +472,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {/* ── JSON_JQ_TRANSFORM ── */}
                 {displayTask.type === 'JSON_JQ_TRANSFORM' && renderSpecialSection('JQ 数据转换', '🔍', 'var(--color-accent)', (
                     <>
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>JQ QUERY EXPRESSION</label>
-                        <textarea value={displayTask.inputParameters?.queryExpression || ''}
-                            onChange={(e) => handleInputParamChange('queryExpression', e.target.value)}
-                            disabled={!isEditMode} rows={6}
-                            style={{ width: '100%', padding: '12px', borderRadius: '8px', background: inputBg, color: 'var(--color-accent)', border: `1px solid ${borderColor}`, fontSize: '12px', fontFamily: 'monospace', lineHeight: '1.5' }} />
+                        {renderCodeArea('JQ QUERY EXPRESSION', displayTask.inputParameters?.queryExpression || '',
+                            (v) => handleInputParamChange('queryExpression', v),
+                            { rows: 6, language: 'jq', style: { color: 'var(--color-accent)' } })}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor }}>
                             输出字段: result（首个结果）、resultList（完整列表）
                         </div>
@@ -382,13 +486,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     <>
                         {renderSmallInput('WORKFLOW NAME *', displayTask.subWorkflowParam?.name || '', (v) => handleNestedChange('subWorkflowParam', 'name', v), 'text', 'e.g. my_workflow')}
                         {renderSmallInput('VERSION', displayTask.subWorkflowParam?.version ?? '', (v) => handleNestedChange('subWorkflowParam', 'version', v ? parseInt(v) : undefined), 'number', '1')}
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>INPUT PARAMETERS MAPPING (JSON)</label>
-                        <textarea
-                            value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null
-                                ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}'}
-                            onChange={(e) => { try { handleChange('inputParameters', JSON.parse(e.target.value)); } catch { } }}
-                            disabled={!isEditMode} rows={5}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        {renderCodeArea('INPUT PARAMETERS MAPPING (JSON)',
+                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
+                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
+                            { rows: 5, language: 'json' })}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
                             传递给子工作流的参数，支持 {'${workflow.input.xxx}'} 表达式
                         </div>
@@ -413,18 +514,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), correlationId: v };
                             handleInputParamChange('startWorkflow', sw);
                         }, 'text', '${workflow.correlationId}')}
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>WORKFLOW INPUT (JSON)</label>
-                        <textarea
-                            value={typeof displayTask.inputParameters?.startWorkflow?.input === 'object'
-                                ? JSON.stringify(displayTask.inputParameters.startWorkflow.input, null, 2) : '{}'}
-                            onChange={(e) => {
-                                try {
-                                    const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), input: JSON.parse(e.target.value) };
-                                    handleInputParamChange('startWorkflow', sw);
-                                } catch { }
-                            }}
-                            disabled={!isEditMode} rows={4}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        {renderCodeArea('WORKFLOW INPUT (JSON)',
+                            typeof displayTask.inputParameters?.startWorkflow?.input === 'object' ? JSON.stringify(displayTask.inputParameters.startWorkflow.input, null, 2) : '{}',
+                            (v) => { try { const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), input: JSON.parse(v) }; handleInputParamChange('startWorkflow', sw); } catch { } },
+                            { rows: 4, language: 'json' })}
                     </>
                 ))}
 
@@ -441,12 +534,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             ))}
                         </div>
                         {renderSmallInput('TERMINATION REASON', displayTask.inputParameters?.terminationReason || '', (v) => handleInputParamChange('terminationReason', v), 'text', '终止原因...')}
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>WORKFLOW OUTPUT (JSON)</label>
-                        <textarea
-                            value={typeof displayTask.inputParameters?.workflowOutput === 'object' ? JSON.stringify(displayTask.inputParameters.workflowOutput, null, 2) : '{}'}
-                            onChange={(e) => { try { handleInputParamChange('workflowOutput', JSON.parse(e.target.value)); } catch { } }}
-                            disabled={!isEditMode} rows={3}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        {renderCodeArea('WORKFLOW OUTPUT (JSON)',
+                            typeof displayTask.inputParameters?.workflowOutput === 'object' ? JSON.stringify(displayTask.inputParameters.workflowOutput, null, 2) : '{}',
+                            (v) => { try { handleInputParamChange('workflowOutput', JSON.parse(v)); } catch { } },
+                            { rows: 3, language: 'json' })}
                     </>
                 ))}
 
@@ -485,9 +576,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         {((displayTask as any).evaluatorType || 'value-param') === 'value-param'
                             ? renderSmallInput('CASE VALUE PARAM (参数名)', displayTask.caseValueParam || '', (v) => handleChange('caseValueParam', v), 'text', 'e.g. status')
                             : <>
-                                <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>CASE EXPRESSION (JS)</label>
-                                <textarea value={displayTask.caseExpression || ''} onChange={(e) => handleChange('caseExpression', e.target.value)} disabled={!isEditMode} rows={4}
-                                    style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: 'var(--color-accent)', border: `1px solid ${borderColor}`, fontSize: '12px', fontFamily: 'monospace' }} />
+                                {renderCodeArea('CASE EXPRESSION (JS)', displayTask.caseExpression || '',
+                                    (v) => handleChange('caseExpression', v),
+                                    { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
                             </>
                         }
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '8px' }}>
@@ -502,9 +593,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         {renderModeSwitch([{ key: 'condition', label: '条件循环' }, { key: 'items', label: '列表迭代' }], doWhileMode, (v) => setDoWhileMode(v as any))}
                         {doWhileMode === 'condition' ? (
                             <>
-                                <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>LOOP CONDITION (JS) *</label>
-                                <textarea value={displayTask.loopCondition || ''} onChange={(e) => handleChange('loopCondition', e.target.value)} disabled={!isEditMode} rows={4}
-                                    style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: 'var(--color-accent)', border: `1px solid ${borderColor}`, fontSize: '12px', fontFamily: 'monospace' }} />
+                                {renderCodeArea('LOOP CONDITION (JS) *', displayTask.loopCondition || '',
+                                    (v) => handleChange('loopCondition', v),
+                                    { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
                                 <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
                                     条件为 true 时继续循环，false 时退出
                                 </div>
@@ -594,16 +685,14 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         {renderSmallInput('BOOTSTRAP SERVERS *', displayTask.inputParameters?.bootStrapServers || '', (v) => handleInputParamChange('bootStrapServers', v), 'text', 'localhost:9092')}
                         {renderSmallInput('TOPIC *', displayTask.inputParameters?.topic || '', (v) => handleInputParamChange('topic', v), 'text', 'my_topic')}
                         {renderSmallInput('KEY (消息分区键)', displayTask.inputParameters?.key || '', (v) => handleInputParamChange('key', v), 'text', '')}
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>VALUE (消息内容)</label>
-                        <textarea value={typeof displayTask.inputParameters?.value === 'object' ? JSON.stringify(displayTask.inputParameters.value, null, 2) : (displayTask.inputParameters?.value || '')}
-                            onChange={(e) => { let v = e.target.value; try { v = JSON.parse(e.target.value); } catch { } handleInputParamChange('value', v); }}
-                            disabled={!isEditMode} rows={4}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace', marginBottom: '12px' }} />
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>HEADERS (JSON)</label>
-                        <textarea value={typeof displayTask.inputParameters?.headers === 'object' ? JSON.stringify(displayTask.inputParameters.headers, null, 2) : '{}'}
-                            onChange={(e) => { try { handleInputParamChange('headers', JSON.parse(e.target.value)); } catch { } }}
-                            disabled={!isEditMode} rows={3}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        {renderCodeArea('VALUE (消息内容)',
+                            typeof displayTask.inputParameters?.value === 'object' ? JSON.stringify(displayTask.inputParameters.value, null, 2) : (displayTask.inputParameters?.value || ''),
+                            (v) => { let val: any = v; try { val = JSON.parse(v); } catch { } handleInputParamChange('value', val); },
+                            { rows: 4, language: 'json' })}
+                        {renderCodeArea('HEADERS (JSON)',
+                            typeof displayTask.inputParameters?.headers === 'object' ? JSON.stringify(displayTask.inputParameters.headers, null, 2) : '{}',
+                            (v) => { try { handleInputParamChange('headers', JSON.parse(v)); } catch { } },
+                            { rows: 3, language: 'json' })}
                     </>
                 ))}
 
@@ -613,12 +702,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px' }}>
                             在 inputParameters 中定义要设置的变量名和值，后续任务通过 {'${workflow.variables.varName}'} 访问。
                         </div>
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>VARIABLES (JSON)</label>
-                        <textarea
-                            value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}'}
-                            onChange={(e) => { try { handleChange('inputParameters', JSON.parse(e.target.value)); } catch { } }}
-                            disabled={!isEditMode} rows={6}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        {renderCodeArea('VARIABLES (JSON)',
+                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
+                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
+                            { rows: 6, language: 'json' })}
                     </>
                 ))}
 
@@ -652,19 +739,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 ))}
                             </div>
                         )}
-                        <textarea
-                            value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : (displayTask.inputParameters ?? '')}
-                            data-field="inputParameters"
-                            onFocus={(e) => setActiveTextareaRef(e.target as HTMLTextAreaElement)}
-                            onChange={(e) => {
-                                try {
-                                    handleChange('inputParameters', JSON.parse(e.target.value));
-                                } catch {
-                                    setLocalTask(prev => ({ ...prev!, inputParameters: e.target.value as any }) as any);
-                                }
-                            }}
-                            disabled={!isEditMode} rows={5}
-                            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: '12px', fontFamily: 'monospace', outline: 'none', resize: 'vertical' }} />
+                        {renderCodeArea('',
+                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : (displayTask.inputParameters ?? ''),
+                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { setLocalTask(prev => ({ ...prev!, inputParameters: v as any }) as any); } },
+                            { rows: 5, language: 'json', 'data-field': 'inputParameters', style: { outline: 'none' } })}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -720,6 +798,18 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
 
             <ParameterSuggester isOpen={suggesterOpen} onClose={() => setSuggesterOpen(false)} onSelect={onSelectSuggestion} suggestions={currentSuggestions} anchorRect={suggesterAnchor} />
         </div>
+
+        {/* 全屏代码编辑器（Portal，挂载到 document.body） */}
+        {fullscreenEditor && (
+            <FullscreenEditor
+                title={fullscreenEditor.title}
+                value={fullscreenEditor.value}
+                language={fullscreenEditor.language}
+                onSave={fullscreenEditor.onSave}
+                onClose={() => setFullscreenEditor(null)}
+            />
+        )}
+        </>
     );
 };
 

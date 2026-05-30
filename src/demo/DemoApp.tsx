@@ -18,7 +18,8 @@ function DemoApp() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
-  const [useNewAiMode, setUseNewAiMode] = useState(true);
+  const [useNewAiMode, setUseNewAiMode] = useState(false);
+  const [allowOperations, setAllowOperations] = useState(true);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
   const [viewMode, setViewMode] = useState<ViewMode>('developer');
@@ -207,6 +208,33 @@ function DemoApp() {
               </span>
             )}
 
+            {workflowExecution && !useNewAiMode && (
+              <>
+                <button
+                  className={`mode-btn ${!allowOperations ? 'active' : ''}`}
+                  onClick={() => setAllowOperations(prev => !prev)}
+                  title={allowOperations ? "切换至操作受限状态" : "切换至允许操作状态"}
+                  style={{
+                    background: !allowOperations ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-tertiary)',
+                    border: !allowOperations ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border-primary)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: !allowOperations ? 'var(--status-failed)' : 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {allowOperations ? '🔓 操作授权' : '🔒 操作受限'}
+                </button>
+                <div className="divider"></div>
+              </>
+            )}
+
             <div className="divider"></div>
 
             <button
@@ -293,12 +321,12 @@ function DemoApp() {
               style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }}
             >
               <option value="">运行态示例...</option>
-              <option value="loop-iterations">DO_WHILE 循环迭代 (×3)</option>
-              <option value="fork-dynamic">FORK_JOIN_DYNAMIC 动态并行</option>
-              <option value="retry-tasks">任务重试机制</option>
-              <option value="switch-branches">SWITCH 分支执行</option>
-              <option value="human-approval">HUMAN 人工审批（进行中）</option>
-              <option value="mixed-status">CI/CD 流水线（混合状态）</option>
+              <option value="human-approval">▶ HUMAN 人工审批（RUNNING · 暂停/终止/跳过任务）</option>
+              <option value="mixed-status">✗ CI/CD 流水线（FAILED · 重试/重启）</option>
+              <option value="loop-iterations">✓ DO_WHILE 循环迭代 ×3（COMPLETED · 重启）</option>
+              <option value="retry-tasks">✓ 任务重试机制（COMPLETED · 重启）</option>
+              <option value="fork-dynamic">✓ FORK_JOIN_DYNAMIC 动态并行（COMPLETED · 重启）</option>
+              <option value="switch-branches">✓ SWITCH 分支执行（COMPLETED · 重启）</option>
             </select>
 
             <label className="upload-btn">
@@ -434,6 +462,16 @@ function DemoApp() {
               input.onchange = (e) => handleFileUpload(e as any);
               input.click();
             }}
+            executionActions={workflowExecution ? {
+              allowOperations,
+              onPause: (wfId) => console.log('[demo] 暂停工作流', wfId),
+              onResume: (wfId) => console.log('[demo] 继续工作流', wfId),
+              onTerminate: (wfId) => console.log('[demo] 终止工作流', wfId),
+              onRetry: (wfId) => console.log('[demo] 重试工作流', wfId),
+              onRestart: (wfId, opts) => console.log('[demo] 重启工作流', wfId, opts?.useLatestDef ? '（最新版本）' : '（执行版本）'),
+              onRerunFromTask: (wfId, ref, taskId) => console.log('[demo] 从任务重新运行', wfId, ref, 'taskId:', taskId),
+              onSkipTask: (wfId, ref, taskId) => console.log('[demo] 跳过任务', wfId, ref, 'taskId:', taskId),
+            } : undefined}
           />
         )}
       </div>

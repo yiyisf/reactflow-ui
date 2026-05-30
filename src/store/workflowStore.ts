@@ -49,6 +49,10 @@ const useWorkflowStore = create<WorkflowStore>()(
                 simState: {} as Record<string, 'idle' | 'running' | 'done'>,
                 isSimRunning: false,
 
+                // 工作流加载版本号：每次调用 setWorkflow 时递增，
+                // WorkflowDesigner 监听此值以触发 fitView，与 updateTask 等增量操作区分
+                workflowLoadKey: 0,
+
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
                     const dir = direction || get().layoutDirection;
@@ -65,7 +69,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         edges: layoutedEdges,
                         taskMap,
                         validationResults,
-                        layoutDirection: dir
+                        layoutDirection: dir,
+                        workflowLoadKey: get().workflowLoadKey + 1,
                     });
                 },
 
@@ -417,7 +422,19 @@ const useWorkflowStore = create<WorkflowStore>()(
                             type: 'JOIN',
                             joinOn: []
                         };
-                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
+                        if (edgeData.isWorkflowStart) {
+                            // 在第一个任务前插入
+                            newDef.tasks.unshift(joinTask);
+                            newDef.tasks.unshift(newTask);
+                        } else if (edgeData.isLoopBodyStart) {
+                            // 在循环体第一个任务前插入（sourceId = loopNodeId = DO_WHILE taskRef）
+                            const loopTask = findTaskByRef(newDef.tasks, sourceId);
+                            if (loopTask) {
+                                if (!loopTask.loopOver) loopTask.loopOver = [];
+                                loopTask.loopOver.unshift(joinTask);
+                                loopTask.loopOver.unshift(newTask);
+                            }
+                        } else if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                             insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
                         } else {
@@ -451,7 +468,17 @@ const useWorkflowStore = create<WorkflowStore>()(
                             newTask.inputParameters = {};
                         }
 
-                        if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
+                        if (edgeData.isWorkflowStart) {
+                            // 在第一个任务前插入
+                            newDef.tasks.unshift(newTask);
+                        } else if (edgeData.isLoopBodyStart) {
+                            // 在循环体第一个任务前插入（sourceId = loopNodeId = DO_WHILE taskRef）
+                            const loopTask = findTaskByRef(newDef.tasks, sourceId);
+                            if (loopTask) {
+                                if (!loopTask.loopOver) loopTask.loopOver = [];
+                                loopTask.loopOver.unshift(newTask);
+                            }
+                        } else if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
                             insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
                         } else {
                             if (newDef.tasks.length === 0) {
@@ -541,7 +568,19 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     const loopTask = findTaskByRef(newDef.tasks, loopRef);
                     if (loopTask && loopTask.type === 'DO_WHILE' && loopTask.loopOver) {
-                        loopTask.loopOver = loopTask.loopOver.filter(t => t.taskReferenceName !== taskRef);
+                        // Also remove companion JOIN when removing a FORK task (and vice versa)
+                        const container = findContainerList(loopTask.loopOver, taskRef);
+                        if (container) {
+                            const task = container.find(t => t.taskReferenceName === taskRef);
+                            if (task?.type === 'FORK_JOIN' || task?.type === 'FORK_JOIN_DYNAMIC') {
+                                const joinRef = findJoinForFork(container, taskRef);
+                                if (joinRef) removeTaskFromDef(loopTask.loopOver, joinRef);
+                            } else if (task?.type === 'JOIN' || task?.type === 'EXCLUSIVE_JOIN') {
+                                const forkRef = findForkForJoin(container, taskRef);
+                                if (forkRef) removeTaskFromDef(loopTask.loopOver, forkRef);
+                            }
+                        }
+                        removeTaskFromDef(loopTask.loopOver, taskRef);
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
@@ -583,6 +622,25 @@ const useWorkflowStore = create<WorkflowStore>()(
                         } else if (task.decisionCases) {
                             delete task.decisionCases[caseName];
                         }
+                        syncForkJoinOn(newDef.tasks);
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
+                        const validationResults = validateWorkflow(newDef);
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
+                    }
+                },
+
+                renameDecisionBranch: (taskRef: string, oldName: string, newName: string) => {
+                    const { workflowDef, layoutDirection } = get();
+                    if (!workflowDef || !newName.trim() || oldName === newName) return;
+                    const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
+
+                    const task = findTaskByRef(newDef.tasks, taskRef);
+                    if (task && (task.type === 'DECISION' || task.type === 'SWITCH')) {
+                        if (!task.decisionCases || !task.decisionCases[oldName]) return;
+                        // 将原分支任务列表迁移到新键名，重新解析会自动更新连线 label
+                        task.decisionCases[newName.trim()] = task.decisionCases[oldName];
+                        delete task.decisionCases[oldName];
                         syncForkJoinOn(newDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });

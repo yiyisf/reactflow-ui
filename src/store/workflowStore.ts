@@ -49,6 +49,10 @@ const useWorkflowStore = create<WorkflowStore>()(
                 simState: {} as Record<string, 'idle' | 'running' | 'done'>,
                 isSimRunning: false,
 
+                // 工作流加载版本号：每次调用 setWorkflow 时递增，
+                // WorkflowDesigner 监听此值以触发 fitView，与 updateTask 等增量操作区分
+                workflowLoadKey: 0,
+
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
                     const dir = direction || get().layoutDirection;
@@ -65,7 +69,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         edges: layoutedEdges,
                         taskMap,
                         validationResults,
-                        layoutDirection: dir
+                        layoutDirection: dir,
+                        workflowLoadKey: get().workflowLoadKey + 1,
                     });
                 },
 

@@ -349,19 +349,23 @@ body {
 .node-wrapper-glass {
   background: var(--glass-bg) !important;
   backdrop-filter: var(--glass-blur);
-  border: 2px solid rgba(var(--color-accent-rgb), 0.4) !important;
-  /* 增强边框可见性 */
+  border: 2px solid rgba(var(--color-accent-rgb), 0.55) !important;
   border-radius: var(--node-radius);
   overflow: visible;
   /* 修复：确保错误指示器和删除按钮不被裁剪 */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--node-shadow, 0 4px 20px rgba(0, 0, 0, 0.45), 0 1px 6px rgba(0, 0, 0, 0.28));
+}
+
+.node-wrapper-glass:hover {
+  box-shadow: var(--node-shadow-hover, 0 8px 28px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.32));
 }
 
 /* Light 模式增强对比度 */
 .app.light-theme .node-wrapper-glass {
-  border: 2px solid rgba(var(--color-accent-rgb), 0.6) !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(var(--color-accent-rgb), 0.2);
+  border: 2px solid rgba(var(--color-accent-rgb), 0.65) !important;
+  box-shadow: var(--node-shadow, 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.12)),
+              0 2px 8px rgba(var(--color-accent-rgb), 0.15);
 }
 
 .node-wrapper-selected {

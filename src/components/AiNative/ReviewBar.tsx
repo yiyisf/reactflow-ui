@@ -1,75 +1,61 @@
 /**
- * ReviewBar — 批量审核 AI 操作
+ * ReviewBar — AI proposal review panel
+ *
+ * Shows a unified diff summary when AI has proposed changes.
+ * One-click accept applies setWorkflow(proposedDef).
+ * One-click reject discards the proposal.
  */
 
 import React from 'react';
-import type { PendingOperation } from '../../services/ai/toolExecutor';
+import type { ProposedChange } from '../../store/aiStore';
 
 interface ReviewBarProps {
-    pendingOps: PendingOperation[];
-    onAcceptAll: () => void;
-    onRejectAll: () => void;
-    onToggleOp: (id: string) => void;
+    proposal: ProposedChange | null;
+    onAccept: () => void;
+    onReject: () => void;
 }
 
-const OP_ICONS: Record<string, string> = {
-    create_workflow: '📄',
-    add_task: '➕',
-    modify_task: '✏️',
-    remove_task: '🗑️',
-    add_decision_branch: '🔀',
-    add_fork_branch: '⑂',
-    set_workflow_props: '⚙️',
-    replace_workflow: '🔄',
-    validate_workflow: '✅',
-    get_workflow_context: '📋',
-};
+const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) => {
+    if (!proposal) return null;
 
-const ReviewBar: React.FC<ReviewBarProps> = ({
-    pendingOps,
-    onAcceptAll,
-    onRejectAll,
-    onToggleOp,
-}) => {
-    const pendingCount = pendingOps.filter(op => op.status === 'pending').length;
-
-    if (pendingOps.length === 0) return null;
+    const { diff } = proposal;
+    const totalChanges = diff.added.length + diff.modified.length + diff.removed.length + (diff.propsChanged ? 1 : 0);
 
     return (
         <div className="ai-review-bar">
-            <div className="ai-review-header">
-                <div className="ai-review-title">
-                    待审核操作 ({pendingCount}/{pendingOps.length})
-                </div>
-                <div className="ai-review-actions">
-                    <button className="ai-review-btn reject" onClick={onRejectAll}>
-                        ✕ 全部拒绝
-                    </button>
-                    <button className="ai-review-btn accept" onClick={onAcceptAll}>
-                        ✓ 全部接受
-                    </button>
+            <div className="ai-review-content">
+                <div className="ai-review-icon">✨</div>
+                <div className="ai-review-info">
+                    <div className="ai-review-title">AI 变更方案 · {totalChanges} 处变更</div>
+                    <div className="ai-review-chips">
+                        {diff.added.length > 0 && (
+                            <span className="ai-diff-chip added" title={diff.added.join(', ')}>
+                                +{diff.added.length} 新增
+                            </span>
+                        )}
+                        {diff.modified.length > 0 && (
+                            <span className="ai-diff-chip modified" title={diff.modified.join(', ')}>
+                                ~{diff.modified.length} 修改
+                            </span>
+                        )}
+                        {diff.removed.length > 0 && (
+                            <span className="ai-diff-chip removed" title={diff.removed.join(', ')}>
+                                -{diff.removed.length} 删除
+                            </span>
+                        )}
+                        {diff.propsChanged && (
+                            <span className="ai-diff-chip props">属性变更</span>
+                        )}
+                    </div>
                 </div>
             </div>
-
-            <div className="ai-review-ops">
-                {pendingOps.map(op => (
-                    <div
-                        key={op.id}
-                        className={`ai-op-card ${op.status}`}
-                    >
-                        <span className="ai-op-icon">
-                            {OP_ICONS[op.toolName] || '🔧'}
-                        </span>
-                        <span className="ai-op-desc">{op.description}</span>
-                        <button
-                            className={`ai-op-toggle ${op.status === 'accepted' ? 'checked' : ''}`}
-                            onClick={() => onToggleOp(op.id)}
-                            title={op.status === 'accepted' ? '取消' : '接受'}
-                        >
-                            {op.status === 'accepted' ? '✓' : op.status === 'rejected' ? '✕' : ''}
-                        </button>
-                    </div>
-                ))}
+            <div className="ai-review-actions">
+                <button className="ai-review-btn reject" onClick={onReject} title="拒绝此方案，保持当前工作流不变">
+                    ✕ 拒绝
+                </button>
+                <button className="ai-review-btn accept" onClick={onAccept} title="应用此方案到画布">
+                    ✓ 应用
+                </button>
             </div>
         </div>
     );

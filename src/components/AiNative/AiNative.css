@@ -1,4 +1,4 @@
-/* ─── AiWorkflowIDE 全局样式 ──────────────────────────────────────────────── */
+/* ─── AiWorkflowIDE styles ──────────────────────────────────────────────── */
 
 .ai-workflow-ide {
     display: flex;
@@ -11,16 +11,15 @@
     color: var(--text-primary);
 }
 
-/* ─── 左侧 AI 面板 ───────────────────────────────────────────────────────── */
+/* ─── Left AI panel ──────────────────────────────────────────────────────── */
 
 .ai-chat-side {
     display: flex;
     flex-direction: column;
     width: 420px;
     min-width: 320px;
-    max-width: 600px;
-    border-right: 1px solid var(--border);
-    background: var(--bg-primary);
+    border-right: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
     transition: width 0.3s ease, min-width 0.3s ease, opacity 0.3s ease;
     position: relative;
     z-index: 10;
@@ -35,7 +34,7 @@
     pointer-events: none;
 }
 
-/* 收起/展开按钮 */
+/* Toggle button */
 .ai-toggle-btn {
     position: absolute;
     left: 0;
@@ -46,7 +45,7 @@
     height: 48px;
     border-radius: 0 8px 8px 0;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
     border-left: none;
     cursor: pointer;
     display: flex;
@@ -54,7 +53,8 @@
     justify-content: center;
     color: var(--text-secondary);
     font-size: 12px;
-    transition: background 0.2s;
+    transition: background 0.2s, color 0.2s;
+    padding: 0;
 }
 
 .ai-toggle-btn:hover {
@@ -62,33 +62,32 @@
     color: #fff;
 }
 
-/* ─── Chat Header ────────────────────────────────────────────────────────── */
+/* ─── Chat header ────────────────────────────────────────────────────────── */
 
 .ai-cc-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-primary);
     flex-shrink: 0;
 }
 
 .ai-cc-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-size: 14px;
     font-weight: 600;
+    color: var(--text-primary);
 }
 
-.ai-cc-title-icon {
-    font-size: 18px;
-}
+.ai-cc-title-icon { font-size: 16px; }
 
 .ai-cc-actions {
     display: flex;
-    gap: 4px;
+    gap: 2px;
 }
 
 .ai-cc-actions button {
@@ -97,13 +96,14 @@
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 6px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     font-size: 14px;
-    transition: background 0.15s;
+    transition: background 0.15s, color 0.15s;
 }
 
 .ai-cc-actions button:hover {
     background: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
 /* ─── Messages ───────────────────────────────────────────────────────────── */
@@ -114,12 +114,13 @@
     padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
+    scrollbar-width: thin;
 }
 
 .ai-cc-msg {
     max-width: 95%;
-    line-height: 1.6;
+    line-height: 1.65;
     font-size: 13px;
 }
 
@@ -134,78 +135,65 @@
 .ai-cc-msg.assistant {
     align-self: flex-start;
     background: var(--bg-tertiary);
-    padding: 12px 16px;
+    padding: 12px 14px;
     border-radius: 4px 16px 16px 16px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
+    color: var(--text-primary);
 }
 
-.ai-cc-msg.assistant pre {
-    background: rgba(0,0,0,0.2);
-    border-radius: 8px;
-    padding: 10px;
-    overflow-x: auto;
-    font-size: 12px;
-    margin: 8px 0;
-}
-
-.ai-cc-msg.assistant code {
-    font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 12px;
-}
-
-.ai-cc-msg.assistant strong {
-    color: var(--color-accent);
-}
+.ai-cc-msg.assistant strong { color: var(--color-accent-text, var(--color-accent)); }
 
 /* ─── Streaming indicator ────────────────────────────────────────────────── */
 
 .ai-cc-streaming {
     align-self: flex-start;
     background: var(--bg-tertiary);
-    padding: 12px 16px;
+    padding: 12px 14px;
     border-radius: 4px 16px 16px 16px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
     opacity: 0.9;
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.65;
+    color: var(--text-primary);
 }
 
 .ai-streaming-cursor {
     display: inline-block;
-    width: 8px;
-    height: 16px;
+    width: 7px;
+    height: 14px;
     background: var(--color-accent);
     margin-left: 2px;
     animation: blink 1s infinite;
     vertical-align: text-bottom;
+    border-radius: 1px;
 }
 
 @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
 }
 
 /* ─── Thinking skeleton ──────────────────────────────────────────────────── */
 
 .ai-cc-thinking {
     align-self: flex-start;
-    padding: 12px 16px;
+    padding: 14px;
     border-radius: 4px 16px 16px 16px;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
     gap: 8px;
-    width: 70%;
+    width: 65%;
 }
 
 .ai-skeleton-line {
-    height: 12px;
+    height: 11px;
     border-radius: 6px;
     background: linear-gradient(90deg,
-        var(--border) 25%,
+        var(--border-primary) 25%,
         var(--bg-secondary) 50%,
-        var(--border) 75%);
+        var(--border-primary) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
 }
@@ -215,12 +203,12 @@
     100% { background-position: -200% 0; }
 }
 
-/* ─── Input Area ─────────────────────────────────────────────────────────── */
+/* ─── Input area ─────────────────────────────────────────────────────────── */
 
 .ai-cc-input-area {
     padding: 12px 16px;
-    border-top: 1px solid var(--border);
-    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-primary);
+    background: var(--bg-primary);
     flex-shrink: 0;
 }
 
@@ -229,7 +217,7 @@
     align-items: flex-end;
     gap: 8px;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
     border-radius: 12px;
     padding: 8px 12px;
     transition: border-color 0.2s;
@@ -237,6 +225,7 @@
 
 .ai-cc-input-container:focus-within {
     border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-bg, rgba(59,130,246,0.12));
 }
 
 .ai-cc-input-container textarea {
@@ -253,8 +242,11 @@
 }
 
 .ai-cc-input-container textarea::placeholder {
-    color: var(--text-secondary);
-    opacity: 0.6;
+    color: var(--text-muted);
+}
+
+.ai-cc-input-container textarea:disabled {
+    opacity: 0.5;
 }
 
 .ai-cc-send-btn {
@@ -267,16 +259,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 15px;
     flex-shrink: 0;
-    transition: transform 0.1s, opacity 0.2s;
+    transition: transform 0.1s, filter 0.15s;
+    color: #fff;
 }
 
-.ai-cc-send-btn:hover { transform: scale(1.05); }
-.ai-cc-send-btn:active { transform: scale(0.95); }
-.ai-cc-send-btn.stop { background: var(--status-failed); }
+.ai-cc-send-btn:hover { filter: brightness(1.1); }
+.ai-cc-send-btn:active { transform: scale(0.93); }
+.ai-cc-send-btn.stop { background: #ef4444; }
 
-/* ─── Right side (canvas + review) ───────────────────────────────────────── */
+/* ─── Right canvas side ──────────────────────────────────────────────────── */
 
 .ai-canvas-side {
     flex: 1;
@@ -284,6 +277,7 @@
     flex-direction: column;
     position: relative;
     overflow: hidden;
+    min-width: 0;
 }
 
 .ai-canvas-area {
@@ -292,53 +286,106 @@
     overflow: hidden;
 }
 
-/* ─── Review Bar ─────────────────────────────────────────────────────────── */
+/* ─── Review Bar (bottom of canvas) ─────────────────────────────────────── */
 
 .ai-review-bar {
-    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 2px solid var(--color-accent);
     background: var(--bg-secondary);
-    padding: 12px 16px;
+    padding: 10px 16px;
     flex-shrink: 0;
-    animation: slideUp 0.3s ease;
+    animation: reviewSlideUp 0.25s ease;
 }
 
-@keyframes slideUp {
+@keyframes reviewSlideUp {
     from { transform: translateY(100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
 
-.ai-review-header {
+.ai-review-content {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-review-icon { font-size: 18px; flex-shrink: 0; }
+
+.ai-review-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
 }
 
 .ai-review-title {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: var(--text-primary);
+}
+
+.ai-review-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ai-diff-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    cursor: default;
+}
+
+.ai-diff-chip.added {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ai-diff-chip.modified {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.ai-diff-chip.removed {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.ai-diff-chip.props {
+    background: var(--color-accent-bg, rgba(59,130,246,0.1));
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    opacity: 0.7;
 }
 
 .ai-review-actions {
     display: flex;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .ai-review-btn {
-    padding: 6px 14px;
-    border-radius: 6px;
+    padding: 7px 16px;
+    border-radius: 7px;
     border: none;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
     font-family: inherit;
     transition: all 0.15s;
     display: flex;
     align-items: center;
     gap: 5px;
+    white-space: nowrap;
 }
 
 .ai-review-btn.accept {
@@ -351,91 +398,21 @@
 .ai-review-btn.reject {
     background: transparent;
     color: var(--text-secondary);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
 }
 
 .ai-review-btn.reject:hover {
-    border-color: var(--status-failed);
-    color: var(--status-failed);
+    border-color: #ef4444;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
 }
 
-/* ─── Operation Card ─────────────────────────────────────────────────────── */
-
-.ai-review-ops {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.ai-op-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    font-size: 12px;
-    transition: all 0.15s;
-}
-
-.ai-op-card.accepted {
-    border-color: var(--status-completed);
-    background: color-mix(in srgb, var(--status-completed) 8%, transparent);
-}
-
-.ai-op-card.rejected {
-    border-color: var(--status-failed);
-    background: color-mix(in srgb, var(--status-failed) 8%, transparent);
-    opacity: 0.5;
-    text-decoration: line-through;
-}
-
-.ai-op-icon {
-    font-size: 14px;
-    flex-shrink: 0;
-}
-
-.ai-op-desc {
-    flex: 1;
-    color: var(--text-primary);
-}
-
-.ai-op-toggle {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    transition: all 0.15s;
-}
-
-.ai-op-toggle:hover {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-}
-
-.ai-op-toggle.checked {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: #fff;
-}
-
-/* ─── Config Panel ───────────────────────────────────────────────────────── */
+/* ─── Config dialog ──────────────────────────────────────────────────────── */
 
 .ai-config-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.4);
     z-index: 100;
     display: flex;
     align-items: center;
@@ -449,41 +426,43 @@
 }
 
 .ai-config-dialog {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 16px;
     padding: 24px;
     width: 380px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: var(--node-shadow, 0 20px 60px rgba(0,0,0,0.3));
 }
 
 .ai-config-dialog h3 {
     margin: 0 0 20px;
     font-size: 16px;
+    font-weight: 600;
     display: flex;
     align-items: center;
     gap: 8px;
+    color: var(--text-primary);
 }
 
-.ai-config-field {
-    margin-bottom: 14px;
-}
+.ai-config-field { margin-bottom: 14px; }
 
 .ai-config-field label {
     display: block;
     font-size: 11px;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
+    color: var(--text-muted);
+    margin-bottom: 5px;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .ai-config-field input,
 .ai-config-field select {
     width: 100%;
+    box-sizing: border-box;
     padding: 8px 12px;
     border-radius: 8px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
     background: var(--bg-tertiary);
     color: var(--text-primary);
     font-size: 13px;
@@ -495,6 +474,7 @@
 .ai-config-field input:focus,
 .ai-config-field select:focus {
     border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-bg, rgba(59,130,246,0.12));
 }
 
 .ai-config-btns {
@@ -512,6 +492,7 @@
     font-size: 13px;
     font-weight: 600;
     font-family: inherit;
+    transition: all 0.15s;
 }
 
 .ai-config-btns .save {
@@ -519,8 +500,14 @@
     color: #fff;
 }
 
+.ai-config-btns .save:hover { filter: brightness(1.1); }
+
 .ai-config-btns .cancel {
     background: var(--bg-tertiary);
     color: var(--text-secondary);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-primary);
+}
+
+.ai-config-btns .cancel:hover {
+    background: var(--bg-highlight);
 }

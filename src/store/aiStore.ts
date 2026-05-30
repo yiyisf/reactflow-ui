@@ -1,54 +1,54 @@
 /**
- * AI Store — 独立于 workflowStore 的 AI 状态管理
+ * AI Store — state management for AI workflow assistant
  *
- * 管理对话历史、待审核操作队列、AI 配置和指标。
+ * Manages: conversation history, proposed workflow (for review),
+ * AI configuration, and usage metrics.
  */
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AiConfig } from '../services/ai/protocolAdapter';
-import type { PendingOperation } from '../services/ai/toolExecutor';
+import type { WorkflowDef } from '../types/conductor';
+import type { DiffSummary } from '../services/ai/toolExecutor';
 
-// ─── 类型 ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface AiChatMessage {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    /** 该回复关联的 tool calls（用于 ReviewBar 显示） */
-    pendingOpIds?: string[];
+    /** If this message triggered a proposal, link it here */
+    proposalId?: string;
     timestamp: number;
 }
 
+export interface ProposedChange {
+    id: string;
+    proposedDef: WorkflowDef;
+    diff: DiffSummary;
+    /** Message that triggered this proposal */
+    messageId: string;
+}
+
 export interface AiMetrics {
-    totalSuggestions: number;
-    acceptedSuggestions: number;
-    rejectedSuggestions: number;
-    undoCount: number;
+    totalProposals: number;
+    acceptedProposals: number;
+    rejectedProposals: number;
 }
 
 interface AiState {
-    // ─── 配置 ───
     config: AiConfig;
-
-    // ─── 对话 ───
     messages: AiChatMessage[];
     isStreaming: boolean;
     streamingText: string;
     chatPanelOpen: boolean;
-
-    // ─── 待审核操作 ───
-    pendingOps: PendingOperation[];
-
-    // ─── 指标 ───
+    /** The current pending proposal (only one at a time) */
+    pendingProposal: ProposedChange | null;
     metrics: AiMetrics;
 }
 
 interface AiActions {
-    // 配置
     setConfig: (config: Partial<AiConfig>) => void;
-
-    // 对话
     addMessage: (msg: Omit<AiChatMessage, 'id' | 'timestamp'>) => string;
     updateMessage: (id: string, content: string) => void;
     setStreaming: (isStreaming: boolean) => void;
@@ -57,31 +57,21 @@ interface AiActions {
     clearMessages: () => void;
     setChatPanelOpen: (open: boolean) => void;
     toggleChatPanel: () => void;
-
-    // 待审核操作
-    addPendingOp: (op: Omit<PendingOperation, 'id' | 'status'>) => string;
-    addPendingOps: (ops: Array<Omit<PendingOperation, 'id' | 'status'>>) => string[];
-    acceptOp: (id: string) => void;
-    rejectOp: (id: string) => void;
-    acceptAllOps: () => void;
-    rejectAllOps: () => void;
-    clearPendingOps: () => void;
-
-    // 指标
-    recordAccept: (count?: number) => void;
-    recordReject: (count?: number) => void;
-    recordUndo: () => void;
+    setProposal: (proposal: Omit<ProposedChange, 'id'>) => string;
+    clearProposal: () => void;
+    recordAccept: () => void;
+    recordReject: () => void;
     getMetrics: () => AiMetrics;
 }
 
 export type AiStore = AiState & AiActions;
 
-// ─── 常量 ────────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const WELCOME_MESSAGE: AiChatMessage = {
     id: 'welcome',
     role: 'assistant',
-    content: '你好！我是你的 AI 工作流助手。\n\n我可以帮你：\n- 🆕 **从零创建**工作流（描述你的业务场景即可）\n- ➕ **添加/修改/删除**任务节点\n- 🔀 **重构拓扑**（如串行改并行）\n- 🔍 **诊断问题**和优化建议\n\n直接告诉我你想做什么吧！',
+    content: '你好！我是 AI 工作流助手。\n\n我可以帮你：\n- 🆕 **从零创建**工作流（描述业务场景即可）\n- ➕ **添加/修改/删除**任务节点\n- 🔀 **重构拓扑**（如串行改并行）\n- 🔍 **诊断问题**和优化建议\n\n直接告诉我你想做什么吧！',
     timestamp: Date.now(),
 };
 
@@ -90,7 +80,6 @@ const WELCOME_MESSAGE: AiChatMessage = {
 const useAiStore = create<AiStore>()(
     persist(
         (set, get) => ({
-            // ─── 初始状态 ───
             config: {
                 provider: 'auto',
                 apiKey: '',
@@ -101,20 +90,17 @@ const useAiStore = create<AiStore>()(
             isStreaming: false,
             streamingText: '',
             chatPanelOpen: true,
-            pendingOps: [],
+            pendingProposal: null,
             metrics: {
-                totalSuggestions: 0,
-                acceptedSuggestions: 0,
-                rejectedSuggestions: 0,
-                undoCount: 0,
+                totalProposals: 0,
+                acceptedProposals: 0,
+                rejectedProposals: 0,
             },
 
-            // ─── 配置 ───
             setConfig: (partial) => set(s => ({
                 config: { ...s.config, ...partial },
             })),
 
-            // ─── 对话 ───
             addMessage: (msg) => {
                 const id = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
                 const message: AiChatMessage = { ...msg, id, timestamp: Date.now() };
@@ -134,67 +120,31 @@ const useAiStore = create<AiStore>()(
                 messages: [WELCOME_MESSAGE],
                 streamingText: '',
                 isStreaming: false,
-                pendingOps: [],
+                pendingProposal: null,
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
             toggleChatPanel: () => set(s => ({ chatPanelOpen: !s.chatPanelOpen })),
 
-            // ─── 待审核操作 ───
-            addPendingOp: (op) => {
-                const id = `op_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-                const pending: PendingOperation = { ...op, id, status: 'pending' };
+            setProposal: (proposal) => {
+                const id = `prop_${Date.now()}`;
                 set(s => ({
-                    pendingOps: [...s.pendingOps, pending],
-                    metrics: { ...s.metrics, totalSuggestions: s.metrics.totalSuggestions + 1 },
+                    pendingProposal: { ...proposal, id },
+                    metrics: { ...s.metrics, totalProposals: s.metrics.totalProposals + 1 },
                 }));
                 return id;
             },
 
-            addPendingOps: (ops) => {
-                const ids: string[] = [];
-                const pendingList: PendingOperation[] = [];
-                ops.forEach(op => {
-                    const id = `op_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-                    ids.push(id);
-                    pendingList.push({ ...op, id, status: 'pending' });
-                });
-                set(s => ({
-                    pendingOps: [...s.pendingOps, ...pendingList],
-                    metrics: { ...s.metrics, totalSuggestions: s.metrics.totalSuggestions + pendingList.length },
-                }));
-                return ids;
-            },
+            clearProposal: () => set({ pendingProposal: null }),
 
-            acceptOp: (id) => set(s => ({
-                pendingOps: s.pendingOps.map(op => op.id === id ? { ...op, status: 'accepted' } : op),
+            recordAccept: () => set(s => ({
+                metrics: { ...s.metrics, acceptedProposals: s.metrics.acceptedProposals + 1 },
+                pendingProposal: null,
             })),
 
-            rejectOp: (id) => set(s => ({
-                pendingOps: s.pendingOps.map(op => op.id === id ? { ...op, status: 'rejected' } : op),
-            })),
-
-            acceptAllOps: () => set(s => ({
-                pendingOps: s.pendingOps.map(op => op.status === 'pending' ? { ...op, status: 'accepted' } : op),
-            })),
-
-            rejectAllOps: () => set(s => ({
-                pendingOps: s.pendingOps.map(op => op.status === 'pending' ? { ...op, status: 'rejected' } : op),
-            })),
-
-            clearPendingOps: () => set({ pendingOps: [] }),
-
-            // ─── 指标 ───
-            recordAccept: (count = 1) => set(s => ({
-                metrics: { ...s.metrics, acceptedSuggestions: s.metrics.acceptedSuggestions + count },
-            })),
-
-            recordReject: (count = 1) => set(s => ({
-                metrics: { ...s.metrics, rejectedSuggestions: s.metrics.rejectedSuggestions + count },
-            })),
-
-            recordUndo: () => set(s => ({
-                metrics: { ...s.metrics, undoCount: s.metrics.undoCount + 1 },
+            recordReject: () => set(s => ({
+                metrics: { ...s.metrics, rejectedProposals: s.metrics.rejectedProposals + 1 },
+                pendingProposal: null,
             })),
 
             getMetrics: () => get().metrics,
@@ -205,7 +155,6 @@ const useAiStore = create<AiStore>()(
             partialize: (state) => ({
                 config: state.config,
                 metrics: state.metrics,
-                // 不持久化对话历史和 pending ops
             }),
         }
     )

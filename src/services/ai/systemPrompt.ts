@@ -1,32 +1,38 @@
 /**
- * AI System Prompt — Conductor 工作流专家级 prompt 模板
+ * AI System Prompt — Conductor workflow expert prompt
  */
 
 import { formatContextForPrompt, buildContext } from './contextEngine';
 import { classifyIntent, getContextOptions } from './intentClassifier';
 import type { Intent } from './intentClassifier';
 
-const BASE_SYSTEM_PROMPT = `你是一位 Netflix Conductor 工作流建模专家 AI 助手。你的目标是帮助用户通过自然语言高效地设计和编辑 Conductor JSON 工作流。
+const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专家 AI 助手。帮助用户通过自然语言设计和编辑 Conductor JSON 工作流。
 
-## 核心规则
-1. 使用提供的工具 (tools) 来操作工作流，**不要**在回复中直接输出 JSON 代码块。
-2. 每个任务必须有唯一的 taskReferenceName（英文下划线风格，如 send_notification）。
-3. 标准任务类型: SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVENT, WAIT, HUMAN, INLINE, TERMINATE, SET_VARIABLE, KAFKA_PUBLISH, JSON_JQ_TRANSFORM, START_WORKFLOW, DYNAMIC, NOOP。
-4. SWITCH 需要 caseValueParam 或 caseExpression + decisionCases。
-5. FORK_JOIN 需要对应的 JOIN 任务（add_task 会自动处理）。
-6. 回答用中文，简洁明了。先说明你要做什么，然后通过工具执行。
-7. 对于解释性问题，直接用文本回答，不需要调用工具。
+## 工具使用规则
+1. **replace_workflow** — 用于：从零创建工作流、大范围结构重构。传入完整的 WorkflowDef JSON。
+2. **patch_workflow** — 用于：局部变更（增/改/删任务、修改属性）。比 replace_workflow 更精准。ops 支持：
+   - { op: 'add_task', task: TaskDef, afterRef?: string } — 新增任务
+   - { op: 'update_task', ref: string, changes: Partial<TaskDef> } — 修改任务字段
+   - { op: 'remove_task', ref: string } — 删除任务
+   - { op: 'update_props', props: Partial<WorkflowDef> } — 修改工作流属性
+   - { op: 'add_switch_branch', ref: string, caseName: string } — 添加 SWITCH 分支
+   - { op: 'add_fork_branch', ref: string } — 添加 FORK_JOIN 并行分支
+3. **get_workflow_state** — 在需要了解当前工作流内容时调用（read-only）。
+4. **validate_workflow** — 校验工作流合法性（read-only）。
+5. **不要**在回复中直接输出工作流 JSON 代码块，通过工具执行。
 
-## 最佳实践
-- HTTP 任务应设置合理的超时 (timeoutSeconds) 和重试 (retryCount)
-- 关键路径上的任务建议设置 retryCount >= 2
-- WAIT 任务需要 duration 或 until 参数
-- 复杂流程考虑使用 SWITCH 分支和 FORK_JOIN 并行
-- 使用 TERMINATE 任务明确标记异常终止路径`;
+## Conductor 标准任务类型
+SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVENT, WAIT, HUMAN, INLINE, TERMINATE, SET_VARIABLE, KAFKA_PUBLISH, JSON_JQ_TRANSFORM, START_WORKFLOW, DYNAMIC, NOOP
 
-/**
- * 构建完整的 system prompt（基础 + 上下文 + 额外指令）
- */
+## 必须遵守的规范
+- 每个任务必须有唯一的 taskReferenceName（英文下划线，如 send_email）
+- SWITCH 需要 caseValueParam 或 caseExpression，decisionCases 键值对
+- FORK_JOIN 需要 forkTasks（二维数组）和对应的 JOIN 任务
+- DO_WHILE 需要 loopCondition 和 loopOver 数组
+- HTTP 任务建议设置 timeoutSeconds 和 retryCount
+- 用中文回答，简洁明了，先说明要做什么，再通过工具执行
+- 纯解释性问题直接文本回复，不需要调用工具`;
+
 export function buildSystemPrompt(
     userInput: string,
     extraPrompt?: string,
@@ -42,14 +48,13 @@ export function buildSystemPrompt(
         parts.push(contextBlock);
     }
 
-    // 意图特化指令
     const intentHints = getIntentHints(intent);
     if (intentHints) {
-        parts.push(`## 当前用户意图提示\n${intentHints}`);
+        parts.push(`## 当前请求类型提示\n${intentHints}`);
     }
 
     if (extraPrompt) {
-        parts.push(`## 补充上下文（来自集成方）\n${extraPrompt}`);
+        parts.push(`## 额外上下文\n${extraPrompt}`);
     }
 
     return parts.join('\n\n');
@@ -58,21 +63,21 @@ export function buildSystemPrompt(
 function getIntentHints(intent: Intent): string | null {
     switch (intent) {
         case 'CREATE':
-            return '用户想创建新工作流。先用 create_workflow 创建空流程，再用 add_task 逐个添加任务。确保任务间的拓扑关系合理。';
+            return '用户要创建新工作流。使用 replace_workflow 生成完整 WorkflowDef JSON。确保任务结构完整、taskReferenceName 唯一。';
         case 'ADD':
-            return '用户想添加新任务。使用 add_task 工具，注意设置正确的 afterRef 确保插入位置正确。';
+            return '用户要添加任务。优先用 patch_workflow + add_task，指定正确的 afterRef。';
         case 'MODIFY':
-            return '用户想修改现有任务。使用 modify_task 工具，只传入需要修改的字段。';
+            return '用户要修改现有任务。用 patch_workflow + update_task，只传需要变更的字段。';
         case 'DELETE':
-            return '用户想删除任务。使用 remove_task 工具。';
+            return '用户要删除任务。用 patch_workflow + remove_task。';
         case 'REFACTOR':
-            return '用户想重构流程拓扑（如串行改并行）。可能需要组合使用 remove_task、add_task、add_fork_branch 等多个工具。';
+            return '用户要重构拓扑。先用 get_workflow_state 了解现状，然后根据变更幅度选择 replace_workflow（大改）或多个 patch_workflow ops（小改）。';
         case 'EXPLAIN':
-            return '用户在提问。直接用文本回答，不需要调用任何工具。';
+            return '用户在提问。直接文本回答，不要调用工具。';
         case 'DEBUG':
-            return '用户在排查问题。先用 get_workflow_context 和 validate_workflow 获取信息，分析后给出诊断意见。';
+            return '用户在排查问题。先用 validate_workflow 和 get_workflow_state 了解现状，分析后给出诊断。';
         case 'OPTIMIZE':
-            return '用户想优化流程。先分析当前拓扑，给出优化建议和具体方案。可以调用工具执行优化。';
+            return '用户要优化流程。先分析，再提出方案并执行。';
         default:
             return null;
     }

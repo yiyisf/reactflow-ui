@@ -1,281 +1,234 @@
 /**
- * AI Tool Executor — 将 AI 的 tool_call 转换为 workflowStore 操作
+ * AI Tool Executor — JSON-level workflow manipulation
  *
- * 所有操作先暂存到 pending 队列，由用户审核后才真正执行。
+ * All modifying operations work on WorkflowDef JSON (pure functions).
+ * The result is a "proposed" def stored in aiStore for user review.
+ * Actual application to the canvas uses setWorkflow(proposedDef).
  */
 
 import useWorkflowStore from '../../store/workflowStore';
 import { validateWorkflow } from '../../utils/validator';
+import type { WorkflowDef, TaskDef } from '../../types/conductor';
 
+// ─── Patch operation types ───────────────────────────────────────────────────
 
-// ─── 类型 ────────────────────────────────────────────────────────────────────
+export type PatchOp =
+    | { op: 'add_task'; task: TaskDef; afterRef?: string }
+    | { op: 'update_task'; ref: string; changes: Partial<TaskDef> }
+    | { op: 'remove_task'; ref: string }
+    | { op: 'update_props'; props: Partial<WorkflowDef> }
+    | { op: 'add_switch_branch'; ref: string; caseName: string }
+    | { op: 'add_fork_branch'; ref: string };
 
-export interface PendingOperation {
-    id: string;
-    toolName: string;
-    toolCallId: string;
-    args: Record<string, any>;
-    description: string;
-    status: 'pending' | 'accepted' | 'rejected';
+export interface DiffSummary {
+    added: string[];
+    modified: string[];
+    removed: string[];
+    propsChanged: boolean;
 }
 
-export interface ToolResult {
-    success: boolean;
-    message: string;
-    data?: any;
+export interface ToolCallResult {
+    type: 'propose' | 'info' | 'error';
+    /** For 'propose': the new WorkflowDef to show in ReviewBar */
+    proposed?: WorkflowDef;
+    /** For 'propose': human-readable change summary */
+    diff?: DiffSummary;
+    /** For 'info'/'error': text to append to chat */
+    text?: string;
 }
 
-// ─── 预览执行器（不真正修改 store，仅计算结果） ──────────────────────────────
+// ─── Pure JSON patch function ────────────────────────────────────────────────
 
-/**
- * 在给定 workflowDef 的拷贝上模拟执行 tool call，返回新的 def 和人类可读描述。
- * 用于 Ghost 预览和生成 pending 操作描述。
- */
-export function previewToolCall(
+export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
+    let result: WorkflowDef = { ...def, tasks: [...(def.tasks ?? [])] };
+
+    for (const op of ops) {
+        switch (op.op) {
+            case 'add_task': {
+                const task = op.task;
+                if (op.afterRef) {
+                    const idx = result.tasks.findIndex(t => t.taskReferenceName === op.afterRef);
+                    if (idx >= 0) {
+                        result.tasks = [
+                            ...result.tasks.slice(0, idx + 1),
+                            task,
+                            ...result.tasks.slice(idx + 1),
+                        ];
+                    } else {
+                        result.tasks = [...result.tasks, task];
+                    }
+                } else {
+                    result.tasks = [...result.tasks, task];
+                }
+                break;
+            }
+            case 'update_task':
+                result.tasks = result.tasks.map(t =>
+                    t.taskReferenceName === op.ref ? { ...t, ...op.changes } : t
+                );
+                break;
+
+            case 'remove_task':
+                result.tasks = result.tasks.filter(t => t.taskReferenceName !== op.ref);
+                break;
+
+            case 'update_props': {
+                const { tasks: _tasks, ...propsOnly } = op.props as any;
+                result = { ...result, ...propsOnly };
+                break;
+            }
+
+            case 'add_switch_branch': {
+                result.tasks = result.tasks.map(t => {
+                    if (t.taskReferenceName !== op.ref) return t;
+                    const decisionCases = { ...(t.decisionCases ?? {}) };
+                    if (op.caseName === 'default') {
+                        return { ...t, defaultCase: [] };
+                    }
+                    decisionCases[op.caseName] = [];
+                    return { ...t, decisionCases };
+                });
+                break;
+            }
+
+            case 'add_fork_branch': {
+                result.tasks = result.tasks.map(t => {
+                    if (t.taskReferenceName !== op.ref) return t;
+                    const newBranchRef = `branch_${Date.now()}`;
+                    const forkTasks = (t.forkTasks ?? []) as TaskDef[][];
+                    return { ...t, forkTasks: [...forkTasks, [{ name: newBranchRef, taskReferenceName: newBranchRef, type: 'SIMPLE' }]] };
+                });
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+
+// ─── Diff computation ────────────────────────────────────────────────────────
+
+export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): DiffSummary {
+    if (!before) {
+        return {
+            added: after.tasks.map(t => t.taskReferenceName),
+            modified: [],
+            removed: [],
+            propsChanged: false,
+        };
+    }
+
+    const beforeMap = new Map(before.tasks.map(t => [t.taskReferenceName, t]));
+    const afterMap = new Map(after.tasks.map(t => [t.taskReferenceName, t]));
+
+    const added: string[] = [];
+    const modified: string[] = [];
+    const removed: string[] = [];
+
+    for (const [ref, task] of afterMap) {
+        if (!beforeMap.has(ref)) {
+            added.push(ref);
+        } else if (JSON.stringify(task) !== JSON.stringify(beforeMap.get(ref))) {
+            modified.push(ref);
+        }
+    }
+
+    for (const ref of beforeMap.keys()) {
+        if (!afterMap.has(ref)) removed.push(ref);
+    }
+
+    const propsChanged =
+        before.name !== after.name ||
+        before.description !== after.description ||
+        before.timeoutSeconds !== after.timeoutSeconds;
+
+    return { added, modified, removed, propsChanged };
+}
+
+// ─── Main executor ───────────────────────────────────────────────────────────
+
+export function executeToolCall(
     toolName: string,
     args: Record<string, any>,
-): { description: string; toolResult: string } {
-    switch (toolName) {
-        case 'create_workflow':
-            return {
-                description: `创建工作流「${args.name}」${args.description ? ` — ${args.description}` : ''}`,
-                toolResult: JSON.stringify({ success: true, message: `Workflow "${args.name}" created.` }),
-            };
+): ToolCallResult {
+    const state = useWorkflowStore.getState();
+    const currentDef = state.workflowDef;
 
-        case 'add_task': {
-            const pos = args.afterRef ? `在 ${args.afterRef} 之后` : '在末尾';
-            return {
-                description: `${pos}添加 ${args.type} 任务「${args.name}」`,
-                toolResult: JSON.stringify({ success: true, message: `Task "${args.name}" (${args.type}) added.` }),
-            };
+    switch (toolName) {
+        case 'replace_workflow': {
+            const proposed = args.workflow as WorkflowDef;
+            if (!proposed?.name) {
+                return { type: 'error', text: '工作流定义缺少 name 字段' };
+            }
+            const diff = computeDiff(currentDef, proposed);
+            return { type: 'propose', proposed, diff };
         }
 
-        case 'modify_task':
-            return {
-                description: `修改任务 ${args.ref} 的属性: ${Object.keys(args.changes || {}).join(', ')}`,
-                toolResult: JSON.stringify({ success: true, message: `Task "${args.ref}" modified.` }),
-            };
+        case 'patch_workflow': {
+            const ops = args.ops as PatchOp[];
+            if (!ops?.length) {
+                return { type: 'error', text: '操作列表为空' };
+            }
+            if (!currentDef) {
+                return { type: 'error', text: '当前没有加载工作流，请先创建或加载一个工作流' };
+            }
+            const proposed = applyPatch(currentDef, ops);
+            const diff = computeDiff(currentDef, proposed);
+            return { type: 'propose', proposed, diff };
+        }
 
-        case 'remove_task':
-            return {
-                description: `删除任务「${args.ref}」`,
-                toolResult: JSON.stringify({ success: true, message: `Task "${args.ref}" removed.` }),
+        case 'get_workflow_state': {
+            if (!currentDef) {
+                return { type: 'info', text: '当前没有加载任何工作流，画布为空。' };
+            }
+            const tasks = currentDef.tasks.map(t => ({
+                ref: t.taskReferenceName,
+                name: t.name,
+                type: t.type,
+            }));
+            const summary = {
+                name: currentDef.name,
+                description: currentDef.description,
+                taskCount: currentDef.tasks.length,
+                tasks,
+                validation: state.validationResults,
             };
-
-        case 'add_decision_branch':
+            if (args.includeFull) {
+                (summary as any).fullDef = currentDef;
+            }
             return {
-                description: `为 ${args.ref} 添加分支「${args.caseName}」`,
-                toolResult: JSON.stringify({ success: true, message: `Branch "${args.caseName}" added to "${args.ref}".` }),
+                type: 'info',
+                text: `当前工作流「${currentDef.name}」包含 ${currentDef.tasks.length} 个任务。\n\n` +
+                    `任务列表：\n${tasks.map(t => `• ${t.ref} (${t.type}): ${t.name}`).join('\n')}`,
             };
-
-        case 'add_fork_branch':
-            return {
-                description: `为 ${args.ref} 添加并行分支`,
-                toolResult: JSON.stringify({ success: true, message: `New parallel branch added to "${args.ref}".` }),
-            };
-
-        case 'set_workflow_props':
-            return {
-                description: `修改工作流属性: ${Object.keys(args).join(', ')}`,
-                toolResult: JSON.stringify({ success: true, message: 'Workflow properties updated.' }),
-            };
-
-        case 'replace_workflow':
-            return {
-                description: `全量替换工作流为「${args.workflow?.name || 'AI 生成'}」（${args.workflow?.tasks?.length || 0} 个任务）`,
-                toolResult: JSON.stringify({ success: true, message: 'Workflow replaced.' }),
-            };
+        }
 
         case 'validate_workflow': {
-            const def = useWorkflowStore.getState().workflowDef;
-            if (!def) {
-                return { description: '校验工作流', toolResult: JSON.stringify({ success: true, message: 'No workflow to validate.' }) };
+            if (!currentDef) {
+                return { type: 'info', text: '当前没有加载工作流，无法校验。' };
             }
-            const results = validateWorkflow(def);
-            return {
-                description: '校验工作流',
-                toolResult: JSON.stringify({
-                    success: true,
-                    isValid: results.isValid,
-                    errors: results.errors.map(e => e.message),
-                    warnings: results.warnings.map(w => w.message),
-                }),
-            };
-        }
-
-        case 'get_workflow_context': {
-            const state = useWorkflowStore.getState();
-            const def = state.workflowDef;
-            if (!def) {
-                return { description: '获取上下文', toolResult: JSON.stringify({ success: true, message: 'No workflow loaded.' }) };
+            const results = validateWorkflow(currentDef);
+            if (results.isValid && results.warnings.length === 0) {
+                return { type: 'info', text: '✅ 工作流校验通过，没有错误或警告。' };
             }
-            return {
-                description: '获取当前工作流上下文',
-                toolResult: JSON.stringify({
-                    success: true,
-                    workflow: {
-                        name: def.name,
-                        description: def.description,
-                        taskCount: def.tasks.length,
-                        tasks: def.tasks.map(t => ({
-                            ref: t.taskReferenceName,
-                            name: t.name,
-                            type: t.type,
-                        })),
-                    },
-                    validation: state.validationResults,
-                }),
-            };
+            const lines: string[] = [];
+            results.errors.forEach(e => lines.push(`❌ ${e.message}`));
+            results.warnings.forEach(w => lines.push(`⚠️ ${w.message}`));
+            return { type: 'info', text: `校验结果：\n${lines.join('\n')}` };
         }
 
         default:
-            return {
-                description: `未知操作: ${toolName}`,
-                toolResult: JSON.stringify({ success: false, message: `Unknown tool: ${toolName}` }),
-            };
+            return { type: 'error', text: `未知工具: ${toolName}` };
     }
 }
 
-// ─── 真正执行器（审核通过后调用） ───────────────────────────────────────────
+// ─── Describe diff for chat display ─────────────────────────────────────────
 
-/**
- * 将一个 PendingOperation 真正执行到 workflowStore 中。
- */
-export function executeToolCall(op: PendingOperation): ToolResult {
-    const store = useWorkflowStore.getState();
-    const { toolName, args } = op;
-
-    try {
-        switch (toolName) {
-            case 'create_workflow':
-                store.createBlankWorkflow(args.name);
-                if (args.description) {
-                    store.updateWorkflowProperties({ description: args.description });
-                }
-                return { success: true, message: `Workflow "${args.name}" created.` };
-
-            case 'add_task': {
-                const taskRef = args.taskReferenceName || `${(args.type || 'simple').toLowerCase()}_${Date.now()}`;
-                const sourceRef = args.afterRef || getLastTaskRef();
-
-                // Build task node data
-                const nodeData = {
-                    data: {
-                        label: args.name,
-                        taskReferenceName: taskRef,
-                        taskType: args.type || 'SIMPLE',
-                    },
-                };
-
-                // Build edge data
-                const edgeData: any = {};
-
-                store.addNode(nodeData, sourceRef, '', '', edgeData);
-
-                // Apply additional properties if provided
-                const extraFields: Record<string, any> = {};
-                if (args.inputParameters) extraFields.inputParameters = args.inputParameters;
-                if (args.description) extraFields.description = args.description;
-                if (args.retryCount != null) extraFields.retryCount = args.retryCount;
-                if (args.timeoutSeconds != null) extraFields.timeoutSeconds = args.timeoutSeconds;
-                if (args.optional != null) extraFields.optional = args.optional;
-
-                // HTTP specific
-                if (args.type === 'HTTP') {
-                    const httpReq: any = {};
-                    if (args.httpMethod) httpReq.method = args.httpMethod;
-                    if (args.httpUri) httpReq.uri = args.httpUri;
-                    if (args.httpHeaders) httpReq.headers = args.httpHeaders;
-                    if (args.httpBody) httpReq.body = args.httpBody;
-                    if (Object.keys(httpReq).length > 0) {
-                        extraFields.inputParameters = {
-                            ...(extraFields.inputParameters || {}),
-                            http_request: httpReq,
-                        };
-                    }
-                }
-
-                // SubWorkflow specific
-                if (args.type === 'SUB_WORKFLOW' && args.subWorkflowName) {
-                    extraFields.subWorkflowParam = { name: args.subWorkflowName, version: args.subWorkflowVersion || 1 };
-                }
-
-                // Switch specific
-                if ((args.type === 'SWITCH' || args.type === 'DECISION') && args.caseValueParam) {
-                    extraFields.caseValueParam = args.caseValueParam;
-                }
-                if (args.caseExpression) extraFields.caseExpression = args.caseExpression;
-
-                // Event specific
-                if (args.type === 'EVENT' && args.sink) extraFields.sink = args.sink;
-
-                // Wait specific
-                if (args.type === 'WAIT' && args.duration) {
-                    extraFields.inputParameters = { ...(extraFields.inputParameters || {}), duration: args.duration };
-                }
-
-                // Terminate specific
-                if (args.type === 'TERMINATE' && args.terminationStatus) {
-                    extraFields.inputParameters = {
-                        ...(extraFields.inputParameters || {}),
-                        terminationStatus: args.terminationStatus,
-                    };
-                }
-
-                if (Object.keys(extraFields).length > 0) {
-                    store.updateTask(taskRef, extraFields);
-                }
-
-                return { success: true, message: `Task "${args.name}" added.` };
-            }
-
-            case 'modify_task':
-                if (!args.ref || !args.changes) {
-                    return { success: false, message: 'Missing ref or changes.' };
-                }
-                store.updateTask(args.ref, args.changes);
-                return { success: true, message: `Task "${args.ref}" modified.` };
-
-            case 'remove_task':
-                store.removeNode(args.ref);
-                return { success: true, message: `Task "${args.ref}" removed.` };
-
-            case 'add_decision_branch':
-                store.addDecisionBranch(args.ref, args.caseName);
-                return { success: true, message: `Branch "${args.caseName}" added.` };
-
-            case 'add_fork_branch':
-                store.addForkBranch(args.ref);
-                return { success: true, message: `Fork branch added.` };
-
-            case 'set_workflow_props':
-                store.updateWorkflowProperties(args);
-                return { success: true, message: 'Workflow properties updated.' };
-
-            case 'replace_workflow':
-                if (args.workflow) {
-                    store.setWorkflow(args.workflow);
-                    store.setMode('edit');
-                }
-                return { success: true, message: 'Workflow replaced.' };
-
-            case 'validate_workflow':
-            case 'get_workflow_context':
-                // Read-only operations, already handled in preview
-                return { success: true, message: 'Done.' };
-
-            default:
-                return { success: false, message: `Unknown tool: ${toolName}` };
-        }
-    } catch (err: any) {
-        return { success: false, message: err.message || 'Execution failed.' };
-    }
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getLastTaskRef(): string {
-    const def = useWorkflowStore.getState().workflowDef;
-    if (!def || def.tasks.length === 0) return 'start';
-    return def.tasks[def.tasks.length - 1].taskReferenceName;
+export function describeDiff(diff: DiffSummary): string {
+    const parts: string[] = [];
+    if (diff.added.length > 0) parts.push(`新增 ${diff.added.length} 个任务（${diff.added.join(', ')}）`);
+    if (diff.modified.length > 0) parts.push(`修改 ${diff.modified.length} 个任务（${diff.modified.join(', ')}）`);
+    if (diff.removed.length > 0) parts.push(`删除 ${diff.removed.length} 个任务（${diff.removed.join(', ')}）`);
+    if (diff.propsChanged) parts.push('修改了工作流属性');
+    return parts.length > 0 ? parts.join('，') : '无实质性变更';
 }

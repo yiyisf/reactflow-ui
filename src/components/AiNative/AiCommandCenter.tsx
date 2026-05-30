@@ -12,7 +12,12 @@ import { buildSystemPrompt } from '../../services/ai/systemPrompt';
 import type { Message } from '../../services/ai/protocolAdapter';
 
 interface AiCommandCenterProps {
+    /** Completely replaces the built-in base prompt (advanced customization) */
+    systemPrompt?: string;
+    /** Appends extra context to the base prompt (e.g. team conventions) */
     systemPromptExtra?: string;
+    /** Whether to show the in-app AI config button */
+    showConfigButton?: boolean;
     onShowConfig: () => void;
 }
 
@@ -42,7 +47,12 @@ const renderMarkdown = (content: string): React.ReactNode => {
     });
 };
 
-const AiCommandCenter: React.FC<AiCommandCenterProps> = ({ systemPromptExtra, onShowConfig }) => {
+const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
+    systemPrompt,
+    systemPromptExtra,
+    showConfigButton = true,
+    onShowConfig,
+}) => {
     const {
         messages,
         isStreaming,
@@ -80,7 +90,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({ systemPromptExtra, on
     };
 
     const buildHistory = useCallback((userInput: string): Message[] => {
-        const systemContent = buildSystemPrompt(userInput, systemPromptExtra);
+        const systemContent = buildSystemPrompt(userInput, { systemPrompt, systemPromptExtra });
         const history: Message[] = [{ role: 'system', content: systemContent }];
         const recent = messages.slice(-20);
         for (const msg of recent) {
@@ -92,7 +102,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({ systemPromptExtra, on
         }
         history.push({ role: 'user', content: userInput });
         return history;
-    }, [messages, systemPromptExtra]);
+    }, [messages, systemPrompt, systemPromptExtra]);
 
     const handleSend = async () => {
         const text = inputValue.trim();
@@ -209,7 +219,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({ systemPromptExtra, on
                     )}
                 </div>
                 <div className="ai-cc-actions">
-                    <button onClick={onShowConfig} title="配置 AI 服务">⚙️</button>
+                    {showConfigButton && (
+                        <button onClick={onShowConfig} title="配置 AI 服务">⚙️</button>
+                    )}
                     <button onClick={clearMessages} title="清空对话">🗑️</button>
                 </div>
             </div>

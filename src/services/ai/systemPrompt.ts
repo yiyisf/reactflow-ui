@@ -1,12 +1,21 @@
 /**
  * AI System Prompt — Conductor workflow expert prompt
+ *
+ * 三层定制体系（优先级从低到高）：
+ * 1. BASE_SYSTEM_PROMPT  — 本项目内置，Conductor 工作流专家角色 + 工具使用规则
+ * 2. systemPromptExtra   — 追加内容（集成方补充业务上下文，如公司名/规范）
+ * 3. systemPrompt        — 完全替换基础层（高级定制，完全控制 AI 角色和规则）
+ *
+ * BASE_SYSTEM_PROMPT 和 buildSystemPrompt 均已导出，集成方可按需复用。
  */
 
 import { formatContextForPrompt, buildContext } from './contextEngine';
 import { classifyIntent, getContextOptions } from './intentClassifier';
 import type { Intent } from './intentClassifier';
 
-const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专家 AI 助手。帮助用户通过自然语言设计和编辑 Conductor JSON 工作流。
+// ─── Built-in base prompt (exported for integrators to extend/reference) ────
+
+export const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专家 AI 助手。帮助用户通过自然语言设计和编辑 Conductor JSON 工作流。
 
 ## 工具使用规则
 1. **replace_workflow** — 用于：从零创建工作流、大范围结构重构。传入完整的 WorkflowDef JSON。
@@ -33,28 +42,48 @@ SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVEN
 - 用中文回答，简洁明了，先说明要做什么，再通过工具执行
 - 纯解释性问题直接文本回复，不需要调用工具`;
 
+// ─── Build function (exported for integrators who want full control) ─────────
+
+/**
+ * 构建完整 system prompt。
+ *
+ * @param userInput       当前用户输入（用于意图识别 + 上下文注入）
+ * @param systemPrompt    完全替换内置基础提示词（高级定制）
+ * @param systemPromptExtra  追加内容，附加在基础层之后（适合补充业务规范、公司名等）
+ */
 export function buildSystemPrompt(
     userInput: string,
-    extraPrompt?: string,
+    options?: {
+        systemPrompt?: string;
+        systemPromptExtra?: string;
+    },
 ): string {
+    const { systemPrompt, systemPromptExtra } = options ?? {};
+
     const intent = classifyIntent(userInput);
     const contextOptions = getContextOptions(intent);
     const ctx = buildContext(contextOptions);
     const contextBlock = formatContextForPrompt(ctx);
 
-    const parts = [BASE_SYSTEM_PROMPT];
+    // Base layer: use custom or built-in
+    const parts = [systemPrompt ?? BASE_SYSTEM_PROMPT];
 
+    // Workflow context (always injected regardless of customization)
     if (contextBlock) {
         parts.push(contextBlock);
     }
 
-    const intentHints = getIntentHints(intent);
-    if (intentHints) {
-        parts.push(`## 当前请求类型提示\n${intentHints}`);
+    // Intent hints (only injected when using built-in base, since custom prompts manage their own)
+    if (!systemPrompt) {
+        const intentHints = getIntentHints(intent);
+        if (intentHints) {
+            parts.push(`## 当前请求类型提示\n${intentHints}`);
+        }
     }
 
-    if (extraPrompt) {
-        parts.push(`## 额外上下文\n${extraPrompt}`);
+    // Extra append (always last)
+    if (systemPromptExtra) {
+        parts.push(`## 补充说明\n${systemPromptExtra}`);
     }
 
     return parts.join('\n\n');

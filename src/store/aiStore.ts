@@ -83,8 +83,9 @@ const useAiStore = create<AiStore>()(
             config: {
                 provider: 'auto',
                 apiKey: '',
-                baseUrl: 'https://api.openai.com/v1',
-                model: 'gpt-4o',
+                // baseUrl and model intentionally omitted — defaults to provider standards
+                // openai:    https://api.openai.com/v1 / gpt-4o
+                // anthropic: https://api.anthropic.com / claude-sonnet-4-6
             },
             messages: [WELCOME_MESSAGE],
             isStreaming: false,

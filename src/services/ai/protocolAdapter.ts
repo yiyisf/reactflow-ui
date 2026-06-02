@@ -1,16 +1,51 @@
 /**
  * AI Protocol Adapter — OpenAI / Anthropic 双协议统一适配
  *
- * 将两种 API 协议统一为相同的 StreamEvent 流，支持 Tool Use (Function Calling)。
+ * 支持的协议：
+ * - OpenAI Chat Completions API（/chat/completions）
+ *   兼容提供商：OpenAI、Mistral、DeepSeek、Groq、Together.ai、Azure OpenAI、
+ *              Ollama、LM Studio、vLLM 等任意 OpenAI 兼容服务
+ * - Anthropic Messages API（/messages）
+ *
+ * baseUrl 和 model 均为可选，不填时自动使用各提供商默认值。
  */
 
 // ─── 公共类型 ────────────────────────────────────────────────────────────────
 
 export interface AiConfig {
-    provider: 'openai' | 'anthropic' | 'auto';
+    /**
+     * 协议类型：
+     * - 'openai'     — OpenAI Chat Completions 协议（Mistral/Groq/DeepSeek 等兼容服务也选此项）
+     * - 'anthropic'  — Anthropic Messages 协议
+     * - 'auto'       — 根据 baseUrl 自动判断（包含 anthropic.com → Anthropic，其余 → OpenAI）
+     * @default 'auto'
+     */
+    provider?: 'openai' | 'anthropic' | 'auto';
+
+    /** API Key */
     apiKey: string;
-    baseUrl: string;
-    model: string;
+
+    /**
+     * API 基础 URL（不含路径）。
+     * 留空时使用各提供商标准地址：
+     * - OpenAI:    https://api.openai.com/v1
+     * - Anthropic: https://api.anthropic.com
+     *
+     * 常见第三方示例：
+     * - Mistral:   https://api.mistral.ai/v1
+     * - DeepSeek:  https://api.deepseek.com/v1
+     * - Groq:      https://api.groq.com/openai/v1
+     * - Ollama:    http://localhost:11434/v1
+     * - Azure:     https://{resource}.openai.azure.com/openai/deployments/{deploy}
+     */
+    baseUrl?: string;
+
+    /**
+     * 模型名称。留空时使用各提供商默认模型：
+     * - OpenAI:    gpt-4o
+     * - Anthropic: claude-sonnet-4-6
+     */
+    model?: string;
 }
 
 export interface Message {
@@ -35,15 +70,41 @@ export type StreamEvent =
     | { type: 'error'; message: string }
     | { type: 'done' };
 
-// ─── Provider 检测 ──────────────────────────────────────────────────────────
+// ─── Provider 默认值 ─────────────────────────────────────────────────────────
 
-function detectProvider(config: AiConfig): 'openai' | 'anthropic' {
-    if (config.provider !== 'auto') return config.provider;
-    if (config.baseUrl.includes('anthropic')) return 'anthropic';
-    return 'openai';
+export const PROVIDER_DEFAULTS = {
+    openai: {
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-4o',
+    },
+    anthropic: {
+        baseUrl: 'https://api.anthropic.com',
+        model: 'claude-sonnet-4-6',
+    },
+} as const;
+
+/** 解析有效配置（填充所有默认值） */
+function resolveConfig(config: AiConfig): Required<AiConfig> & { resolvedProvider: 'openai' | 'anthropic' } {
+    // Detect provider
+    let resolvedProvider: 'openai' | 'anthropic';
+    if (!config.provider || config.provider === 'auto') {
+        resolvedProvider = config.baseUrl?.includes('anthropic') ? 'anthropic' : 'openai';
+    } else {
+        resolvedProvider = config.provider;
+    }
+
+    const defaults = PROVIDER_DEFAULTS[resolvedProvider];
+
+    return {
+        provider: resolvedProvider,
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl?.replace(/\/$/, '') || defaults.baseUrl,
+        model: config.model || defaults.model,
+        resolvedProvider,
+    };
 }
 
-// ─── OpenAI 流式处理 ────────────────────────────────────────────────────────
+// ─── OpenAI 流式处理（兼容任意 OpenAI Chat Completions API） ─────────────────
 
 async function* streamOpenAI(
     messages: Message[],
@@ -51,8 +112,10 @@ async function* streamOpenAI(
     config: AiConfig,
     signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
+    const resolved = resolveConfig(config);
+
     const body: Record<string, any> = {
-        model: config.model || 'gpt-4o',
+        model: resolved.model,
         messages,
         temperature: 0.7,
         stream: true,
@@ -63,11 +126,11 @@ async function* streamOpenAI(
         body.tool_choice = 'auto';
     }
 
-    const response = await fetch(`${config.baseUrl}/chat/completions`, {
+    const response = await fetch(`${resolved.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.apiKey}`,
+            'Authorization': `Bearer ${resolved.apiKey}`,
         },
         body: JSON.stringify(body),
         signal,
@@ -83,7 +146,6 @@ async function* streamOpenAI(
     if (!reader) { yield { type: 'error', message: 'ReadableStream not supported' }; return; }
 
     const decoder = new TextDecoder();
-    // Accumulate partial tool calls by index
     const toolCalls: Record<number, { id: string; name: string; args: string }> = {};
 
     while (true) {
@@ -102,12 +164,10 @@ async function* streamOpenAI(
                 const delta = parsed.choices?.[0]?.delta;
                 if (!delta) continue;
 
-                // Text content
                 if (delta.content) {
                     yield { type: 'text', content: delta.content };
                 }
 
-                // Tool calls (may arrive in chunks)
                 if (delta.tool_calls) {
                     for (const tc of delta.tool_calls) {
                         const idx = tc.index ?? 0;
@@ -125,7 +185,6 @@ async function* streamOpenAI(
         }
     }
 
-    // Emit accumulated tool calls
     for (const tc of Object.values(toolCalls)) {
         try {
             const args = JSON.parse(tc.args);
@@ -146,7 +205,8 @@ async function* streamAnthropic(
     config: AiConfig,
     signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
-    // Anthropic 需要把 system message 分离出来
+    const resolved = resolveConfig(config);
+
     const systemMsg = messages.find(m => m.role === 'system');
     const chatMessages = messages
         .filter(m => m.role !== 'system')
@@ -157,7 +217,6 @@ async function* streamAnthropic(
                 : m.content,
         }));
 
-    // 转换 tool 定义到 Anthropic 格式
     const anthropicTools = tools.map(t => ({
         name: t.function.name,
         description: t.function.description,
@@ -165,7 +224,7 @@ async function* streamAnthropic(
     }));
 
     const body: Record<string, any> = {
-        model: config.model || 'claude-sonnet-4-20250514',
+        model: resolved.model,
         max_tokens: 4096,
         messages: chatMessages,
         stream: true,
@@ -173,12 +232,13 @@ async function* streamAnthropic(
     if (systemMsg) body.system = systemMsg.content;
     if (anthropicTools.length > 0) body.tools = anthropicTools;
 
-    const response = await fetch(`${config.baseUrl}/messages`, {
+    const response = await fetch(`${resolved.baseUrl}/messages`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'x-api-key': config.apiKey,
+            'x-api-key': resolved.apiKey,
             'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
         },
         body: JSON.stringify(body),
         signal,
@@ -239,9 +299,6 @@ async function* streamAnthropic(
                             currentToolArgs = '';
                         }
                         break;
-
-                    case 'message_stop':
-                        break;
                 }
             } catch {
                 // skip
@@ -261,14 +318,14 @@ export async function* streamChat(
     signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
     if (!config.apiKey) {
-        yield { type: 'error', message: 'Please configure AI API Key.' };
+        yield { type: 'error', message: '未配置 API Key，请在设置中填写。' };
         yield { type: 'done' };
         return;
     }
 
-    const provider = detectProvider(config);
+    const resolved = resolveConfig(config);
 
-    if (provider === 'anthropic') {
+    if (resolved.resolvedProvider === 'anthropic') {
         yield* streamAnthropic(messages, tools, config, signal);
     } else {
         yield* streamOpenAI(messages, tools, config, signal);

@@ -106,7 +106,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         theme,
         themeColor,
         layoutDirection,
-        height = '100vh',
+        height = '100%',
         onSave,
         onWorkflowChange,
         onRequestImport,

@@ -18,6 +18,7 @@
     flex-direction: column;
     width: 420px;
     min-width: 320px;
+    min-height: 0;
     border-right: 1px solid var(--border-primary);
     background: var(--bg-secondary);
     transition: width 0.3s ease, min-width 0.3s ease, opacity 0.3s ease;

@@ -119,7 +119,8 @@ export function buildContext(options?: { includeFull?: boolean }): WorkflowConte
 export function formatContextForPrompt(ctx: WorkflowContext): string {
     const parts: string[] = [];
 
-    parts.push(`## 当前工作流状态\n${ctx.summary}`);
+    // Timestamp helps LLM treat this as authoritative over stale conversation history
+    parts.push(`## 当前工作流状态（实时读取，以此为准）\n> ⚠️ 以下数据直接从画布实时获取，若与对话历史中的工作流描述有冲突，**以此处为准**。\n\n${ctx.summary}`);
 
     if (ctx.tasks.length > 0) {
         parts.push(`### 任务列表\n${ctx.tasks.map(t => `- ${t.ref} (${t.type}): ${t.name}`).join('\n')}`);

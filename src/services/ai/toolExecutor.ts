@@ -181,25 +181,36 @@ export function executeToolCall(
             if (!currentDef) {
                 return { type: 'info', text: '当前没有加载任何工作流，画布为空。' };
             }
-            const tasks = currentDef.tasks.map(t => ({
-                ref: t.taskReferenceName,
-                name: t.name,
-                type: t.type,
-            }));
-            const summary = {
-                name: currentDef.name,
-                description: currentDef.description,
-                taskCount: currentDef.tasks.length,
-                tasks,
-                validation: state.validationResults,
-            };
             if (args.includeFull) {
-                (summary as any).fullDef = currentDef;
+                return {
+                    type: 'info',
+                    text: `工作流「${currentDef.name}」完整定义：\n\`\`\`json\n${JSON.stringify(currentDef, null, 2)}\n\`\`\``,
+                };
             }
+            // Return per-task detail (inputParameters, timeoutSeconds, retryCount, etc.)
+            // Don't repeat the basic task list — that's already in the system prompt context.
+            const taskDetails = currentDef.tasks.map(t => {
+                const detail: string[] = [`**${t.taskReferenceName}** (${t.type})`];
+                if (t.timeoutSeconds) detail.push(`超时: ${t.timeoutSeconds}s`);
+                if (t.retryCount !== undefined) detail.push(`重试: ${t.retryCount}`);
+                if (t.inputParameters && Object.keys(t.inputParameters).length > 0) {
+                    detail.push(`inputParameters: ${JSON.stringify(t.inputParameters)}`);
+                }
+                if (t.type === 'HTTP' && t.httpRequest) {
+                    detail.push(`HTTP: ${t.httpRequest.method} ${t.httpRequest.uri}`);
+                }
+                if (t.type === 'SWITCH') {
+                    detail.push(`caseValueParam: ${t.caseValueParam || t.caseExpression}`);
+                    detail.push(`分支: ${Object.keys(t.decisionCases ?? {}).join(', ')}`);
+                }
+                return detail.join(' | ');
+            });
+            const validationSummary = state.validationResults.errors.length > 0
+                ? `\n\n校验错误：${state.validationResults.errors.map(e => e.message).join('；')}`
+                : '';
             return {
                 type: 'info',
-                text: `当前工作流「${currentDef.name}」包含 ${currentDef.tasks.length} 个任务。\n\n` +
-                    `任务列表：\n${tasks.map(t => `• ${t.ref} (${t.type}): ${t.name}`).join('\n')}`,
+                text: `工作流「${currentDef.name}」各任务详情：\n${taskDetails.join('\n')}${validationSummary}`,
             };
         }
 

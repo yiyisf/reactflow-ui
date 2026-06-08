@@ -212,13 +212,20 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowStore.setWorkflow(proposal.proposedDef);
         workflowStore.setMode('edit');
         aiStore.recordAccept();
+
+        // Flash added + modified nodes so the user can immediately spot the changes.
+        // Use rAF to let setWorkflow's layout pass complete first.
+        const flashRefs = [...proposal.diff.added, ...proposal.diff.modified];
+        if (flashRefs.length > 0) {
+            requestAnimationFrame(() => workflowStore.flashNodes(flashRefs));
+        }
+
         // Anchor the conversation history to the new workflow state.
-        // This prevents the LLM from referencing stale task descriptions in prior messages.
         const def = proposal.proposedDef;
-        const taskSummary = def.tasks.map(t => `${t.taskReferenceName}(${t.type})`).join(', ');
+        const taskSummary = (def.tasks ?? []).map(t => `${t.taskReferenceName}(${t.type})`).join(', ');
         aiStore.addMessage({
             role: 'assistant',
-            content: `📌 工作流已更新：「${def.name}」现包含 ${def.tasks.length} 个任务：${taskSummary}。`,
+            content: `📌 工作流已更新：「${def.name}」现包含 ${(def.tasks ?? []).length} 个任务：${taskSummary}。`,
         });
         if (onAiMetrics) onAiMetrics(aiStore.getMetrics());
     }, [aiStore.pendingProposal, onAiMetrics]);

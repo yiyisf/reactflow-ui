@@ -228,6 +228,8 @@ export interface WorkflowActions {
     setViewMode: (viewMode: ViewMode) => void;
     startSimulation: () => void;
     stopSimulation: () => void;
+    /** Temporarily select nodes by taskReferenceName to visually highlight AI-accepted changes. */
+    flashNodes: (refs: string[]) => void;
 }
 
 /**

@@ -408,6 +408,84 @@
     background: rgba(239, 68, 68, 0.08);
 }
 
+/* ─── ReviewBar: expand/detail toggle ───────────────────────────────────── */
+
+.ai-review-detail-toggle {
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-primary);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.ai-review-detail-toggle:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+/* ─── ReviewBar: expandable diff detail list ─────────────────────────────── */
+
+.ai-review-detail {
+    padding: 8px 16px 4px;
+    border-bottom: 1px solid var(--border-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    animation: reviewDetailSlide 0.18s ease;
+    max-height: 180px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+@keyframes reviewDetailSlide {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-review-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    background: var(--bg-tertiary);
+    border: 1px solid transparent;
+}
+
+.ai-review-detail-item.added   { border-color: rgba(16,185,129,0.2); }
+.ai-review-detail-item.modified { border-color: rgba(245,158,11,0.2); }
+.ai-review-detail-item.removed { border-color: rgba(239,68,68,0.2); }
+.ai-review-detail-item.props   { border-color: rgba(59,130,246,0.2); }
+
+.ai-review-detail-symbol {
+    font-size: 12px;
+    font-weight: 700;
+    width: 14px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.ai-review-detail-ref {
+    flex: 1;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.ai-review-detail-kind {
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
 /* ─── Config dialog ──────────────────────────────────────────────────────── */
 
 .ai-config-overlay {

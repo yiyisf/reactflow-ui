@@ -725,6 +725,19 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 },
 
+                flashNodes: (refs: string[]) => {
+                    if (refs.length === 0) return;
+                    const refSet = new Set(refs);
+                    set(s => ({
+                        nodes: s.nodes.map(n => refSet.has(n.id) ? { ...n, selected: true } : n),
+                    }));
+                    setTimeout(() => {
+                        set(s => ({
+                            nodes: s.nodes.map(n => refSet.has(n.id) ? { ...n, selected: false } : n),
+                        }));
+                    }, 2500);
+                },
+
                 setTheme: (theme: 'dark' | 'light') => set({ theme }),
                 setThemeColor: (themeColor: ThemeColor) => set({ themeColor }),
                 setEdgeType: (edgeType: string) => set({ edgeType }),

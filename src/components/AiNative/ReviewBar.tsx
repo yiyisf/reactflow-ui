@@ -4,9 +4,10 @@
  * Shows a unified diff summary when AI has proposed changes.
  * One-click accept applies setWorkflow(proposedDef).
  * One-click reject discards the proposal.
+ * Expandable detail section lists every changed task reference.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { ProposedChange } from '../../store/aiStore';
 
 interface ReviewBarProps {
@@ -22,14 +23,52 @@ const LEVEL_LABEL: Record<string, { label: string; color: string; bg: string }> 
 };
 
 const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) => {
+    const [expanded, setExpanded] = useState(false);
+
     if (!proposal) return null;
 
     const { diff, inferredLevel } = proposal;
     const totalChanges = diff.added.length + diff.modified.length + diff.removed.length + (diff.propsChanged ? 1 : 0);
     const levelMeta = inferredLevel ? LEVEL_LABEL[inferredLevel] : null;
 
+    const detailItems: Array<{ ref: string; kind: 'added' | 'modified' | 'removed' }> = [
+        ...diff.added.map(r => ({ ref: r, kind: 'added' as const })),
+        ...diff.modified.map(r => ({ ref: r, kind: 'modified' as const })),
+        ...diff.removed.map(r => ({ ref: r, kind: 'removed' as const })),
+    ];
+
+    const kindMeta = {
+        added:    { symbol: '+', label: '新增', color: '#10b981' },
+        modified: { symbol: '~', label: '修改', color: '#f59e0b' },
+        removed:  { symbol: '−', label: '删除', color: '#ef4444' },
+    };
+
     return (
         <div className="ai-review-bar">
+            {/* Expandable diff detail */}
+            {expanded && detailItems.length > 0 && (
+                <div className="ai-review-detail">
+                    {diff.propsChanged && (
+                        <div className="ai-review-detail-item props">
+                            <span className="ai-review-detail-symbol" style={{ color: 'var(--color-accent)' }}>≠</span>
+                            <span className="ai-review-detail-ref">工作流属性（名称/描述/超时）</span>
+                            <span className="ai-review-detail-kind" style={{ color: 'var(--color-accent)' }}>属性变更</span>
+                        </div>
+                    )}
+                    {detailItems.map(({ ref, kind }) => {
+                        const m = kindMeta[kind];
+                        return (
+                            <div key={`${kind}-${ref}`} className={`ai-review-detail-item ${kind}`}>
+                                <span className="ai-review-detail-symbol" style={{ color: m.color }}>{m.symbol}</span>
+                                <span className="ai-review-detail-ref">{ref}</span>
+                                <span className="ai-review-detail-kind" style={{ color: m.color }}>{m.label}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Main bar */}
             <div className="ai-review-content">
                 <div className="ai-review-icon">✨</div>
                 <div className="ai-review-info">
@@ -52,22 +91,25 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                     </div>
                     <div className="ai-review-chips">
                         {diff.added.length > 0 && (
-                            <span className="ai-diff-chip added" title={diff.added.join(', ')}>
-                                +{diff.added.length} 新增
-                            </span>
+                            <span className="ai-diff-chip added">+{diff.added.length} 新增</span>
                         )}
                         {diff.modified.length > 0 && (
-                            <span className="ai-diff-chip modified" title={diff.modified.join(', ')}>
-                                ~{diff.modified.length} 修改
-                            </span>
+                            <span className="ai-diff-chip modified">~{diff.modified.length} 修改</span>
                         )}
                         {diff.removed.length > 0 && (
-                            <span className="ai-diff-chip removed" title={diff.removed.join(', ')}>
-                                -{diff.removed.length} 删除
-                            </span>
+                            <span className="ai-diff-chip removed">-{diff.removed.length} 删除</span>
                         )}
                         {diff.propsChanged && (
                             <span className="ai-diff-chip props">属性变更</span>
+                        )}
+                        {totalChanges > 0 && (
+                            <button
+                                className="ai-review-detail-toggle"
+                                onClick={() => setExpanded(e => !e)}
+                                title={expanded ? '收起详情' : '展开查看每个变更的任务'}
+                            >
+                                {expanded ? '▲ 收起' : '▼ 详情'}
+                            </button>
                         )}
                     </div>
                 </div>

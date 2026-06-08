@@ -135,6 +135,13 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 }} title="此节点有警告信息">⚠️</div>
             )}
 
+            {data.proposalStatus && (
+                <div className={`node-proposal-badge node-proposal-badge-${data.proposalStatus}`}
+                    style={{ pointerEvents: 'auto' }}>
+                    {data.proposalStatus === 'added' ? '+' : data.proposalStatus === 'modified' ? '~' : '−'}
+                </div>
+            )}
+
             {/* ── Header bar ─────────────────────────────── */}
             {/* pointerEvents: auto 恢复：header 需响应点击（选中节点、迭代次数 badge 等）
                 子元素触发的事件会通过 DOM 冒泡传到 ReactFlow wrapper，完成节点选中逻辑 */}

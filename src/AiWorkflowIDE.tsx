@@ -213,9 +213,11 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     const handleAccept = useCallback(() => {
         const proposal = aiStore.pendingProposal;
         if (!proposal) return;
+
+        // Clear proposal BEFORE setWorkflow so nodes render without diff badges in the new state.
+        aiStore.recordAccept();
         workflowStore.setWorkflow(proposal.proposedDef);
         workflowStore.setMode('edit');
-        aiStore.recordAccept();
 
         // Flash added + modified nodes so the user can immediately spot the changes.
         // Use rAF to let setWorkflow's layout pass complete first.
@@ -233,11 +235,12 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             content: `📌 工作流已更新：「${def.name}」现包含 ${tasks.length} 个任务：${taskSummary}。`,
         });
 
-        // D1: Generate context-aware follow-up chips to keep the user engaged
+        // D1: Generate context-aware follow-up chips to keep the user engaged.
+        // Read validation state from store directly to avoid stale hook snapshot.
         const hasHuman = tasks.some(t => t.type === 'HUMAN');
         const hasErrorHandling = tasks.some(t => t.type === 'TERMINATE' || t.type === 'SWITCH');
         const hasFork = tasks.some(t => t.type === 'FORK_JOIN' || t.type === 'FORK_JOIN_DYNAMIC');
-        const hasValidationErrors = workflowStore.validationResults.errors.length > 0;
+        const hasValidationErrors = useWorkflowStore.getState().validationResults.errors.length > 0;
         const chips: string[] = [
             hasValidationErrors
                 ? '修复当前工作流中的校验错误'
@@ -251,7 +254,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     ? '为关键步骤添加重试机制'
                     : '给这个流程添加异常处理分支',
         ];
-        aiStore.setFollowUpChips(chips.slice(0, 3));
+        aiStore.setFollowUpChips(chips);
 
         if (onAiMetrics) onAiMetrics(aiStore.getMetrics());
     }, [aiStore.pendingProposal, onAiMetrics]);

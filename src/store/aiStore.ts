@@ -130,6 +130,7 @@ const useAiStore = create<AiStore>()(
                 streamingText: '',
                 isStreaming: false,
                 pendingProposal: null,
+                followUpChips: null,
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),

@@ -72,6 +72,13 @@ const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
 
 // ─── Welcome chips logic ──────────────────────────────────────────────────────
 
+const FALLBACK_EMPTY_CHIPS = [
+    '从零创建一个用户注册通知流程',
+    '设计一个 CI/CD 部署流水线',
+    '创建一个带人工审批的申请流程',
+    '帮我设计一个数据处理管道',
+];
+
 function buildWelcomeChips(
     hasWorkflow: boolean,
     libraryItems: { workflowLevel: string; description: string }[],
@@ -86,6 +93,8 @@ function buildWelcomeChips(
                 '设计一个 CI/CD 部署流水线',
             ].slice(0, 4);
         }
+        // Library present but no L2 items: fall back to generic chips so onboarding is never blank.
+        if (libraryItems.length > 0) return FALLBACK_EMPTY_CHIPS;
         return [];  // template gallery replaces chips when canvas is empty and no library
     }
     return [
@@ -139,7 +148,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
     const selectedTask = useWorkflowStore(s => s.selectedTask);
-    const setSelectedTask = useWorkflowStore(s => s.setSelectedTask);
+    const selectTaskAction = useWorkflowStore(s => s.selectTaskAction);
     const libraryItems = useLibraryStore(s => s.items);
 
     const [inputValue, setInputValue] = useState('');
@@ -536,7 +545,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 </span>
                                 <button
                                     className="ai-node-context-dismiss"
-                                    onClick={() => setSelectedTask(null)}
+                                    onClick={() => selectTaskAction(null)}
                                     title="取消选中"
                                 >
                                     ×

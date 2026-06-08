@@ -184,6 +184,8 @@ export interface WorkflowState {
     isDetailPanelOpen: boolean;
     simState: Record<string, 'idle' | 'running' | 'done'>;
     isSimRunning: boolean;
+    /** 每次 setWorkflow() 调用时递增，用于触发 WorkflowDesigner 的 fitView */
+    workflowLoadKey: number;
 }
 
 /**
@@ -226,6 +228,8 @@ export interface WorkflowActions {
     setViewMode: (viewMode: ViewMode) => void;
     startSimulation: () => void;
     stopSimulation: () => void;
+    /** Temporarily select nodes by taskReferenceName to visually highlight AI-accepted changes. */
+    flashNodes: (refs: string[]) => void;
 }
 
 /**

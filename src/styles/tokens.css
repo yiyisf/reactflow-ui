@@ -47,7 +47,7 @@
 
     /* Glass Effect */
     --glass-surface: rgba(30, 41, 59, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.18);
 
     /* Typography */
     --text-primary: #f8fafc;
@@ -59,8 +59,12 @@
     --text-inverse: #0f172a;
 
     /* Borders */
-    --border-primary: rgba(255, 255, 255, 0.1);
-    --border-secondary: rgba(255, 255, 255, 0.2);
+    --border-primary: rgba(255, 255, 255, 0.18);
+    --border-secondary: rgba(255, 255, 255, 0.32);
+
+    /* Node shadows — 深色模式下加强阴影可见度 */
+    --node-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), 0 1px 6px rgba(0, 0, 0, 0.35);
+    --node-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* ------------------------------------------------------------------
@@ -78,7 +82,7 @@
 
     /* Glass Effect */
     --glass-surface: rgba(255, 255, 255, 0.8);
-    --glass-border: rgba(0, 0, 0, 0.1);
+    --glass-border: rgba(0, 0, 0, 0.15);
 
     /* Typography */
     --text-primary: #0f172a;
@@ -90,8 +94,12 @@
     --text-inverse: #ffffff;
 
     /* Borders */
-    --border-primary: rgba(0, 0, 0, 0.1);
-    --border-secondary: rgba(0, 0, 0, 0.2);
+    --border-primary: rgba(0, 0, 0, 0.15);
+    --border-secondary: rgba(0, 0, 0, 0.28);
+
+    /* Node shadows — 浅色模式下保持适中阴影 */
+    --node-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.12);
+    --node-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 
 /* ------------------------------------------------------------------

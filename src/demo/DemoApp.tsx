@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { WorkflowIDE } from '../WorkflowIDE';
-import type { WorkflowIDERef } from '../WorkflowIDE';
+import { AiWorkflowIDE } from '../AiWorkflowIDE';
+
 import type { ViewMode } from '../types/workflow';
 import type { WorkflowDef } from '../types/conductor';
 import { useTheme } from '../hooks/useTheme';
@@ -17,6 +18,7 @@ function DemoApp() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [useNewAiMode, setUseNewAiMode] = useState(false);
   const [allowOperations, setAllowOperations] = useState(true);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
@@ -53,7 +55,7 @@ function DemoApp() {
   };
 
   // Ref for imperative access to WorkflowIDE
-  const ideRef = useRef<WorkflowIDERef>(null);
+  const ideRef = useRef<any>(null);
 
   // Track current workflow def from onWorkflowChange (replaces direct store access)
   const [currentDef, setCurrentDef] = useState<WorkflowDef | null>(null);
@@ -206,7 +208,7 @@ function DemoApp() {
               </span>
             )}
 
-            {workflowExecution && (
+            {workflowExecution && !useNewAiMode && (
               <>
                 <button
                   className={`mode-btn ${!allowOperations ? 'active' : ''}`}
@@ -254,6 +256,29 @@ function DemoApp() {
               }}
             >
               {isReadOnly ? '👁️ 仅查看' : '✏️ 编辑中'}
+            </button>
+
+            <div className="divider"></div>
+
+            <button
+              className={`mode-btn ${useNewAiMode ? 'active' : ''}`}
+              onClick={() => setUseNewAiMode(!useNewAiMode)}
+              title={useNewAiMode ? "切换回旧版设计器" : "体验全新 AI 工作流设计器"}
+              style={{
+                background: useNewAiMode ? 'var(--color-accent)' : 'var(--bg-tertiary)',
+                border: '1px solid var(--border-primary)',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: useNewAiMode ? '#fff' : 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '13px',
+                fontWeight: 500
+              }}
+            >
+              {useNewAiMode ? '✨ AiWorkflowIDE' : '💻 WorkflowIDE'}
             </button>
 
             <div className="divider"></div>
@@ -397,37 +422,58 @@ function DemoApp() {
       <div className="app-content" style={{ flex: 1, position: 'relative' }}>
         {error && <div className="error-message">⚠️ {error}</div>}
 
-        <WorkflowIDE
-          ref={ideRef}
-          workflowDef={workflowJson}
-          workflowExecution={workflowExecution}
-          readOnly={isReadOnly}
-          theme={themeMode}
-          themeColor={themeColor}
-          layoutDirection="LR"
-          searchQuery={searchQuery}
-          viewMode={viewMode}
-          aiConfig={aiConfig}
-          onSave={handleSave}
-          onWorkflowChange={handleWorkflowChange}
-          onRequestImport={() => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = (e) => handleFileUpload(e as any);
-            input.click();
-          }}
-          executionActions={workflowExecution ? {
-            allowOperations,
-            onPause: (wfId) => console.log('[demo] 暂停工作流', wfId),
-            onResume: (wfId) => console.log('[demo] 继续工作流', wfId),
-            onTerminate: (wfId) => console.log('[demo] 终止工作流', wfId),
-            onRetry: (wfId) => console.log('[demo] 重试工作流', wfId),
-            onRestart: (wfId, opts) => console.log('[demo] 重启工作流', wfId, opts?.useLatestDef ? '（最新版本）' : '（执行版本）'),
-            onRerunFromTask: (wfId, ref, taskId) => console.log('[demo] 从任务重新运行', wfId, ref, 'taskId:', taskId),
-            onSkipTask: (wfId, ref, taskId) => console.log('[demo] 跳过任务', wfId, ref, 'taskId:', taskId),
-          } : undefined}
-        />
+        {useNewAiMode ? (
+          <AiWorkflowIDE
+            ref={ideRef}
+            workflowDef={workflowJson}
+            workflowExecution={workflowExecution}
+            theme={themeMode}
+            themeColor={themeColor}
+            layoutDirection="LR"
+            aiConfig={aiConfig}
+            onSave={handleSave}
+            onWorkflowChange={handleWorkflowChange}
+            onRequestImport={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.json';
+              input.onchange = (e) => handleFileUpload(e as any);
+              input.click();
+            }}
+          />
+        ) : (
+          <WorkflowIDE
+            ref={ideRef}
+            workflowDef={workflowJson}
+            workflowExecution={workflowExecution}
+            readOnly={isReadOnly}
+            theme={themeMode}
+            themeColor={themeColor}
+            layoutDirection="LR"
+            searchQuery={searchQuery}
+            viewMode={viewMode}
+            aiConfig={aiConfig}
+            onSave={handleSave}
+            onWorkflowChange={handleWorkflowChange}
+            onRequestImport={() => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.json';
+              input.onchange = (e) => handleFileUpload(e as any);
+              input.click();
+            }}
+            executionActions={workflowExecution ? {
+              allowOperations,
+              onPause: (wfId) => console.log('[demo] 暂停工作流', wfId),
+              onResume: (wfId) => console.log('[demo] 继续工作流', wfId),
+              onTerminate: (wfId) => console.log('[demo] 终止工作流', wfId),
+              onRetry: (wfId) => console.log('[demo] 重试工作流', wfId),
+              onRestart: (wfId, opts) => console.log('[demo] 重启工作流', wfId, opts?.useLatestDef ? '（最新版本）' : '（执行版本）'),
+              onRerunFromTask: (wfId, ref, taskId) => console.log('[demo] 从任务重新运行', wfId, ref, 'taskId:', taskId),
+              onSkipTask: (wfId, ref, taskId) => console.log('[demo] 跳过任务', wfId, ref, 'taskId:', taskId),
+            } : undefined}
+          />
+        )}
       </div>
     </div>
   );

@@ -727,15 +727,31 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 flashNodes: (refs: string[]) => {
                     if (refs.length === 0) return;
+
+                    // Cancel any in-flight flash so rapid re-accepts don't cross-deselect
+                    const prev = (get() as any).__flashTimeout;
+                    if (prev) clearTimeout(prev);
+
                     const refSet = new Set(refs);
+
+                    // Snapshot pre-flash selection so the timeout restores original state
+                    // rather than unconditionally deselecting (which would stomp user selections)
+                    const preFlash: Record<string, boolean> = {};
+                    get().nodes.forEach(n => { if (refSet.has(n.id)) preFlash[n.id] = n.selected ?? false; });
+
                     set(s => ({
                         nodes: s.nodes.map(n => refSet.has(n.id) ? { ...n, selected: true } : n),
                     }));
-                    setTimeout(() => {
+
+                    const timeout = setTimeout(() => {
                         set(s => ({
-                            nodes: s.nodes.map(n => refSet.has(n.id) ? { ...n, selected: false } : n),
+                            nodes: s.nodes.map(n =>
+                                refSet.has(n.id) ? { ...n, selected: preFlash[n.id] ?? false } : n
+                            ),
                         }));
                     }, 2500);
+
+                    (get() as any).__flashTimeout = timeout;
                 },
 
                 setTheme: (theme: 'dark' | 'light') => set({ theme }),
@@ -825,7 +841,9 @@ const useWorkflowStore = create<WorkflowStore>()(
                 partialize: (state: WorkflowStore) => ({
                     workflowDef: state.workflowDef,
                     layoutDirection: state.layoutDirection,
-                    nodes: state.nodes,
+                    // Strip `selected` so flash-selection is never captured in undo history.
+                    // Explicit cast avoids TypeScript exposing ReactFlow's internal symbol type.
+                    nodes: state.nodes.map(n => Object.assign({}, n, { selected: false }) as typeof n),
                     edges: state.edges,
                     taskMap: state.taskMap,
                     theme: state.theme,

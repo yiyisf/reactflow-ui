@@ -7,7 +7,7 @@
  * Expandable detail section lists every changed task reference.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ProposedChange } from '../../store/aiStore';
 
 interface ReviewBarProps {
@@ -15,6 +15,12 @@ interface ReviewBarProps {
     onAccept: () => void;
     onReject: () => void;
 }
+
+const KIND_META = {
+    added:    { symbol: '+', label: '新增', color: '#10b981' },
+    modified: { symbol: '~', label: '修改', color: '#f59e0b' },
+    removed:  { symbol: '−', label: '删除', color: '#ef4444' },
+} as const;
 
 const LEVEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
     L1: { label: 'L1 原子', color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
@@ -24,6 +30,9 @@ const LEVEL_LABEL: Record<string, { label: string; color: string; bg: string }> 
 
 const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) => {
     const [expanded, setExpanded] = useState(false);
+
+    // Reset expand state whenever a new proposal replaces the previous one
+    useEffect(() => { setExpanded(false); }, [proposal?.id]);
 
     if (!proposal) return null;
 
@@ -37,16 +46,13 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
         ...diff.removed.map(r => ({ ref: r, kind: 'removed' as const })),
     ];
 
-    const kindMeta = {
-        added:    { symbol: '+', label: '新增', color: '#10b981' },
-        modified: { symbol: '~', label: '修改', color: '#f59e0b' },
-        removed:  { symbol: '−', label: '删除', color: '#ef4444' },
-    };
+    // totalChanges > 0 is the correct gate: includes propsChanged-only proposals
+    const hasDetailContent = totalChanges > 0;
 
     return (
         <div className="ai-review-bar">
             {/* Expandable diff detail */}
-            {expanded && detailItems.length > 0 && (
+            {expanded && hasDetailContent && (
                 <div className="ai-review-detail">
                     {diff.propsChanged && (
                         <div className="ai-review-detail-item props">
@@ -56,7 +62,7 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                         </div>
                     )}
                     {detailItems.map(({ ref, kind }) => {
-                        const m = kindMeta[kind];
+                        const m = KIND_META[kind];
                         return (
                             <div key={`${kind}-${ref}`} className={`ai-review-detail-item ${kind}`}>
                                 <span className="ai-review-detail-symbol" style={{ color: m.color }}>{m.symbol}</span>
@@ -102,7 +108,7 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                         {diff.propsChanged && (
                             <span className="ai-diff-chip props">属性变更</span>
                         )}
-                        {totalChanges > 0 && (
+                        {hasDetailContent && (
                             <button
                                 className="ai-review-detail-toggle"
                                 onClick={() => setExpanded(e => !e)}

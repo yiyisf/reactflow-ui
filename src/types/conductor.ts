@@ -130,6 +130,35 @@ export interface TaskDef {
 }
 
 /**
+ * 工作流入参定义（结构化，向后兼容 string[] 旧格式）
+ */
+export interface WorkflowInputParam {
+    /** 参数名 */
+    name: string;
+    /** 参数类型 */
+    type?: 'string' | 'number' | 'boolean' | 'object' | 'array';
+    /** 用途说明 */
+    description?: string;
+    /** 是否必填 */
+    required?: boolean;
+    /** 默认值 */
+    defaultValue?: any;
+    /** 示例值（在执行验证表单中展示） */
+    example?: any;
+}
+
+/**
+ * 解析工作流入参声明：兼容 string[] 旧格式与 WorkflowInputParam[] 新格式
+ */
+export function parseWorkflowInputParams(raw: any[] | undefined): WorkflowInputParam[] {
+    if (!raw || raw.length === 0) return [];
+    if (typeof raw[0] === 'string') {
+        return (raw as string[]).map(name => ({ name }));
+    }
+    return raw as WorkflowInputParam[];
+}
+
+/**
  * Conductor 工作流定义
  */
 /**
@@ -144,8 +173,8 @@ export interface WorkflowDef {
     version?: number;
     /** 任务列表 (DAG 定义) */
     tasks: TaskDef[];
-    /** 输入参数定义 (用于文档生成) */
-    inputParameters?: any[];
+    /** 输入参数定义：支持 string[]（旧格式）或 WorkflowInputParam[]（结构化新格式） */
+    inputParameters?: string[] | WorkflowInputParam[];
     /** 输出参数映射 */
     outputParameters?: Record<string, any>;
     schemaVersion?: number;

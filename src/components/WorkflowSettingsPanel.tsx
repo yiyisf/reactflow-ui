@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import useWorkflowStore from '../store/workflowStore';
-import { WorkflowDef } from '../types/conductor';
+import { WorkflowDef, WorkflowInputParam, parseWorkflowInputParams } from '../types/conductor';
 
 interface WorkflowSettingsPanelProps {
     isOpen: boolean;
@@ -225,14 +225,122 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
         </>
     );
 
-    const renderParamsTab = () => (
-        <>
-            {renderTextArea('输入参数声明 (inputParameters)', 'inputParameters', true)}
-            {renderTextArea('输出参数映射 (outputParameters)', 'outputParameters', true)}
-            {renderTextArea('默认输入模板 (inputTemplate)', 'inputTemplate', true)}
-            {renderTextArea('工作流级变量 (variables)', 'variables', true)}
-        </>
-    );
+    const renderParamsTab = () => {
+        const inputParams: WorkflowInputParam[] = parseWorkflowInputParams((localDef as any)?.inputParameters);
+
+        const updateInputParams = (params: WorkflowInputParam[]) => {
+            if (isReadOnly) return;
+            handleChange('inputParameters', params);
+        };
+
+        const addParam = () => {
+            const newParams = [...inputParams, { name: `param_${inputParams.length + 1}`, type: 'string' as const, required: false }];
+            updateInputParams(newParams);
+        };
+
+        const removeParam = (idx: number) => {
+            const newParams = inputParams.filter((_, i) => i !== idx);
+            updateInputParams(newParams);
+        };
+
+        const updateParam = (idx: number, field: keyof WorkflowInputParam, value: any) => {
+            const newParams = inputParams.map((p, i) => i === idx ? { ...p, [field]: value } : p);
+            updateInputParams(newParams);
+        };
+
+        const paramFieldStyle: React.CSSProperties = {
+            padding: '6px 10px', borderRadius: '6px', border: `1px solid ${borderColor}`,
+            background: inputBg, color: textColor, fontSize: '12px', outline: 'none', fontFamily: 'inherit',
+        };
+
+        return (
+            <>
+                {/* 结构化入参编辑器 */}
+                <div style={{ marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <label style={labelStyle}>入参声明 (INPUT PARAMETERS)</label>
+                        {!isReadOnly && (
+                            <button onClick={addParam} style={{
+                                background: 'var(--color-accent)', color: 'var(--text-inverse)',
+                                border: 'none', borderRadius: '6px', padding: '5px 12px',
+                                fontSize: '12px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                            }}>+ 添加参数</button>
+                        )}
+                    </div>
+                    {inputParams.length === 0 ? (
+                        <p style={{ fontSize: '12px', color: secondaryTextColor, margin: 0, padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: `1px solid ${borderColor}` }}>
+                            暂无入参声明。点击"+ 添加参数"来定义工作流的输入参数，这些参数将在执行验证时作为表单字段展示。
+                        </p>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {inputParams.map((param, idx) => (
+                                <div key={idx} style={{ background: 'var(--bg-secondary)', border: `1px solid ${borderColor}`, borderRadius: '10px', padding: '12px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto auto', gap: '8px', alignItems: 'center' }}>
+                                        <input
+                                            style={paramFieldStyle}
+                                            placeholder="参数名"
+                                            value={param.name}
+                                            onChange={e => updateParam(idx, 'name', e.target.value)}
+                                            disabled={isReadOnly}
+                                        />
+                                        <select
+                                            style={{ ...paramFieldStyle, cursor: isReadOnly ? 'not-allowed' : 'pointer' }}
+                                            value={param.type ?? 'string'}
+                                            onChange={e => updateParam(idx, 'type', e.target.value)}
+                                            disabled={isReadOnly}
+                                        >
+                                            {['string', 'number', 'boolean', 'object', 'array'].map(t => (
+                                                <option key={t} value={t}>{t}</option>
+                                            ))}
+                                        </select>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: secondaryTextColor, cursor: isReadOnly ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={!!param.required}
+                                                onChange={e => updateParam(idx, 'required', e.target.checked)}
+                                                disabled={isReadOnly}
+                                                style={{ accentColor: 'var(--color-accent)' }}
+                                            />
+                                            必填
+                                        </label>
+                                        {!isReadOnly && (
+                                            <button onClick={() => removeParam(idx)} style={{
+                                                background: 'none', border: 'none', color: 'var(--status-failed)',
+                                                cursor: 'pointer', fontSize: '16px', padding: '0 4px', opacity: 0.7, lineHeight: 1,
+                                            }}>✕</button>
+                                        )}
+                                    </div>
+                                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <input
+                                            style={paramFieldStyle}
+                                            placeholder="说明（可选）"
+                                            value={param.description ?? ''}
+                                            onChange={e => updateParam(idx, 'description', e.target.value)}
+                                            disabled={isReadOnly}
+                                        />
+                                        <input
+                                            style={paramFieldStyle}
+                                            placeholder={`示例值（如 ${param.type === 'number' ? '42' : param.type === 'boolean' ? 'true' : '"value"'}）`}
+                                            value={param.example !== undefined ? (typeof param.example === 'object' ? JSON.stringify(param.example) : String(param.example)) : ''}
+                                            onChange={e => {
+                                                let val: any = e.target.value;
+                                                try { val = JSON.parse(e.target.value); } catch { /* keep as string */ }
+                                                updateParam(idx, 'example', val);
+                                            }}
+                                            disabled={isReadOnly}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                {renderTextArea('输出参数映射 (outputParameters)', 'outputParameters', true)}
+                {renderTextArea('默认输入模板 (inputTemplate)', 'inputTemplate', true)}
+                {renderTextArea('工作流级变量 (variables)', 'variables', true)}
+            </>
+        );
+    };
 
     const renderAdvancedTab = () => (
         <>

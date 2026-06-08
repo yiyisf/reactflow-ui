@@ -162,6 +162,16 @@ export type ThemeMode = 'dark' | 'light';
 export type ThemeColor = 'blue' | 'orange';
 
 /**
+ * 执行触发状态机
+ * - `idle`: 未触发
+ * - `triggering`: 正在调用 onTriggerExecution
+ * - `polling`: 已获得 workflowId，正在轮询执行结果
+ * - `done`: 执行到达终态（COMPLETED/FAILED/TIMED_OUT/TERMINATED）
+ * - `error`: 触发或轮询过程中发生错误
+ */
+export type RunState = 'idle' | 'triggering' | 'polling' | 'done' | 'error';
+
+/**
  * 工作流存储状态
  */
 export interface WorkflowState {
@@ -188,6 +198,14 @@ export interface WorkflowState {
     isSimRunning: boolean;
     /** 每次 setWorkflow() 调用时递增，用于触发 WorkflowDesigner 的 fitView */
     workflowLoadKey: number;
+    /** P4.2 执行触发状态 */
+    runState: RunState;
+    pendingExecutionId: string | null;
+    executionError: string | null;
+    showRunPanel: boolean;
+    showAnalysisPanel: boolean;
+    /** P4.1 聚焦参数字段（"去修复"跳转时使用） */
+    focusedParamKey: string | null;
 }
 
 /**
@@ -230,8 +248,14 @@ export interface WorkflowActions {
     setViewMode: (viewMode: ViewMode) => void;
     startSimulation: () => void;
     stopSimulation: () => void;
-    /** Temporarily select nodes by taskReferenceName to visually highlight AI-accepted changes. */
-    flashNodes: (refs: string[]) => void;
+    /** P4.2: 显示/隐藏执行触发面板 */
+    setShowRunPanel: (show: boolean) => void;
+    /** P4.2: 显示/隐藏执行分析面板 */
+    setShowAnalysisPanel: (show: boolean) => void;
+    /** P4.2: 更新执行触发状态 */
+    setRunState: (state: RunState, execId?: string | null, error?: string | null) => void;
+    /** P4.3: 切回 edit 模式并聚焦到指定任务的指定参数字段 */
+    switchToEditAndFocusParam: (taskRef: string, paramKey?: string) => void;
 }
 
 /**

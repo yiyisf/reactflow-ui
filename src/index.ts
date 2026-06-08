@@ -1,16 +1,6 @@
 export { WorkflowIDE } from './WorkflowIDE';
 export type { WorkflowIDEProps, WorkflowIDERef } from './WorkflowIDE';
-export { AiWorkflowIDE } from './AiWorkflowIDE';
-export type { AiWorkflowIDEProps, AiWorkflowIDERef } from './AiWorkflowIDE';
-
-// AI configuration & prompt customization
-export type { AiConfig } from './services/ai/protocolAdapter';
+export type { WorkflowDef, TaskDef, WorkflowInputParam, WorkflowInstance } from './types/conductor';
+export { parseWorkflowInputParams } from './types/conductor';
 export type { AIServiceConfig } from './services/aiService';
-export { BASE_SYSTEM_PROMPT, buildSystemPrompt } from './services/ai/systemPrompt';
-
-// Sub-workflow library types
-export type { WorkflowLibraryItem, WorkflowLibraryDetail, WorkflowLevel } from './types/workflowLibrary';
-
-// Core types
-export type { WorkflowDef, TaskDef } from './types/conductor';
-export type { ExecutionActions, RestartOptions, ViewMode } from './types/workflow';
+export type { ExecutionActions, RestartOptions, ViewMode, RunState } from './types/workflow';

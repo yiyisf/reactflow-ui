@@ -60,7 +60,7 @@ const LibraryPanel: React.FC = () => {
             version: 1,
             tasks: [],
         };
-        const existingRefs = new Set(currentDef.tasks.map(t => t.taskReferenceName));
+        const existingRefs = new Set((currentDef.tasks ?? []).map(t => t.taskReferenceName));
         const ref = makeUniqueRef(item.workflowName, existingRefs);
         const versionNum = parseInt(item.version.replace(/[^0-9]/g, '')) || 1;
 

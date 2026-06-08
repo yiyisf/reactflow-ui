@@ -2,7 +2,7 @@
  * AiConfigPanel — AI 服务配置弹窗
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import useAiStore from '../../store/aiStore';
 import { PROVIDER_DEFAULTS, testConnection } from '../../services/ai/protocolAdapter';
 import type { AiConfig } from '../../services/ai/protocolAdapter';
@@ -43,11 +43,14 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
 
     const [testState, setTestState] = useState<TestState>('idle');
     const [testMessage, setTestMessage] = useState('');
+    // Version counter — incremented on each new test; stale completions are discarded
+    const testVersionRef = useRef(0);
+
+    const resetTestResult = () => { setTestState('idle'); setTestMessage(''); };
 
     const handlePreset = (preset: typeof PROVIDER_PRESETS[number]) => {
         setActivePreset(preset.label);
-        setTestState('idle');
-        setTestMessage('');
+        resetTestResult();
         setDraft(d => ({
             ...d,
             provider: preset.provider,
@@ -57,9 +60,12 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
     };
 
     const handleTest = async () => {
+        const version = ++testVersionRef.current;
         setTestState('testing');
         setTestMessage('');
         const result = await testConnection(draft);
+        // Discard result if a newer test was started while this one was in flight
+        if (testVersionRef.current !== version) return;
         setTestState(result.ok ? 'ok' : 'error');
         setTestMessage(result.message);
     };
@@ -126,7 +132,7 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                     <input
                         type="password"
                         value={draft.apiKey}
-                        onChange={e => { setDraft({ ...draft, apiKey: e.target.value }); setTestState('idle'); setTestMessage(''); }}
+                        onChange={e => { setDraft({ ...draft, apiKey: e.target.value }); resetTestResult(); }}
                         placeholder={resolvedProvider === 'anthropic' ? 'sk-ant-...' : 'sk-...'}
                         autoFocus
                     />
@@ -140,7 +146,7 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                     <input
                         type="text"
                         value={draft.baseUrl ?? ''}
-                        onChange={e => { setDraft({ ...draft, baseUrl: e.target.value }); setTestState('idle'); setTestMessage(''); }}
+                        onChange={e => { setDraft({ ...draft, baseUrl: e.target.value }); resetTestResult(); }}
                         placeholder={urlPlaceholder}
                     />
                 </div>

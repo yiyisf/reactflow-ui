@@ -384,6 +384,9 @@ export async function testConnection(config: AiConfig): Promise<TestConnectionRe
         if (e.name === 'TimeoutError' || e.name === 'AbortError') {
             return { ok: false, message: '连接超时，请检查 URL 是否正确' };
         }
+        if (e instanceof TypeError) {
+            return { ok: false, message: '网络连接失败，请检查 URL 和网络状态' };
+        }
         return { ok: false, message: e.message || '连接失败' };
     }
 }

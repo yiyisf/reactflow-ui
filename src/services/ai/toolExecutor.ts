@@ -113,17 +113,18 @@ export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
 // ─── Diff computation ────────────────────────────────────────────────────────
 
 export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): DiffSummary {
+    const afterTasks = after.tasks ?? [];
     if (!before) {
         return {
-            added: after.tasks.map(t => t.taskReferenceName),
+            added: afterTasks.map(t => t.taskReferenceName),
             modified: [],
             removed: [],
             propsChanged: false,
         };
     }
 
-    const beforeMap = new Map(before.tasks.map(t => [t.taskReferenceName, t]));
-    const afterMap = new Map(after.tasks.map(t => [t.taskReferenceName, t]));
+    const beforeMap = new Map((before.tasks ?? []).map(t => [t.taskReferenceName, t]));
+    const afterMap = new Map(afterTasks.map(t => [t.taskReferenceName, t]));
 
     const added: string[] = [];
     const modified: string[] = [];
@@ -165,7 +166,7 @@ function checkLevelCompliance(proposed: WorkflowDef): {
     if (library.length === 0) return { inferredLevel: null, violations: [] };
 
     const libraryMap = new Map(library.map(w => [w.workflowName, w]));
-    const subWorkflowTasks = proposed.tasks.filter(t => t.type === 'SUB_WORKFLOW');
+    const subWorkflowTasks = (proposed.tasks ?? []).filter(t => t.type === 'SUB_WORKFLOW');
 
     if (subWorkflowTasks.length === 0) return { inferredLevel: 'L1', violations: [] };
 
@@ -290,8 +291,8 @@ export function executeToolCall(
                 if (levelFilter && item.workflowLevel !== levelFilter) return false;
                 return (
                     item.workflowName.toLowerCase().includes(query) ||
-                    item.description.toLowerCase().includes(query) ||
-                    item.tags.some(t => t.toLowerCase().includes(query))
+                    (item.description ?? '').toLowerCase().includes(query) ||
+                    (item.tags ?? []).some(t => t.toLowerCase().includes(query))
                 );
             });
 
@@ -307,7 +308,7 @@ export function executeToolCall(
                 if (byLevel[lvl].length === 0) return;
                 lines.push(`\n**${lvl}**`);
                 byLevel[lvl].forEach(item => {
-                    lines.push(`- \`${item.workflowName}\` (v${item.version}): ${item.description} [${item.tags.join(', ')}]`);
+                    lines.push(`- \`${item.workflowName}\` (v${item.version}): ${item.description ?? ''} [${(item.tags ?? []).join(', ')}]`);
                 });
             });
 

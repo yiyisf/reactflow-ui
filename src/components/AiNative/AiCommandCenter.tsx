@@ -210,7 +210,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                 };
                 setToolStatus(statusMap[tc.name] ?? `执行 ${tc.name}…`);
 
-                const result = executeToolCall(tc.name, tc.args);
+                const result = await Promise.resolve(executeToolCall(tc.name, tc.args));
 
                 if (result.type === 'propose' && result.proposed && result.diff) {
                     setProposal({
@@ -244,7 +244,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             if (err.name !== 'AbortError') {
                 updateMessage(assistantMsgId, `❌ AI 服务错误: ${err.message}`);
             } else {
-                const cur = messages.find(m => m.id === assistantMsgId);
+                // Read from store directly to avoid stale closure snapshot
+                const cur = useAiStore.getState().messages.find(m => m.id === assistantMsgId);
                 if (!cur?.content) updateMessage(assistantMsgId, '（已中止）');
             }
         } finally {
@@ -252,7 +253,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             setStreamingText('');
             setToolStatus('');
         }
-    }, [isStreaming, config, buildHistory, messages]);
+    }, [isStreaming, config, buildHistory]);
 
     const handleSend = useCallback(() => {
         const text = inputValue.trim();

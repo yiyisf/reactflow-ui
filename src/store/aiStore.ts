@@ -157,7 +157,8 @@ const useAiStore = create<AiStore>()(
             name: 'ai-workflow-config',
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({
-                config: state.config,
+                // Persist provider/baseUrl/model but NOT apiKey (kept only in memory)
+                config: { ...state.config, apiKey: '' },
                 metrics: state.metrics,
             }),
         }

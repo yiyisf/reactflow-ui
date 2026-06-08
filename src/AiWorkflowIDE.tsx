@@ -226,11 +226,33 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
 
         // Anchor the conversation history to the new workflow state.
         const def = proposal.proposedDef;
-        const taskSummary = (def.tasks ?? []).map(t => `${t.taskReferenceName}(${t.type})`).join(', ');
+        const tasks = def.tasks ?? [];
+        const taskSummary = tasks.map(t => `${t.taskReferenceName}(${t.type})`).join(', ');
         aiStore.addMessage({
             role: 'assistant',
-            content: `📌 工作流已更新：「${def.name}」现包含 ${(def.tasks ?? []).length} 个任务：${taskSummary}。`,
+            content: `📌 工作流已更新：「${def.name}」现包含 ${tasks.length} 个任务：${taskSummary}。`,
         });
+
+        // D1: Generate context-aware follow-up chips to keep the user engaged
+        const hasHuman = tasks.some(t => t.type === 'HUMAN');
+        const hasErrorHandling = tasks.some(t => t.type === 'TERMINATE' || t.type === 'SWITCH');
+        const hasFork = tasks.some(t => t.type === 'FORK_JOIN' || t.type === 'FORK_JOIN_DYNAMIC');
+        const hasValidationErrors = workflowStore.validationResults.errors.length > 0;
+        const chips: string[] = [
+            hasValidationErrors
+                ? '修复当前工作流中的校验错误'
+                : '检查当前工作流是否有潜在问题',
+            !hasHuman
+                ? '为这个流程加一个人工审批节点'
+                : '优化审批节点的超时处理',
+            !hasFork && tasks.length >= 3
+                ? '把部分步骤改成并行执行以提高效率'
+                : hasErrorHandling
+                    ? '为关键步骤添加重试机制'
+                    : '给这个流程添加异常处理分支',
+        ];
+        aiStore.setFollowUpChips(chips.slice(0, 3));
+
         if (onAiMetrics) onAiMetrics(aiStore.getMetrics());
     }, [aiStore.pendingProposal, onAiMetrics]);
 

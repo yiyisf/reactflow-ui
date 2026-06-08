@@ -48,6 +48,8 @@ interface AiState {
     /** The current pending proposal (only one at a time) */
     pendingProposal: ProposedChange | null;
     metrics: AiMetrics;
+    /** Context-aware chips shown after the user accepts a proposal */
+    followUpChips: string[] | null;
 }
 
 interface AiActions {
@@ -65,6 +67,8 @@ interface AiActions {
     recordAccept: () => void;
     recordReject: () => void;
     getMetrics: () => AiMetrics;
+    setFollowUpChips: (chips: string[]) => void;
+    clearFollowUpChips: () => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -95,6 +99,7 @@ const useAiStore = create<AiStore>()(
             streamingText: '',
             chatPanelOpen: true,
             pendingProposal: null,
+            followUpChips: null,
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -152,6 +157,9 @@ const useAiStore = create<AiStore>()(
             })),
 
             getMetrics: () => get().metrics,
+
+            setFollowUpChips: (chips) => set({ followUpChips: chips }),
+            clearFollowUpChips: () => set({ followUpChips: null }),
         }),
         {
             name: 'ai-workflow-config',

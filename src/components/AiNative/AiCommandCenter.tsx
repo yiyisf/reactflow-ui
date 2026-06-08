@@ -52,6 +52,24 @@ const renderMarkdown = (content: string): React.ReactNode => {
     });
 };
 
+// ─── Template gallery ─────────────────────────────────────────────────────────
+
+interface WorkflowTemplate {
+    icon: string;
+    name: string;
+    desc: string;
+    prompt: string;
+}
+
+const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+    { icon: '📦', name: '订单处理', desc: '下单→支付→发货', prompt: '创建一个电商订单处理流程：下单确认、支付验证、库存扣减、发货通知' },
+    { icon: '👤', name: '员工审批', desc: '申请→审批→执行', prompt: '创建一个员工申请审批流程：提交申请、直属领导审批、HR审批、结果通知' },
+    { icon: '🚀', name: 'CI/CD', desc: '构建→测试→发布', prompt: '创建一个CI/CD部署流水线：代码检出、构建镜像、单元测试、推送镜像、部署发布' },
+    { icon: '📧', name: '消息通知', desc: '触发→处理→发送', prompt: '创建一个消息通知工作流：接收事件、处理数据、并行发送邮件和短信通知' },
+    { icon: '🔄', name: '数据同步', desc: '读取→转换→写入', prompt: '创建一个数据同步流程：从数据库读取数据、JQ转换格式、写入目标系统、发送完成通知' },
+    { icon: '🔍', name: 'AI 内容审核', desc: '提交→AI审→人工', prompt: '创建一个AI辅助内容审核流程：提交内容、AI初审打分、条件分支（分数低则人工复核）、发布或拒绝' },
+];
+
 // ─── Welcome chips logic ──────────────────────────────────────────────────────
 
 function buildWelcomeChips(
@@ -68,12 +86,7 @@ function buildWelcomeChips(
                 '设计一个 CI/CD 部署流水线',
             ].slice(0, 4);
         }
-        return [
-            '创建一个订单审批流程',
-            '设计一个 CI/CD 部署流水线',
-            '创建一个用户注册通知流程',
-            '帮我搭建一个数据同步工作流',
-        ];
+        return [];  // template gallery replaces chips when canvas is empty and no library
     }
     return [
         '解读一下当前工作流的业务逻辑',
@@ -97,6 +110,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         streamingText,
         config,
         pendingProposal,
+        followUpChips,
         addMessage,
         updateMessage,
         setStreaming,
@@ -105,6 +119,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         clearMessages,
         setProposal,
         recordReject,
+        clearFollowUpChips,
     } = useAiStore();
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
@@ -115,6 +130,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const [toolStatus, setToolStatus] = useState<string>(''); // e.g. "正在搜索工作流库…"
     // Pending proposal guard: stores the blocked message text
     const [guardBlocked, setGuardBlocked] = useState<string | null>(null);
+    // D2: last failed input for retry
+    const [retryInput, setRetryInput] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -159,6 +176,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
         addMessage({ role: 'user', content: text });
         setInputValue('');
+        setRetryInput(null);           // clear any previous retry state
+        clearFollowUpChips();          // D1: dismiss follow-up chips on new message
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
         setStreaming(true);
         setStreamingText('');
@@ -243,6 +262,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             setToolStatus('');
             if (err.name !== 'AbortError') {
                 updateMessage(assistantMsgId, `❌ AI 服务错误: ${err.message}`);
+                setRetryInput(text);   // D2: allow one-click retry
             } else {
                 // Read from store directly to avoid stale closure snapshot
                 const cur = useAiStore.getState().messages.find(m => m.id === assistantMsgId);
@@ -271,8 +291,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             setGuardBlocked(chip);
             return;
         }
+        clearFollowUpChips();
         handleSendText(chip);
-    }, [pendingProposal, handleSendText]);
+    }, [pendingProposal, handleSendText, clearFollowUpChips]);
 
     const handleStop = () => { abortRef.current?.abort(); };
 
@@ -295,6 +316,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const welcomeChips = buildWelcomeChips(!!workflowDef, libraryItems);
     const hasLibrary = libraryItems.length > 0;
     const noApiKey = !config.apiKey && showConfigButton;
+    // D3: show template gallery when canvas is empty and only welcome msg exists
+    const showTemplates = !workflowDef && messages.length === 1 && messages[0].id === 'welcome' && libraryItems.length === 0;
 
     return (
         <>
@@ -365,20 +388,46 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         : msg.content
                                     }
                                 </div>
-                                {/* A2: Welcome chips below the welcome message */}
+                                {/* A2: Welcome chips / D3: Template gallery below welcome msg */}
                                 {msg.id === 'welcome' && (
-                                    <div className="ai-welcome-chips">
-                                        {welcomeChips.map(chip => (
-                                            <button
-                                                key={chip}
-                                                className="ai-welcome-chip"
-                                                onClick={() => handleChipClick(chip)}
-                                                disabled={isStreaming}
-                                            >
-                                                {chip}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <>
+                                        {/* D3: Template gallery replaces chips when canvas is empty */}
+                                        {showTemplates && (
+                                            <div className="ai-template-gallery">
+                                                <div className="ai-template-gallery-label">快速开始 — 选择一个场景模板</div>
+                                                <div className="ai-template-grid">
+                                                    {WORKFLOW_TEMPLATES.map(t => (
+                                                        <button
+                                                            key={t.name}
+                                                            className="ai-template-card"
+                                                            onClick={() => handleChipClick(t.prompt)}
+                                                            disabled={isStreaming}
+                                                            title={t.prompt}
+                                                        >
+                                                            <span className="ai-template-icon">{t.icon}</span>
+                                                            <span className="ai-template-name">{t.name}</span>
+                                                            <span className="ai-template-desc">{t.desc}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Regular chips (library-driven or has-workflow) */}
+                                        {welcomeChips.length > 0 && (
+                                            <div className="ai-welcome-chips">
+                                                {welcomeChips.map(chip => (
+                                                    <button
+                                                        key={chip}
+                                                        className="ai-welcome-chip"
+                                                        onClick={() => handleChipClick(chip)}
+                                                        disabled={isStreaming}
+                                                    >
+                                                        {chip}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </React.Fragment>
                         ))}
@@ -405,6 +454,34 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 <div className="ai-skeleton-line" style={{ width: '80%' }} />
                                 <div className="ai-skeleton-line" style={{ width: '60%' }} />
                                 <div className="ai-skeleton-line" style={{ width: '70%' }} />
+                            </div>
+                        )}
+
+                        {/* D1: Follow-up chips after proposal acceptance */}
+                        {followUpChips && followUpChips.length > 0 && !isStreaming && (
+                            <div className="ai-follow-up-chips">
+                                <div className="ai-follow-up-label">继续优化</div>
+                                {followUpChips.map(chip => (
+                                    <button
+                                        key={chip}
+                                        className="ai-welcome-chip follow-up"
+                                        onClick={() => handleChipClick(chip)}
+                                    >
+                                        {chip}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* D2: Retry button after AI error */}
+                        {retryInput && !isStreaming && (
+                            <div className="ai-retry-row">
+                                <button
+                                    className="ai-retry-btn"
+                                    onClick={() => { const t = retryInput; setRetryInput(null); handleSendText(t); }}
+                                >
+                                    ↺ 重试上一条消息
+                                </button>
                             </div>
                         )}
 

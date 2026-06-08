@@ -55,6 +55,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
             executionStatus={execution?.status}
             simRunning={data.simRunning}
             simDone={data.simDone}
+            proposalStatus={data.proposalStatus}
         >
             <div style={{
                 borderRadius: '8px',

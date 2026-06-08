@@ -45,6 +45,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             executionStatus={execution?.status}
             simRunning={data.simRunning}
             simDone={data.simDone}
+            proposalStatus={data.proposalStatus}
         >
             <div
                 className={`fork-node ${isDynamic ? 'dynamic' : 'static'}`}
@@ -172,6 +173,7 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             executionStatus={execution?.status}
             simRunning={data.simRunning}
             simDone={data.simDone}
+            proposalStatus={data.proposalStatus}
         >
             <div
                 style={{

@@ -39,6 +39,7 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
             executionStatus={execution?.status}
             simRunning={data.simRunning}
             simDone={data.simDone}
+            proposalStatus={data.proposalStatus}
         >
             <div
                 style={{

@@ -136,6 +136,8 @@ export interface WorkflowNodeData {
     isDynamicRuntime?: boolean; // FORK_JOIN_DYNAMIC 运行时动态生成的子任务节点
     simRunning?: boolean; // 模拟执行中：蓝色脉冲
     simDone?: boolean;    // 模拟执行完成：绿色
+    /** AI diff overlay: which change category this node belongs to in the pending proposal */
+    proposalStatus?: 'added' | 'modified' | 'removed';
     _layoutWidth?: number;  // 循环容器预计算宽度（由 layoutLoopChildren 设置）
     _layoutHeight?: number; // 循环容器预计算高度（由 layoutLoopChildren 设置）
 }

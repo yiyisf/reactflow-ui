@@ -15,6 +15,7 @@ interface NodeWrapperProps {
     executionStatus?: ExecutionStatus;
     simRunning?: boolean;
     simDone?: boolean;
+    proposalStatus?: 'added' | 'modified' | 'removed';
 }
 
 const NodeWrapper = ({
@@ -29,6 +30,7 @@ const NodeWrapper = ({
     executionStatus,
     simRunning = false,
     simDone = false,
+    proposalStatus,
 }: NodeWrapperProps) => {
     const { mode, removeNode } = useWorkflowStore();
     const [showConfirm, setShowConfirm] = useState(false);
@@ -47,6 +49,7 @@ const NodeWrapper = ({
         isHighlighted ? 'node-wrapper-highlighted' : '',
         simRunning ? 'node-sim-running' : '',
         simDone ? 'node-sim-done' : '',
+        proposalStatus ? `node-proposal-${proposalStatus}` : '',
     ].filter(Boolean).join(' ');
 
     // 运行态执行状态边框样式
@@ -174,6 +177,13 @@ const NodeWrapper = ({
                     ⚠️
                 </div>
             )}
+
+            {proposalStatus && (
+                <div className={`node-proposal-badge node-proposal-badge-${proposalStatus}`}>
+                    {proposalStatus === 'added' ? '+' : proposalStatus === 'modified' ? '~' : '−'}
+                </div>
+            )}
+
             {children}
 
             {showConfirm && (

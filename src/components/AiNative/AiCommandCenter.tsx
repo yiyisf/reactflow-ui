@@ -96,6 +96,21 @@ function buildWelcomeChips(
     ];
 }
 
+// ─── Node context chips ───────────────────────────────────────────────────────
+
+function buildNodeChips(taskRef: string, taskType: string): string[] {
+    const base = [
+        `解释「${taskRef}」节点的作用`,
+        `为「${taskRef}」添加失败重试机制`,
+    ];
+    if (taskType === 'HTTP') return [...base, `修改「${taskRef}」的请求参数和输出映射`];
+    if (taskType === 'HUMAN') return [...base, `调整「${taskRef}」的审批超时和通知方式`];
+    if (taskType === 'SUB_WORKFLOW') return [...base, `说明「${taskRef}」子工作流的输入输出`];
+    if (taskType === 'SWITCH' || taskType === 'DECISION') return [...base, `为「${taskRef}」增加一个分支条件`];
+    if (taskType === 'FORK_JOIN' || taskType === 'FORK_JOIN_DYNAMIC') return [...base, `在「${taskRef}」的并行分支中添加新任务`];
+    return [...base, `在「${taskRef}」之后插入一个新任务`];
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
@@ -123,6 +138,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     } = useAiStore();
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
+    const selectedTask = useWorkflowStore(s => s.selectedTask);
+    const setSelectedTask = useWorkflowStore(s => s.setSelectedTask);
     const libraryItems = useLibraryStore(s => s.items);
 
     const [inputValue, setInputValue] = useState('');
@@ -505,6 +522,36 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         放弃方案，继续发送
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* E2: Selected node context strip */}
+                    {selectedTask && !isStreaming && (
+                        <div className="ai-node-context-strip">
+                            <div className="ai-node-context-header">
+                                <span className="ai-node-context-label">
+                                    <span className="ai-node-context-type">{selectedTask.type}</span>
+                                    <span className="ai-node-context-ref">{selectedTask.taskReferenceName}</span>
+                                </span>
+                                <button
+                                    className="ai-node-context-dismiss"
+                                    onClick={() => setSelectedTask(null)}
+                                    title="取消选中"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            <div className="ai-node-context-chips">
+                                {buildNodeChips(selectedTask.taskReferenceName, selectedTask.type).map(chip => (
+                                    <button
+                                        key={chip}
+                                        className="ai-node-context-chip"
+                                        onClick={() => handleChipClick(chip)}
+                                    >
+                                        {chip}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     )}

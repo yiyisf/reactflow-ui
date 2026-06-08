@@ -32,6 +32,7 @@ import { useShortcuts } from '../hooks/useShortcuts';
 import { useConfirm } from '../hooks/useConfirm';
 import { useToast } from '../hooks/useToast';
 import { ExecutionActions } from '../types/workflow';
+import useAiStore from '../store/aiStore';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -164,6 +165,8 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         },
         [visibleNodeIdSet, nodes.length],
     );
+
+    const pendingProposal = useAiStore(s => s.pendingProposal);
 
     const { fitView } = useReactFlow();
     const [showSelector, setShowSelector] = useState(false);
@@ -462,11 +465,20 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     const warningRefs = new Set(validationResults.warnings.filter(w => w.type === 'TASK').map(w => w.ref));
                     const query = searchQuery.toLowerCase();
 
+                    // Build proposal status sets from pendingProposal diff
+                    const addedRefs = new Set(pendingProposal?.diff.added ?? []);
+                    const modifiedRefs = new Set(pendingProposal?.diff.modified ?? []);
+                    const removedRefs = new Set(pendingProposal?.diff.removed ?? []);
+
                     const baseNodes = nodes
                     .filter(n => !dynamicForkData.removedNodeIds.has(n.id) && visibleNodeIdSet.has(n.id))
                     .map(node => {
                         const ref = node.data.taskReferenceName;
                         const sim = simState[ref];
+                        const proposalStatus = addedRefs.has(ref) ? 'added' as const
+                            : modifiedRefs.has(ref) ? 'modified' as const
+                            : removedRefs.has(ref) ? 'removed' as const
+                            : undefined;
                         return {
                             ...node,
                             selected: selectedTask?.taskReferenceName === ref,
@@ -481,6 +493,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                 ) : false,
                                 simRunning: sim === 'running',
                                 simDone: sim === 'done',
+                                proposalStatus,
                             }
                         };
                     });
@@ -489,7 +502,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         ...node,
                         data: { ...node.data, isError: false, hasWarning: false, isHighlighted: false },
                     })) as typeof baseNodes);
-                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode])}
+                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode, pendingProposal])}
                 edges={processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}

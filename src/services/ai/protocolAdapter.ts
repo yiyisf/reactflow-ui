@@ -331,3 +331,59 @@ export async function* streamChat(
         yield* streamOpenAI(messages, tools, config, signal);
     }
 }
+
+// ─── 连接测试 ────────────────────────────────────────────────────────────────
+
+export interface TestConnectionResult {
+    ok: boolean;
+    message: string;
+}
+
+export async function testConnection(config: AiConfig): Promise<TestConnectionResult> {
+    if (!config.apiKey?.trim()) {
+        return { ok: false, message: '请先填写 API Key' };
+    }
+    const resolved = resolveConfig(config);
+    try {
+        let response: Response;
+        if (resolved.resolvedProvider === 'anthropic') {
+            response = await fetch(`${resolved.baseUrl}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': resolved.apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true',
+                },
+                body: JSON.stringify({
+                    model: resolved.model,
+                    max_tokens: 1,
+                    messages: [{ role: 'user', content: 'Hi' }],
+                }),
+                signal: AbortSignal.timeout(12000),
+            });
+        } else {
+            response = await fetch(`${resolved.baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${resolved.apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: resolved.model,
+                    max_tokens: 1,
+                    messages: [{ role: 'user', content: 'Hi' }],
+                }),
+                signal: AbortSignal.timeout(12000),
+            });
+        }
+        if (response.ok) return { ok: true, message: `连接成功（${resolved.resolvedProvider}）` };
+        const err = await response.json().catch(() => ({}));
+        return { ok: false, message: err.error?.message || `HTTP ${response.status}` };
+    } catch (e: any) {
+        if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+            return { ok: false, message: '连接超时，请检查 URL 是否正确' };
+        }
+        return { ok: false, message: e.message || '连接失败' };
+    }
+}

@@ -15,18 +15,41 @@ interface ReviewBarProps {
     onReject: () => void;
 }
 
+const LEVEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+    L1: { label: 'L1 原子', color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
+    L2: { label: 'L2 业务', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+    L3: { label: 'L3 端到端', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+};
+
 const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) => {
     if (!proposal) return null;
 
-    const { diff } = proposal;
+    const { diff, inferredLevel } = proposal;
     const totalChanges = diff.added.length + diff.modified.length + diff.removed.length + (diff.propsChanged ? 1 : 0);
+    const levelMeta = inferredLevel ? LEVEL_LABEL[inferredLevel] : null;
 
     return (
         <div className="ai-review-bar">
             <div className="ai-review-content">
                 <div className="ai-review-icon">✨</div>
                 <div className="ai-review-info">
-                    <div className="ai-review-title">AI 变更方案 · {totalChanges} 处变更</div>
+                    <div className="ai-review-title">
+                        AI 变更方案 · {totalChanges} 处变更
+                        {levelMeta && (
+                            <span style={{
+                                marginLeft: 8,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '1px 7px',
+                                borderRadius: 8,
+                                color: levelMeta.color,
+                                background: levelMeta.bg,
+                                border: `1px solid ${levelMeta.color}40`,
+                            }}>
+                                {levelMeta.label}
+                            </span>
+                        )}
+                    </div>
                     <div className="ai-review-chips">
                         {diff.added.length > 0 && (
                             <span className="ai-diff-chip added" title={diff.added.join(', ')}>

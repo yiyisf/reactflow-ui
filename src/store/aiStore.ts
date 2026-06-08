@@ -10,6 +10,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AiConfig } from '../services/ai/protocolAdapter';
 import type { WorkflowDef } from '../types/conductor';
 import type { DiffSummary } from '../services/ai/toolExecutor';
+import type { WorkflowLevel } from '../types/workflowLibrary';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ export interface ProposedChange {
     id: string;
     proposedDef: WorkflowDef;
     diff: DiffSummary;
+    /** Inferred workflow level based on sub-workflow references */
+    inferredLevel?: WorkflowLevel;
     /** Message that triggered this proposal */
     messageId: string;
 }

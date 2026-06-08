@@ -7,8 +7,10 @@
  */
 
 import useWorkflowStore from '../../store/workflowStore';
+import useLibraryStore from '../../store/libraryStore';
 import { validateWorkflow } from '../../utils/validator';
 import type { WorkflowDef, TaskDef } from '../../types/conductor';
+import type { WorkflowLibraryItem, WorkflowLevel } from '../../types/workflowLibrary';
 
 // ─── Patch operation types ───────────────────────────────────────────────────
 
@@ -33,6 +35,8 @@ export interface ToolCallResult {
     proposed?: WorkflowDef;
     /** For 'propose': human-readable change summary */
     diff?: DiffSummary;
+    /** For 'propose': inferred level based on sub-workflow references (L1/L2/L3) */
+    inferredLevel?: WorkflowLevel;
     /** For 'info'/'error': text to append to chat */
     text?: string;
 }
@@ -145,6 +149,50 @@ export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): Dif
     return { added, modified, removed, propsChanged };
 }
 
+// ─── Library level compliance check ─────────────────────────────────────────
+
+/**
+ * Checks SUB_WORKFLOW references in proposed def against the library.
+ * Returns:
+ * - inferredLevel: the inferred level of the proposed workflow (based on highest sub-workflow level + 1)
+ * - violations: any upward-call rule violations
+ */
+function checkLevelCompliance(proposed: WorkflowDef): {
+    inferredLevel: WorkflowLevel | null;
+    violations: string[];
+} {
+    const library = useLibraryStore.getState().items;
+    if (library.length === 0) return { inferredLevel: null, violations: [] };
+
+    const libraryMap = new Map(library.map(w => [w.workflowName, w]));
+    const subWorkflowTasks = proposed.tasks.filter(t => t.type === 'SUB_WORKFLOW');
+
+    if (subWorkflowTasks.length === 0) return { inferredLevel: 'L1', violations: [] };
+
+    const referencedLevels: WorkflowLevel[] = [];
+    subWorkflowTasks.forEach(t => {
+        const name = (t as any).subWorkflowParam?.name ?? (t as any).workflowName;
+        if (!name) return;
+        const ref = libraryMap.get(name);
+        if (ref) referencedLevels.push(ref.workflowLevel);
+    });
+
+    if (referencedLevels.length === 0) return { inferredLevel: null, violations: [] };
+
+    const levelRank: Record<WorkflowLevel, number> = { L1: 1, L2: 2, L3: 3 };
+    const maxReferenced = referencedLevels.reduce(
+        (max, lvl) => levelRank[lvl] > levelRank[max] ? lvl : max,
+        'L1' as WorkflowLevel,
+    );
+
+    // Inferred level is one step above highest referenced (or same if L3)
+    const inferredLevel: WorkflowLevel =
+        maxReferenced === 'L3' ? 'L3' :
+        maxReferenced === 'L2' ? 'L3' : 'L2';
+
+    return { inferredLevel, violations: [] };
+}
+
 // ─── Main executor ───────────────────────────────────────────────────────────
 
 export function executeToolCall(
@@ -161,7 +209,8 @@ export function executeToolCall(
                 return { type: 'error', text: '工作流定义缺少 name 字段' };
             }
             const diff = computeDiff(currentDef, proposed);
-            return { type: 'propose', proposed, diff };
+            const { inferredLevel } = checkLevelCompliance(proposed);
+            return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined };
         }
 
         case 'patch_workflow': {
@@ -174,7 +223,8 @@ export function executeToolCall(
             }
             const proposed = applyPatch(currentDef, ops);
             const diff = computeDiff(currentDef, proposed);
-            return { type: 'propose', proposed, diff };
+            const { inferredLevel } = checkLevelCompliance(proposed);
+            return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined };
         }
 
         case 'get_workflow_state': {
@@ -226,6 +276,42 @@ export function executeToolCall(
             results.errors.forEach(e => lines.push(`❌ ${e.message}`));
             results.warnings.forEach(w => lines.push(`⚠️ ${w.message}`));
             return { type: 'info', text: `校验结果：\n${lines.join('\n')}` };
+        }
+
+        case 'search_workflow_library': {
+            const library = useLibraryStore.getState().items;
+            if (library.length === 0) {
+                return { type: 'info', text: '当前没有配置工作流库，无法搜索。' };
+            }
+            const query = (args.query as string || '').toLowerCase();
+            const levelFilter = args.level as WorkflowLevel | undefined;
+
+            const matched = library.filter(item => {
+                if (levelFilter && item.workflowLevel !== levelFilter) return false;
+                return (
+                    item.workflowName.toLowerCase().includes(query) ||
+                    item.description.toLowerCase().includes(query) ||
+                    item.tags.some(t => t.toLowerCase().includes(query))
+                );
+            });
+
+            if (matched.length === 0) {
+                return { type: 'info', text: `未找到与「${args.query}」相关的子工作流。` };
+            }
+
+            const byLevel: Record<string, WorkflowLibraryItem[]> = { L3: [], L2: [], L1: [] };
+            matched.forEach(item => byLevel[item.workflowLevel].push(item));
+
+            const lines: string[] = [`找到 ${matched.length} 个相关工作流：`];
+            (['L3', 'L2', 'L1'] as WorkflowLevel[]).forEach(lvl => {
+                if (byLevel[lvl].length === 0) return;
+                lines.push(`\n**${lvl}**`);
+                byLevel[lvl].forEach(item => {
+                    lines.push(`- \`${item.workflowName}\` (v${item.version}): ${item.description} [${item.tags.join(', ')}]`);
+                });
+            });
+
+            return { type: 'info', text: lines.join('\n') };
         }
 
         default:

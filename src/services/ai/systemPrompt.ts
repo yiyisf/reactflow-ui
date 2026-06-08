@@ -11,7 +11,9 @@
 
 import { formatContextForPrompt, buildContext } from './contextEngine';
 import { classifyIntent, getContextOptions } from './intentClassifier';
+import useLibraryStore from '../../store/libraryStore';
 import type { Intent } from './intentClassifier';
+import type { WorkflowLibraryItem } from '../../types/workflowLibrary';
 
 // ─── Built-in base prompt (exported for integrators to extend/reference) ────
 
@@ -72,6 +74,12 @@ export function buildSystemPrompt(
     // Base layer: use custom or built-in
     const parts = [systemPrompt ?? BASE_SYSTEM_PROMPT];
 
+    // Sub-workflow library catalog (injected when library is available)
+    const libraryBlock = buildLibraryCatalog();
+    if (libraryBlock) {
+        parts.push(libraryBlock);
+    }
+
     // Workflow context (always injected regardless of customization)
     if (contextBlock) {
         parts.push(contextBlock);
@@ -91,6 +99,58 @@ export function buildSystemPrompt(
     }
 
     return parts.join('\n\n');
+}
+
+// ─── Library catalog builder ─────────────────────────────────────────────────
+
+function buildLibraryCatalog(): string | null {
+    const items = useLibraryStore.getState().items;
+    if (items.length === 0) return null;
+
+    const byLevel = {
+        L3: items.filter(i => i.workflowLevel === 'L3'),
+        L2: items.filter(i => i.workflowLevel === 'L2'),
+        L1: items.filter(i => i.workflowLevel === 'L1'),
+    };
+
+    const formatItem = (item: WorkflowLibraryItem) =>
+        `- \`${item.workflowName}\` (v${item.version}): ${item.description}` +
+        (item.tags.length > 0 ? ` [${item.tags.join(', ')}]` : '');
+
+    const sections: string[] = [];
+
+    sections.push(`## 可用子工作流库（优先复用，勿重复造轮子）
+
+**分层调用规范**
+- L3（端到端）可调用 L2/L1 及同层 L3
+- L2（业务场景）可调用 L1 及同层 L2
+- L1（原子操作）只能调用同层 L1
+- ❌ 禁止反向跨层调用（L1 不可调用 L2/L3，L2 不可调用 L3）
+
+**引用方式**：使用 SUB_WORKFLOW 任务，\`workflowName\` 填入下方对应名称。
+
+**使用策略**
+1. 用户需求完全匹配已有工作流时：直接推荐使用，无需新建
+2. 部分匹配时：用 SUB_WORKFLOW 复用已有模块，仅新增差异部分
+3. 确需新建时：最大化引用已有子工作流作为步骤，同时标注新工作流层级`);
+
+    if (byLevel.L3.length > 0) {
+        sections.push(`### L3 端到端场景\n${byLevel.L3.map(formatItem).join('\n')}`);
+    }
+    if (byLevel.L2.length > 0) {
+        sections.push(`### L2 业务场景\n${byLevel.L2.map(formatItem).join('\n')}`);
+    }
+    if (byLevel.L1.length > 0) {
+        // Inject all L1 if small; if large, only show count and rely on search tool
+        if (byLevel.L1.length <= 25) {
+            sections.push(`### L1 原子操作\n${byLevel.L1.map(formatItem).join('\n')}`);
+        } else {
+            const preview = byLevel.L1.slice(0, 10).map(formatItem).join('\n');
+            sections.push(`### L1 原子操作（共 ${byLevel.L1.length} 个，以下为部分示例）\n${preview}\n...\n（使用 search_workflow_library 工具搜索完整 L1 列表）`);
+        }
+    }
+
+    return sections.join('\n\n');
 }
 
 function getIntentHints(intent: Intent): string | null {

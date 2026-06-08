@@ -161,6 +161,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     const msgId = setProposal({
                         proposedDef: result.proposed,
                         diff: result.diff,
+                        inferredLevel: result.inferredLevel,
                         messageId: assistantMsgId,
                     });
                     const changeDesc = describeDiff(result.diff);

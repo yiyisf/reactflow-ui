@@ -109,4 +109,26 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
             },
         },
     },
+    {
+        type: 'function',
+        function: {
+            name: 'search_workflow_library',
+            description: '搜索已有的 L1/L2/L3 子工作流库。当 system prompt 中的库列表不完整，或需要根据业务描述精确匹配子工作流时调用。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: {
+                        type: 'string',
+                        description: '搜索关键词（业务描述、功能名称、标签等），支持模糊匹配',
+                    },
+                    level: {
+                        type: 'string',
+                        enum: ['L1', 'L2', 'L3'],
+                        description: '按层级过滤（不传则搜索全部层级）',
+                    },
+                },
+                required: ['query'],
+            },
+        },
+    },
 ];

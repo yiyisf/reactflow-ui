@@ -11,12 +11,14 @@ import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHand
 import { ReactFlowProvider } from 'reactflow';
 import useWorkflowStore from './store/workflowStore';
 import useAiStore from './store/aiStore';
+import useLibraryStore from './store/libraryStore';
 import AiCommandCenter from './components/AiNative/AiCommandCenter';
 import CanvasPreview from './components/AiNative/CanvasPreview';
 import ReviewBar from './components/AiNative/ReviewBar';
 import AiConfigPanel from './components/AiNative/AiConfigPanel';
 import type { WorkflowDef } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
+import type { WorkflowLibraryItem } from './types/workflowLibrary';
 import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection } from './types/workflow';
 
 import './components/AiNative/AiNative.css';
@@ -29,6 +31,26 @@ export interface AiWorkflowIDEProps {
     workflowDef?: WorkflowDef;
     /** 运行态执行实例数据 */
     workflowExecution?: any;
+
+    // ── Sub-workflow library ───────────────────────────────────────────────
+    /**
+     * L1/L2/L3 子工作流库元数据列表（集成方提供）。
+     *
+     * AI 会优先从库中识别可复用的子工作流，而非从零生成。
+     * 遵循分层调用规范：L3→L2/L1，L2→L1，L1同层，禁止反向跨层调用。
+     *
+     * ```tsx
+     * <AiWorkflowIDE
+     *   workflowLibrary={[
+     *     { workflowName: 'create_vm', workflowLevel: 'L1', version: '1.0',
+     *       description: '创建虚机实例', tags: ['云服务器', '计算'] },
+     *     { workflowName: 'cloud_server_apply', workflowLevel: 'L2', version: '2.1',
+     *       description: '云服务器申请完整流程', tags: ['申请'] },
+     *   ]}
+     * />
+     * ```
+     */
+    workflowLibrary?: WorkflowLibraryItem[];
 
     // ── AI configuration ───────────────────────────────────────────────────
     /**
@@ -101,6 +123,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowDef: propDef,
         workflowExecution,
         aiConfig: propAiConfig,
+        workflowLibrary: propLibrary,
         systemPrompt,
         systemPromptExtra,
         theme,
@@ -116,6 +139,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
 
     const workflowStore = useWorkflowStore();
     const aiStore = useAiStore();
+    const libraryStore = useLibraryStore();
     const [showConfig, setShowConfig] = useState(false);
 
     // ── Appearance: apply once on mount ────────────────────────────────────
@@ -138,6 +162,15 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         prevAiConfigRef.current = serialized;
         aiStore.setConfig(propAiConfig);
     }, [propAiConfig]);
+
+    // ── Workflow library: sync on every prop change ─────────────────────────
+    const prevLibraryRef = useRef<string>('');
+    useEffect(() => {
+        const serialized = JSON.stringify(propLibrary ?? []);
+        if (serialized === prevLibraryRef.current) return;
+        prevLibraryRef.current = serialized;
+        libraryStore.setLibrary(propLibrary ?? []);
+    }, [propLibrary]);
 
     // ── Workflow def ────────────────────────────────────────────────────────
     useEffect(() => {

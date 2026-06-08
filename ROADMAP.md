@@ -4,6 +4,29 @@
 
 ---
 
+## 🔄 v0.4.0：AI 参数自动化 × 执行验证闭环 × 智能结果分析 (下一版本)
+
+**目标**：打通"设计 → 验证 → 修复"完整闭环，让工作流参数配置与执行验证形成 AI 辅助的自循环能力。
+
+> 详细规划见 [docs/v0.4.0-release-plan.md](docs/v0.4.0-release-plan.md)
+
+### P4.1：AI 参数配置自动化增强
+- [ ] **整体参数块 AI 自动生成**：TaskDetailPanel 新增"✨ AI 填充参数"，根据任务类型 + 上下文自动生成完整 `inputParameters` JSON
+- [ ] **参数引用有效性校验**：实时检测 `${taskRef.output.field}` 引用是否合法，inline 显示 ⚠️/❌ 提示
+- [ ] **新增任务 AI 预填**：新增节点时自动触发参数建议，降低空白配置门槛
+
+### P4.2：工作流入参配置与执行验证
+- [ ] **WorkflowInputParam Schema 增强**：`workflowDef.inputParameters` 支持结构化（type、required、description、example）
+- [ ] **WorkflowRunPanel**：edit 模式下一键弹出入参填写面板，支持表单模式与 JSON 编辑器模式
+- [ ] **执行触发 Props**：新增 `onTriggerExecution` / `onPollExecution` 回调，执行后自动切换 run 模式并轮询状态
+
+### P4.3：执行结果分析
+- [ ] **ExecutionSummaryPanel**：run 模式下展开执行概览（任务总数/成功率/耗时）+ 步骤时序表
+- [ ] **参数问题智能诊断**：自动解析常见 Conductor 错误（JSONPath 失败、HTTP 错误、超时），映射到具体参数字段并提供"去修复"跳转
+- [ ] **AI 执行诊断**：AI Copilot 在 run 模式下可用，执行失败后自动生成故障摘要并支持对话式诊断
+
+---
+
 ## 🚀 2.0 阶段：架构重塑与专业化 (当前重点)
 
 **目标：** 实现代码质量的跃迁，建立 UI 标准，并具备面向全公司的交付能力。

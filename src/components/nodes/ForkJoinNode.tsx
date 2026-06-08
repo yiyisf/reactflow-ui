@@ -8,7 +8,7 @@ import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { GitBranch, GitMerge } from 'lucide-react';
-import { getNodeMeta } from '../../utils/nodeMeta';
+import { getNodeMeta, getNodeHeader } from '../../utils/nodeMeta';
 
 type ForkJoinNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -57,7 +57,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             >
                 <NodeLayout
                     icon={IconComponent}
-                    header={isDynamic ? "DYNAMIC FORK" : "FORK"}
+                    header={getNodeHeader(isDynamic ? 'FORK_JOIN_DYNAMIC' : 'FORK_JOIN', viewMode)}
                     title={data.taskReferenceName}
                     meta={getNodeMeta(data.taskType, data, viewMode, isDynamic ? 'Dynamic Parallel Execution' : 'Parallel Execution')}
                     color={FORK_JOIN_COLOR}
@@ -182,7 +182,7 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             >
                 <NodeLayout
                     icon={IconComponent}
-                    header={data.taskType === 'EXCLUSIVE_JOIN' ? 'EXCLUSIVE JOIN' : 'JOIN'}
+                    header={getNodeHeader(data.taskType === 'EXCLUSIVE_JOIN' ? 'EXCLUSIVE_JOIN' : 'JOIN', viewMode)}
                     title={data.taskReferenceName}
                     meta={getNodeMeta(data.taskType, data, viewMode, data.taskType === 'EXCLUSIVE_JOIN' ? 'Wait for any task' : 'Wait for tasks')}
                     color={FORK_JOIN_COLOR}

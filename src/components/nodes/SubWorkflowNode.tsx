@@ -8,7 +8,7 @@ import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { GitMerge } from 'lucide-react';
 import useWorkflowStore from '../../store/workflowStore';
-import { getNodeMeta } from '../../utils/nodeMeta';
+import { getNodeMeta, getNodeHeader } from '../../utils/nodeMeta';
 
 type SubWorkflowNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -49,7 +49,7 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
             >
                 <NodeLayout
                     icon={IconComponent}
-                    header="SUB WORKFLOW"
+                    header={getNodeHeader('SUB_WORKFLOW', viewMode)}
                     title={data.taskReferenceName}
                     meta={getNodeMeta('SUB_WORKFLOW', data, viewMode, `Flow: ${subWorkflowName} (v${version})`)}
                     color={SUB_WORKFLOW_COLOR}

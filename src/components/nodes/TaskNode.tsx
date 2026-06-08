@@ -8,7 +8,7 @@ import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { Activity } from 'lucide-react';
 import useWorkflowStore from '../../store/workflowStore';
-import { getNodeMeta } from '../../utils/nodeMeta';
+import { getNodeMeta, getNodeHeader } from '../../utils/nodeMeta';
 
 type TaskNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -67,7 +67,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
             }}>
                 <NodeLayout
                     icon={IconComponent}
-                    header={taskType}
+                    header={getNodeHeader(taskType, viewMode)}
                     title={data.taskReferenceName}
                     meta={meta}
                     color={color}

@@ -23,6 +23,7 @@ import HealthCheckPanel from './HealthCheckPanel';
 import AddableEdge from './edges/AddableEdge';
 import ControlHub from './Controls/ControlHub';
 import ActionBar from './Controls/ActionBar';
+import ModeSlider from './Controls/ModeSlider';
 import WorkflowSettingsPanel from './WorkflowSettingsPanel';
 import EmptyStatePanel from './EmptyStatePanel';
 import ConfirmDialog from './ConfirmDialog';
@@ -551,6 +552,13 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         // setIsDetailPanelOpen(true); // You may need to expose this state if HealthCheckPanel needs to open it
                     }}
                 />
+
+                {/* Mode Slider (Top Center) — view‑detail switcher */}
+                {mode !== 'run' && (
+                    <Panel position="top-center" style={{ marginTop: '14px' }}>
+                        <ModeSlider />
+                    </Panel>
+                )}
 
                 {/* Action Bar (Top Right) */}
                 <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>

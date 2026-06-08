@@ -43,7 +43,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 edgeType: 'smoothstep',
                 nodesLocked: true,
                 copiedTask: null as TaskDef | null,
-                viewMode: 'standard' as ViewMode,
+                viewMode: 'business' as ViewMode,
 
                 // 模拟执行状态
                 simState: {} as Record<string, 'idle' | 'running' | 'done'>,

@@ -19,7 +19,7 @@ import AiConfigPanel from './components/AiNative/AiConfigPanel';
 import type { WorkflowDef } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
-import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection } from './types/workflow';
+import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode } from './types/workflow';
 
 import './components/AiNative/AiNative.css';
 
@@ -93,6 +93,8 @@ export interface AiWorkflowIDEProps {
     theme?: ThemeMode;
     themeColor?: ThemeColor;
     layoutDirection?: LayoutDirection;
+    /** 初始视图模式。默认 'business'（节点类型标签使用中文业务词汇）。 */
+    viewMode?: ViewMode;
     /** 组件高度，默认 '100vh' */
     height?: string | number;
 
@@ -129,6 +131,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         theme,
         themeColor,
         layoutDirection,
+        viewMode: propViewMode,
         height = '100%',
         onSave,
         onWorkflowChange,
@@ -150,6 +153,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         if (theme) workflowStore.setTheme(theme);
         if (themeColor) workflowStore.setThemeColor(themeColor);
         if (layoutDirection) workflowStore.setLayoutDirection(layoutDirection);
+        workflowStore.setViewMode(propViewMode ?? 'business');
     }, []);
 
     // ── AI config: sync on every prop change ───────────────────────────────

@@ -105,9 +105,77 @@ function buildWelcomeChips(
     ];
 }
 
+// ─── Runtime status helpers ───────────────────────────────────────────────────
+
+type RuntimeStatus = 'failed' | 'running' | 'completed' | 'none';
+
+function getRuntimeStatus(
+    mode: string,
+    instanceStatus?: string,
+    executionData?: Record<string, any> | null,
+): RuntimeStatus {
+    if (mode !== 'run') return 'none';
+    if (!instanceStatus && !executionData) return 'none';
+    const s = instanceStatus?.toUpperCase();
+    if (s === 'FAILED' || s === 'FAILED_WITH_TERMINAL_ERROR' || s === 'TIMED_OUT' || s === 'TERMINATED') return 'failed';
+    if (s === 'COMPLETED' || s === 'COMPLETED_WITH_ERRORS') return 'completed';
+    if (executionData) {
+        const statuses = Object.values(executionData).map((d: any) => d.status);
+        if (statuses.some(s => s === 'FAILED' || s === 'FAILED_WITH_TERMINAL_ERROR')) return 'failed';
+        if (statuses.some(s => s === 'IN_PROGRESS' || s === 'SCHEDULED')) return 'running';
+    }
+    return 'running';
+}
+
+function buildRuntimeChips(
+    status: RuntimeStatus,
+    workflowName: string,
+    executionData?: Record<string, any> | null,
+): string[] {
+    if (status === 'none') return [];
+    const firstFailedRef = executionData
+        ? Object.keys(executionData).find(r => {
+            const s = executionData[r].status;
+            return s === 'FAILED' || s === 'FAILED_WITH_TERMINAL_ERROR' || s === 'TIMED_OUT';
+        })
+        : undefined;
+    if (status === 'failed') {
+        return [
+            firstFailedRef ? `分析「${firstFailedRef}」的失败原因` : `分析「${workflowName}」的失败原因`,
+            '为所有失败的任务生成修复方案',
+            '总结本次执行的完整过程',
+        ];
+    }
+    if (status === 'completed') {
+        return [
+            `生成「${workflowName}」本次执行的摘要报告`,
+            '对比工作流设计与实际执行路径',
+            '有哪些任务耗时较长，如何优化？',
+        ];
+    }
+    // running
+    return [
+        `解释「${workflowName}」当前的执行进度`,
+        '当前执行路径与预期是否一致？',
+    ];
+}
+
 // ─── Node context chips ───────────────────────────────────────────────────────
 
-function buildNodeChips(taskRef: string, taskType: string): string[] {
+function buildNodeChips(
+    taskRef: string,
+    taskType: string,
+    executionStatus?: string,
+): string[] {
+    // Run-mode: failure analysis chips take priority
+    const isFailed = executionStatus === 'FAILED' || executionStatus === 'FAILED_WITH_TERMINAL_ERROR' || executionStatus === 'TIMED_OUT';
+    if (isFailed) {
+        return [
+            `分析「${taskRef}」失败的根本原因`,
+            `查看「${taskRef}」的输入和输出数据`,
+            `为「${taskRef}」的失败生成修复建议`,
+        ];
+    }
     const base = [
         `解释「${taskRef}」节点的作用`,
         `为「${taskRef}」添加失败重试机制`,
@@ -149,6 +217,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const workflowDef = useWorkflowStore(s => s.workflowDef);
     const selectedTask = useWorkflowStore(s => s.selectedTask);
     const selectTaskAction = useWorkflowStore(s => s.selectTaskAction);
+    const mode = useWorkflowStore(s => s.mode);
+    const workflowInstance = useWorkflowStore(s => s.workflowInstance);
+    const executionData = useWorkflowStore(s => s.executionData);
     const libraryItems = useLibraryStore(s => s.items);
 
     const [inputValue, setInputValue] = useState('');
@@ -344,6 +415,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const noApiKey = !config.apiKey && showConfigButton;
     // D3: show template gallery when canvas is empty and only welcome msg exists
     const showTemplates = !workflowDef && messages.length === 1 && messages[0].id === 'welcome' && libraryItems.length === 0;
+    // F2: runtime status & chips
+    const runtimeStatus = getRuntimeStatus(mode, workflowInstance?.status, executionData);
+    const runtimeChips = buildRuntimeChips(runtimeStatus, workflowDef?.name ?? '', executionData);
 
     return (
         <>
@@ -389,6 +463,20 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             <button onClick={clearMessages} title="清空对话">🗑️</button>
                         </div>
                     </div>
+
+                    {/* F2: Runtime status banner */}
+                    {mode === 'run' && runtimeStatus !== 'none' && (
+                        <div className={`ai-runtime-banner ai-runtime-banner-${runtimeStatus}`}>
+                            <span className="ai-runtime-banner-icon">
+                                {runtimeStatus === 'failed' ? '🔴' : runtimeStatus === 'completed' ? '✅' : '🔵'}
+                            </span>
+                            <span className="ai-runtime-banner-text">
+                                {runtimeStatus === 'failed' && '工作流执行失败 — AI 可协助分析原因'}
+                                {runtimeStatus === 'completed' && '工作流执行完成 — AI 可生成摘要报告'}
+                                {runtimeStatus === 'running' && '工作流执行中 — AI 可解释当前进度'}
+                            </span>
+                        </div>
+                    )}
 
                     <div className="ai-cc-messages">
                         {/* A1: Onboarding card when no API key */}
@@ -445,6 +533,24 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                                     <button
                                                         key={chip}
                                                         className="ai-welcome-chip"
+                                                        onClick={() => handleChipClick(chip)}
+                                                        disabled={isStreaming}
+                                                    >
+                                                        {chip}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {/* F2: Runtime analysis chips */}
+                                        {runtimeChips.length > 0 && (
+                                            <div className="ai-follow-up-chips">
+                                                <div className="ai-follow-up-label">
+                                                    {runtimeStatus === 'failed' ? '失败分析' : runtimeStatus === 'completed' ? '执行报告' : '执行洞察'}
+                                                </div>
+                                                {runtimeChips.map(chip => (
+                                                    <button
+                                                        key={chip}
+                                                        className={`ai-welcome-chip follow-up runtime-${runtimeStatus}`}
                                                         onClick={() => handleChipClick(chip)}
                                                         disabled={isStreaming}
                                                     >
@@ -552,7 +658,11 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 </button>
                             </div>
                             <div className="ai-node-context-chips">
-                                {buildNodeChips(selectedTask.taskReferenceName, selectedTask.type).map(chip => (
+                                {buildNodeChips(
+                                    selectedTask.taskReferenceName,
+                                    selectedTask.type,
+                                    executionData?.[selectedTask.taskReferenceName]?.status,
+                                ).map(chip => (
                                     <button
                                         key={chip}
                                         className="ai-node-context-chip"

@@ -6,7 +6,7 @@ import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { Repeat } from 'lucide-react';
-import { getNodeMeta } from '../../utils/nodeMeta';
+import { getNodeMeta, getNodeHeader } from '../../utils/nodeMeta';
 import ConfirmDialog from '../ConfirmDialog';
 
 type LoopNodeProps = NodeProps<WorkflowNodeData>;
@@ -158,7 +158,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 {/* Labels */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-accent)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                        DO WHILE
+                        {getNodeHeader('DO_WHILE', viewMode)}
                     </div>
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {data.taskReferenceName}

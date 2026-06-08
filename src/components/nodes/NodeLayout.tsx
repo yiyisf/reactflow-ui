@@ -2,6 +2,8 @@ import React, { memo } from 'react';
 import { ExecutionStatus } from '../../types/workflow';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
 
+const CJK_RE = /[一-龥]/;
+
 interface NodeLayoutProps {
     icon: React.ElementType; // Lucide Icon Component
     header: string;          // Small uppercase label (e.g. HTTP)
@@ -71,7 +73,7 @@ const NodeLayout = ({
                     color: color,
                     // Chinese labels must not be uppercased — CSS uppercase is a no-op for CJK
                     // but we conditionally remove letter-spacing when the header contains CJK
-                    ...((/[一-龥]/).test(header) && {
+                    ...(CJK_RE.test(header) && {
                         letterSpacing: '0.3px',
                         fontSize: '12px',
                     }),

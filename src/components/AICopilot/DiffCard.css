@@ -1,6 +1,6 @@
 .diff-card {
     margin-top: 8px;
-    border: 1px solid var(--border-strong);
+    border: 1px solid var(--border-secondary);
     border-radius: 8px;
     overflow: hidden;
     background: var(--bg-primary);
@@ -13,7 +13,7 @@
     gap: 8px;
     padding: 8px 10px;
     background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--border-primary);
     color: var(--text-secondary);
     font-weight: 500;
 }
@@ -60,7 +60,7 @@
     gap: 10px;
     padding: 7px 10px;
     font-size: 12px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-primary);
 }
 
 .diff-row:first-child {
@@ -105,7 +105,7 @@
     display: flex;
     gap: 6px;
     padding: 8px 10px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-primary);
     background: var(--bg-secondary);
 }
 
@@ -118,7 +118,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    border: 1px solid var(--border-strong);
+    border: 1px solid var(--border-secondary);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
@@ -128,7 +128,7 @@
 
 .diff-btn:hover:not(:disabled) {
     background: var(--bg-tertiary);
-    border-color: var(--border-strong);
+    border-color: var(--border-secondary);
     color: var(--text-primary);
 }
 

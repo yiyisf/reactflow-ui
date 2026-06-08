@@ -153,7 +153,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         if (theme) workflowStore.setTheme(theme);
         if (themeColor) workflowStore.setThemeColor(themeColor);
         if (layoutDirection) workflowStore.setLayoutDirection(layoutDirection);
-        workflowStore.setViewMode(propViewMode ?? 'business');
+        if (propViewMode) workflowStore.setViewMode(propViewMode);
     }, []);
 
     // ── AI config: sync on every prop change ───────────────────────────────

@@ -327,7 +327,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                                 height: 28, padding: '0 10px',
                                 background: 'transparent',
                                 color: 'var(--text-secondary)',
-                                border: '1px solid var(--border-strong)',
+                                border: '1px solid var(--border-secondary)',
                                 borderRadius: 6, cursor: 'pointer', fontSize: 12,
                                 display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
                             }}
@@ -344,7 +344,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                                 height: 28, padding: '0 10px',
                                 background: 'transparent',
                                 color: 'var(--text-secondary)',
-                                border: '1px solid var(--border-strong)',
+                                border: '1px solid var(--border-secondary)',
                                 borderRadius: 6, cursor: 'pointer', fontSize: 12,
                                 display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
                             }}

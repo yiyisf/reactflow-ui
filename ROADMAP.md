@@ -4,26 +4,28 @@
 
 ---
 
-## 🔄 v0.4.0：AI 参数自动化 × 执行验证闭环 × 智能结果分析 (下一版本)
+## ✅ v0.4.0：AI 参数自动化 × 执行验证闭环 × 智能结果分析 (已发布)
 
 **目标**：打通"设计 → 验证 → 修复"完整闭环，让工作流参数配置与执行验证形成 AI 辅助的自循环能力。
 
 > 详细规划见 [docs/v0.4.0-release-plan.md](docs/v0.4.0-release-plan.md)
 
 ### P4.1：AI 参数配置自动化增强
-- [ ] **整体参数块 AI 自动生成**：TaskDetailPanel 新增"✨ AI 填充参数"，根据任务类型 + 上下文自动生成完整 `inputParameters` JSON
-- [ ] **参数引用有效性校验**：实时检测 `${taskRef.output.field}` 引用是否合法，inline 显示 ⚠️/❌ 提示
-- [ ] **新增任务 AI 预填**：新增节点时自动触发参数建议，降低空白配置门槛
+- [x] **整体参数块 AI 自动生成**：TaskDetailPanel 新增"✨ AI 填充"按钮，根据任务类型 + 上游任务 + 工作流入参自动生成完整 `inputParameters` JSON，diff 预览后一键应用
+- [x] **WorkflowInputParam Schema 增强**：`workflowDef.inputParameters` 支持结构化（type、required、description、example），向后兼容 `string[]` 旧格式
+- [ ] **参数引用有效性校验**：实时检测 `${taskRef.output.field}` 引用是否合法（规划中）
 
 ### P4.2：工作流入参配置与执行验证
-- [ ] **WorkflowInputParam Schema 增强**：`workflowDef.inputParameters` 支持结构化（type、required、description、example）
-- [ ] **WorkflowRunPanel**：edit 模式下一键弹出入参填写面板，支持表单模式与 JSON 编辑器模式
-- [ ] **执行触发 Props**：新增 `onTriggerExecution` / `onPollExecution` 回调，执行后自动切换 run 模式并轮询状态
+- [x] **WorkflowInputParam 结构化类型**：新增 `WorkflowInputParam` TS 类型 + `parseWorkflowInputParams()` 工具函数
+- [x] **WorkflowRunPanel**：edit 模式工具栏"▶ 执行验证"，表单模式（根据 inputParameters 声明动态渲染）/ JSON 编辑器双模式
+- [x] **执行触发 Props**：`onTriggerExecution` / `onPollExecution` / `executionPollInterval`，执行后指数退避轮询，自动切换 run 模式
+- [x] **WorkflowSettingsPanel 升级**：参数配置 Tab 从 JSON textarea 升级为可视化入参编辑器
 
 ### P4.3：执行结果分析
-- [ ] **ExecutionSummaryPanel**：run 模式下展开执行概览（任务总数/成功率/耗时）+ 步骤时序表
-- [ ] **参数问题智能诊断**：自动解析常见 Conductor 错误（JSONPath 失败、HTTP 错误、超时），映射到具体参数字段并提供"去修复"跳转
-- [ ] **AI 执行诊断**：AI Copilot 在 run 模式下可用，执行失败后自动生成故障摘要并支持对话式诊断
+- [x] **ExecutionSummaryPanel**：run 模式悬浮面板，概览卡片 + 成功率进度条 + 步骤时序表
+- [x] **参数问题智能诊断**：10+ 条诊断规则，自动解析 Conductor 常见错误并提供"去修复"跳转
+- [x] **executionAnalyzer 工具库**：`analyzeExecution()`、`diagnoseTask()`、`formatDuration()` 等可复用函数
+- [ ] **AI 执行诊断对话**：run 模式 AI Copilot 对话式诊断（规划中）
 
 ---
 

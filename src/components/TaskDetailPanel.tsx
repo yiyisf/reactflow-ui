@@ -1,8 +1,9 @@
 import { memo, useState, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { TaskDef } from '../types/conductor';
-import { AIServiceConfig, callAICopilot } from '../services/aiService';
+import { AIServiceConfig, callAICopilot, generateTaskParameters } from '../services/aiService';
 import { generateParameterHintPrompt } from '../services/promptTemplates';
+import { parseWorkflowInputParams } from '../types/conductor';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
 
@@ -56,6 +57,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     type FullscreenState = { title: string; value: string; language: string; onSave: (v: string) => void } | null;
     const [fullscreenEditor, setFullscreenEditor] = useState<FullscreenState>(null);
 
+    // P4.1: AI 参数填充状态
+    const [aiFillLoading, setAiFillLoading] = useState(false);
+    const [aiFillDiff, setAiFillDiff] = useState<{ generated: Record<string, any>; original: Record<string, any> } | null>(null);
+
     /** 打开全屏编辑器的辅助函数 */
     const openFullscreen = (title: string, value: string, language: string, onSave: (v: string) => void) => {
         setFullscreenEditor({ title, value, language, onSave });
@@ -66,6 +71,47 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         { label: '引用前序任务输出', value: '${previous_task.output.result}', description: '引用上一个节点的计算结果' },
         { label: '环境变量', value: '${workflow.variables.api_key}', description: '引用工作流定义的全局变量' }
     ];
+
+    /** P4.1: 调用 AI 生成完整 inputParameters 块 */
+    const handleAiFillParams = async () => {
+        const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
+        if (!apiKey) {
+            alert('请先在设置中配置 AI API Key');
+            return;
+        }
+        if (!effectiveTask) return;
+
+        setAiFillLoading(true);
+        try {
+            const { workflowDef, taskMap } = useWorkflowStore.getState();
+            const inputParamNames = parseWorkflowInputParams(workflowDef?.inputParameters).map(p => p.name);
+            const upstreamTasks = Object.values(taskMap)
+                .filter(t => t.taskReferenceName !== effectiveTask.taskReferenceName)
+                .map(t => ({ ref: t.taskReferenceName, type: t.type, name: t.name }))
+                .slice(0, 10); // Limit context size
+
+            const config: Partial<AIServiceConfig> = { apiKey };
+            if (aiConfig?.baseUrl) config.baseUrl = aiConfig.baseUrl;
+            if (aiConfig?.model) config.model = aiConfig.model;
+
+            const generated = await generateTaskParameters(
+                effectiveTask.type,
+                effectiveTask.taskReferenceName,
+                inputParamNames,
+                upstreamTasks,
+                effectiveTask.inputParameters ?? {},
+                config
+            );
+            setAiFillDiff({
+                generated,
+                original: effectiveTask.inputParameters ?? {},
+            });
+        } catch (err: any) {
+            alert(`AI 生成失败：${err?.message || '未知错误'}`);
+        } finally {
+            setAiFillLoading(false);
+        }
+    };
 
     const handleAiHintClick = async (e: React.MouseEvent, onSelect: (val: string) => void) => {
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -716,17 +762,32 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     {renderInput('任务唯一引用名 (Reference Name)', 'taskReferenceName')}
                     {renderInput('任务描述', 'description')}
 
-                    {/* inputParameters with snippet panel */}
+                    {/* inputParameters with snippet panel + AI fill */}
                     <div style={{ marginBottom: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <label style={{ fontSize: '11px', color: secondaryTextColor, fontWeight: '600', textTransform: 'uppercase' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', gap: '6px' }}>
+                            <label style={{ fontSize: '11px', color: secondaryTextColor, fontWeight: '600', textTransform: 'uppercase', flex: 1 }}>
                                 输入参数 (inputParameters) <span style={{ opacity: 0.5, fontWeight: 'normal' }}>(JSON)</span>
                             </label>
                             {isEditMode && (
-                                <button onClick={() => setShowSnippets(!showSnippets)} title="快捷表达式"
-                                    style={{ fontSize: '11px', background: showSnippets ? 'var(--color-accent)' : 'none', border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: showSnippets ? '#fff' : secondaryTextColor }}>
-                                    {'{}'} 快捷片段
-                                </button>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                        onClick={handleAiFillParams}
+                                        disabled={aiFillLoading}
+                                        title="AI 根据上下文自动生成 inputParameters"
+                                        style={{
+                                            fontSize: '11px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                            border: 'none', borderRadius: '4px', padding: '2px 8px',
+                                            cursor: aiFillLoading ? 'not-allowed' : 'pointer',
+                                            color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px',
+                                            opacity: aiFillLoading ? 0.7 : 1,
+                                        }}>
+                                        {aiFillLoading ? '⏳' : '✨'} AI 填充
+                                    </button>
+                                    <button onClick={() => setShowSnippets(!showSnippets)} title="快捷表达式"
+                                        style={{ fontSize: '11px', background: showSnippets ? 'var(--color-accent)' : 'none', border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: showSnippets ? '#fff' : secondaryTextColor }}>
+                                        {'{}'} 片段
+                                    </button>
+                                </div>
                             )}
                         </div>
                         {showSnippets && (
@@ -737,6 +798,32 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                         {s.label}
                                     </button>
                                 ))}
+                            </div>
+                        )}
+                        {/* AI 填充 Diff 预览 */}
+                        {aiFillDiff && (
+                            <div style={{ marginBottom: '8px', borderRadius: '8px', border: '1px solid #6366f130', background: '#6366f108', overflow: 'hidden' }}>
+                                <div style={{ padding: '8px 12px', background: '#6366f118', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#6366f1' }}>✨ AI 建议的 inputParameters</span>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button
+                                            onClick={() => {
+                                                handleChange('inputParameters', aiFillDiff.generated);
+                                                setAiFillDiff(null);
+                                            }}
+                                            style={{ fontSize: '11px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                                            应用
+                                        </button>
+                                        <button
+                                            onClick={() => setAiFillDiff(null)}
+                                            style={{ fontSize: '11px', background: 'none', color: secondaryTextColor, border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '3px 8px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                            取消
+                                        </button>
+                                    </div>
+                                </div>
+                                <pre style={{ margin: 0, padding: '10px 12px', fontSize: '12px', fontFamily: 'var(--font-mono)', overflowX: 'auto', color: textColor, maxHeight: '180px', overflowY: 'auto' }}>
+                                    {JSON.stringify(aiFillDiff.generated, null, 2)}
+                                </pre>
                             </div>
                         )}
                         {renderCodeArea('',

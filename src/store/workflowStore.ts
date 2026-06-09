@@ -14,7 +14,8 @@ import {
     ThemeColor,
     ExecutionStatus,
     TaskExecutionData,
-    ViewMode
+    ViewMode,
+    RunState
 } from '../types/workflow';
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from '../types/conductor';
 import { buildExecutionWaves } from '../utils/simulateWorkflow';
@@ -52,6 +53,16 @@ const useWorkflowStore = create<WorkflowStore>()(
                 // 工作流加载版本号：每次调用 setWorkflow 时递增，
                 // WorkflowDesigner 监听此值以触发 fitView，与 updateTask 等增量操作区分
                 workflowLoadKey: 0,
+
+                // P4.2 执行触发状态
+                runState: 'idle' as RunState,
+                pendingExecutionId: null as string | null,
+                executionError: null as string | null,
+                showRunPanel: false,
+                showAnalysisPanel: false,
+
+                // P4.1 聚焦参数字段
+                focusedParamKey: null as string | null,
 
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
@@ -803,7 +814,46 @@ const useWorkflowStore = create<WorkflowStore>()(
                     };
 
                     get().setWorkflow(newDef);
-                }
+                },
+
+                // P4.2: 显示/隐藏执行触发面板
+                setShowRunPanel: (show: boolean) => set({ showRunPanel: show }),
+
+                // P4.2: 显示/隐藏执行分析面板
+                setShowAnalysisPanel: (show: boolean) => set({ showAnalysisPanel: show }),
+
+                // P4.2: 更新执行触发状态
+                setRunState: (state: RunState, execId?: string | null, error?: string | null) => {
+                    set({
+                        runState: state,
+                        pendingExecutionId: execId !== undefined ? execId : get().pendingExecutionId,
+                        executionError: error !== undefined ? error : get().executionError,
+                    });
+                },
+
+                // P4.3: 切回 edit 模式，选中任务并聚焦到指定参数字段
+                switchToEditAndFocusParam: (taskRef: string, paramKey?: string) => {
+                    const { workflowDef, layoutDirection, taskMap } = get();
+                    if (!workflowDef) return;
+
+                    // 切换到 edit 模式
+                    set({ mode: 'edit', focusedParamKey: paramKey ?? null });
+
+                    // 重新解析图（edit 模式下空分支可见）
+                    const { nodes, edges, taskMap: newTaskMap } = parseWorkflow(workflowDef, layoutDirection, { hideEmptyBranches: false });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: 'edit' });
+                    set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap: newTaskMap });
+
+                    // 选中目标任务并打开详情面板
+                    const task = taskMap[taskRef] || newTaskMap[taskRef];
+                    if (task) {
+                        set({
+                            selectedTask: { ...task },
+                            isDetailPanelOpen: true,
+                            showAnalysisPanel: false,
+                        });
+                    }
+                },
             }),
             {
                 // 只记录业务定义相关的状态，过滤掉运行时的 UI 状态（如 selected, dragging）

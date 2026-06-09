@@ -2,6 +2,27 @@
  * Conductor 校验规则配置
  */
 
+/**
+ * P5.4.2: 轻量括号/引号配平检查（不做完整 JS 解析）
+ */
+function isBalanced(expr: string): boolean {
+    const stack: string[] = [];
+    let inStr: string | null = null;
+    for (let i = 0; i < expr.length; i++) {
+        const ch = expr[i];
+        if (inStr) {
+            if (ch === inStr && expr[i - 1] !== '\\') inStr = null;
+            continue;
+        }
+        if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
+        if (ch === '(' || ch === '[' || ch === '{') { stack.push(ch); continue; }
+        if (ch === ')') { if (stack.pop() !== '(') return false; continue; }
+        if (ch === ']') { if (stack.pop() !== '[') return false; continue; }
+        if (ch === '}') { if (stack.pop() !== '{') return false; continue; }
+    }
+    return stack.length === 0 && inStr === null;
+}
+
 export const WORKFLOW_RULES = [
     { field: 'name', type: 'required', message: '工作流名称 (name) 必填' },
     { field: 'version', type: 'required', message: '工作流版本 (version) 必填' },
@@ -28,13 +49,43 @@ export const TASK_RULES = {
                 field: 'inputParameters.expression', type: 'custom',
                 validate: (_val: any, task: any) => !!(task?.inputParameters?.expression || task?.inputParameters?.scriptExpression),
                 message: 'INLINE 任务缺少脚本表达式 (expression)'
+            },
+            // P5.4.2: 表达式括号/引号配平
+            {
+                field: 'inputParameters.expression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.inputParameters?.expression || task?.inputParameters?.scriptExpression || '';
+                    if (!expr) return true;
+                    return isBalanced(expr);
+                },
+                message: 'INLINE 表达式括号或引号可能不匹配'
             }
         ],
         'LAMBDA': [
-            { field: 'inputParameters.scriptExpression', type: 'required', message: 'LAMBDA 任务缺少脚本表达式 (scriptExpression)' }
+            { field: 'inputParameters.scriptExpression', type: 'required', message: 'LAMBDA 任务缺少脚本表达式 (scriptExpression)' },
+            // P5.4.2
+            {
+                field: 'inputParameters.scriptExpression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.inputParameters?.scriptExpression || '';
+                    if (!expr) return true;
+                    return isBalanced(expr);
+                },
+                message: 'LAMBDA 表达式括号或引号可能不匹配'
+            }
         ],
         'JSON_JQ_TRANSFORM': [
-            { field: 'inputParameters.queryExpression', type: 'required', message: 'JQ 任务缺少查询表达式 (queryExpression)' }
+            { field: 'inputParameters.queryExpression', type: 'required', message: 'JQ 任务缺少查询表达式 (queryExpression)' },
+            // P5.4.2: JQ 表达式首字符合法性
+            {
+                field: 'inputParameters.queryExpression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.inputParameters?.queryExpression || '';
+                    if (!expr) return true;
+                    return /^[.\[{("'a-zA-Z$@]/.test(expr.trim());
+                },
+                message: 'JQ 查询表达式首字符可疑，通常以 . 或 [ 开头'
+            }
         ],
         'SUB_WORKFLOW': [
             { field: 'subWorkflowParam.name', type: 'required', message: '子工作流任务缺少子流程名称 (name)' }
@@ -58,6 +109,16 @@ export const TASK_RULES = {
                 field: 'loopCondition', type: 'custom',
                 validate: (_val: any, task: any) => !!(task?.loopCondition || task?.inputParameters?.items),
                 message: '循环任务需要配置退出条件 (loopCondition) 或列表 (items)'
+            },
+            // P5.4.2: 括号/引号配平轻量预检
+            {
+                field: 'loopCondition', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.loopCondition || '';
+                    if (!expr) return true;
+                    return isBalanced(expr);
+                },
+                message: 'loopCondition 表达式括号或引号可能不匹配'
             }
         ],
         'DECISION': [
@@ -67,6 +128,16 @@ export const TASK_RULES = {
                     const keys = Object.keys(val || {});
                     return new Set(keys).size === keys.length;
                 }, message: '决策分支条件不能重复'
+            },
+            // P5.4.2: caseExpression 轻量预检
+            {
+                field: 'caseExpression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.caseExpression || '';
+                    if (!expr || task?.evaluatorType !== 'javascript') return true;
+                    return isBalanced(expr);
+                },
+                message: 'caseExpression 表达式括号或引号可能不匹配'
             }
         ],
         'SWITCH': [

@@ -1,0 +1,212 @@
+.kv-editor {
+    width: 100%;
+    font-family: inherit;
+}
+
+.kv-table {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.kv-header-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 72px 24px;
+    gap: 6px;
+    padding: 0 2px 2px;
+}
+
+.kv-col-key,
+.kv-col-value,
+.kv-col-type,
+.kv-col-del {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    opacity: 0.6;
+}
+
+.kv-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 72px 24px;
+    gap: 6px;
+    align-items: center;
+}
+
+.kv-key-input,
+.kv-value-input {
+    width: 100%;
+    padding: 5px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    outline: none;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.kv-key-input:focus,
+.kv-value-input:focus {
+    border-color: var(--color-accent);
+}
+
+.kv-value-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.kv-value-wrap .kv-value-input,
+.kv-value-wrap .kv-bool-select {
+    flex: 1;
+    padding-right: 28px;
+    min-width: 0;
+}
+
+.kv-ref-btn {
+    position: absolute;
+    right: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 1px 2px;
+    opacity: 0.6;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.kv-ref-btn:hover {
+    opacity: 1;
+}
+
+.kv-type-select,
+.kv-bool-select {
+    width: 100%;
+    padding: 5px 4px;
+    border-radius: 5px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.kv-del-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 2px;
+    opacity: 0.5;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.kv-del-btn:hover {
+    opacity: 1;
+    color: #ef4444;
+}
+
+.kv-empty {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    padding: 8px 0;
+    font-style: italic;
+}
+
+.kv-footer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.kv-add-btn {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.kv-add-btn:hover {
+    background: var(--color-accent);
+    color: #fff;
+    border-color: var(--color-accent);
+}
+
+.kv-mode-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.kv-mode-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.kv-mode-btn {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--glass-border);
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.kv-mode-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.kv-mode-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.kv-json-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-mono, monospace);
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+}
+
+.kv-json-textarea.kv-json-error {
+    border-color: #ef4444;
+}
+
+.kv-error-msg {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #ef4444;
+}

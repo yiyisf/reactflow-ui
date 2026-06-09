@@ -1,0 +1,251 @@
+import { useState, useCallback } from 'react';
+import { WorkflowDef } from '../../types/conductor';
+import { getAvailableReferences, ReferenceOption } from '../../utils/referenceContext';
+import ReferencePicker from './ReferencePicker';
+import './KeyValueEditor.css';
+
+interface KVRow {
+    id: string;
+    key: string;
+    value: string;
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+}
+
+interface KeyValueEditorProps {
+    value: Record<string, any>;
+    onChange: (v: Record<string, any>) => void;
+    disabled?: boolean;
+    /** 当前任务的 taskReferenceName（用于引用上下文计算） */
+    taskRef?: string;
+    /** 完整工作流定义（用于引用上下文计算） */
+    workflowDef?: WorkflowDef;
+    placeholder?: string;
+}
+
+let _rowIdCounter = 0;
+const genId = () => `kv-${++_rowIdCounter}-${Date.now()}`;
+
+function parseToRows(obj: Record<string, any>): KVRow[] {
+    return Object.entries(obj).map(([key, val]) => {
+        let type: KVRow['type'] = 'string';
+        let strVal = '';
+        if (typeof val === 'number') { type = 'number'; strVal = String(val); }
+        else if (typeof val === 'boolean') { type = 'boolean'; strVal = String(val); }
+        else if (Array.isArray(val)) { type = 'array'; strVal = JSON.stringify(val, null, 2); }
+        else if (val !== null && typeof val === 'object') { type = 'object'; strVal = JSON.stringify(val, null, 2); }
+        else { type = 'string'; strVal = val == null ? '' : String(val); }
+        return { id: genId(), key, value: strVal, type };
+    });
+}
+
+function rowsToObject(rows: KVRow[]): Record<string, any> {
+    const result: Record<string, any> = {};
+    for (const row of rows) {
+        if (!row.key.trim()) continue;
+        try {
+            if (row.type === 'number') result[row.key] = row.value === '' ? undefined : Number(row.value);
+            else if (row.type === 'boolean') result[row.key] = row.value === 'true';
+            else if (row.type === 'object' || row.type === 'array') result[row.key] = JSON.parse(row.value || (row.type === 'array' ? '[]' : '{}'));
+            else result[row.key] = row.value;
+        } catch {
+            result[row.key] = row.value;
+        }
+    }
+    return result;
+}
+
+export default function KeyValueEditor({
+    value,
+    onChange,
+    disabled = false,
+    taskRef,
+    workflowDef,
+    placeholder,
+}: KeyValueEditorProps) {
+    const [rows, setRows] = useState<KVRow[]>(() => parseToRows(value));
+    const [advancedMode, setAdvancedMode] = useState(false);
+    const [jsonText, setJsonText] = useState(() => JSON.stringify(value, null, 2));
+    const [jsonError, setJsonError] = useState<string | null>(null);
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [pickerAnchor, setPickerAnchor] = useState<DOMRect | undefined>();
+    const [activeRowId, setActiveRowId] = useState<string | null>(null);
+
+    const references: ReferenceOption[] = (taskRef && workflowDef)
+        ? getAvailableReferences(workflowDef, taskRef)
+        : [];
+
+    const commitRows = useCallback((nextRows: KVRow[]) => {
+        setRows(nextRows);
+        const obj = rowsToObject(nextRows);
+        setJsonText(JSON.stringify(obj, null, 2));
+        onChange(obj);
+    }, [onChange]);
+
+    const updateRow = (id: string, patch: Partial<KVRow>) => {
+        const nextRows = rows.map(r => r.id === id ? { ...r, ...patch } : r);
+        commitRows(nextRows);
+    };
+
+    const addRow = () => {
+        const newRow: KVRow = { id: genId(), key: '', value: '', type: 'string' };
+        commitRows([...rows, newRow]);
+    };
+
+    const removeRow = (id: string) => {
+        commitRows(rows.filter(r => r.id !== id));
+    };
+
+    const handleJsonChange = (text: string) => {
+        setJsonText(text);
+        try {
+            const parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                setJsonError(null);
+                setRows(parseToRows(parsed));
+                onChange(parsed);
+            } else {
+                setJsonError('顶层必须是 JSON 对象');
+            }
+        } catch (e: any) {
+            setJsonError(e.message ?? 'JSON 格式错误');
+        }
+    };
+
+    const openPicker = (rowId: string, e: React.MouseEvent) => {
+        setActiveRowId(rowId);
+        setPickerAnchor((e.currentTarget as HTMLElement).getBoundingClientRect());
+        setPickerOpen(true);
+    };
+
+    const onPickerSelect = (expr: string) => {
+        if (!activeRowId) return;
+        const row = rows.find(r => r.id === activeRowId);
+        if (!row) return;
+        updateRow(activeRowId, { value: row.value ? `${row.value}${expr}` : expr, type: 'string' });
+    };
+
+    const switchToAdvanced = () => {
+        setJsonText(JSON.stringify(rowsToObject(rows), null, 2));
+        setAdvancedMode(true);
+    };
+
+    const switchToRows = () => {
+        if (jsonError) return;
+        try {
+            const parsed = JSON.parse(jsonText);
+            setRows(parseToRows(parsed));
+        } catch { /* keep current rows */ }
+        setAdvancedMode(false);
+        setJsonError(null);
+    };
+
+    if (advancedMode) {
+        return (
+            <div className="kv-editor">
+                <div className="kv-mode-bar">
+                    <span className="kv-mode-label">高级 JSON 模式</span>
+                    <button className="kv-mode-btn" onClick={switchToRows} disabled={!!jsonError}>
+                        ← 结构化模式
+                    </button>
+                </div>
+                <textarea
+                    className={`kv-json-textarea${jsonError ? ' kv-json-error' : ''}`}
+                    value={jsonText}
+                    onChange={e => handleJsonChange(e.target.value)}
+                    disabled={disabled}
+                    rows={8}
+                    spellCheck={false}
+                    placeholder={placeholder || '{}'}
+                />
+                {jsonError && <div className="kv-error-msg">⚠️ {jsonError}</div>}
+            </div>
+        );
+    }
+
+    return (
+        <div className="kv-editor">
+            <div className="kv-table">
+                {rows.length > 0 && (
+                    <div className="kv-header-row">
+                        <span className="kv-col-key">键 (Key)</span>
+                        <span className="kv-col-value">值 (Value)</span>
+                        <span className="kv-col-type">类型</span>
+                        <span className="kv-col-del" />
+                    </div>
+                )}
+                {rows.map(row => (
+                    <div key={row.id} className="kv-row">
+                        <input
+                            className="kv-key-input"
+                            value={row.key}
+                            placeholder="key"
+                            disabled={disabled}
+                            onChange={e => updateRow(row.id, { key: e.target.value })}
+                        />
+                        <div className="kv-value-wrap">
+                            {row.type === 'boolean' ? (
+                                <select
+                                    className="kv-bool-select"
+                                    value={row.value}
+                                    disabled={disabled}
+                                    onChange={e => updateRow(row.id, { value: e.target.value })}
+                                >
+                                    <option value="true">true</option>
+                                    <option value="false">false</option>
+                                </select>
+                            ) : (
+                                <input
+                                    className="kv-value-input"
+                                    value={row.value}
+                                    placeholder={row.type === 'object' ? '{}' : row.type === 'array' ? '[]' : '值或 ${...}'}
+                                    disabled={disabled}
+                                    onChange={e => updateRow(row.id, { value: e.target.value })}
+                                />
+                            )}
+                            {!disabled && references.length > 0 && (
+                                <button
+                                    className="kv-ref-btn"
+                                    title="插入引用"
+                                    onClick={e => openPicker(row.id, e)}
+                                >
+                                    🔗
+                                </button>
+                            )}
+                        </div>
+                        <select
+                            className="kv-type-select"
+                            value={row.type}
+                            disabled={disabled}
+                            onChange={e => updateRow(row.id, { type: e.target.value as KVRow['type'] })}
+                        >
+                            <option value="string">string</option>
+                            <option value="number">number</option>
+                            <option value="boolean">boolean</option>
+                            <option value="object">object</option>
+                            <option value="array">array</option>
+                        </select>
+                        {!disabled && (
+                            <button className="kv-del-btn" onClick={() => removeRow(row.id)}>✕</button>
+                        )}
+                    </div>
+                ))}
+                {rows.length === 0 && !disabled && (
+                    <div className="kv-empty">{placeholder || '点击"+ 添加字段"开始配置参数'}</div>
+                )}
+            </div>
+            {!disabled && (
+                <div className="kv-footer">
+                    <button className="kv-add-btn" onClick={addRow}>+ 添加字段</button>
+                    <button className="kv-mode-btn" onClick={switchToAdvanced}>⚙ 高级 JSON 模式</button>
+                </div>
+            )}
+            <ReferencePicker
+                isOpen={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                onSelect={onPickerSelect}
+                references={references}
+                anchorRect={pickerAnchor}
+            />
+        </div>
+    );
+}

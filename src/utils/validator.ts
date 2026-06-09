@@ -1,6 +1,7 @@
 import { WORKFLOW_RULES, TASK_RULES } from './validationRules';
 import { WorkflowDef, TaskDef } from '../types/conductor';
 import { ValidationItem, ValidationResults } from '../types/workflow';
+import { getAvailableReferences, isReferenceResolvable } from './referenceContext';
 
 interface ValidationContext {
     taskRefs: Set<string>;
@@ -66,7 +67,13 @@ const executeRules = (target: any, rules: ValidationRule[], context: ValidationC
         }
 
         if (!isValid) {
-            const errorObj: ValidationItem = { type: target.taskReferenceName ? 'TASK' : 'GLOBAL', ref, message: rule.message };
+            const errorObj: ValidationItem = {
+                type: target.taskReferenceName ? 'TASK' : 'GLOBAL',
+                ref,
+                message: rule.message,
+                field: rule.field,
+                level: rule.level ?? 'error',
+            };
             if (rule.level === 'warning') {
                 warnings.push(errorObj);
             } else {
@@ -133,11 +140,74 @@ export const validateWorkflow = (workflowDef: WorkflowDef | null): ValidationRes
     const cycleErrors = detectCycles(workflowDef.tasks);
     errors.push(...cycleErrors);
 
+    // 4. P5.4.1：参数引用静态校验
+    const refWarnings = validateParameterReferences(workflowDef);
+    warnings.push(...refWarnings);
+
     return {
         isValid: errors.length === 0,
         errors,
         warnings
     };
+};
+
+/**
+ * P5.4.1：遍历所有任务 inputParameters，检测 ${...} 引用的合法性
+ */
+const validateParameterReferences = (workflowDef: WorkflowDef): ValidationItem[] => {
+    const warnings: ValidationItem[] = [];
+    const EXPR_RE = /\$\{[^}]+\}/g;
+
+    const checkTask = (task: TaskDef) => {
+        if (!task.inputParameters || typeof task.inputParameters !== 'object') return;
+        const available = getAvailableReferences(workflowDef, task.taskReferenceName);
+
+        const checkValue = (value: unknown, fieldPath: string) => {
+            if (typeof value === 'string') {
+                const matches = value.match(EXPR_RE);
+                if (!matches) return;
+                for (const expr of matches) {
+                    const result = isReferenceResolvable(expr, available);
+                    if (!result.ok) {
+                        const msgMap: Record<string, string> = {
+                            unknown_task: `引用的任务/变量不存在或为下游任务：${expr}`,
+                            forward_ref: `不能引用后续任务的输出：${expr}`,
+                            malformed: `表达式格式可疑：${expr}`,
+                            undeclared_input: `工作流入参未声明此字段：${expr}`,
+                        };
+                        warnings.push({
+                            type: 'TASK',
+                            ref: task.taskReferenceName,
+                            message: msgMap[result.reason ?? 'unknown_task'] ?? `引用可能无效：${expr}`,
+                            field: fieldPath,
+                            level: 'warning',
+                        });
+                    }
+                }
+            } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+                for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+                    checkValue(v, `${fieldPath}.${k}`);
+                }
+            }
+        };
+
+        for (const [key, val] of Object.entries(task.inputParameters)) {
+            checkValue(val, key);
+        }
+    };
+
+    const traverseTasks = (tasks: TaskDef[]) => {
+        for (const task of tasks) {
+            checkTask(task);
+            if (task.decisionCases) Object.values(task.decisionCases).forEach(traverseTasks);
+            if (task.defaultCase) traverseTasks(task.defaultCase);
+            if (task.forkTasks) task.forkTasks.forEach(traverseTasks);
+            if (task.loopOver) traverseTasks(task.loopOver);
+        }
+    };
+
+    traverseTasks(workflowDef.tasks);
+    return warnings;
 };
 
 /**

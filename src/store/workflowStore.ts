@@ -20,6 +20,21 @@ import {
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from '../types/conductor';
 import { buildExecutionWaves } from '../utils/simulateWorkflow';
 
+// P5.3.1: 字段分类——这些字段变更会影响图结构（需要全量重解析）
+const STRUCTURAL_FIELDS = new Set([
+    'type', 'taskReferenceName', 'decisionCases', 'defaultCase', 'forkTasks', 'loopOver',
+]);
+
+function isStructuralUpdate(field: string | Record<string, any>): boolean {
+    if (typeof field === 'object') {
+        return Object.keys(field).some(k => STRUCTURAL_FIELDS.has(k));
+    }
+    return STRUCTURAL_FIELDS.has(field);
+}
+
+// P5.3.2: 模块级校验防抖定时器（非结构化更新时使用）
+let _validationDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 const useWorkflowStore = create<WorkflowStore>()(
     persist(
         temporal(
@@ -312,26 +327,43 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
                     const task = findTaskByRef(newDef.tasks, taskRef);
-                    if (task) {
-                        if (typeof field === 'object') {
-                            Object.assign(task, field);
-                        } else {
-                            (task as any)[field] = value;
-                        }
+                    if (!task) return;
 
+                    if (typeof field === 'object') {
+                        Object.assign(task, field);
+                    } else {
+                        (task as any)[field] = value;
+                    }
+
+                    if (isStructuralUpdate(field)) {
+                        // P5.3.1: 结构化更新 — 全量重解析 + 重新布局
                         syncForkJoinOn(newDef.tasks);
-
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
+                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
+                    } else {
+                        // P5.3.1: 非结构化更新 — 仅原地更新 node.data.task + taskMap，保留坐标
+                        const currentNodes = get().nodes;
+                        const updatedNodes = currentNodes.map(n =>
+                            n.id === taskRef
+                                ? { ...n, data: { ...n.data, task, label: (field === 'name' || (typeof field === 'object' && 'name' in field)) ? (task.name ?? n.data.label) : n.data.label } }
+                                : n
+                        );
+                        const updatedTaskMap = { ...get().taskMap, [taskRef]: task };
 
-                        set({
-                            workflowDef: newDef,
-                            nodes: layoutedNodes,
-                            edges: layoutedEdges,
-                            taskMap,
-                            validationResults
-                        });
+                        // P5.3.2: 防抖 300ms 执行校验，避免逐字符触发全量递归校验
+                        if (_validationDebounceTimer !== null) clearTimeout(_validationDebounceTimer);
+                        _validationDebounceTimer = setTimeout(() => {
+                            const { workflowDef: latestDef } = useWorkflowStore.getState();
+                            if (latestDef) {
+                                const validationResults = validateWorkflow(latestDef);
+                                useWorkflowStore.setState({ validationResults });
+                            }
+                            _validationDebounceTimer = null;
+                        }, 300);
+
+                        set({ workflowDef: newDef, nodes: updatedNodes, taskMap: updatedTaskMap });
                     }
                 },
 

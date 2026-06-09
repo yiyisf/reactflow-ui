@@ -6,6 +6,7 @@ import { generateParameterHintPrompt } from '../services/promptTemplates';
 import { parseWorkflowInputParams } from '../types/conductor';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
+import KeyValueEditor from './inputs/KeyValueEditor';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
@@ -25,7 +26,7 @@ const QUICK_SNIPPETS = [
 ];
 
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
-    const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
+    const { mode, updateTask, checkTaskRefUniqueness, validationResults, workflowDef } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
     // syncedRef: the taskReferenceName at the time localTask was last synced from `task`.
     // Used to identify the "same task" even while the user is editing the ref name field.
@@ -762,11 +763,11 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     {renderInput('任务唯一引用名 (Reference Name)', 'taskReferenceName')}
                     {renderInput('任务描述', 'description')}
 
-                    {/* inputParameters with snippet panel + AI fill */}
+                    {/* inputParameters with snippet panel + AI fill + KeyValueEditor */}
                     <div style={{ marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', gap: '6px' }}>
                             <label style={{ fontSize: '11px', color: secondaryTextColor, fontWeight: '600', textTransform: 'uppercase', flex: 1 }}>
-                                输入参数 (inputParameters) <span style={{ opacity: 0.5, fontWeight: 'normal' }}>(JSON)</span>
+                                输入参数 (inputParameters)
                             </label>
                             {isEditMode && (
                                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -826,10 +827,37 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 </pre>
                             </div>
                         )}
-                        {renderCodeArea('',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : (displayTask.inputParameters ?? ''),
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { setLocalTask(prev => ({ ...prev!, inputParameters: v as any }) as any); } },
-                            { rows: 5, language: 'json', 'data-field': 'inputParameters', style: { outline: 'none' } })}
+                        {/* P5.1.2: KeyValueEditor 替代原始 JSON textarea */}
+                        <KeyValueEditor
+                            value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
+                            onChange={(v) => handleChange('inputParameters', v)}
+                            disabled={!isEditMode}
+                            taskRef={displayTask.taskReferenceName}
+                            workflowDef={workflowDef ?? undefined}
+                        />
+                        {/* P5.4.3: 字段级校验反馈 */}
+                        {(() => {
+                            const taskWarnings = [
+                                ...(validationResults.errors.filter(e => e.ref === displayTask.taskReferenceName && e.field)),
+                                ...(validationResults.warnings.filter(w => w.ref === displayTask.taskReferenceName && w.field)),
+                            ];
+                            if (taskWarnings.length === 0) return null;
+                            return (
+                                <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                    {taskWarnings.map((item, i) => (
+                                        <div key={i} style={{
+                                            fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '4px',
+                                            color: item.level === 'error' || !item.level && validationResults.errors.includes(item) ? '#ef4444' : '#f59e0b',
+                                        }}>
+                                            <span style={{ flexShrink: 0, marginTop: '1px' }}>
+                                                {(item.level === 'error' || validationResults.errors.includes(item)) ? '❌' : '⚠️'}
+                                            </span>
+                                            <span>{item.message}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

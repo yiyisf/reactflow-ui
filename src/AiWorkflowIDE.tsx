@@ -199,14 +199,15 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     }, [workflowStore.workflowDef, onWorkflowChange]);
 
     // ── Ref API ─────────────────────────────────────────────────────────────
+    // Use getState() to avoid stale closure — ref callbacks must always reflect latest store state.
     useImperativeHandle(ref, () => ({
-        getWorkflowDef: () => workflowStore.workflowDef,
+        getWorkflowDef: () => useWorkflowStore.getState().workflowDef,
         setWorkflow: (def: WorkflowDef) => {
-            workflowStore.setWorkflow(def);
-            workflowStore.setMode('edit');
+            useWorkflowStore.getState().setWorkflow(def);
+            useWorkflowStore.getState().setMode('edit');
         },
-        createBlankWorkflow: (name?: string) => workflowStore.createBlankWorkflow(name),
-        getAiMetrics: () => aiStore.getMetrics(),
+        createBlankWorkflow: (name?: string) => useWorkflowStore.getState().createBlankWorkflow(name),
+        getAiMetrics: () => useAiStore.getState().getMetrics(),
     }), []);
 
     // ── ReviewBar handlers ──────────────────────────────────────────────────

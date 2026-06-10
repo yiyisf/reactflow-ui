@@ -27,6 +27,7 @@ export interface DiffSummary {
     modified: string[];
     removed: string[];
     propsChanged: boolean;
+    reordered?: boolean;
 }
 
 export interface ToolCallResult {
@@ -39,6 +40,58 @@ export interface ToolCallResult {
     inferredLevel?: WorkflowLevel;
     /** For 'info'/'error': text to append to chat */
     text?: string;
+}
+
+// ─── Recursive task search/transform ────────────────────────────────────────
+
+/**
+ * Recursively transforms tasks matching the predicate.
+ * Returning null from the transform removes the task.
+ * Searches top-level tasks AND nested forkTasks/decisionCases/defaultCase/loopOver.
+ */
+function transformTasksRecursively(
+    tasks: TaskDef[],
+    predicate: (t: TaskDef) => boolean,
+    transform: (t: TaskDef) => TaskDef | null,
+): TaskDef[] {
+    const result: TaskDef[] = [];
+    for (const t of tasks) {
+        if (predicate(t)) {
+            const transformed = transform(t);
+            if (transformed !== null) result.push(transformed);
+        } else {
+            let updated: TaskDef = t;
+            if (t.forkTasks && Array.isArray(t.forkTasks)) {
+                updated = {
+                    ...updated,
+                    forkTasks: (t.forkTasks as TaskDef[][]).map(branch =>
+                        transformTasksRecursively(branch, predicate, transform)
+                    ),
+                };
+            }
+            if (t.decisionCases && typeof t.decisionCases === 'object') {
+                const newCases: Record<string, TaskDef[]> = {};
+                for (const [k, v] of Object.entries(t.decisionCases as Record<string, TaskDef[]>)) {
+                    newCases[k] = transformTasksRecursively(v, predicate, transform);
+                }
+                updated = { ...updated, decisionCases: newCases };
+            }
+            if (t.defaultCase && Array.isArray(t.defaultCase)) {
+                updated = {
+                    ...updated,
+                    defaultCase: transformTasksRecursively(t.defaultCase as TaskDef[], predicate, transform),
+                };
+            }
+            if (t.loopOver && Array.isArray(t.loopOver)) {
+                updated = {
+                    ...updated,
+                    loopOver: transformTasksRecursively(t.loopOver as TaskDef[], predicate, transform),
+                };
+            }
+            result.push(updated);
+        }
+    }
+    return result;
 }
 
 // ─── Pure JSON patch function ────────────────────────────────────────────────
@@ -66,14 +119,21 @@ export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
                 }
                 break;
             }
+
             case 'update_task':
-                result.tasks = result.tasks.map(t =>
-                    t.taskReferenceName === op.ref ? { ...t, ...op.changes } : t
+                result.tasks = transformTasksRecursively(
+                    result.tasks,
+                    t => t.taskReferenceName === op.ref,
+                    t => ({ ...t, ...op.changes }),
                 );
                 break;
 
             case 'remove_task':
-                result.tasks = result.tasks.filter(t => t.taskReferenceName !== op.ref);
+                result.tasks = transformTasksRecursively(
+                    result.tasks,
+                    t => t.taskReferenceName === op.ref,
+                    () => null,
+                );
                 break;
 
             case 'update_props': {
@@ -85,10 +145,14 @@ export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
             case 'add_switch_branch': {
                 result.tasks = result.tasks.map(t => {
                     if (t.taskReferenceName !== op.ref) return t;
-                    const decisionCases = { ...(t.decisionCases ?? {}) };
                     if (op.caseName === 'default') {
+                        // Guard: don't overwrite existing defaultCase
+                        if (t.defaultCase) return t;
                         return { ...t, defaultCase: [] };
                     }
+                    const decisionCases = { ...(t.decisionCases ?? {}) };
+                    // Guard: don't overwrite existing branch
+                    if (decisionCases[op.caseName]) return t;
                     decisionCases[op.caseName] = [];
                     return { ...t, decisionCases };
                 });
@@ -98,8 +162,9 @@ export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
             case 'add_fork_branch': {
                 result.tasks = result.tasks.map(t => {
                     if (t.taskReferenceName !== op.ref) return t;
-                    const newBranchRef = `branch_${Date.now()}`;
                     const forkTasks = (t.forkTasks ?? []) as TaskDef[][];
+                    // Use branch count as suffix — deterministic, no timestamp collision
+                    const newBranchRef = `${op.ref}_branch_${forkTasks.length + 1}`;
                     return { ...t, forkTasks: [...forkTasks, [{ name: newBranchRef, taskReferenceName: newBranchRef, type: 'SIMPLE' }]] };
                 });
                 break;
@@ -145,9 +210,23 @@ export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): Dif
     const propsChanged =
         before.name !== after.name ||
         before.description !== after.description ||
-        before.timeoutSeconds !== after.timeoutSeconds;
+        before.timeoutSeconds !== after.timeoutSeconds ||
+        before.version !== after.version ||
+        before.ownerEmail !== after.ownerEmail ||
+        before.failureWorkflow !== after.failureWorkflow ||
+        JSON.stringify(before.inputParameters) !== JSON.stringify(after.inputParameters) ||
+        JSON.stringify(before.outputParameters) !== JSON.stringify(after.outputParameters);
 
-    return { added, modified, removed, propsChanged };
+    // Detect task reordering: compare the relative order of shared tasks
+    const beforeOrder = (before.tasks ?? [])
+        .filter(t => afterMap.has(t.taskReferenceName))
+        .map(t => t.taskReferenceName);
+    const afterOrder = afterTasks
+        .filter(t => beforeMap.has(t.taskReferenceName))
+        .map(t => t.taskReferenceName);
+    const reordered = beforeOrder.join(',') !== afterOrder.join(',');
+
+    return { added, modified, removed, propsChanged, reordered };
 }
 
 // ─── Library level compliance check ─────────────────────────────────────────
@@ -208,6 +287,9 @@ export function executeToolCall(
             const proposed = args.workflow as WorkflowDef;
             if (!proposed?.name) {
                 return { type: 'error', text: '工作流定义缺少 name 字段' };
+            }
+            if (!Array.isArray(proposed.tasks)) {
+                return { type: 'error', text: '工作流定义缺少 tasks 数组，请提供包含 tasks 字段的完整工作流定义' };
             }
             const diff = computeDiff(currentDef, proposed);
             const { inferredLevel } = checkLevelCompliance(proposed);
@@ -327,6 +409,7 @@ export function describeDiff(diff: DiffSummary): string {
     if (diff.added.length > 0) parts.push(`新增 ${diff.added.length} 个任务（${diff.added.join(', ')}）`);
     if (diff.modified.length > 0) parts.push(`修改 ${diff.modified.length} 个任务（${diff.modified.join(', ')}）`);
     if (diff.removed.length > 0) parts.push(`删除 ${diff.removed.length} 个任务（${diff.removed.join(', ')}）`);
+    if (diff.reordered) parts.push('调整了任务顺序');
     if (diff.propsChanged) parts.push('修改了工作流属性');
     return parts.length > 0 ? parts.join('，') : '无实质性变更';
 }

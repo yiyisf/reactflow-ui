@@ -147,13 +147,18 @@ async function* streamOpenAI(
 
     const decoder = new TextDecoder();
     const toolCalls: Record<number, { id: string; name: string; args: string }> = {};
+    let lineBuffer = '';
 
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
+        // Carry incomplete lines across chunk boundaries to avoid split-JSON errors
         const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
+        const rawLines = (lineBuffer + chunk).split('\n');
+        lineBuffer = rawLines.pop() ?? '';
+
+        for (const line of rawLines) {
             const trimmed = line.trim();
             if (!trimmed.startsWith('data: ')) continue;
             const data = trimmed.slice(6);
@@ -187,7 +192,7 @@ async function* streamOpenAI(
 
     for (const tc of Object.values(toolCalls)) {
         try {
-            const args = JSON.parse(tc.args);
+            const args = JSON.parse(tc.args || '{}');
             yield { type: 'tool_call', id: tc.id, name: tc.name, args };
         } catch {
             yield { type: 'error', message: `Failed to parse tool call args for ${tc.name}` };
@@ -225,7 +230,7 @@ async function* streamAnthropic(
 
     const body: Record<string, any> = {
         model: resolved.model,
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: chatMessages,
         stream: true,
     };
@@ -257,13 +262,18 @@ async function* streamAnthropic(
     let currentToolId = '';
     let currentToolName = '';
     let currentToolArgs = '';
+    let lineBuffer = '';
 
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
+        // Carry incomplete lines across chunk boundaries to avoid split-JSON errors
         const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n')) {
+        const rawLines = (lineBuffer + chunk).split('\n');
+        lineBuffer = rawLines.pop() ?? '';
+
+        for (const line of rawLines) {
             const trimmed = line.trim();
             if (!trimmed.startsWith('data: ')) continue;
 

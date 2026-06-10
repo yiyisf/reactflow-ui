@@ -12,6 +12,11 @@ import useWorkflowStore from '../../store/workflowStore';
 import useLibraryStore from '../../store/libraryStore';
 import { streamChat } from '../../services/ai/protocolAdapter';
 import { TOOL_DEFINITIONS } from '../../services/ai/toolDefs';
+
+// Read-only tools allowed in run mode (no workflow-modifying tools)
+const READ_ONLY_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
+    ['get_workflow_state', 'validate_workflow', 'search_workflow_library'].includes(t.function.name)
+);
 import { executeToolCall, describeDiff } from '../../services/ai/toolExecutor';
 import { buildSystemPrompt } from '../../services/ai/systemPrompt';
 import LibraryPanel from './LibraryPanel';
@@ -210,7 +215,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         appendStreamingText,
         clearMessages,
         setProposal,
-        recordReject,
+        clearProposal,
         clearFollowUpChips,
     } = useAiStore();
 
@@ -295,8 +300,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             const history = buildHistory(text);
             let fullText = '';
             const toolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
+            // In run mode, restrict to read-only tools — no workflow modifications allowed
+            const activeDefs = mode === 'run' ? READ_ONLY_TOOL_DEFINITIONS : TOOL_DEFINITIONS;
 
-            for await (const event of streamChat(history, TOOL_DEFINITIONS, config, controller.signal)) {
+            for await (const event of streamChat(history, activeDefs, config, controller.signal)) {
                 if (controller.signal.aborted) break;
                 switch (event.type) {
                     case 'text':
@@ -317,6 +324,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             let hasProposal = false;
 
             for (const tc of toolCalls) {
+                if (controller.signal.aborted) break;
+
                 const statusMap: Record<string, string> = {
                     get_workflow_state: '正在读取工作流状态…',
                     search_workflow_library: '正在搜索工作流库…',
@@ -403,12 +412,13 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     };
 
     // Guard confirm: discard proposal and send the blocked message
+    // Use clearProposal (not recordReject) so discarding-to-chat doesn't pollute reject metrics.
     const handleGuardConfirm = useCallback(() => {
         const blocked = guardBlocked;
         setGuardBlocked(null);
-        recordReject();
+        clearProposal();
         if (blocked) handleSendText(blocked);
-    }, [guardBlocked, recordReject, handleSendText]);
+    }, [guardBlocked, clearProposal, handleSendText]);
 
     const welcomeChips = buildWelcomeChips(!!workflowDef, libraryItems);
     const hasLibrary = libraryItems.length > 0;
@@ -460,7 +470,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             {showConfigButton && (
                                 <button onClick={onShowConfig} title="配置 AI 服务">⚙️</button>
                             )}
-                            <button onClick={clearMessages} title="清空对话">🗑️</button>
+                            <button
+                                onClick={() => { abortRef.current?.abort(); clearMessages(); }}
+                                title="清空对话"
+                            >🗑️</button>
                         </div>
                     </div>
 
@@ -610,7 +623,12 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             <div className="ai-retry-row">
                                 <button
                                     className="ai-retry-btn"
-                                    onClick={() => { const t = retryInput; setRetryInput(null); handleSendText(t); }}
+                                    onClick={() => {
+                                        const t = retryInput;
+                                        if (pendingProposal) { setGuardBlocked(t); return; }
+                                        setRetryInput(null);
+                                        handleSendText(t);
+                                    }}
                                 >
                                     ↺ 重试上一条消息
                                 </button>

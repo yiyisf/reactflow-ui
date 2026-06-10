@@ -1,12 +1,10 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { TaskDef } from '../types/conductor';
-import { AIServiceConfig, callAICopilot, generateTaskParameters } from '../services/aiService';
-import { generateParameterHintPrompt } from '../services/promptTemplates';
+import { AIServiceConfig, generateTaskParameters } from '../services/aiService';
 import { parseWorkflowInputParams } from '../types/conductor';
-import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
-import KeyValueEditor from './inputs/KeyValueEditor';
+import KeyValueEditor, { KeyValueEditorRef } from './inputs/KeyValueEditor';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
@@ -27,6 +25,7 @@ const QUICK_SNIPPETS = [
 
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
     const { mode, updateTask, checkTaskRefUniqueness, validationResults, workflowDef } = useWorkflowStore();
+    const kvEditorRef = useRef<KeyValueEditorRef>(null);
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
     // syncedRef: the taskReferenceName at the time localTask was last synced from `task`.
     // Used to identify the "same task" even while the user is editing the ref name field.
@@ -49,10 +48,6 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         return 'classic';
     });
 
-    const [suggesterOpen, setSuggesterOpen] = useState(false);
-    const [suggesterAnchor, setSuggesterAnchor] = useState<DOMRect | undefined>();
-    const [currentSuggestions, setCurrentSuggestions] = useState<Suggestion[]>([]);
-    const [onSelectSuggestion, setOnSelectSuggestion] = useState<(val: string) => void>(() => () => { });
 
     // 全屏编辑器状态
     type FullscreenState = { title: string; value: string; language: string; onSave: (v: string) => void } | null;
@@ -67,11 +62,6 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         setFullscreenEditor({ title, value, language, onSave });
     };
 
-    const mockSuggestions: Suggestion[] = [
-        { label: '引用工作流输入', value: '${workflow.input.data}', description: '引用工作流启动时传入的原始数据' },
-        { label: '引用前序任务输出', value: '${previous_task.output.result}', description: '引用上一个节点的计算结果' },
-        { label: '环境变量', value: '${workflow.variables.api_key}', description: '引用工作流定义的全局变量' }
-    ];
 
     /** P4.1: 调用 AI 生成完整 inputParameters 块 */
     const handleAiFillParams = async () => {
@@ -114,44 +104,6 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         }
     };
 
-    const handleAiHintClick = async (e: React.MouseEvent, onSelect: (val: string) => void) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setSuggesterAnchor(rect);
-        setOnSelectSuggestion(() => onSelect);
-        setCurrentSuggestions([]);
-        setSuggesterOpen(true);
-
-        const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
-        if (!apiKey) {
-            setCurrentSuggestions(mockSuggestions);
-            return;
-        }
-
-        try {
-            const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
-            const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
-            const config: Record<string, string> = { apiKey };
-            if (baseUrl) config.baseUrl = baseUrl;
-            if (model) config.model = model;
-
-            const { workflowDef } = useWorkflowStore.getState();
-            const prompt = generateParameterHintPrompt(effectiveTask!, workflowDef);
-            const response = await callAICopilot(
-                [{ role: 'system', content: 'You are a Conductor workflow expert. Return only valid JSON.' }, { role: 'user', content: prompt }],
-                config
-            );
-
-            const jsonMatch = response.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]) as Suggestion[];
-                setCurrentSuggestions(parsed);
-            } else {
-                setCurrentSuggestions(mockSuggestions);
-            }
-        } catch (err) {
-            setCurrentSuggestions(mockSuggestions);
-        }
-    };
 
     useEffect(() => {
         if (task) {
@@ -224,6 +176,12 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     };
 
     const insertSnippet = (snippet: string) => {
+        // Bug1 fix: 优先插入到 KeyValueEditor 的最近聚焦行；textarea 为兜底
+        if (kvEditorRef.current) {
+            kvEditorRef.current.insertAtFocused(snippet);
+            setShowSnippets(false);
+            return;
+        }
         if (!activeTextareaRef) return;
         const start = activeTextareaRef.selectionStart ?? 0;
         const end = activeTextareaRef.selectionEnd ?? 0;
@@ -232,6 +190,25 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         const fieldName = activeTextareaRef.getAttribute('data-field');
         if (fieldName) handleChange(fieldName, newValue);
         setShowSnippets(false);
+    };
+
+    /** P5.4.3: 在对应字段旁显示 ❌/⚠️ 校验反馈（field 为 validationRules 中配置的 field 路径） */
+    const renderFieldValidation = (fieldPath: string) => {
+        const items = [
+            ...validationResults.errors.filter(e => e.ref === displayTask.taskReferenceName && e.field === fieldPath),
+            ...validationResults.warnings.filter(w => w.ref === displayTask.taskReferenceName && w.field === fieldPath),
+        ];
+        if (items.length === 0) return null;
+        return (
+            <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {items.map((item, i) => (
+                    <div key={i} style={{ fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '4px', color: item.level === 'warning' ? '#f59e0b' : '#ef4444' }}>
+                        <span style={{ flexShrink: 0 }}>{item.level === 'warning' ? '⚠️' : '❌'}</span>
+                        <span>{item.message}</span>
+                    </div>
+                ))}
+            </div>
+        );
     };
 
     const renderSpecialSection = (title: string, icon: string, color: string, children: React.ReactNode) => (
@@ -268,42 +245,35 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         placeholder={placeholder}
                         onChange={(e) => {
                             if (isRefName) {
-                                // 引用名字段：仅更新本地草稿，不触发 store 更新（避免每次按键重新解析）
                                 setPendingRefName(e.target.value);
                             } else {
                                 handleChange(field, type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value);
                             }
                         }}
                         onFocus={isRefName ? () => {
-                            // 聚焦时初始化草稿为当前已保存值
                             if (pendingRefName === null) {
                                 setPendingRefName((displayTask as any).taskReferenceName ?? '');
                             }
                         } : undefined}
                         onBlur={isRefName ? (e) => {
-                            // 失焦时提交：值有变化且不为空时才写入 store
                             const newRef = e.target.value.trim();
-                            setPendingRefName(null); // 清除草稿
+                            setPendingRefName(null);
                             if (newRef && newRef !== displayTask.taskReferenceName) {
                                 handleChange('taskReferenceName', newRef);
                             }
                         } : undefined}
                         onKeyDown={isRefName ? (e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur(); // Enter 触发提交
-                            e.stopPropagation(); // 防止 ReactFlow 快捷键被触发
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                            e.stopPropagation();
                         } : undefined}
                         disabled={!isEditMode}
                         style={{
-                            width: '100%', padding: `8px ${isEditMode && !isRefName ? '32px' : '12px'} 8px 12px`,
+                            width: '100%', padding: '8px 12px',
                             borderRadius: '6px', border: `1px solid ${isDuplicate ? '#ef4444' : borderColor}`,
                             background: inputBg, color: textColor, fontSize: '13px', outline: 'none',
                             opacity: isEditMode ? 1 : 0.8, fontFamily: isRefName ? 'monospace' : 'inherit'
                         }}
                     />
-                    {isEditMode && !isRefName && (
-                        <button className="ai-hint-trigger" onClick={(e) => handleAiHintClick(e, (val) => handleChange(field, val))} title="AI 智能提示"
-                            style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✨</button>
-                    )}
                 </div>
             </div>
         );
@@ -510,6 +480,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             },
                             { rows: 10, language: (displayTask as any).evaluatorType || 'javascript', style: { background: '#000', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' } }
                         )}
+                        {renderFieldValidation('inputParameters.expression')}
+                        {renderFieldValidation('inputParameters.scriptExpression')}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor, fontStyle: 'italic' }}>
                             提示: 使用 $.input.key 访问输入参数，返回值作为任务输出。
                         </div>
@@ -522,6 +494,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         {renderCodeArea('JQ QUERY EXPRESSION', displayTask.inputParameters?.queryExpression || '',
                             (v) => handleInputParamChange('queryExpression', v),
                             { rows: 6, language: 'jq', style: { color: 'var(--color-accent)' } })}
+                        {renderFieldValidation('inputParameters.queryExpression')}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor }}>
                             输出字段: result（首个结果）、resultList（完整列表）
                         </div>
@@ -626,6 +599,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 {renderCodeArea('CASE EXPRESSION (JS)', displayTask.caseExpression || '',
                                     (v) => handleChange('caseExpression', v),
                                     { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
+                                {renderFieldValidation('caseExpression')}
                             </>
                         }
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '8px' }}>
@@ -643,6 +617,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 {renderCodeArea('LOOP CONDITION (JS) *', displayTask.loopCondition || '',
                                     (v) => handleChange('loopCondition', v),
                                     { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
+                                {renderFieldValidation('loopCondition')}
                                 <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
                                     条件为 true 时继续循环，false 时退出
                                 </div>
@@ -829,6 +804,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         )}
                         {/* P5.1.2: KeyValueEditor 替代原始 JSON textarea */}
                         <KeyValueEditor
+                            ref={kvEditorRef}
                             value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
                             onChange={(v) => handleChange('inputParameters', v)}
                             disabled={!isEditMode}
@@ -911,7 +887,6 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 </div>
             )}
 
-            <ParameterSuggester isOpen={suggesterOpen} onClose={() => setSuggesterOpen(false)} onSelect={onSelectSuggestion} suggestions={currentSuggestions} anchorRect={suggesterAnchor} />
         </div>
 
         {/* 全屏代码编辑器（Portal，挂载到 document.body） */}

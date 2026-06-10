@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { WorkflowDef } from '../../types/conductor';
 import { getAvailableReferences, ReferenceOption } from '../../utils/referenceContext';
 import ReferencePicker from './ReferencePicker';
@@ -9,6 +9,11 @@ interface KVRow {
     key: string;
     value: string;
     type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+}
+
+export interface KeyValueEditorRef {
+    /** 向最近一次获得焦点的 value 输入框末尾追加片段（无焦点时新增一行） */
+    insertAtFocused: (snippet: string) => void;
 }
 
 interface KeyValueEditorProps {
@@ -54,14 +59,14 @@ function rowsToObject(rows: KVRow[]): Record<string, any> {
     return result;
 }
 
-export default function KeyValueEditor({
+const KeyValueEditor = forwardRef<KeyValueEditorRef, KeyValueEditorProps>(function KeyValueEditor({
     value,
     onChange,
     disabled = false,
     taskRef,
     workflowDef,
     placeholder,
-}: KeyValueEditorProps) {
+}, ref) {
     const [rows, setRows] = useState<KVRow[]>(() => parseToRows(value));
     const [advancedMode, setAdvancedMode] = useState(false);
     const [jsonText, setJsonText] = useState(() => JSON.stringify(value, null, 2));
@@ -69,6 +74,9 @@ export default function KeyValueEditor({
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerAnchor, setPickerAnchor] = useState<DOMRect | undefined>();
     const [activeRowId, setActiveRowId] = useState<string | null>(null);
+
+    // P5.1.2 片段插入：追踪最后获得焦点的行（不依赖元素焦点状态）
+    const lastFocusedRowId = useRef<string | null>(null);
 
     const references: ReferenceOption[] = (taskRef && workflowDef)
         ? getAvailableReferences(workflowDef, taskRef)
@@ -80,6 +88,29 @@ export default function KeyValueEditor({
         setJsonText(JSON.stringify(obj, null, 2));
         onChange(obj);
     }, [onChange]);
+
+    // 暴露给父组件：插入片段到最近聚焦的 value 字段
+    useImperativeHandle(ref, () => ({
+        insertAtFocused: (snippet: string) => {
+            const rowId = lastFocusedRowId.current;
+            setRows(prev => {
+                let nextRows: KVRow[];
+                if (!rowId) {
+                    // 没有聚焦过任何行时，新增一行
+                    nextRows = [...prev, { id: genId(), key: '', value: snippet, type: 'string' }];
+                } else {
+                    nextRows = prev.map(r =>
+                        r.id === rowId ? { ...r, value: r.value ? `${r.value}${snippet}` : snippet } : r
+                    );
+                }
+                // 同步 JSON 文本和触发 onChange
+                const obj = rowsToObject(nextRows);
+                setJsonText(JSON.stringify(obj, null, 2));
+                onChange(obj);
+                return nextRows;
+            });
+        }
+    }), [onChange]);
 
     const updateRow = (id: string, patch: Partial<KVRow>) => {
         const nextRows = rows.map(r => r.id === id ? { ...r, ...patch } : r);
@@ -189,6 +220,7 @@ export default function KeyValueEditor({
                                     value={row.value}
                                     disabled={disabled}
                                     onChange={e => updateRow(row.id, { value: e.target.value })}
+                                    onFocus={() => { lastFocusedRowId.current = row.id; }}
                                 >
                                     <option value="true">true</option>
                                     <option value="false">false</option>
@@ -199,6 +231,7 @@ export default function KeyValueEditor({
                                     value={row.value}
                                     placeholder={row.type === 'object' ? '{}' : row.type === 'array' ? '[]' : '值或 ${...}'}
                                     disabled={disabled}
+                                    onFocus={() => { lastFocusedRowId.current = row.id; }}
                                     onChange={e => updateRow(row.id, { value: e.target.value })}
                                 />
                             )}
@@ -248,4 +281,6 @@ export default function KeyValueEditor({
             />
         </div>
     );
-}
+});
+
+export default KeyValueEditor;

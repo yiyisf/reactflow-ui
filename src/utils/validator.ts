@@ -1,6 +1,7 @@
 import { WORKFLOW_RULES, TASK_RULES } from './validationRules';
 import { WorkflowDef, TaskDef } from '../types/conductor';
 import { ValidationItem, ValidationResults } from '../types/workflow';
+import { ruleEngine } from '../services/ai/ruleEngine';
 
 interface ValidationContext {
     taskRefs: Set<string>;
@@ -132,6 +133,13 @@ export const validateWorkflow = (workflowDef: WorkflowDef | null): ValidationRes
     // 3. 结构性校验 (环路检测)
     const cycleErrors = detectCycles(workflowDef.tasks);
     errors.push(...cycleErrors);
+
+    // 4. Custom rules from rule engine (injected by integrators)
+    if (ruleEngine.hasRules()) {
+        const custom = ruleEngine.runAll(workflowDef);
+        errors.push(...custom.errors);
+        warnings.push(...custom.warnings);
+    }
 
     return {
         isValid: errors.length === 0,

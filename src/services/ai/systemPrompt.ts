@@ -12,6 +12,7 @@
 import { formatContextForPrompt, buildContext } from './contextEngine';
 import { classifyIntent, getContextOptions } from './intentClassifier';
 import useLibraryStore from '../../store/libraryStore';
+import { ruleEngine } from './ruleEngine';
 import type { Intent } from './intentClassifier';
 import type { WorkflowLibraryItem } from '../../types/workflowLibrary';
 
@@ -30,7 +31,8 @@ export const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专�
    - { op: 'add_fork_branch', ref: string } — 添加 FORK_JOIN 并行分支
 3. **get_workflow_state** — 仅在 system prompt 的工作流上下文不足以回答时才调用（read-only）。注意：system prompt 中已注入了实时工作流上下文，通常不需要再调用此工具。
 4. **validate_workflow** — 校验工作流合法性（read-only）。
-5. **不要**在回复中直接输出工作流 JSON 代码块，通过工具执行。
+5. **propose_plan** — 在执行复杂多步操作前，先向用户展示执行计划。适用于：大范围重构（5+ 步）、拓扑结构重大变更。调用后停止，等待用户确认。简单的单步操作无需先提计划。
+6. **不要**在回复中直接输出工作流 JSON 代码块，通过工具执行。
 
 ## 回复规范
 - 用中文回答，简洁明了
@@ -73,6 +75,12 @@ export function buildSystemPrompt(
 
     // Base layer: use custom or built-in
     const parts = [systemPrompt ?? BASE_SYSTEM_PROMPT];
+
+    // Custom validation rules (injected by integrators via ruleEngine)
+    const rulesBlock = ruleEngine.buildPromptSection();
+    if (rulesBlock) {
+        parts.push(rulesBlock);
+    }
 
     // Sub-workflow library catalog (injected when library is available)
     const libraryBlock = buildLibraryCatalog();

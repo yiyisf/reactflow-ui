@@ -13,10 +13,12 @@ import useLibraryStore from '../../store/libraryStore';
 import { streamChat } from '../../services/ai/protocolAdapter';
 import type { Message } from '../../services/ai/protocolAdapter';
 import { TOOL_DEFINITIONS } from '../../services/ai/toolDefs';
+import { toolRegistry } from '../../services/ai/toolRegistry';
 import { validateWorkflow } from '../../utils/validator';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
 import type { DiffSummary } from '../../services/ai/toolExecutor';
+import PlanCard from './PlanCard';
 
 // Read-only tools allowed in run mode (no workflow-modifying tools)
 const READ_ONLY_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
@@ -214,6 +216,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         streamingText,
         config,
         pendingProposal,
+        pendingPlan,
         followUpChips,
         addMessage,
         updateMessage,
@@ -223,6 +226,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         clearMessages,
         setProposal,
         clearProposal,
+        setPlan,
+        clearPlan,
         clearFollowUpChips,
     } = useAiStore();
 
@@ -304,7 +309,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         try {
             // Build the initial agent message history
             const agentHistory: Message[] = buildHistory(text);
-            const activeDefs = mode === 'run' ? READ_ONLY_TOOL_DEFINITIONS : TOOL_DEFINITIONS;
+            const customDefs = toolRegistry.getDefinitions();
+            const activeDefs = mode === 'run'
+                ? READ_ONLY_TOOL_DEFINITIONS
+                : [...TOOL_DEFINITIONS, ...customDefs];
 
             let fullAssistantText = '';
             let selfHealCount = 0;
@@ -365,12 +373,44 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     validate_workflow: '正在校验工作流…',
                     replace_workflow: '正在生成新工作流…',
                     patch_workflow: '正在应用变更…',
+                    propose_plan: '正在生成执行计划…',
                 };
+
+                let pendingPlanResult: { title: string; steps: any[]; summary?: string } | null = null;
 
                 for (const tc of stepToolCalls) {
                     if (signal.aborted) break;
                     setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
 
+                    // ── propose_plan: store plan and break loop ─────────────
+                    if (tc.name === 'propose_plan') {
+                        pendingPlanResult = {
+                            title: tc.args.title ?? '执行计划',
+                            steps: tc.args.steps ?? [],
+                            summary: tc.args.summary,
+                        };
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: '计划已展示给用户，等待确认后执行。',
+                            tool_call_id: tc.id,
+                        });
+                        break; // Don't process remaining tools in this step
+                    }
+
+                    // ── Custom tools from registry ──────────────────────────
+                    const customTool = toolRegistry.get(tc.name);
+                    if (customTool) {
+                        let resultContent: string;
+                        try {
+                            resultContent = await Promise.resolve(customTool.execute(tc.args));
+                        } catch (err: any) {
+                            resultContent = `工具执行失败：${err.message ?? '未知错误'}`;
+                        }
+                        toolResultMsgs.push({ role: 'tool', content: resultContent, tool_call_id: tc.id });
+                        continue;
+                    }
+
+                    // ── Built-in tools ──────────────────────────────────────
                     const result = executeToolCall(tc.name, tc.args);
                     let resultContent: string;
 
@@ -405,6 +445,19 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
                 // Append tool results to history
                 agentHistory.push(...toolResultMsgs);
+
+                // Commit plan to store (break loop — wait for user confirmation)
+                if (pendingPlanResult) {
+                    setPlan({
+                        title: pendingPlanResult.title,
+                        steps: pendingPlanResult.steps,
+                        summary: pendingPlanResult.summary,
+                        messageId: assistantMsgId,
+                    });
+                    fullAssistantText += (fullAssistantText ? '\n\n' : '') +
+                        '📋 我已为你准备了一个执行计划，请查看下方方案并确认是否执行。';
+                    break; // Pause for user confirmation
+                }
 
                 // Commit proposal to store (after tool results are in history)
                 if (pendingProposalResult) {
@@ -446,22 +499,22 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const handleSend = useCallback(() => {
         const text = inputValue.trim();
         if (!text) return;
-        // A3: Pending Proposal Guard
-        if (pendingProposal) {
+        // A3: Pending Proposal / Plan Guard
+        if (pendingProposal || pendingPlan) {
             setGuardBlocked(text);
             return;
         }
         handleSendText(text);
-    }, [inputValue, pendingProposal, handleSendText]);
+    }, [inputValue, pendingProposal, pendingPlan, handleSendText]);
 
     const handleChipClick = useCallback((chip: string) => {
-        if (pendingProposal) {
+        if (pendingProposal || pendingPlan) {
             setGuardBlocked(chip);
             return;
         }
         clearFollowUpChips();
         handleSendText(chip);
-    }, [pendingProposal, handleSendText, clearFollowUpChips]);
+    }, [pendingProposal, pendingPlan, handleSendText, clearFollowUpChips]);
 
     const handleStop = () => { abortRef.current?.abort(); };
 
@@ -479,8 +532,21 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         const blocked = guardBlocked;
         setGuardBlocked(null);
         clearProposal();
+        clearPlan();
         if (blocked) handleSendText(blocked);
-    }, [guardBlocked, clearProposal, handleSendText]);
+    }, [guardBlocked, clearProposal, clearPlan, handleSendText]);
+
+    // Execute the pending plan: clear it and re-prompt the AI to proceed
+    const handleExecutePlan = useCallback(() => {
+        const plan = useAiStore.getState().pendingPlan;
+        if (!plan) return;
+        clearPlan();
+        handleSendText('请按照上述计划执行');
+    }, [clearPlan, handleSendText]);
+
+    const handleCancelPlan = useCallback(() => {
+        clearPlan();
+    }, [clearPlan]);
 
     const welcomeChips = buildWelcomeChips(!!workflowDef, libraryItems);
     const hasLibrary = libraryItems.length > 0;
@@ -638,6 +704,15 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 )}
                             </React.Fragment>
                         ))}
+
+                        {/* PlanCard: pending AI plan awaiting user confirmation */}
+                        {pendingPlan && !isStreaming && (
+                            <PlanCard
+                                plan={pendingPlan}
+                                onExecute={handleExecutePlan}
+                                onCancel={handleCancelPlan}
+                            />
+                        )}
 
                         {/* Tool call status */}
                         {isStreaming && toolStatus && (

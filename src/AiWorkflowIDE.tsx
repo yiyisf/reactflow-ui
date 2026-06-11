@@ -20,6 +20,10 @@ import type { WorkflowDef } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
 import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode } from './types/workflow';
+import type { CustomTool } from './services/ai/toolRegistry';
+import type { CustomValidationRule } from './services/ai/ruleEngine';
+import { toolRegistry } from './services/ai/toolRegistry';
+import { ruleEngine } from './services/ai/ruleEngine';
 
 import './components/AiNative/AiNative.css';
 
@@ -98,6 +102,46 @@ export interface AiWorkflowIDEProps {
     /** 组件高度，默认 '100vh' */
     height?: string | number;
 
+    // ── Extensibility ──────────────────────────────────────────────────────
+    /**
+     * Custom tools the AI can call alongside built-in tools (Tool Registry v1).
+     *
+     * Each tool must provide an OpenAI-compatible function definition and an
+     * async `execute` function. The return value is sent back to the model as
+     * the tool result.
+     *
+     * ```tsx
+     * <AiWorkflowIDE
+     *   customTools={[{
+     *     definition: { type: 'function', function: { name: 'query_cmdb',
+     *       description: '查询 CMDB 资源', parameters: { ... } } },
+     *     execute: async (args) => JSON.stringify(await fetchCmdb(args)),
+     *   }]}
+     * />
+     * ```
+     */
+    customTools?: CustomTool[];
+
+    /**
+     * Custom validation rules applied after built-in Conductor validation (Rules Engine v1).
+     *
+     * Rule `description` strings are injected into the AI system prompt so
+     * generated workflows satisfy these constraints from the start.
+     *
+     * ```tsx
+     * <AiWorkflowIDE
+     *   validationRules={[{
+     *     id: 'require-owner-email',
+     *     level: 'error',
+     *     description: '所有工作流必须设置 ownerEmail（格式：xxx@company.com）',
+     *     validate: (def) =>
+     *       def.ownerEmail ? [] : [{ type: 'GLOBAL', ref: '', message: 'ownerEmail 不能为空' }],
+     *   }]}
+     * />
+     * ```
+     */
+    validationRules?: CustomValidationRule[];
+
     // ── Callbacks ──────────────────────────────────────────────────────────
     onSave?: (def: WorkflowDef) => void;
     onWorkflowChange?: (def: WorkflowDef) => void;
@@ -126,6 +170,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowExecution,
         aiConfig: propAiConfig,
         workflowLibrary: propLibrary,
+        customTools: propCustomTools,
+        validationRules: propValidationRules,
         systemPrompt,
         systemPromptExtra,
         theme,
@@ -175,6 +221,24 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         prevLibraryRef.current = serialized;
         libraryStore.setLibrary(propLibrary ?? []);
     }, [propLibrary]);
+
+    // ── Custom tools: sync on every prop change ─────────────────────────────
+    const prevCustomToolsRef = useRef<string>('');
+    useEffect(() => {
+        const serialized = JSON.stringify((propCustomTools ?? []).map(t => t.definition.function.name));
+        if (serialized === prevCustomToolsRef.current) return;
+        prevCustomToolsRef.current = serialized;
+        toolRegistry.setTools(propCustomTools ?? []);
+    }, [propCustomTools]);
+
+    // ── Validation rules: sync on every prop change ─────────────────────────
+    const prevRulesRef = useRef<string>('');
+    useEffect(() => {
+        const serialized = JSON.stringify((propValidationRules ?? []).map(r => r.id));
+        if (serialized === prevRulesRef.current) return;
+        prevRulesRef.current = serialized;
+        ruleEngine.setRules(propValidationRules ?? []);
+    }, [propValidationRules]);
 
     // ── Workflow def ────────────────────────────────────────────────────────
     useEffect(() => {

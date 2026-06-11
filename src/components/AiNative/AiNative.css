@@ -1429,3 +1429,119 @@
     border-color: #22c55e;
     background: rgba(34, 197, 94, 0.07);
 }
+
+/* ─── PlanCard ────────────────────────────────────────────────────────────── */
+
+.ai-plan-card {
+    margin: 8px 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+}
+
+.ai-plan-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.ai-plan-card-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.ai-plan-card-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+.ai-plan-step-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ai-plan-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg-primary);
+    border-radius: 5px;
+    border: 1px solid var(--border-primary);
+}
+
+.ai-plan-step-num {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ai-plan-step-action {
+    flex: 1;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.ai-plan-step-tool {
+    font-size: 14px;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.ai-plan-card-summary {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    padding: 6px 8px;
+    background: var(--bg-primary);
+    border-radius: 5px;
+    line-height: 1.5;
+}
+
+.ai-plan-card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.ai-plan-btn {
+    border: none;
+    border-radius: 5px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.ai-plan-btn:hover {
+    opacity: 0.85;
+}
+
+.ai-plan-btn.cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-primary);
+}
+
+.ai-plan-btn.execute {
+    background: var(--color-accent);
+    color: #fff;
+}

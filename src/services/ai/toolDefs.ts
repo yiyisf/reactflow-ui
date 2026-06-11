@@ -112,6 +112,40 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
     {
         type: 'function',
         function: {
+            name: 'propose_plan',
+            description: '向用户展示即将执行的多步操作计划，在执行前获得确认。适用于：大范围重构、多工具联动操作、复杂拓扑变更。调用此工具后停止，等待用户点击"执行方案"再继续。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    title: {
+                        type: 'string',
+                        description: '计划标题，简洁描述目标（如"将串行流程重构为并行执行"）',
+                    },
+                    steps: {
+                        type: 'array',
+                        description: '执行步骤列表（按顺序），每步说明将调用的工具和操作内容',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                step: { type: 'number', description: '步骤序号（从 1 开始）' },
+                                action: { type: 'string', description: '该步骤的操作描述' },
+                                tool: { type: 'string', description: '将使用的工具名称（如 patch_workflow、replace_workflow）' },
+                            },
+                            required: ['step', 'action'],
+                        },
+                    },
+                    summary: {
+                        type: 'string',
+                        description: '方案摘要，描述最终效果（可选）',
+                    },
+                },
+                required: ['title', 'steps'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
             name: 'search_workflow_library',
             description: '搜索已有的 L1/L2/L3 子工作流库。当 system prompt 中的库列表不完整，或需要根据业务描述精确匹配子工作流时调用。',
             parameters: {

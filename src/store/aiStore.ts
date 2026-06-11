@@ -39,6 +39,20 @@ export interface ProposedChange {
     baselineHash: string;
 }
 
+export interface PlanStep {
+    step: number;
+    action: string;
+    tool?: string;
+}
+
+export interface PendingPlan {
+    id: string;
+    title: string;
+    steps: PlanStep[];
+    summary?: string;
+    messageId: string;
+}
+
 export interface AiMetrics {
     totalProposals: number;
     acceptedProposals: number;
@@ -53,6 +67,8 @@ interface AiState {
     chatPanelOpen: boolean;
     /** The current pending proposal (only one at a time) */
     pendingProposal: ProposedChange | null;
+    /** AI-generated multi-step plan awaiting user approval */
+    pendingPlan: PendingPlan | null;
     metrics: AiMetrics;
     /** Context-aware chips shown after the user accepts a proposal */
     followUpChips: string[] | null;
@@ -75,6 +91,8 @@ interface AiActions {
     getMetrics: () => AiMetrics;
     setFollowUpChips: (chips: string[]) => void;
     clearFollowUpChips: () => void;
+    setPlan: (plan: Omit<PendingPlan, 'id'>) => string;
+    clearPlan: () => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -105,6 +123,7 @@ const useAiStore = create<AiStore>()(
             streamingText: '',
             chatPanelOpen: true,
             pendingProposal: null,
+            pendingPlan: null,
             followUpChips: null,
             metrics: {
                 totalProposals: 0,
@@ -136,6 +155,7 @@ const useAiStore = create<AiStore>()(
                 streamingText: '',
                 isStreaming: false,
                 pendingProposal: null,
+                pendingPlan: null,
                 followUpChips: null,
             }),
 
@@ -170,6 +190,13 @@ const useAiStore = create<AiStore>()(
 
             setFollowUpChips: (chips) => set({ followUpChips: chips }),
             clearFollowUpChips: () => set({ followUpChips: null }),
+
+            setPlan: (plan) => {
+                const id = `plan_${Date.now()}`;
+                set({ pendingPlan: { ...plan, id } });
+                return id;
+            },
+            clearPlan: () => set({ pendingPlan: null }),
         }),
         {
             name: 'ai-workflow-config',

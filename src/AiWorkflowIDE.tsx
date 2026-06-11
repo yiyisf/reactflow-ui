@@ -25,6 +25,7 @@ import type { CustomValidationRule } from './services/ai/ruleEngine';
 import type { TaskSchema } from './services/ai/schemaRegistry';
 import type { PartialAcceptSelection } from './services/ai/toolExecutor';
 import { applyPartialProposal } from './services/ai/toolExecutor';
+import type { AiEvent } from './types/aiEvents';
 import { toolRegistry } from './services/ai/toolRegistry';
 import { ruleEngine } from './services/ai/ruleEngine';
 import { schemaRegistry } from './services/ai/schemaRegistry';
@@ -173,6 +174,34 @@ export interface AiWorkflowIDEProps {
     executionActions?: ExecutionActions;
     /** AI 操作指标回调（accept/reject 次数等） */
     onAiMetrics?: (metrics: any) => void;
+    /**
+     * AI 生命周期事件回调（审计日志 v1）。
+     *
+     * 接收提案创建/接受/拒绝、计划创建/执行、修复提案/执行、工具调用、撤销等所有 AI 操作事件。
+     *
+     * ```tsx
+     * <AiWorkflowIDE
+     *   onAiEvent={(e) => console.log(e.type, e.timestamp, e.diff)}
+     * />
+     * ```
+     */
+    onAiEvent?: (event: AiEvent) => void;
+    /**
+     * AI 操作权限配置。
+     *
+     * - `canEdit`（默认 true）：false 时 AI 只能读取，不能修改工作流
+     * - `canRepair`（默认 true）：false 时运行态修复功能不可用
+     * - `restrictionMessage`：权限受限时显示的提示文字
+     *
+     * ```tsx
+     * <AiWorkflowIDE aiPermissions={{ canEdit: false, restrictionMessage: '只读演示模式' }} />
+     * ```
+     */
+    aiPermissions?: {
+        canEdit?: boolean;
+        canRepair?: boolean;
+        restrictionMessage?: string;
+    };
 }
 
 export interface AiWorkflowIDERef {
@@ -209,6 +238,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         onRequestImport,
         executionActions,
         onAiMetrics,
+        onAiEvent,
+        aiPermissions,
     } = props;
 
     const workflowStore = useWorkflowStore();
@@ -322,6 +353,24 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             targetDef = applyPartialProposal(currentDef, proposal.proposedDef, proposal.diff, selection);
         }
 
+        // Save current def to undo stack before applying
+        const prevDef = useWorkflowStore.getState().workflowDef;
+        if (prevDef) aiStore.pushUndo(prevDef);
+
+        // Emit audit event
+        const diff = proposal.diff;
+        if (selection) {
+            onAiEvent?.({ type: 'proposal:accepted:partial', timestamp: Date.now(),
+                diff: { added: selection.added.size, modified: selection.modified.size, removed: selection.removed.size },
+                selectedCount: selection.added.size + selection.modified.size + selection.removed.size,
+                totalCount: diff.added.length + diff.modified.length + diff.removed.length,
+                inferredLevel: proposal.inferredLevel });
+        } else {
+            onAiEvent?.({ type: 'proposal:accepted', timestamp: Date.now(),
+                diff: { added: diff.added.length, modified: diff.modified.length, removed: diff.removed.length },
+                inferredLevel: proposal.inferredLevel });
+        }
+
         // Clear proposal BEFORE setWorkflow so nodes render without diff badges in the new state.
         aiStore.recordAccept();
         workflowStore.setWorkflow(targetDef);
@@ -371,8 +420,9 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
 
     const handleReject = useCallback(() => {
         aiStore.recordReject();
+        onAiEvent?.({ type: 'proposal:rejected', timestamp: Date.now() });
         if (onAiMetrics) onAiMetrics(aiStore.getMetrics());
-    }, [onAiMetrics]);
+    }, [onAiMetrics, onAiEvent]);
 
     // ── Config button visibility ────────────────────────────────────────────
     // Hide in-app config when the integrator has already provided an apiKey via prop.
@@ -397,6 +447,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     showConfigButton={showConfigButton}
                     onShowConfig={() => setShowConfig(true)}
                     executionActions={executionActions}
+                    onAiEvent={onAiEvent}
+                    aiPermissions={aiPermissions}
                 />
             </div>
 

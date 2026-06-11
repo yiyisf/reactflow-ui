@@ -21,6 +21,7 @@ import type { DiffSummary } from '../../services/ai/toolExecutor';
 import PlanCard from './PlanCard';
 import RepairCard from './RepairCard';
 import type { ExecutionActions } from '../../types/workflow';
+import type { AiEvent } from '../../types/aiEvents';
 
 // Run-mode tools: read-only + repair proposer (no workflow-modifying tools)
 const RUN_MODE_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
@@ -39,6 +40,12 @@ interface AiCommandCenterProps {
     showConfigButton?: boolean;
     onShowConfig: () => void;
     executionActions?: ExecutionActions;
+    onAiEvent?: (event: AiEvent) => void;
+    aiPermissions?: {
+        canEdit?: boolean;
+        canRepair?: boolean;
+        restrictionMessage?: string;
+    };
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -213,6 +220,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     showConfigButton = true,
     onShowConfig,
     executionActions,
+    onAiEvent,
+    aiPermissions,
 }) => {
     const {
         messages,
@@ -223,6 +232,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         pendingPlan,
         pendingRepair,
         followUpChips,
+        undoStack,
         addMessage,
         updateMessage,
         setStreaming,
@@ -236,14 +246,17 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         setRepair,
         clearRepair,
         clearFollowUpChips,
+        popUndo,
     } = useAiStore();
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
     const selectedTask = useWorkflowStore(s => s.selectedTask);
     const selectTaskAction = useWorkflowStore(s => s.selectTaskAction);
     const mode = useWorkflowStore(s => s.mode);
+    const viewMode = useWorkflowStore(s => s.viewMode);
     const workflowInstance = useWorkflowStore(s => s.workflowInstance);
     const executionData = useWorkflowStore(s => s.executionData);
+    const validationResults = useWorkflowStore(s => s.validationResults);
     const libraryItems = useLibraryStore(s => s.items);
 
     const [inputValue, setInputValue] = useState('');
@@ -274,7 +287,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     };
 
     const buildHistory = useCallback((userInput: string): Message[] => {
-        const systemContent = buildSystemPrompt(userInput, { systemPrompt, systemPromptExtra });
+        const systemContent = buildSystemPrompt(userInput, { systemPrompt, systemPromptExtra, viewMode });
         const history: Message[] = [{ role: 'system', content: systemContent }];
         const recent = messages.slice(-20);
         for (const msg of recent) {
@@ -286,7 +299,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         }
         history.push({ role: 'user', content: userInput });
         return history;
-    }, [messages, systemPrompt, systemPromptExtra]);
+    }, [messages, systemPrompt, systemPromptExtra, viewMode]);
 
     const handleSendText = useCallback(async (text: string) => {
         if (!text.trim() || isStreaming) return;
@@ -317,9 +330,16 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             // Build the initial agent message history
             const agentHistory: Message[] = buildHistory(text);
             const customDefs = toolRegistry.getDefinitions();
-            const activeDefs = mode === 'run'
-                ? RUN_MODE_TOOL_DEFINITIONS  // includes propose_repair, excludes modifying tools
+            // Permission gating: canEdit=false → read-only regardless of mode
+            const editAllowed = aiPermissions?.canEdit !== false;
+            const repairAllowed = aiPermissions?.canRepair !== false;
+            let activeDefs = mode === 'run' || !editAllowed
+                ? RUN_MODE_TOOL_DEFINITIONS
                 : [...TOOL_DEFINITIONS, ...customDefs];
+            // Remove propose_repair if repair permission is denied
+            if (!repairAllowed) {
+                activeDefs = activeDefs.filter(d => d.function.name !== 'propose_repair');
+            }
 
             let fullAssistantText = '';
             let selfHealCount = 0;
@@ -388,6 +408,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                 for (const tc of stepToolCalls) {
                     if (signal.aborted) break;
                     setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
+                    onAiEvent?.({ type: 'tool:called', timestamp: Date.now(), tool: tc.name });
 
                     // ── propose_repair: store repair proposal and break loop ─
                     if (tc.name === 'propose_repair') {
@@ -401,6 +422,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             tool_call_id: tc.id,
                         });
                         setRepair({ ...repairResult, messageId: assistantMsgId });
+                        onAiEvent?.({ type: 'repair:proposed', timestamp: Date.now() });
                         break;
                     }
 
@@ -484,6 +506,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         summary: pendingPlanResult.summary,
                         messageId: assistantMsgId,
                     });
+                    onAiEvent?.({ type: 'plan:created', timestamp: Date.now() });
                     fullAssistantText += (fullAssistantText ? '\n\n' : '') +
                         '📋 我已为你准备了一个执行计划，请查看下方方案并确认是否执行。';
                     break; // Pause for user confirmation
@@ -497,6 +520,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         inferredLevel: pendingProposalResult.inferredLevel,
                         messageId: assistantMsgId,
                     });
+                    onAiEvent?.({ type: 'proposal:created', timestamp: Date.now(),
+                        diff: { added: pendingProposalResult.diff.added.length, modified: pendingProposalResult.diff.modified.length, removed: pendingProposalResult.diff.removed.length },
+                        inferredLevel: pendingProposalResult.inferredLevel });
                     const desc = describeDiff(pendingProposalResult.diff);
                     const levelNote = pendingProposalResult.inferredLevel
                         ? ` · ${pendingProposalResult.inferredLevel}` : '';
@@ -571,12 +597,14 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         const plan = useAiStore.getState().pendingPlan;
         if (!plan) return;
         clearPlan();
+        onAiEvent?.({ type: 'plan:executed', timestamp: Date.now() });
         handleSendText('请按照上述计划执行');
-    }, [clearPlan, handleSendText]);
+    }, [clearPlan, handleSendText, onAiEvent]);
 
     const handleCancelPlan = useCallback(() => {
         clearPlan();
-    }, [clearPlan]);
+        onAiEvent?.({ type: 'plan:cancelled', timestamp: Date.now() });
+    }, [clearPlan, onAiEvent]);
 
     const handleRepairAction = useCallback((action: import('../../store/aiStore').RepairAction) => {
         const instance = useWorkflowStore.getState().workflowInstance;
@@ -594,18 +622,37 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             default:
                 break;
         }
+        onAiEvent?.({ type: 'repair:executed', timestamp: Date.now(), repairActionType: action.type });
         clearRepair();
-    }, [executionActions, clearRepair]);
+    }, [executionActions, clearRepair, onAiEvent]);
 
     const handleDismissRepair = useCallback(() => {
         clearRepair();
-    }, [clearRepair]);
+        onAiEvent?.({ type: 'repair:dismissed', timestamp: Date.now() });
+    }, [clearRepair, onAiEvent]);
+
+    // Undo handler: restores the previous workflow before the last AI accept
+    const handleUndo = useCallback(() => {
+        const prev = popUndo();
+        if (!prev) return;
+        useWorkflowStore.getState().setWorkflow(prev);
+        useWorkflowStore.getState().setMode('edit');
+        onAiEvent?.({ type: 'undo:applied', timestamp: Date.now() });
+    }, [popUndo, onAiEvent]);
 
     const welcomeChips = buildWelcomeChips(!!workflowDef, libraryItems);
     const hasLibrary = libraryItems.length > 0;
     const noApiKey = !config.apiKey && showConfigButton;
     // D3: show template gallery when canvas is empty and only welcome msg exists
     const showTemplates = !workflowDef && messages.length === 1 && messages[0].id === 'welcome' && libraryItems.length === 0;
+
+    // Error-node chips: when selected task has validation errors, surface fix chip
+    const selectedTaskErrors = selectedTask
+        ? validationResults.errors.filter(e => e.ref === selectedTask.taskReferenceName)
+        : [];
+    const canEdit = aiPermissions?.canEdit !== false;
+    const isRestricted = !canEdit;
+    const restrictionMessage = aiPermissions?.restrictionMessage ?? 'AI 当前处于只读模式，无法修改工作流';
     // F2: runtime status & chips
     const runtimeStatus = getRuntimeStatus(mode, workflowInstance?.status, executionData);
     const runtimeChips = buildRuntimeChips(runtimeStatus, workflowDef?.name ?? '', executionData);
@@ -673,6 +720,14 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     )}
 
                     <div className="ai-cc-messages">
+                        {/* Permission restriction banner */}
+                        {isRestricted && (
+                            <div className="ai-permission-banner">
+                                <span className="ai-permission-icon">🔒</span>
+                                <span>{restrictionMessage}</span>
+                            </div>
+                        )}
+
                         {/* A1: Onboarding card when no API key */}
                         {noApiKey && (
                             <div className="ai-onboarding-card">
@@ -838,6 +893,16 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         <div ref={messagesEndRef} />
                     </div>
 
+                    {/* Undo button: visible when there's an AI change to undo */}
+                    {undoStack.length > 0 && !isStreaming && !pendingProposal && (
+                        <div className="ai-undo-row">
+                            <button className="ai-undo-btn" onClick={handleUndo} title="撤销最近一次 AI 变更，恢复到变更前的状态">
+                                ↩ 撤销上次 AI 变更
+                                <span className="ai-undo-depth">{undoStack.length}</span>
+                            </button>
+                        </div>
+                    )}
+
                     {/* A3: Pending Proposal Guard dialog */}
                     {guardBlocked && (
                         <div className="ai-guard-overlay">
@@ -876,6 +941,15 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 </button>
                             </div>
                             <div className="ai-node-context-chips">
+                                {/* Error-fix chip: shown first when node has validation errors */}
+                                {selectedTaskErrors.length > 0 && canEdit && (
+                                    <button
+                                        className="ai-node-context-chip error-fix"
+                                        onClick={() => handleChipClick(`修复「${selectedTask.taskReferenceName}」的 ${selectedTaskErrors.length} 个校验错误`)}
+                                    >
+                                        🔧 修复 {selectedTaskErrors.length} 个校验错误
+                                    </button>
+                                )}
                                 {buildNodeChips(
                                     selectedTask.taskReferenceName,
                                     selectedTask.type,

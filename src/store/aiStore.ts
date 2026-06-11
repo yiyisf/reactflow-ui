@@ -90,6 +90,8 @@ interface AiState {
     metrics: AiMetrics;
     /** Context-aware chips shown after the user accepts a proposal */
     followUpChips: string[] | null;
+    /** Undo stack: previous WorkflowDef snapshots (max 5, oldest first) */
+    undoStack: WorkflowDef[];
 }
 
 interface AiActions {
@@ -113,6 +115,12 @@ interface AiActions {
     clearPlan: () => void;
     setRepair: (repair: Omit<RepairProposal, 'id'>) => string;
     clearRepair: () => void;
+    /** Push the given def onto the undo stack (called before applying a proposal) */
+    pushUndo: (def: WorkflowDef) => void;
+    /** Pop and return the most recent undo snapshot, or null if stack is empty */
+    popUndo: () => WorkflowDef | null;
+    clearUndo: () => void;
+    canUndo: () => boolean;
 }
 
 export type AiStore = AiState & AiActions;
@@ -146,6 +154,7 @@ const useAiStore = create<AiStore>()(
             pendingPlan: null,
             pendingRepair: null,
             followUpChips: null,
+            undoStack: [],
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -226,6 +235,19 @@ const useAiStore = create<AiStore>()(
                 return id;
             },
             clearRepair: () => set({ pendingRepair: null }),
+
+            pushUndo: (def) => set(s => ({
+                undoStack: [...s.undoStack.slice(-4), def], // keep max 5
+            })),
+            popUndo: () => {
+                const stack = get().undoStack;
+                if (stack.length === 0) return null;
+                const prev = stack[stack.length - 1];
+                set({ undoStack: stack.slice(0, -1) });
+                return prev;
+            },
+            clearUndo: () => set({ undoStack: [] }),
+            canUndo: () => get().undoStack.length > 0,
         }),
         {
             name: 'ai-workflow-config',

@@ -16,6 +16,7 @@ import { ruleEngine } from './ruleEngine';
 import { schemaRegistry } from './schemaRegistry';
 import type { Intent } from './intentClassifier';
 import type { WorkflowLibraryItem } from '../../types/workflowLibrary';
+import type { ViewMode } from '../../types/workflow';
 
 // ─── Built-in base prompt (exported for integrators to extend/reference) ────
 
@@ -65,9 +66,10 @@ export function buildSystemPrompt(
     options?: {
         systemPrompt?: string;
         systemPromptExtra?: string;
+        viewMode?: ViewMode;
     },
 ): string {
-    const { systemPrompt, systemPromptExtra } = options ?? {};
+    const { systemPrompt, systemPromptExtra, viewMode } = options ?? {};
 
     const intent = classifyIntent(userInput);
     const contextOptions = getContextOptions(intent);
@@ -105,6 +107,14 @@ export function buildSystemPrompt(
         const intentHints = getIntentHints(intent);
         if (intentHints) {
             parts.push(`## 当前请求类型提示\n${intentHints}`);
+        }
+    }
+
+    // View-mode language adaptation (only for built-in base, not custom prompts)
+    if (!systemPrompt) {
+        const langHint = getViewModeLangHint(viewMode);
+        if (langHint) {
+            parts.push(langHint);
         }
     }
 
@@ -166,6 +176,32 @@ function buildLibraryCatalog(): string | null {
     }
 
     return sections.join('\n\n');
+}
+
+// ─── View-mode language adaptation ──────────────────────────────────────────
+
+function getViewModeLangHint(viewMode?: ViewMode): string | null {
+    if (!viewMode || viewMode === 'standard') return null;
+
+    if (viewMode === 'business') {
+        return `## 语言风格（业务视图）
+当前用户使用**业务视图**——他们可能不熟悉 Conductor 技术细节。请：
+- 用业务语言描述变更，例如「在支付验证后增加了人工审批环节」而非「在 payment_verify 后新增了 taskReferenceName=manual_approve 的 HUMAN 任务」
+- 避免在回复正文中提及 taskReferenceName、inputParameters、timeoutSeconds 等字段名，除非用户主动问到
+- 把工作流步骤描述成"业务动作"（如"发送通知"、"等待审批"），而非"节点类型"
+- 如需解释结构，用"流程分支"替代"SWITCH"，"并行步骤"替代"FORK_JOIN"，"人工步骤"替代"HUMAN"`;
+    }
+
+    if (viewMode === 'developer') {
+        return `## 语言风格（开发者视图）
+当前用户使用**开发者视图**——他们熟悉 Conductor 技术细节。请：
+- 可直接使用 taskReferenceName、inputParameters、patch ops 等技术术语
+- 解释类问题可提供实现细节，例如 inputParameters 引用格式、retryCount 配置等
+- 涉及变更时可描述具体的 patch ops（如 add_task with afterRef）
+- 如涉及数据流，可引用具体的 \${ref.output.field} 表达式`;
+    }
+
+    return null;
 }
 
 function getIntentHints(intent: Intent): string | null {

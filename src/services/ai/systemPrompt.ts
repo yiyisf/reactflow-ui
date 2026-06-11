@@ -13,6 +13,7 @@ import { formatContextForPrompt, buildContext } from './contextEngine';
 import { classifyIntent, getContextOptions } from './intentClassifier';
 import useLibraryStore from '../../store/libraryStore';
 import { ruleEngine } from './ruleEngine';
+import { schemaRegistry } from './schemaRegistry';
 import type { Intent } from './intentClassifier';
 import type { WorkflowLibraryItem } from '../../types/workflowLibrary';
 
@@ -80,6 +81,12 @@ export function buildSystemPrompt(
     const rulesBlock = ruleEngine.buildPromptSection();
     if (rulesBlock) {
         parts.push(rulesBlock);
+    }
+
+    // Task schema registry (injected when integrator registers task schemas)
+    const schemaBlock = schemaRegistry.buildPromptSection();
+    if (schemaBlock) {
+        parts.push(schemaBlock);
     }
 
     // Sub-workflow library catalog (injected when library is available)

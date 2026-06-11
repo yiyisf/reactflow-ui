@@ -22,8 +22,12 @@ import type { WorkflowLibraryItem } from './types/workflowLibrary';
 import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
 import type { CustomValidationRule } from './services/ai/ruleEngine';
+import type { TaskSchema } from './services/ai/schemaRegistry';
+import type { PartialAcceptSelection } from './services/ai/toolExecutor';
+import { applyPartialProposal } from './services/ai/toolExecutor';
 import { toolRegistry } from './services/ai/toolRegistry';
 import { ruleEngine } from './services/ai/ruleEngine';
+import { schemaRegistry } from './services/ai/schemaRegistry';
 
 import './components/AiNative/AiNative.css';
 
@@ -142,6 +146,26 @@ export interface AiWorkflowIDEProps {
      */
     validationRules?: CustomValidationRule[];
 
+    /**
+     * Task input/output schemas (Schema Registry v1).
+     *
+     * Registered schemas are injected into the AI system prompt so the model
+     * generates correct inputParameters references for known task types.
+     *
+     * ```tsx
+     * <AiWorkflowIDE
+     *   taskSchemas={[{
+     *     taskName: 'send_notification',
+     *     taskType: 'SIMPLE',
+     *     description: '发送通知',
+     *     inputSchema:  { userId: 'string', message: 'string' },
+     *     outputSchema: { messageId: 'string', status: 'sent|failed' },
+     *   }]}
+     * />
+     * ```
+     */
+    taskSchemas?: TaskSchema[];
+
     // ── Callbacks ──────────────────────────────────────────────────────────
     onSave?: (def: WorkflowDef) => void;
     onWorkflowChange?: (def: WorkflowDef) => void;
@@ -172,6 +196,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowLibrary: propLibrary,
         customTools: propCustomTools,
         validationRules: propValidationRules,
+        taskSchemas: propTaskSchemas,
         systemPrompt,
         systemPromptExtra,
         theme,
@@ -240,6 +265,15 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         ruleEngine.setRules(propValidationRules ?? []);
     }, [propValidationRules]);
 
+    // ── Task schemas: sync on every prop change ─────────────────────────────
+    const prevSchemasRef = useRef<string>('');
+    useEffect(() => {
+        const serialized = JSON.stringify((propTaskSchemas ?? []).map(s => s.taskName));
+        if (serialized === prevSchemasRef.current) return;
+        prevSchemasRef.current = serialized;
+        schemaRegistry.setSchemas(propTaskSchemas ?? []);
+    }, [propTaskSchemas]);
+
     // ── Workflow def ────────────────────────────────────────────────────────
     useEffect(() => {
         if (propDef) {
@@ -275,24 +309,35 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     }), []);
 
     // ── ReviewBar handlers ──────────────────────────────────────────────────
-    const handleAccept = useCallback(() => {
+    const handleAccept = useCallback((selection?: PartialAcceptSelection) => {
         const proposal = aiStore.pendingProposal;
         if (!proposal) return;
 
+        // Build the target def: full or partial accept
+        let targetDef: WorkflowDef;
+        if (!selection) {
+            targetDef = proposal.proposedDef;
+        } else {
+            const currentDef = useWorkflowStore.getState().workflowDef ?? { name: '', tasks: [] };
+            targetDef = applyPartialProposal(currentDef, proposal.proposedDef, proposal.diff, selection);
+        }
+
         // Clear proposal BEFORE setWorkflow so nodes render without diff badges in the new state.
         aiStore.recordAccept();
-        workflowStore.setWorkflow(proposal.proposedDef);
+        workflowStore.setWorkflow(targetDef);
         workflowStore.setMode('edit');
 
         // Flash added + modified nodes so the user can immediately spot the changes.
         // Use rAF to let setWorkflow's layout pass complete first.
-        const flashRefs = [...proposal.diff.added, ...proposal.diff.modified];
+        const flashRefs = selection
+            ? [...selection.added, ...selection.modified]
+            : [...proposal.diff.added, ...proposal.diff.modified];
         if (flashRefs.length > 0) {
-            requestAnimationFrame(() => workflowStore.flashNodes(flashRefs));
+            requestAnimationFrame(() => workflowStore.flashNodes(Array.from(flashRefs)));
         }
 
         // Anchor the conversation history to the new workflow state.
-        const def = proposal.proposedDef;
+        const def = targetDef;
         const tasks = def.tasks ?? [];
         const taskSummary = tasks.map(t => `${t.taskReferenceName}(${t.type})`).join(', ');
         aiStore.addMessage({
@@ -351,6 +396,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     systemPromptExtra={systemPromptExtra}
                     showConfigButton={showConfigButton}
                     onShowConfig={() => setShowConfig(true)}
+                    executionActions={executionActions}
                 />
             </div>
 

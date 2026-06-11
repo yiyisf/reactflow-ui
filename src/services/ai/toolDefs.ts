@@ -112,6 +112,47 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
     {
         type: 'function',
         function: {
+            name: 'propose_repair',
+            description: '为运行态失败的任务提出修复方案（仅在运行模式下可用）。分析失败原因后，提供可直接执行的修复操作列表供用户选择。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    diagnosis: {
+                        type: 'string',
+                        description: '根本原因分析：用 2-3 句话说明为什么失败、数据问题还是配置问题还是依赖问题',
+                    },
+                    actions: {
+                        type: 'array',
+                        description: '修复操作列表（按推荐优先级排序）',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string', description: '操作唯一 ID（如 "rerun_1"）' },
+                                label: { type: 'string', description: '操作名称（如"从 send_email 重新运行"）' },
+                                type: {
+                                    type: 'string',
+                                    enum: ['rerun_from', 'skip', 'retry_workflow', 'modify_def'],
+                                    description: 'rerun_from=从某任务重新运行，skip=跳过该任务，retry_workflow=重试整个工作流，modify_def=修改工作流定义',
+                                },
+                                taskRef: { type: 'string', description: '[rerun_from/skip] 目标任务的 taskReferenceName' },
+                                risk: {
+                                    type: 'string',
+                                    enum: ['low', 'medium', 'high'],
+                                    description: '操作风险等级',
+                                },
+                                description: { type: 'string', description: '操作详细说明及预期结果' },
+                            },
+                            required: ['id', 'label', 'type'],
+                        },
+                    },
+                },
+                required: ['diagnosis', 'actions'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
             name: 'propose_plan',
             description: '向用户展示即将执行的多步操作计划，在执行前获得确认。适用于：大范围重构、多工具联动操作、复杂拓扑变更。调用此工具后停止，等待用户点击"执行方案"再继续。',
             parameters: {

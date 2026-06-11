@@ -19,10 +19,12 @@ import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
 import type { DiffSummary } from '../../services/ai/toolExecutor';
 import PlanCard from './PlanCard';
+import RepairCard from './RepairCard';
+import type { ExecutionActions } from '../../types/workflow';
 
-// Read-only tools allowed in run mode (no workflow-modifying tools)
-const READ_ONLY_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
-    ['get_workflow_state', 'validate_workflow', 'search_workflow_library'].includes(t.function.name)
+// Run-mode tools: read-only + repair proposer (no workflow-modifying tools)
+const RUN_MODE_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
+    ['get_workflow_state', 'validate_workflow', 'search_workflow_library', 'propose_repair'].includes(t.function.name)
 );
 
 const MAX_AGENT_STEPS = 6;
@@ -36,6 +38,7 @@ interface AiCommandCenterProps {
     systemPromptExtra?: string;
     showConfigButton?: boolean;
     onShowConfig: () => void;
+    executionActions?: ExecutionActions;
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -209,6 +212,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     systemPromptExtra,
     showConfigButton = true,
     onShowConfig,
+    executionActions,
 }) => {
     const {
         messages,
@@ -217,6 +221,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         config,
         pendingProposal,
         pendingPlan,
+        pendingRepair,
         followUpChips,
         addMessage,
         updateMessage,
@@ -228,6 +233,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         clearProposal,
         setPlan,
         clearPlan,
+        setRepair,
+        clearRepair,
         clearFollowUpChips,
     } = useAiStore();
 
@@ -311,7 +318,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             const agentHistory: Message[] = buildHistory(text);
             const customDefs = toolRegistry.getDefinitions();
             const activeDefs = mode === 'run'
-                ? READ_ONLY_TOOL_DEFINITIONS
+                ? RUN_MODE_TOOL_DEFINITIONS  // includes propose_repair, excludes modifying tools
                 : [...TOOL_DEFINITIONS, ...customDefs];
 
             let fullAssistantText = '';
@@ -382,6 +389,21 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     if (signal.aborted) break;
                     setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
 
+                    // ── propose_repair: store repair proposal and break loop ─
+                    if (tc.name === 'propose_repair') {
+                        const repairResult = {
+                            diagnosis: tc.args.diagnosis ?? '未提供诊断信息',
+                            actions: tc.args.actions ?? [],
+                        };
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: '修复方案已展示给用户，等待用户执行操作。',
+                            tool_call_id: tc.id,
+                        });
+                        setRepair({ ...repairResult, messageId: assistantMsgId });
+                        break;
+                    }
+
                     // ── propose_plan: store plan and break loop ─────────────
                     if (tc.name === 'propose_plan') {
                         pendingPlanResult = {
@@ -446,6 +468,14 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                 // Append tool results to history
                 agentHistory.push(...toolResultMsgs);
 
+                // propose_repair already broke from the inner loop and stored the repair
+                // If repair was set in this step, break the outer loop too
+                if (useAiStore.getState().pendingRepair?.messageId === assistantMsgId) {
+                    fullAssistantText += (fullAssistantText ? '\n\n' : '') +
+                        '🔧 我已诊断出故障原因并准备了修复方案，请查看下方修复卡片。';
+                    break;
+                }
+
                 // Commit plan to store (break loop — wait for user confirmation)
                 if (pendingPlanResult) {
                     setPlan({
@@ -499,7 +529,6 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const handleSend = useCallback(() => {
         const text = inputValue.trim();
         if (!text) return;
-        // A3: Pending Proposal / Plan Guard
         if (pendingProposal || pendingPlan) {
             setGuardBlocked(text);
             return;
@@ -533,8 +562,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         setGuardBlocked(null);
         clearProposal();
         clearPlan();
+        clearRepair();
         if (blocked) handleSendText(blocked);
-    }, [guardBlocked, clearProposal, clearPlan, handleSendText]);
+    }, [guardBlocked, clearProposal, clearPlan, clearRepair, handleSendText]);
 
     // Execute the pending plan: clear it and re-prompt the AI to proceed
     const handleExecutePlan = useCallback(() => {
@@ -547,6 +577,29 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const handleCancelPlan = useCallback(() => {
         clearPlan();
     }, [clearPlan]);
+
+    const handleRepairAction = useCallback((action: import('../../store/aiStore').RepairAction) => {
+        const instance = useWorkflowStore.getState().workflowInstance;
+        const wfId = instance?.workflowId ?? '';
+        switch (action.type) {
+            case 'rerun_from':
+                executionActions?.onRerunFromTask?.(wfId, action.taskRef ?? '');
+                break;
+            case 'skip':
+                executionActions?.onSkipTask?.(wfId, action.taskRef ?? '');
+                break;
+            case 'retry_workflow':
+                executionActions?.onRetry?.(wfId);
+                break;
+            default:
+                break;
+        }
+        clearRepair();
+    }, [executionActions, clearRepair]);
+
+    const handleDismissRepair = useCallback(() => {
+        clearRepair();
+    }, [clearRepair]);
 
     const welcomeChips = buildWelcomeChips(!!workflowDef, libraryItems);
     const hasLibrary = libraryItems.length > 0;
@@ -711,6 +764,16 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 plan={pendingPlan}
                                 onExecute={handleExecutePlan}
                                 onCancel={handleCancelPlan}
+                            />
+                        )}
+
+                        {/* RepairCard: runtime failure diagnosis + repair actions */}
+                        {pendingRepair && !isStreaming && (
+                            <RepairCard
+                                repair={pendingRepair}
+                                canExecute={!!(executionActions?.onRerunFromTask || executionActions?.onSkipTask || executionActions?.onRetry)}
+                                onExecuteAction={handleRepairAction}
+                                onDismiss={handleDismissRepair}
                             />
                         )}
 

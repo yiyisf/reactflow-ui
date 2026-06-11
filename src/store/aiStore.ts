@@ -39,6 +39,22 @@ export interface ProposedChange {
     baselineHash: string;
 }
 
+export interface RepairAction {
+    id: string;
+    label: string;
+    type: 'rerun_from' | 'skip' | 'retry_workflow' | 'modify_def';
+    taskRef?: string;
+    risk?: 'low' | 'medium' | 'high';
+    description?: string;
+}
+
+export interface RepairProposal {
+    id: string;
+    diagnosis: string;
+    actions: RepairAction[];
+    messageId: string;
+}
+
 export interface PlanStep {
     step: number;
     action: string;
@@ -69,6 +85,8 @@ interface AiState {
     pendingProposal: ProposedChange | null;
     /** AI-generated multi-step plan awaiting user approval */
     pendingPlan: PendingPlan | null;
+    /** AI-generated repair proposal for run-mode failures */
+    pendingRepair: RepairProposal | null;
     metrics: AiMetrics;
     /** Context-aware chips shown after the user accepts a proposal */
     followUpChips: string[] | null;
@@ -93,6 +111,8 @@ interface AiActions {
     clearFollowUpChips: () => void;
     setPlan: (plan: Omit<PendingPlan, 'id'>) => string;
     clearPlan: () => void;
+    setRepair: (repair: Omit<RepairProposal, 'id'>) => string;
+    clearRepair: () => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -124,6 +144,7 @@ const useAiStore = create<AiStore>()(
             chatPanelOpen: true,
             pendingProposal: null,
             pendingPlan: null,
+            pendingRepair: null,
             followUpChips: null,
             metrics: {
                 totalProposals: 0,
@@ -156,6 +177,7 @@ const useAiStore = create<AiStore>()(
                 isStreaming: false,
                 pendingProposal: null,
                 pendingPlan: null,
+                pendingRepair: null,
                 followUpChips: null,
             }),
 
@@ -197,6 +219,13 @@ const useAiStore = create<AiStore>()(
                 return id;
             },
             clearPlan: () => set({ pendingPlan: null }),
+
+            setRepair: (repair) => {
+                const id = `repair_${Date.now()}`;
+                set({ pendingRepair: { ...repair, id } });
+                return id;
+            },
+            clearRepair: () => set({ pendingRepair: null }),
         }),
         {
             name: 'ai-workflow-config',

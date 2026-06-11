@@ -30,6 +30,14 @@ export interface DiffSummary {
     reordered?: boolean;
 }
 
+export interface PartialAcceptSelection {
+    added: Set<string>;
+    modified: Set<string>;
+    removed: Set<string>;
+    propsChanged: boolean;
+    reordered: boolean;
+}
+
 export interface ToolCallResult {
     type: 'propose' | 'info' | 'error';
     /** For 'propose': the new WorkflowDef to show in ReviewBar */
@@ -400,6 +408,81 @@ export function executeToolCall(
         default:
             return { type: 'error', text: `未知工具: ${toolName}` };
     }
+}
+
+// ─── Partial proposal apply ──────────────────────────────────────────────────
+
+/**
+ * Applies only the user-selected subset of changes from a proposal.
+ * Used when the user accepts some changes but rejects others in ReviewBar.
+ */
+export function applyPartialProposal(
+    currentDef: WorkflowDef,
+    proposedDef: WorkflowDef,
+    diff: DiffSummary,
+    selection: PartialAcceptSelection,
+): WorkflowDef {
+    const currentTaskMap = new Map<string, TaskDef>(
+        (currentDef.tasks ?? []).map(t => [t.taskReferenceName, t])
+    );
+
+    const addedSet = new Set(diff.added);
+    const modifiedSet = new Set(diff.modified);
+
+    // Walk proposedDef task order as basis (handles reordering naturally)
+    const newTasks: TaskDef[] = [];
+
+    for (const proposedTask of (proposedDef.tasks ?? [])) {
+        const ref = proposedTask.taskReferenceName;
+        if (addedSet.has(ref)) {
+            if (selection.added.has(ref)) newTasks.push(proposedTask);
+            // else: skip — don't add
+        } else if (modifiedSet.has(ref)) {
+            // Use proposed if selected, current otherwise
+            newTasks.push(selection.modified.has(ref) ? proposedTask : currentTaskMap.get(ref)!);
+        } else {
+            // Unchanged: keep current version
+            const cur = currentTaskMap.get(ref);
+            if (cur) newTasks.push(cur);
+        }
+    }
+
+    // Re-insert removed tasks that the user chose NOT to remove
+    for (const ref of diff.removed) {
+        if (!selection.removed.has(ref)) {
+            const cur = currentTaskMap.get(ref);
+            if (cur) newTasks.push(cur);
+        }
+    }
+
+    // If reorder not selected but diff has reorder, restore original task order for existing tasks
+    if (!selection.reordered && diff.reordered) {
+        const currentRefs = new Set((currentDef.tasks ?? []).map(t => t.taskReferenceName));
+        const existing = newTasks.filter(t => currentRefs.has(t.taskReferenceName));
+        const brandNew = newTasks.filter(t => !currentRefs.has(t.taskReferenceName));
+        const origOrder = new Map((currentDef.tasks ?? []).map((t, i) => [t.taskReferenceName, i]));
+        existing.sort((a, b) => (origOrder.get(a.taskReferenceName) ?? 999) - (origOrder.get(b.taskReferenceName) ?? 999));
+        newTasks.length = 0;
+        newTasks.push(...existing, ...brandNew);
+    }
+
+    // Merge workflow-level props if propsChanged is selected
+    let merged: WorkflowDef = { ...currentDef, tasks: newTasks };
+    if (selection.propsChanged && diff.propsChanged) {
+        const propKeys: Array<keyof WorkflowDef> = [
+            'name', 'description', 'timeoutSeconds', 'version',
+            'ownerEmail', 'failureWorkflow', 'inputParameters', 'outputParameters',
+        ];
+        const propChanges: Partial<WorkflowDef> = {};
+        for (const k of propKeys) {
+            if (JSON.stringify(proposedDef[k]) !== JSON.stringify(currentDef[k])) {
+                (propChanges as any)[k] = (proposedDef as any)[k];
+            }
+        }
+        merged = { ...merged, ...propChanges };
+    }
+
+    return merged;
 }
 
 // ─── Describe diff for chat display ─────────────────────────────────────────

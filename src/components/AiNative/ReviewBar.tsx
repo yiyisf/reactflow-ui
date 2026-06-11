@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { ProposedChange } from '../../store/aiStore';
+import useWorkflowStore from '../../store/workflowStore';
 
 interface ReviewBarProps {
     proposal: ProposedChange | null;
@@ -30,14 +31,19 @@ const LEVEL_LABEL: Record<string, { label: string; color: string; bg: string }> 
 
 const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) => {
     const [expanded, setExpanded] = useState(false);
+    const currentDef = useWorkflowStore(s => s.workflowDef);
 
     // Reset expand state whenever a new proposal replaces the previous one
     useEffect(() => { setExpanded(false); }, [proposal?.id]);
 
     if (!proposal) return null;
 
+    // Detect stale proposals: the canvas was manually edited after the proposal was generated.
+    const isStale = proposal.baselineHash !== JSON.stringify(currentDef);
+
     const { diff, inferredLevel } = proposal;
-    const totalChanges = diff.added.length + diff.modified.length + diff.removed.length + (diff.propsChanged ? 1 : 0);
+    const totalChanges = diff.added.length + diff.modified.length + diff.removed.length
+        + (diff.propsChanged ? 1 : 0) + (diff.reordered ? 1 : 0);
     const levelMeta = inferredLevel ? LEVEL_LABEL[inferredLevel] : null;
 
     const detailItems: Array<{ ref: string; kind: 'added' | 'modified' | 'removed' }> = [
@@ -51,6 +57,13 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
 
     return (
         <div className="ai-review-bar">
+            {/* Stale proposal warning */}
+            {isStale && (
+                <div className="ai-review-stale-banner">
+                    ⚠️ 画布已在审阅期间被手动修改，此方案基于旧版本。建议拒绝后重新提问。
+                </div>
+            )}
+
             {/* Expandable diff detail */}
             {expanded && hasDetailContent && (
                 <div className="ai-review-detail">
@@ -74,7 +87,8 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                 </div>
             )}
 
-            {/* Main bar */}
+            {/* Main bar: content + actions side by side */}
+            <div className="ai-review-main-row">
             <div className="ai-review-content">
                 <div className="ai-review-icon">✨</div>
                 <div className="ai-review-info">
@@ -108,6 +122,12 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                         {diff.propsChanged && (
                             <span className="ai-diff-chip props">属性变更</span>
                         )}
+                        {diff.reordered && (
+                            <span className="ai-diff-chip reordered">↕ 顺序调整</span>
+                        )}
+                        {isStale && (
+                            <span className="ai-diff-chip stale">⚠ 已过期</span>
+                        )}
                         {hasDetailContent && (
                             <button
                                 className="ai-review-detail-toggle"
@@ -124,9 +144,14 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                 <button className="ai-review-btn reject" onClick={onReject} title="拒绝此方案，保持当前工作流不变">
                     ✕ 拒绝
                 </button>
-                <button className="ai-review-btn accept" onClick={onAccept} title="应用此方案到画布">
-                    ✓ 应用
+                <button
+                    className={`ai-review-btn accept${isStale ? ' stale' : ''}`}
+                    onClick={onAccept}
+                    title={isStale ? '⚠️ 画布已被修改，应用此方案可能覆盖手动编辑' : '应用此方案到画布'}
+                >
+                    ✓ 应用{isStale ? ' ⚠️' : ''}
                 </button>
+            </div>
             </div>
         </div>
     );

@@ -33,6 +33,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useToast } from '../hooks/useToast';
 import { ExecutionActions } from '../types/workflow';
 import useAiStore from '../store/aiStore';
+import { parseWorkflow } from '../parser/conductorParser';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -167,6 +168,57 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     );
 
     const pendingProposal = useAiStore(s => s.pendingProposal);
+
+    // ─── Ghost Preview: parse proposed workflow and build overlay nodes/edges ──
+    // When a proposal is pending, show the proposed canvas with diff coloring
+    // instead of (not in addition to) the current canvas — giving the user a
+    // "what will it look like after accept" preview with +/~/− markers.
+    const ghostOverlay = useMemo(() => {
+        if (!pendingProposal) return null;
+        try {
+            const { nodes: pNodes, edges: pEdges } = parseWorkflow(
+                pendingProposal.proposedDef,
+                layoutDirection,
+                { hideEmptyBranches: false },
+            );
+
+            const addedSet = new Set(pendingProposal.diff.added);
+            const modifiedSet = new Set(pendingProposal.diff.modified);
+            const removedSet = new Set(pendingProposal.diff.removed);
+            const currentNodeMap = new Map(nodes.map(n => [n.data?.taskReferenceName, n]));
+
+            // Proposed workflow nodes (all except editor-only plusNodes)
+            const previewNodes = pNodes
+                .filter(n => n.type !== 'plusNode')
+                .map(n => {
+                    const ref = n.data?.taskReferenceName;
+                    const ps = addedSet.has(ref) ? 'added' as const
+                        : modifiedSet.has(ref) ? 'modified' as const
+                        : undefined;
+                    return {
+                        ...n,
+                        draggable: false,
+                        selectable: false,
+                        data: { ...n.data, proposalStatus: ps, layoutDirection },
+                    };
+                });
+
+            // Removed nodes: kept in their current canvas position, marked as removed
+            const removedNodes = [...removedSet]
+                .map(ref => currentNodeMap.get(ref))
+                .filter((n): n is NonNullable<typeof n> => n != null)
+                .map(n => ({
+                    ...n,
+                    draggable: false,
+                    selectable: false,
+                    data: { ...n.data, proposalStatus: 'removed' as const },
+                }));
+
+            return { nodes: [...previewNodes, ...removedNodes], edges: pEdges };
+        } catch {
+            return null; // Fall back to normal rendering if parse fails
+        }
+    }, [pendingProposal, nodes, layoutDirection]);
 
     const { fitView } = useReactFlow();
     const [showSelector, setShowSelector] = useState(false);
@@ -461,30 +513,24 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         <div style={{ width: '100%', height: '100%', position: 'relative', background: backgroundColor }}>
             <ReactFlow
                 nodes={useMemo(() => {
+                    // Ghost Preview: when a proposal is pending, show the proposed workflow
+                    // with diff coloring so the user can preview the result before accepting.
+                    if (ghostOverlay) return ghostOverlay.nodes as typeof nodes;
+
                     const errorRefs = new Set(validationResults.errors.filter(e => e.type === 'TASK').map(e => e.ref));
                     const warningRefs = new Set(validationResults.warnings.filter(w => w.type === 'TASK').map(w => w.ref));
                     const query = searchQuery.toLowerCase();
-
-                    // Build proposal status sets from pendingProposal diff
-                    const addedRefs = new Set(pendingProposal?.diff.added ?? []);
-                    const modifiedRefs = new Set(pendingProposal?.diff.modified ?? []);
-                    const removedRefs = new Set(pendingProposal?.diff.removed ?? []);
 
                     const baseNodes = nodes
                     .filter(n => !dynamicForkData.removedNodeIds.has(n.id) && visibleNodeIdSet.has(n.id))
                     .map(node => {
                         const ref = node.data.taskReferenceName;
                         const sim = simState[ref];
-                        const proposalStatus = addedRefs.has(ref) ? 'added' as const
-                            : modifiedRefs.has(ref) ? 'modified' as const
-                            : removedRefs.has(ref) ? 'removed' as const
-                            : undefined;
                         return {
                             ...node,
                             selected: selectedTask?.taskReferenceName === ref,
                             data: {
                                 ...node.data,
-                                // 校验徽章（❗⚠️）仅在编辑模式下显示，只读/运行态不干扰视图
                                 isError: mode === 'edit' && errorRefs.has(ref),
                                 hasWarning: mode === 'edit' && warningRefs.has(ref),
                                 isHighlighted: searchQuery ? (
@@ -493,17 +539,15 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                 ) : false,
                                 simRunning: sim === 'running',
                                 simDone: sim === 'done',
-                                proposalStatus,
                             }
                         };
                     });
-                    // 追加动态 fork 子任务节点
                     return baseNodes.concat(dynamicForkData.extraNodes.map(node => ({
                         ...node,
                         data: { ...node.data, isError: false, hasWarning: false, isHighlighted: false },
                     })) as typeof baseNodes);
-                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode, pendingProposal])}
-                edges={processedEdges}
+                }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode, ghostOverlay])}
+                edges={ghostOverlay?.edges ?? processedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}

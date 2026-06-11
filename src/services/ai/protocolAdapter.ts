@@ -48,11 +48,18 @@ export interface AiConfig {
     model?: string;
 }
 
+export interface ToolCallRef {
+    id: string;
+    name: string;
+    args: Record<string, any>;
+}
+
 export interface Message {
     role: 'system' | 'user' | 'assistant' | 'tool';
     content: string;
     tool_call_id?: string;
-    name?: string;
+    /** For assistant turns that issued tool calls — used to build the agentic history */
+    tool_calls?: ToolCallRef[];
 }
 
 export interface ToolDef {
@@ -104,6 +111,85 @@ function resolveConfig(config: AiConfig): Required<AiConfig> & { resolvedProvide
     };
 }
 
+// ─── Message format converters ───────────────────────────────────────────────
+
+/**
+ * Convert unified Messages to OpenAI Chat Completions format.
+ * Handles assistant messages with tool_calls and role='tool' result messages.
+ */
+function toOpenAIMessages(messages: Message[]): any[] {
+    return messages.map(m => {
+        if (m.role === 'assistant' && m.tool_calls?.length) {
+            return {
+                role: 'assistant',
+                content: m.content || null,
+                tool_calls: m.tool_calls.map(tc => ({
+                    id: tc.id,
+                    type: 'function' as const,
+                    function: { name: tc.name, arguments: JSON.stringify(tc.args) },
+                })),
+            };
+        }
+        const out: Record<string, any> = { role: m.role, content: m.content };
+        if (m.tool_call_id) out.tool_call_id = m.tool_call_id;
+        return out;
+    });
+}
+
+/**
+ * Convert unified Messages to Anthropic Messages API format.
+ * Handles: assistant tool_use blocks, grouped tool_result user messages.
+ * Anthropic requires strict user/assistant alternation, so consecutive tool
+ * result messages are merged into a single user message content array.
+ */
+function toAnthropicMessages(messages: Message[]): any[] {
+    // Step 1: map each message to an intermediate form
+    type Intermediate =
+        | { _kind: 'msg'; role: 'user' | 'assistant'; content: any }
+        | { _kind: 'tool_result'; tool_use_id: string; content: string };
+
+    const intermediate: Intermediate[] = messages
+        .filter(m => m.role !== 'system')
+        .map(m => {
+            if (m.role === 'tool') {
+                return { _kind: 'tool_result' as const, tool_use_id: m.tool_call_id ?? '', content: m.content };
+            }
+            if (m.role === 'assistant' && m.tool_calls?.length) {
+                const blocks: any[] = [];
+                if (m.content) blocks.push({ type: 'text', text: m.content });
+                m.tool_calls.forEach(tc =>
+                    blocks.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.args })
+                );
+                return { _kind: 'msg' as const, role: 'assistant' as const, content: blocks };
+            }
+            return {
+                _kind: 'msg' as const,
+                role: (m.role === 'assistant' ? 'assistant' : 'user') as 'user' | 'assistant',
+                content: m.content,
+            };
+        });
+
+    // Step 2: group consecutive tool_result entries into a single user message
+    const result: any[] = [];
+    let i = 0;
+    while (i < intermediate.length) {
+        const item = intermediate[i];
+        if (item._kind === 'tool_result') {
+            const batch: any[] = [{ type: 'tool_result', tool_use_id: item.tool_use_id, content: item.content }];
+            while (i + 1 < intermediate.length && intermediate[i + 1]._kind === 'tool_result') {
+                i++;
+                const next = intermediate[i] as Extract<Intermediate, { _kind: 'tool_result' }>;
+                batch.push({ type: 'tool_result', tool_use_id: next.tool_use_id, content: next.content });
+            }
+            result.push({ role: 'user', content: batch });
+        } else {
+            result.push({ role: item.role, content: item.content });
+        }
+        i++;
+    }
+    return result;
+}
+
 // ─── OpenAI 流式处理（兼容任意 OpenAI Chat Completions API） ─────────────────
 
 async function* streamOpenAI(
@@ -116,7 +202,7 @@ async function* streamOpenAI(
 
     const body: Record<string, any> = {
         model: resolved.model,
-        messages,
+        messages: toOpenAIMessages(messages),
         temperature: 0.7,
         stream: true,
     };
@@ -213,14 +299,7 @@ async function* streamAnthropic(
     const resolved = resolveConfig(config);
 
     const systemMsg = messages.find(m => m.role === 'system');
-    const chatMessages = messages
-        .filter(m => m.role !== 'system')
-        .map(m => ({
-            role: m.role === 'tool' ? 'user' as const : m.role as 'user' | 'assistant',
-            content: m.role === 'tool'
-                ? [{ type: 'tool_result' as const, tool_use_id: m.tool_call_id, content: m.content }]
-                : m.content,
-        }));
+    const chatMessages = toAnthropicMessages(messages);
 
     const anthropicTools = tools.map(t => ({
         name: t.function.name,

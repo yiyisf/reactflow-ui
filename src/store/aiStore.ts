@@ -11,6 +11,7 @@ import type { AiConfig } from '../services/ai/protocolAdapter';
 import type { WorkflowDef } from '../types/conductor';
 import type { DiffSummary } from '../services/ai/toolExecutor';
 import type { WorkflowLevel } from '../types/workflowLibrary';
+import useWorkflowStore from './workflowStore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,11 @@ export interface ProposedChange {
     inferredLevel?: WorkflowLevel;
     /** Message that triggered this proposal */
     messageId: string;
+    /**
+     * JSON snapshot of the canvas workflowDef at the moment the proposal was created.
+     * Used to detect stale proposals when the user has edited the canvas during review.
+     */
+    baselineHash: string;
 }
 
 export interface AiMetrics {
@@ -62,7 +68,7 @@ interface AiActions {
     clearMessages: () => void;
     setChatPanelOpen: (open: boolean) => void;
     toggleChatPanel: () => void;
-    setProposal: (proposal: Omit<ProposedChange, 'id'>) => string;
+    setProposal: (proposal: Omit<ProposedChange, 'id' | 'baselineHash'>) => string;
     clearProposal: () => void;
     recordAccept: () => void;
     recordReject: () => void;
@@ -138,8 +144,11 @@ const useAiStore = create<AiStore>()(
 
             setProposal: (proposal) => {
                 const id = `prop_${Date.now()}`;
+                // Snapshot the current canvas state so ReviewBar can detect stale proposals
+                const currentDef = useWorkflowStore.getState().workflowDef;
+                const baselineHash = JSON.stringify(currentDef);
                 set(s => ({
-                    pendingProposal: { ...proposal, id },
+                    pendingProposal: { ...proposal, id, baselineHash },
                     metrics: { ...s.metrics, totalProposals: s.metrics.totalProposals + 1 },
                 }));
                 return id;

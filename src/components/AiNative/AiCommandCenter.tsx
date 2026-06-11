@@ -11,16 +11,23 @@ import useAiStore from '../../store/aiStore';
 import useWorkflowStore from '../../store/workflowStore';
 import useLibraryStore from '../../store/libraryStore';
 import { streamChat } from '../../services/ai/protocolAdapter';
+import type { Message } from '../../services/ai/protocolAdapter';
 import { TOOL_DEFINITIONS } from '../../services/ai/toolDefs';
+import { validateWorkflow } from '../../utils/validator';
+import type { WorkflowDef } from '../../types/conductor';
+import type { WorkflowLevel } from '../../types/workflowLibrary';
+import type { DiffSummary } from '../../services/ai/toolExecutor';
 
 // Read-only tools allowed in run mode (no workflow-modifying tools)
 const READ_ONLY_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
     ['get_workflow_state', 'validate_workflow', 'search_workflow_library'].includes(t.function.name)
 );
+
+const MAX_AGENT_STEPS = 6;
+const MAX_SELF_HEAL = 2;
 import { executeToolCall, describeDiff } from '../../services/ai/toolExecutor';
 import { buildSystemPrompt } from '../../services/ai/systemPrompt';
 import LibraryPanel from './LibraryPanel';
-import type { Message } from '../../services/ai/protocolAdapter';
 
 interface AiCommandCenterProps {
     systemPrompt?: string;
@@ -275,21 +282,19 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         abortRef.current?.abort();
         const controller = new AbortController();
         abortRef.current = controller;
+        const { signal } = controller;
 
         addMessage({ role: 'user', content: text });
         setInputValue('');
-        setRetryInput(null);           // clear any previous retry state
-        clearFollowUpChips();          // D1: dismiss follow-up chips on new message
+        setRetryInput(null);
+        clearFollowUpChips();
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
         setStreaming(true);
         setStreamingText('');
         setToolStatus('');
 
         if (!config.apiKey) {
-            addMessage({
-                role: 'assistant',
-                content: '⚠️ 未配置 API Key。请点击上方 ⚙️ 按钮配置 AI 服务后重试。',
-            });
+            addMessage({ role: 'assistant', content: '⚠️ 未配置 API Key。请点击上方 ⚙️ 按钮配置 AI 服务后重试。' });
             setStreaming(false);
             return;
         }
@@ -297,80 +302,137 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         const assistantMsgId = addMessage({ role: 'assistant', content: '' });
 
         try {
-            const history = buildHistory(text);
-            let fullText = '';
-            const toolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
-            // In run mode, restrict to read-only tools — no workflow modifications allowed
+            // Build the initial agent message history
+            const agentHistory: Message[] = buildHistory(text);
             const activeDefs = mode === 'run' ? READ_ONLY_TOOL_DEFINITIONS : TOOL_DEFINITIONS;
 
-            for await (const event of streamChat(history, activeDefs, config, controller.signal)) {
-                if (controller.signal.aborted) break;
-                switch (event.type) {
-                    case 'text':
-                        fullText += event.content;
-                        appendStreamingText(event.content);
-                        break;
-                    case 'tool_call':
-                        toolCalls.push({ id: event.id, name: event.name, args: event.args });
-                        break;
-                    case 'error':
-                        fullText += `\n\n❌ ${event.message}`;
-                        break;
+            let fullAssistantText = '';
+            let selfHealCount = 0;
+
+            // ─── Agentic loop ───────────────────────────────────────────────
+            for (let step = 0; step < MAX_AGENT_STEPS; step++) {
+                if (signal.aborted) break;
+
+                // Clear streaming display between steps
+                setStreamingText('');
+                if (step > 0) setToolStatus(`🔄 步骤 ${step + 1}…`);
+
+                // Stream one model turn
+                const stepToolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
+                let stepText = '';
+
+                for await (const event of streamChat(agentHistory, activeDefs, config, signal)) {
+                    if (signal.aborted) break;
+                    switch (event.type) {
+                        case 'text':
+                            stepText += event.content;
+                            appendStreamingText(event.content);
+                            break;
+                        case 'tool_call':
+                            stepToolCalls.push({ id: event.id, name: event.name, args: event.args });
+                            break;
+                        case 'error':
+                            stepText += `\n\n❌ ${event.message}`;
+                            break;
+                    }
                 }
-            }
 
-            // Process tool calls sequentially
-            const infoLines: string[] = [];
-            let hasProposal = false;
+                if (stepText) {
+                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + stepText;
+                }
 
-            for (const tc of toolCalls) {
-                if (controller.signal.aborted) break;
+                // No tool calls — model is done
+                if (!stepToolCalls.length || signal.aborted) break;
 
-                const statusMap: Record<string, string> = {
+                // Append assistant turn (text + tool calls) to history for next iteration
+                agentHistory.push({
+                    role: 'assistant',
+                    content: stepText,
+                    tool_calls: stepToolCalls,
+                });
+
+                // ─── Execute tool calls ─────────────────────────────────────
+                const toolResultMsgs: Message[] = [];
+                let pendingProposalResult: {
+                    proposed: WorkflowDef;
+                    diff: DiffSummary;
+                    inferredLevel?: WorkflowLevel;
+                } | null = null;
+
+                const TOOL_STATUS_LABELS: Record<string, string> = {
                     get_workflow_state: '正在读取工作流状态…',
                     search_workflow_library: '正在搜索工作流库…',
                     validate_workflow: '正在校验工作流…',
                     replace_workflow: '正在生成新工作流…',
                     patch_workflow: '正在应用变更…',
                 };
-                setToolStatus(statusMap[tc.name] ?? `执行 ${tc.name}…`);
 
-                const result = await Promise.resolve(executeToolCall(tc.name, tc.args));
+                for (const tc of stepToolCalls) {
+                    if (signal.aborted) break;
+                    setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
 
-                if (result.type === 'propose' && result.proposed && result.diff) {
+                    const result = executeToolCall(tc.name, tc.args);
+                    let resultContent: string;
+
+                    if (result.type === 'propose' && result.proposed && result.diff) {
+                        // Self-healing: validate before creating the proposal
+                        const validation = validateWorkflow(result.proposed);
+                        if (validation.errors.length > 0 && selfHealCount < MAX_SELF_HEAL) {
+                            // Tell the model about the errors so it can self-correct
+                            selfHealCount++;
+                            const errList = validation.errors.map(e => `• ${e.message}`).join('\n');
+                            resultContent = `工作流已生成，但存在 ${validation.errors.length} 个校验错误，请修复后重新生成：\n${errList}`;
+                        } else {
+                            // Validation passed (or self-heal limit exceeded — accept with warning)
+                            pendingProposalResult = {
+                                proposed: result.proposed,
+                                diff: result.diff,
+                                inferredLevel: result.inferredLevel,
+                            };
+                            const desc = describeDiff(result.diff);
+                            const warnNote = validation.errors.length > 0
+                                ? ` ⚠️ 含 ${validation.errors.length} 个校验错误` : '';
+                            resultContent = `变更方案已生成${warnNote}：${desc}。等待用户确认。`;
+                        }
+                    } else if (result.type === 'info') {
+                        resultContent = result.text ?? '';
+                    } else {
+                        resultContent = `错误：${result.text ?? '未知错误'}`;
+                    }
+
+                    toolResultMsgs.push({ role: 'tool', content: resultContent, tool_call_id: tc.id });
+                }
+
+                // Append tool results to history
+                agentHistory.push(...toolResultMsgs);
+
+                // Commit proposal to store (after tool results are in history)
+                if (pendingProposalResult) {
                     setProposal({
-                        proposedDef: result.proposed,
-                        diff: result.diff,
-                        inferredLevel: result.inferredLevel,
+                        proposedDef: pendingProposalResult.proposed,
+                        diff: pendingProposalResult.diff,
+                        inferredLevel: pendingProposalResult.inferredLevel,
                         messageId: assistantMsgId,
                     });
-                    const changeDesc = describeDiff(result.diff);
-                    const levelNote = result.inferredLevel ? ` · ${result.inferredLevel}` : '';
-                    infoLines.push(`\n\n---\n✅ **已生成变更方案${levelNote}**：${changeDesc}\n请在下方审核栏中确认或拒绝。`);
-                    hasProposal = true;
-                } else if (result.type === 'info' && result.text) {
-                    infoLines.push(`\n\n${result.text}`);
-                } else if (result.type === 'error' && result.text) {
-                    infoLines.push(`\n\n❌ ${result.text}`);
+                    const desc = describeDiff(pendingProposalResult.diff);
+                    const levelNote = pendingProposalResult.inferredLevel
+                        ? ` · ${pendingProposalResult.inferredLevel}` : '';
+                    fullAssistantText += `\n\n---\n✅ **已生成变更方案${levelNote}**：${desc}\n请在下方审核栏中确认或拒绝。`;
+                    break; // Proposal is ready — pause for user review
                 }
+
+                // No proposal yet: continue loop to get model's response to tool results
             }
 
             setToolStatus('');
-
-            if (!fullText && !hasProposal && infoLines.length === 0) {
-                fullText = '收到，已处理。';
-            }
-
-            const finalContent = (fullText + infoLines.join('')).trim();
-            updateMessage(assistantMsgId, finalContent);
+            updateMessage(assistantMsgId, fullAssistantText.trim() || '收到，已处理。');
 
         } catch (err: any) {
             setToolStatus('');
             if (err.name !== 'AbortError') {
                 updateMessage(assistantMsgId, `❌ AI 服务错误: ${err.message}`);
-                setRetryInput(text);   // D2: allow one-click retry
+                setRetryInput(text);
             } else {
-                // Read from store directly to avoid stale closure snapshot
                 const cur = useAiStore.getState().messages.find(m => m.id === assistantMsgId);
                 if (!cur?.content) updateMessage(assistantMsgId, '（已中止）');
             }
@@ -379,7 +441,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
             setStreamingText('');
             setToolStatus('');
         }
-    }, [isStreaming, config, buildHistory]);
+    }, [isStreaming, config, buildHistory, mode]);
 
     const handleSend = useCallback(() => {
         const text = inputValue.trim();

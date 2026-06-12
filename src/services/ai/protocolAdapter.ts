@@ -276,13 +276,37 @@ async function* streamOpenAI(
         }
     }
 
-    for (const tc of Object.values(toolCalls)) {
-        try {
-            const args = JSON.parse(tc.args || '{}');
-            yield { type: 'tool_call', id: tc.id, name: tc.name, args };
-        } catch {
-            yield { type: 'error', message: `Failed to parse tool call args for ${tc.name}` };
+    // Flush any remaining lineBuffer content not terminated by \n (non-standard SSE or abrupt close)
+    if (lineBuffer.trim().startsWith('data: ')) {
+        const data = lineBuffer.trim().slice(6);
+        if (data && data !== '[DONE]') {
+            try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (delta?.tool_calls) {
+                    for (const tc of delta.tool_calls) {
+                        const idx = tc.index ?? 0;
+                        if (!toolCalls[idx]) toolCalls[idx] = { id: tc.id || '', name: '', args: '' };
+                        if (tc.id) toolCalls[idx].id = tc.id;
+                        if (tc.function?.name) toolCalls[idx].name += tc.function.name;
+                        if (tc.function?.arguments) toolCalls[idx].args += tc.function.arguments;
+                    }
+                }
+            } catch { /* ignore malformed trailing data */ }
         }
+    }
+
+    for (const tc of Object.values(toolCalls)) {
+        let args: Record<string, any>;
+        try {
+            args = JSON.parse(tc.args || '{}');
+        } catch {
+            // Partial JSON from SSE truncation — fall back to {} so no-param tools
+            // (e.g. validate_workflow) still execute; param-requiring tools will fail
+            // gracefully at the executor level rather than aborting the entire turn.
+            args = {};
+        }
+        yield { type: 'tool_call', id: tc.id, name: tc.name, args };
     }
 
     yield { type: 'done' };
@@ -378,12 +402,13 @@ async function* streamAnthropic(
 
                     case 'content_block_stop':
                         if (currentToolName) {
+                            let toolArgs: Record<string, any>;
                             try {
-                                const args = JSON.parse(currentToolArgs || '{}');
-                                yield { type: 'tool_call', id: currentToolId, name: currentToolName, args };
+                                toolArgs = JSON.parse(currentToolArgs || '{}');
                             } catch {
-                                yield { type: 'error', message: `Failed to parse tool args for ${currentToolName}` };
+                                toolArgs = {};
                             }
+                            yield { type: 'tool_call', id: currentToolId, name: currentToolName, args: toolArgs };
                             currentToolName = '';
                             currentToolArgs = '';
                         }

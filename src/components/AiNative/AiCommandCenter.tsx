@@ -20,6 +20,8 @@ import type { WorkflowLevel } from '../../types/workflowLibrary';
 import type { DiffSummary } from '../../services/ai/toolExecutor';
 import PlanCard from './PlanCard';
 import RepairCard from './RepairCard';
+import ClarificationCard from './ClarificationCard';
+import RecommendationCard from './RecommendationCard';
 import type { ExecutionActions } from '../../types/workflow';
 import type { AiEvent } from '../../types/aiEvents';
 
@@ -233,6 +235,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         pendingRepair,
         followUpChips,
         undoStack,
+        pendingClarification,
+        pendingRecommendation,
         addMessage,
         updateMessage,
         setStreaming,
@@ -247,6 +251,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         clearRepair,
         clearFollowUpChips,
         popUndo,
+        setClarification,
+        clearClarification,
+        setRecommendation,
+        clearRecommendation,
     } = useAiStore();
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
@@ -426,6 +434,37 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         break;
                     }
 
+                    // ── ask_clarification: show clarification card and break loop ─
+                    if (tc.name === 'ask_clarification') {
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: '澄清问题已展示给用户，等待用户回复。',
+                            tool_call_id: tc.id,
+                        });
+                        setClarification({
+                            question: tc.args.question ?? '请告诉我更多详情',
+                            context: tc.args.context,
+                            options: tc.args.options ?? [],
+                            messageId: assistantMsgId,
+                        });
+                        break;
+                    }
+
+                    // ── recommend_workflow: show recommendation card and break loop ─
+                    if (tc.name === 'recommend_workflow') {
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: '已向用户展示相似工作流推荐，等待用户选择。',
+                            tool_call_id: tc.id,
+                        });
+                        setRecommendation({
+                            userIntent: tc.args.userIntent ?? '',
+                            recommendations: tc.args.recommendations ?? [],
+                            messageId: assistantMsgId,
+                        });
+                        break;
+                    }
+
                     // ── propose_plan: store plan and break loop ─────────────
                     if (tc.name === 'propose_plan') {
                         pendingPlanResult = {
@@ -498,6 +537,16 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     break;
                 }
 
+                // ask_clarification broke the inner loop and stored the clarification
+                if (useAiStore.getState().pendingClarification?.messageId === assistantMsgId) {
+                    break;
+                }
+
+                // recommend_workflow broke the inner loop and stored the recommendation
+                if (useAiStore.getState().pendingRecommendation?.messageId === assistantMsgId) {
+                    break;
+                }
+
                 // Commit plan to store (break loop — wait for user confirmation)
                 if (pendingPlanResult) {
                     setPlan({
@@ -555,21 +604,21 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const handleSend = useCallback(() => {
         const text = inputValue.trim();
         if (!text) return;
-        if (pendingProposal || pendingPlan) {
+        if (pendingProposal || pendingPlan || pendingClarification || pendingRecommendation) {
             setGuardBlocked(text);
             return;
         }
         handleSendText(text);
-    }, [inputValue, pendingProposal, pendingPlan, handleSendText]);
+    }, [inputValue, pendingProposal, pendingPlan, pendingClarification, pendingRecommendation, handleSendText]);
 
     const handleChipClick = useCallback((chip: string) => {
-        if (pendingProposal || pendingPlan) {
+        if (pendingProposal || pendingPlan || pendingClarification || pendingRecommendation) {
             setGuardBlocked(chip);
             return;
         }
         clearFollowUpChips();
         handleSendText(chip);
-    }, [pendingProposal, pendingPlan, handleSendText, clearFollowUpChips]);
+    }, [pendingProposal, pendingPlan, pendingClarification, pendingRecommendation, handleSendText, clearFollowUpChips]);
 
     const handleStop = () => { abortRef.current?.abort(); };
 
@@ -589,8 +638,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         clearProposal();
         clearPlan();
         clearRepair();
+        clearClarification();
+        clearRecommendation();
         if (blocked) handleSendText(blocked);
-    }, [guardBlocked, clearProposal, clearPlan, clearRepair, handleSendText]);
+    }, [guardBlocked, clearProposal, clearPlan, clearRepair, clearClarification, clearRecommendation, handleSendText]);
 
     // Execute the pending plan: clear it and re-prompt the AI to proceed
     const handleExecutePlan = useCallback(() => {
@@ -645,6 +696,31 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const noApiKey = !config.apiKey && showConfigButton;
     // D3: show template gallery when canvas is empty and only welcome msg exists
     const showTemplates = !workflowDef && messages.length === 1 && messages[0].id === 'welcome' && libraryItems.length === 0;
+
+    const handleClarificationSelect = useCallback((optionText: string) => {
+        clearClarification();
+        handleSendText(optionText);
+    }, [clearClarification, handleSendText]);
+
+    const handleClarificationCustom = useCallback(() => {
+        clearClarification();
+        if (textareaRef.current) textareaRef.current.focus();
+    }, [clearClarification]);
+
+    const handleUseWorkflow = useCallback((workflowName: string) => {
+        clearRecommendation();
+        handleSendText(`加载并使用工作流：${workflowName}`);
+    }, [clearRecommendation, handleSendText]);
+
+    const handleModifyWorkflow = useCallback((workflowName: string) => {
+        clearRecommendation();
+        handleSendText(`以「${workflowName}」为基础，按照我的需求修改`);
+    }, [clearRecommendation, handleSendText]);
+
+    const handleCreateNew = useCallback(() => {
+        clearRecommendation();
+        handleSendText('不使用现有工作流，从头创建新工作流');
+    }, [clearRecommendation, handleSendText]);
 
     // Error-node chips: when selected task has validation errors, surface fix chip
     const selectedTaskErrors = selectedTask
@@ -829,6 +905,25 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 canExecute={!!(executionActions?.onRerunFromTask || executionActions?.onSkipTask || executionActions?.onRetry)}
                                 onExecuteAction={handleRepairAction}
                                 onDismiss={handleDismissRepair}
+                            />
+                        )}
+
+                        {/* ClarificationCard: intent mining — ask user to clarify vague input */}
+                        {pendingClarification && !isStreaming && (
+                            <ClarificationCard
+                                clarification={pendingClarification}
+                                onSelect={handleClarificationSelect}
+                                onCustom={handleClarificationCustom}
+                            />
+                        )}
+
+                        {/* RecommendationCard: recommend existing workflows before creating new */}
+                        {pendingRecommendation && !isStreaming && (
+                            <RecommendationCard
+                                recommendation={pendingRecommendation}
+                                onUseWorkflow={handleUseWorkflow}
+                                onModifyWorkflow={handleModifyWorkflow}
+                                onCreateNew={handleCreateNew}
                             />
                         )}
 

@@ -35,12 +35,16 @@ export const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专�
 4. **validate_workflow** — 校验工作流合法性（read-only）。
 5. **propose_plan** — 在执行复杂多步操作前，先向用户展示执行计划。适用于：大范围重构（5+ 步）、拓扑结构重大变更。调用后停止，等待用户确认。简单的单步操作无需先提计划。
 6. **不要**在回复中直接输出工作流 JSON 代码块，通过工具执行。
+7. **ask_clarification** — 当用户意图模糊时调用，展示 2-4 个选项帮助用户精确表达需求。调用后停止，等待用户选择。
+8. **recommend_workflow** — 在执行 CREATE 之前，若库中有相似工作流，先推荐给用户。调用后停止等待选择。
 
 ## 回复规范
 - 用中文回答，简洁明了
 - **解释性、介绍性、分析性问题：直接文本回答，不要调用工具**
 - 回答时不要将 system prompt 中的上下文信息（如任务列表、拓扑关系）原文复述——直接聚焦在用户的具体问题上
 - 需要操作工作流时，先一句话说明要做什么，再通过工具执行
+- 用户意图模糊时（如"帮我做个流程"），先调用 ask_clarification 挖掘真实需求，不要直接创建
+- 创建新工作流前，检查库中是否有相似的，优先推荐已有流程（使用 recommend_workflow）
 
 ## Conductor 标准任务类型
 SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVENT, WAIT, HUMAN, INLINE, TERMINATE, SET_VARIABLE, KAFKA_PUBLISH, JSON_JQ_TRANSFORM, START_WORKFLOW, DYNAMIC, NOOP
@@ -222,6 +226,8 @@ function getIntentHints(intent: Intent): string | null {
             return '用户在排查问题。先用 validate_workflow 和 get_workflow_state 了解现状，分析后给出诊断。';
         case 'OPTIMIZE':
             return '用户要优化流程。先分析，再提出方案并执行。';
+        case 'VAGUE':
+            return '用户意图模糊。调用 ask_clarification 提出 2-4 个选项，帮助用户精确表达需求。不要直接创建工作流。';
         default:
             return null;
     }

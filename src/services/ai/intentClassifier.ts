@@ -66,6 +66,9 @@ const RULES: IntentRule[] = [
     },
 ];
 
+const VAGUE_PREFIXES = ['帮我', '做一个', '来个', '弄个', '需要一个'];
+const VAGUE_GENERIC_NOUNS = ['流程', '工作流', '自动化'];
+
 /**
  * 对用户输入进行意图分类
  */
@@ -89,8 +92,6 @@ export function classifyIntent(input: string): Intent {
     }
 
     // 意图模糊检测（在 GENERAL 兜底之前）
-    const VAGUE_PREFIXES = ['帮我', '做一个', '来个', '弄个', '需要一个'];
-    const VAGUE_GENERIC_NOUNS = ['流程', '工作流', '自动化'];
 
     // 短输入（< 12 字符）且未匹配任何明确意图
     if (normalized.length < 12) return 'VAGUE';

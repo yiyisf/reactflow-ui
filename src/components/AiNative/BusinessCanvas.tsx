@@ -32,6 +32,7 @@ const TASK_TYPE_LABELS: Record<string, { label: string; icon: string; who: strin
     JSON_JQ_TRANSFORM:   { label: '数据转换',   icon: '🔄',  who: '格式转换',     color: '#6366f1' },
     START_WORKFLOW:      { label: '启动子流程', icon: '▶️',  who: '触发子流程',   color: '#3b82f6' },
     NOOP:                { label: '占位步骤',   icon: '○',   who: '无操作',       color: '#94a3b8' },
+    JOIN:                { label: '并行合并',   icon: '🔗',  who: '等待所有分支', color: '#8b5cf6' },
 };
 
 const STATUS_META: Record<string, { icon: string; color: string; label: string }> = {

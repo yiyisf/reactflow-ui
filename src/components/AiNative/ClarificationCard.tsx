@@ -19,7 +19,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({ clarification, on
                     <button
                         key={opt.id}
                         className="ai-clarification-option"
-                        onClick={() => onSelect(`${opt.icon ? opt.icon + ' ' : ''}${opt.label}：${opt.description}`)}
+                        onClick={() => onSelect(opt.label)}
                     >
                         {opt.icon && <span className="ai-clarification-option-icon">{opt.icon}</span>}
                         <span className="ai-clarification-option-label">{opt.label}</span>

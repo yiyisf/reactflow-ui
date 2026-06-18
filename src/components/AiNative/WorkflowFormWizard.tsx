@@ -5,7 +5,7 @@
 import React, { useState, useCallback } from 'react';
 import type { WorkflowDef, TaskDef } from '../../types/conductor';
 
-export interface WizardStepType {
+interface WizardStepType {
     id: string;
     type: 'HUMAN' | 'HTTP' | 'EVENT' | 'SWITCH' | 'WAIT' | 'SUB_WORKFLOW' | 'SIMPLE';
     name: string;
@@ -36,6 +36,8 @@ interface WizardFormData {
     name: string;
     description: string;
     triggerType: 'manual' | 'scheduled' | 'event';
+    scheduleExpression: string;
+    eventName: string;
     steps: FormStep[];
 }
 
@@ -61,6 +63,26 @@ function generateRef(name: string, index: number): string {
     return `${base}_${index + 1}`;
 }
 
+function makePlaceholderNoop(branchName: string, parentRef: string, parentIndex: number): TaskDef {
+    return {
+        name: `${branchName}分支`,
+        taskReferenceName: `${parentRef}_${branchName}_${parentIndex}`,
+        type: 'NOOP',
+        inputParameters: {},
+    };
+}
+
+function buildTriggerDescription(data: WizardFormData): string {
+    const parts: string[] = [];
+    if (data.description) parts.push(data.description);
+    if (data.triggerType === 'scheduled') {
+        parts.push(`[定时触发${data.scheduleExpression ? `: ${data.scheduleExpression}` : ''}]`);
+    } else if (data.triggerType === 'event') {
+        parts.push(`[事件触发${data.eventName ? `: ${data.eventName}` : ''}]`);
+    }
+    return parts.join(' ');
+}
+
 function formToWorkflowDef(data: WizardFormData): WorkflowDef {
     const tasks: TaskDef[] = data.steps.map((step, i) => {
         const ref = generateRef(step.name || step.stepType.businessLabel, i);
@@ -74,14 +96,17 @@ function formToWorkflowDef(data: WizardFormData): WorkflowDef {
             return {
                 ...base,
                 caseValueParam: 'case_value',
-                decisionCases: { 'yes': [], 'no': [] },
-                defaultCase: [],
+                decisionCases: {
+                    'yes': [makePlaceholderNoop('yes', ref, i)],
+                    'no':  [makePlaceholderNoop('no',  ref, i)],
+                },
+                defaultCase: [makePlaceholderNoop('default', ref, i)],
             } as TaskDef;
         }
         if (step.stepType.type === 'HTTP') {
             return {
                 ...base,
-                inputParameters: { http_request: { uri: step.config.url || '', method: 'POST' } },
+                inputParameters: { http_request: { uri: step.config.url || '', method: step.config.method || 'POST' } },
             };
         }
         return base;
@@ -89,7 +114,7 @@ function formToWorkflowDef(data: WizardFormData): WorkflowDef {
 
     return {
         name: data.name || '新工作流',
-        description: data.description,
+        description: buildTriggerDescription(data),
         version: 1,
         tasks,
         inputParameters: [],
@@ -104,10 +129,12 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
         name: '',
         description: '',
         triggerType: 'manual',
+        scheduleExpression: '',
+        eventName: '',
         steps: [],
     });
-    const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
-    const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const updateBasic = useCallback((key: keyof WizardFormData, value: string) => {
@@ -138,11 +165,14 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
         }));
     }, []);
 
-    const moveStep = useCallback((from: number, to: number) => {
+    const moveStepById = useCallback((fromId: string, toId: string) => {
         setFormData(prev => {
             const steps = [...prev.steps];
-            const [item] = steps.splice(from, 1);
-            steps.splice(to, 0, item);
+            const fromIdx = steps.findIndex(s => s.id === fromId);
+            const toIdx = steps.findIndex(s => s.id === toId);
+            if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
+            const [item] = steps.splice(fromIdx, 1);
+            steps.splice(toIdx, 0, item);
             return { ...prev, steps };
         });
     }, []);
@@ -241,6 +271,28 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                     ))}
                                 </div>
                             </div>
+                            {formData.triggerType === 'scheduled' && (
+                                <div className="wizard-field">
+                                    <label className="wizard-label">Cron 表达式</label>
+                                    <input
+                                        className="wizard-input"
+                                        placeholder="例如：0 9 * * 1-5（工作日早九点）"
+                                        value={formData.scheduleExpression}
+                                        onChange={e => updateBasic('scheduleExpression', e.target.value)}
+                                    />
+                                </div>
+                            )}
+                            {formData.triggerType === 'event' && (
+                                <div className="wizard-field">
+                                    <label className="wizard-label">事件名称</label>
+                                    <input
+                                        className="wizard-input"
+                                        placeholder="例如：order.created"
+                                        value={formData.eventName}
+                                        onChange={e => updateBasic('eventName', e.target.value)}
+                                    />
+                                </div>
+                            )}
                             {onAskAi && (
                                 <button className="wizard-ai-hint" onClick={() => onAskAi(`帮我设计「${formData.name || '新流程'}」的工作流步骤`)}>
                                     💡 让 AI 帮我设计步骤
@@ -274,19 +326,19 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                             <div>从左侧选择步骤类型开始构建您的流程</div>
                                         </div>
                                     )}
-                                    {formData.steps.map((step, i) => (
+                                    {formData.steps.map(step => (
                                         <div
                                             key={step.id}
-                                            className={`wizard-step-item ${draggingIdx === i ? 'dragging' : ''} ${dragOverIdx === i ? 'drag-over' : ''}`}
+                                            className={`wizard-step-item ${draggingId === step.id ? 'dragging' : ''} ${dragOverId === step.id ? 'drag-over' : ''}`}
                                             draggable
-                                            onDragStart={() => setDraggingIdx(i)}
-                                            onDragOver={e => { e.preventDefault(); setDragOverIdx(i); }}
+                                            onDragStart={() => setDraggingId(step.id)}
+                                            onDragOver={e => { e.preventDefault(); setDragOverId(step.id); }}
                                             onDrop={() => {
-                                                if (draggingIdx !== null && draggingIdx !== i) moveStep(draggingIdx, i);
-                                                setDraggingIdx(null);
-                                                setDragOverIdx(null);
+                                                if (draggingId && draggingId !== step.id) moveStepById(draggingId, step.id);
+                                                setDraggingId(null);
+                                                setDragOverId(null);
                                             }}
-                                            onDragEnd={() => { setDraggingIdx(null); setDragOverIdx(null); }}
+                                            onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
                                         >
                                             <div className="wizard-step-item-drag">⠿</div>
                                             <div className="wizard-step-item-icon">{step.stepType.icon}</div>
@@ -298,6 +350,14 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                                     placeholder={step.stepType.businessLabel}
                                                 />
                                                 <div className="wizard-step-item-type">{step.stepType.businessLabel}</div>
+                                                {step.stepType.type === 'HTTP' && (
+                                                    <input
+                                                        className="wizard-step-config-input"
+                                                        placeholder="接口 URL，例如：https://api.example.com/endpoint"
+                                                        value={step.config.url ?? ''}
+                                                        onChange={e => updateStep(step.id, { config: { ...step.config, url: e.target.value } })}
+                                                    />
+                                                )}
                                             </div>
                                             <button className="wizard-step-remove" onClick={() => removeStep(step.id)}>✕</button>
                                         </div>

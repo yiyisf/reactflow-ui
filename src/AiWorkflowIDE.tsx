@@ -7,7 +7,7 @@
  * 与 WorkflowIDE 共享底层 workflowStore 和组件基础设施。
  */
 
-import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import useWorkflowStore from './store/workflowStore';
 import useAiStore from './store/aiStore';
@@ -21,7 +21,7 @@ import AiConfigPanel from './components/AiNative/AiConfigPanel';
 import type { WorkflowDef } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
-import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode } from './types/workflow';
+import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
 import type { CustomValidationRule } from './services/ai/ruleEngine';
 import type { TaskSchema } from './services/ai/schemaRegistry';
@@ -394,12 +394,14 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     }, [aiStore]);
 
     // ── Business view execution status map ─────────────────────────────────
-    const executionStatusMap: Record<string, string> = {};
-    if (workflowStore.executionData) {
-        Object.entries(workflowStore.executionData).forEach(([ref, data]) => {
-            executionStatusMap[ref] = (data as { status: string }).status;
-        });
-    }
+    const executionStatusMap = useMemo<Record<string, string>>(() => {
+        if (!workflowStore.executionData) return {};
+        return Object.fromEntries(
+            Object.entries(workflowStore.executionData).map(
+                ([ref, data]: [string, TaskExecutionData]) => [ref, data.status]
+            )
+        );
+    }, [workflowStore.executionData]);
 
     // ── Ref API ─────────────────────────────────────────────────────────────
     // Use getState() to avoid stale closure — ref callbacks must always reflect latest store state.

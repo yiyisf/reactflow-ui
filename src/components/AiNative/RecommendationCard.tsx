@@ -1,10 +1,10 @@
 import React from 'react';
 import type { PendingRecommendation } from '../../store/aiStore';
 
-const MATCH_SCORE_META = {
-    exact: { label: '完全匹配', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-    partial: { label: '部分匹配', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-    similar: { label: '类似场景', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+const MATCH_SCORE_LABEL: Record<string, string> = {
+    exact: '完全匹配',
+    partial: '部分匹配',
+    similar: '类似场景',
 };
 
 interface RecommendationCardProps {
@@ -28,13 +28,12 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
             </div>
             <div className="ai-recommendation-list">
                 {recommendation.recommendations.map((rec, i) => {
-                    const meta = MATCH_SCORE_META[rec.matchScore];
                     return (
                         <div key={i} className="ai-recommendation-item">
                             <div className="ai-recommendation-item-header">
                                 <span className="ai-recommendation-item-name">{rec.workflowName}</span>
-                                <span className="ai-recommendation-match-badge" style={{ color: meta.color, background: meta.bg }}>
-                                    {meta.label}
+                                <span className={`ai-recommendation-match-badge ai-rec-badge--${rec.matchScore}`}>
+                                    {MATCH_SCORE_LABEL[rec.matchScore]}
                                 </span>
                             </div>
                             <div className="ai-recommendation-item-reason">{rec.matchReason}</div>

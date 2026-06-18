@@ -2157,6 +2157,9 @@
     border-radius: 10px;
     flex-shrink: 0;
 }
+.ai-rec-badge--exact   { color: #10b981; background: rgba(16, 185, 129, 0.12); }
+.ai-rec-badge--partial { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+.ai-rec-badge--similar { color: #6366f1; background: rgba(99, 102, 241, 0.12); }
 .ai-recommendation-item-reason {
     font-size: 11px;
     color: var(--text-secondary);
@@ -2669,6 +2672,19 @@
 }
 .wizard-step-name-input:focus { outline: none; }
 .wizard-step-item-type { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.wizard-step-config-input {
+    width: 100%;
+    margin-top: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.wizard-step-config-input:focus { outline: none; border-color: var(--color-accent); }
 .wizard-step-remove {
     background: none;
     border: none;

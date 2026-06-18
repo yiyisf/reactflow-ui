@@ -14,7 +14,8 @@ export type Intent =
     | 'EXPLAIN'   // 解释说明
     | 'DEBUG'     // 调试/诊断
     | 'OPTIMIZE'  // 优化建议
-    | 'GENERAL';  // 通用/兜底
+    | 'GENERAL'   // 通用/兜底
+    | 'VAGUE';    // 意图模糊，需要澄清
 
 interface IntentRule {
     intent: Intent;
@@ -87,6 +88,27 @@ export function classifyIntent(input: string): Intent {
         }
     }
 
+    // 意图模糊检测（在 GENERAL 兜底之前）
+    const VAGUE_PREFIXES = ['帮我', '做一个', '来个', '弄个', '需要一个'];
+    const VAGUE_GENERIC_NOUNS = ['流程', '工作流', '自动化'];
+
+    // 短输入（< 12 字符）且未匹配任何明确意图
+    if (normalized.length < 12) return 'VAGUE';
+
+    // 含模糊前缀但没有清晰的领域上下文
+    const hasVaguePrefix = VAGUE_PREFIXES.some(p => normalized.includes(p));
+    if (hasVaguePrefix) {
+        const withoutPrefix = VAGUE_PREFIXES.reduce((s, p) => s.replace(p, ''), normalized).trim();
+        const onlyGenericNouns = VAGUE_GENERIC_NOUNS.some(n => withoutPrefix === n || withoutPrefix === n + '。' || withoutPrefix === n + '?');
+        if (onlyGenericNouns || withoutPrefix.length <= 4) return 'VAGUE';
+    }
+
+    // 仅含通用名词，无主语/场景
+    const isOnlyGenericNoun = VAGUE_GENERIC_NOUNS.some(n =>
+        normalized === n || normalized === `一个${n}` || normalized === `个${n}`
+    );
+    if (isOnlyGenericNoun) return 'VAGUE';
+
     return 'GENERAL';
 }
 
@@ -101,6 +123,8 @@ export function getContextOptions(intent: Intent): { includeFull: boolean } {
         case 'OPTIMIZE':
         case 'DEBUG':
             return { includeFull: true };    // 需要全量上下文
+        case 'VAGUE':
+            return { includeFull: false };   // 意图模糊，精简上下文即可
         default:
             return { includeFull: false };   // 精简上下文即可
     }

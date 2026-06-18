@@ -15,6 +15,8 @@ import useLibraryStore from './store/libraryStore';
 import AiCommandCenter from './components/AiNative/AiCommandCenter';
 import CanvasPreview from './components/AiNative/CanvasPreview';
 import ReviewBar from './components/AiNative/ReviewBar';
+import BusinessCanvas from './components/AiNative/BusinessCanvas';
+import WorkflowFormWizard from './components/AiNative/WorkflowFormWizard';
 import AiConfigPanel from './components/AiNative/AiConfigPanel';
 import type { WorkflowDef } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
@@ -247,6 +249,13 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     const libraryStore = useLibraryStore();
     const [showConfig, setShowConfig] = useState(false);
 
+    // ── Responsive layout state ─────────────────────────────────────────────
+    const [layoutMode, setLayoutMode] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+    const [canvasVisible, setCanvasVisible] = useState(false);
+    const [chatWidth, setChatWidth] = useState(420);
+    const [showBusinessView, setShowBusinessView] = useState(false);
+    const [showFormWizard, setShowFormWizard] = useState(false);
+
     // ── Appearance: apply once on mount ────────────────────────────────────
     const initRef = useRef(false);
     useEffect(() => {
@@ -326,6 +335,71 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             onWorkflowChange(workflowStore.workflowDef);
         }
     }, [workflowStore.workflowDef, onWorkflowChange]);
+
+    // ── Responsive layout: detect window size ──────────────────────────────
+    useEffect(() => {
+        const getMode = (): 'mobile' | 'tablet' | 'desktop' => {
+            const w = window.innerWidth;
+            if (w < 768) return 'mobile';
+            if (w < 1024) return 'tablet';
+            return 'desktop';
+        };
+        const applyMode = () => {
+            const mode = getMode();
+            setLayoutMode(mode);
+            document.documentElement.setAttribute('data-layout', mode);
+        };
+        applyMode();
+        let debounceTimer: ReturnType<typeof setTimeout>;
+        const handleResize = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(applyMode, 100);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            clearTimeout(debounceTimer);
+        };
+    }, []);
+
+    // ── Resizable divider drag handler ─────────────────────────────────────
+    const handleDividerDrag = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = chatWidth;
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const delta = moveEvent.clientX - startX;
+            const newWidth = Math.max(320, Math.min(640, startWidth + delta));
+            setChatWidth(newWidth);
+        };
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }, [chatWidth]);
+
+    // ── Wizard handlers ────────────────────────────────────────────────────
+    const handleWizardComplete = useCallback((def: WorkflowDef) => {
+        workflowStore.setWorkflow(def);
+        workflowStore.setMode('edit');
+        setShowFormWizard(false);
+    }, [workflowStore]);
+
+    const handleWizardAskAi = useCallback((prompt: string) => {
+        setShowFormWizard(false);
+        aiStore.setChatPanelOpen(true);
+        aiStore.addMessage({ role: 'user', content: prompt });
+    }, [aiStore]);
+
+    // ── Business view execution status map ─────────────────────────────────
+    const executionStatusMap: Record<string, string> = {};
+    if (workflowStore.executionData) {
+        Object.entries(workflowStore.executionData).forEach(([ref, data]) => {
+            executionStatusMap[ref] = (data as { status: string }).status;
+        });
+    }
 
     // ── Ref API ─────────────────────────────────────────────────────────────
     // Use getState() to avoid stale closure — ref callbacks must always reflect latest store state.
@@ -434,10 +508,13 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
 
     return (
         <div
-            className="ai-workflow-ide"
+            className={`ai-workflow-ide ${layoutMode}-mode`}
             data-mode={currentTheme}
             data-brand={currentColor}
-            style={{ height }}
+            style={{
+                height,
+                '--chat-width': chatWidth + 'px',
+            } as React.CSSProperties}
         >
             {/* Left: AI Chat panel (collapsible) */}
             <div className={`ai-chat-side ${aiStore.chatPanelOpen ? '' : 'collapsed'}`}>
@@ -452,10 +529,18 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                 />
             </div>
 
+            {/* Resizable divider (desktop/tablet only) */}
+            {layoutMode !== 'mobile' && (
+                <div
+                    className="ai-resize-divider"
+                    onMouseDown={handleDividerDrag}
+                />
+            )}
+
             {/* Collapse/expand toggle */}
             <button
                 className="ai-toggle-btn"
-                style={{ left: aiStore.chatPanelOpen ? '420px' : '0px' }}
+                style={{ left: aiStore.chatPanelOpen ? chatWidth + 'px' : '0px' }}
                 onClick={() => aiStore.toggleChatPanel()}
                 title={aiStore.chatPanelOpen ? '收起 AI 面板' : '展开 AI 面板'}
             >
@@ -463,18 +548,88 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             </button>
 
             {/* Right: Canvas + ReviewBar */}
-            <div className="ai-canvas-side">
-                <CanvasPreview
-                    onSave={onSave}
-                    onRequestImport={onRequestImport}
-                    executionActions={executionActions}
-                />
+            <div className={`ai-canvas-side${layoutMode === 'mobile' && canvasVisible ? ' canvas-visible' : ''}`}>
+                {/* Canvas toolbar: view toggle + create button */}
+                <div className="ai-canvas-toolbar">
+                    <div className="biz-view-toggle">
+                        <button
+                            className={`biz-view-toggle-btn ${!showBusinessView ? 'active' : ''}`}
+                            onClick={() => setShowBusinessView(false)}
+                            title="技术视图"
+                        >
+                            🔧 技术
+                        </button>
+                        <button
+                            className={`biz-view-toggle-btn ${showBusinessView ? 'active' : ''}`}
+                            onClick={() => setShowBusinessView(true)}
+                            title="业务视图"
+                        >
+                            📋 业务
+                        </button>
+                    </div>
+                    <button
+                        className="ai-canvas-create-btn"
+                        onClick={() => setShowFormWizard(true)}
+                        title="通过表单向导创建工作流"
+                    >
+                        ✨ 创建流程
+                    </button>
+                </div>
+
+                {/* Canvas area: business view or technical canvas */}
+                {showBusinessView ? (
+                    <div className="ai-canvas-area">
+                        <BusinessCanvas
+                            workflowDef={workflowStore.workflowDef}
+                            executionStatus={executionStatusMap}
+                            onStepClick={(taskRef, taskType) => {
+                                aiStore.setChatPanelOpen(true);
+                                aiStore.addMessage({
+                                    role: 'user',
+                                    content: `请介绍步骤「${taskRef}」(类型: ${taskType}) 的作用和配置建议`,
+                                });
+                            }}
+                        />
+                    </div>
+                ) : (
+                    <CanvasPreview
+                        onSave={onSave}
+                        onRequestImport={onRequestImport}
+                        executionActions={executionActions}
+                    />
+                )}
+
                 <ReviewBar
                     proposal={aiStore.pendingProposal}
                     onAccept={handleAccept}
                     onReject={handleReject}
                 />
             </div>
+
+            {/* Mobile FAB: toggle canvas visibility */}
+            {layoutMode === 'mobile' && (
+                <button
+                    className="ai-mobile-canvas-fab"
+                    onClick={() => setCanvasVisible(v => !v)}
+                    title={canvasVisible ? '返回对话' : '查看画布'}
+                >
+                    <span className="ai-mobile-canvas-fab-icon">
+                        {canvasVisible ? '💬' : '🗺️'}
+                    </span>
+                    <span className="ai-mobile-canvas-fab-label">
+                        {canvasVisible ? '对话' : '画布'}
+                    </span>
+                </button>
+            )}
+
+            {/* Form wizard overlay */}
+            {showFormWizard && (
+                <WorkflowFormWizard
+                    onComplete={handleWizardComplete}
+                    onCancel={() => setShowFormWizard(false)}
+                    onAskAi={handleWizardAskAi}
+                />
+            )}
 
             {/* In-app AI config dialog (only shown when no prop apiKey) */}
             {showConfig && <AiConfigPanel onClose={() => setShowConfig(false)} />}

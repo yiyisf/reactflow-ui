@@ -75,6 +75,34 @@ export interface AiMetrics {
     rejectedProposals: number;
 }
 
+export interface ClarificationOption {
+    id: string;
+    label: string;
+    description: string;
+    icon?: string;
+}
+
+export interface PendingClarification {
+    id: string;
+    question: string;
+    context?: string;
+    options: ClarificationOption[];
+    messageId: string;
+}
+
+export interface WorkflowRecommendation {
+    workflowName: string;
+    matchReason: string;
+    matchScore: 'exact' | 'partial' | 'similar';
+}
+
+export interface PendingRecommendation {
+    id: string;
+    userIntent: string;
+    recommendations: WorkflowRecommendation[];
+    messageId: string;
+}
+
 interface AiState {
     config: AiConfig;
     messages: AiChatMessage[];
@@ -92,6 +120,10 @@ interface AiState {
     followUpChips: string[] | null;
     /** Undo stack: previous WorkflowDef snapshots (max 5, oldest first) */
     undoStack: WorkflowDef[];
+    /** Pending clarification question awaiting user selection */
+    pendingClarification: PendingClarification | null;
+    /** Pending workflow recommendation awaiting user selection */
+    pendingRecommendation: PendingRecommendation | null;
 }
 
 interface AiActions {
@@ -121,6 +153,10 @@ interface AiActions {
     popUndo: () => WorkflowDef | null;
     clearUndo: () => void;
     canUndo: () => boolean;
+    setClarification: (c: Omit<PendingClarification, 'id'>) => string;
+    clearClarification: () => void;
+    setRecommendation: (r: Omit<PendingRecommendation, 'id'>) => string;
+    clearRecommendation: () => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -155,6 +191,8 @@ const useAiStore = create<AiStore>()(
             pendingRepair: null,
             followUpChips: null,
             undoStack: [],
+            pendingClarification: null,
+            pendingRecommendation: null,
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -188,6 +226,8 @@ const useAiStore = create<AiStore>()(
                 pendingPlan: null,
                 pendingRepair: null,
                 followUpChips: null,
+                pendingClarification: null,
+                pendingRecommendation: null,
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
@@ -248,6 +288,20 @@ const useAiStore = create<AiStore>()(
             },
             clearUndo: () => set({ undoStack: [] }),
             canUndo: () => get().undoStack.length > 0,
+
+            setClarification: (c) => {
+                const id = `clarif_${Date.now()}`;
+                set({ pendingClarification: { ...c, id } });
+                return id;
+            },
+            clearClarification: () => set({ pendingClarification: null }),
+
+            setRecommendation: (r) => {
+                const id = `rec_${Date.now()}`;
+                set({ pendingRecommendation: { ...r, id } });
+                return id;
+            },
+            clearRecommendation: () => set({ pendingRecommendation: null }),
         }),
         {
             name: 'ai-workflow-config',

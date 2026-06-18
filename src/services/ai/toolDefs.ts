@@ -112,6 +112,75 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
     {
         type: 'function',
         function: {
+            name: 'ask_clarification',
+            description: '当用户意图模糊时，向用户提出澄清问题。提供 2-4 个可选选项帮助用户表达真实意图。调用后停止等待用户回复，不要继续执行其他操作。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    question: {
+                        type: 'string',
+                        description: '澄清问题，简洁明了（不超过 30 字）',
+                    },
+                    context: {
+                        type: 'string',
+                        description: '你对用户需求的初步理解（1句话）',
+                    },
+                    options: {
+                        type: 'array',
+                        description: '2-4 个选项',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string' },
+                                label: { type: 'string', description: '简短标签（≤12字）' },
+                                description: { type: 'string', description: '一句话说明这个选项的含义' },
+                                icon: { type: 'string', description: 'emoji icon' },
+                            },
+                            required: ['id', 'label', 'description'],
+                        },
+                        minItems: 2,
+                        maxItems: 4,
+                    },
+                },
+                required: ['question', 'options'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'recommend_workflow',
+            description: '在创建新工作流之前，向用户推荐库中已有的相似工作流。调用后等待用户选择，不要直接创建。只在库中有相关工作流时使用。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    userIntent: {
+                        type: 'string',
+                        description: '用户意图摘要',
+                    },
+                    recommendations: {
+                        type: 'array',
+                        description: '推荐的工作流列表（1-3个）',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                workflowName: { type: 'string' },
+                                matchReason: { type: 'string', description: '为什么推荐这个' },
+                                matchScore: { type: 'string', enum: ['exact', 'partial', 'similar'] },
+                            },
+                            required: ['workflowName', 'matchReason', 'matchScore'],
+                        },
+                        minItems: 1,
+                        maxItems: 3,
+                    },
+                },
+                required: ['userIntent', 'recommendations'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
             name: 'propose_repair',
             description: '为运行态失败的任务提出修复方案（仅在运行模式下可用）。分析失败原因后，提供可直接执行的修复操作列表供用户选择。',
             parameters: {

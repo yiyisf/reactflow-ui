@@ -494,7 +494,17 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     }
 
                     // ── Built-in tools ──────────────────────────────────────
-                    const result = executeToolCall(tc.name, tc.args);
+                    let result: ReturnType<typeof executeToolCall>;
+                    try {
+                        result = executeToolCall(tc.name, tc.args);
+                    } catch (err: any) {
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: `工具执行出错：${err?.message ?? '未知错误'}`,
+                            tool_call_id: tc.id,
+                        });
+                        continue;
+                    }
                     let resultContent: string;
 
                     if (result.type === 'propose' && result.proposed && result.diff) {
@@ -524,6 +534,20 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     }
 
                     toolResultMsgs.push({ role: 'tool', content: resultContent, tool_call_id: tc.id });
+                }
+
+                // Ensure every tool call in this step has a matching tool result message.
+                // propose_repair / propose_plan break the inner loop early, leaving
+                // any sibling tools without results — Anthropic rejects mismatched history.
+                const coveredIds = new Set(toolResultMsgs.map(m => (m as any).tool_call_id));
+                for (const tc of stepToolCalls) {
+                    if (!coveredIds.has(tc.id)) {
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: '操作已中止，等待用户确认后继续。',
+                            tool_call_id: tc.id,
+                        });
+                    }
                 }
 
                 // Append tool results to history

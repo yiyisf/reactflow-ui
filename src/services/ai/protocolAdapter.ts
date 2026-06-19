@@ -235,45 +235,51 @@ async function* streamOpenAI(
     const toolCalls: Record<number, { id: string; name: string; args: string }> = {};
     let lineBuffer = '';
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        // Carry incomplete lines across chunk boundaries to avoid split-JSON errors
-        const chunk = decoder.decode(value, { stream: true });
-        const rawLines = (lineBuffer + chunk).split('\n');
-        lineBuffer = rawLines.pop() ?? '';
+            // Carry incomplete lines across chunk boundaries to avoid split-JSON errors
+            const chunk = decoder.decode(value, { stream: true });
+            const rawLines = (lineBuffer + chunk).split('\n');
+            lineBuffer = rawLines.pop() ?? '';
 
-        for (const line of rawLines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data: ')) continue;
-            const data = trimmed.slice(6);
-            if (data === '[DONE]') break;
+            let streamDone = false;
+            for (const line of rawLines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('data: ')) continue;
+                const data = trimmed.slice(6);
+                if (data === '[DONE]') { streamDone = true; break; }
 
-            try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta;
-                if (!delta) continue;
+                try {
+                    const parsed = JSON.parse(data);
+                    const delta = parsed.choices?.[0]?.delta;
+                    if (!delta) continue;
 
-                if (delta.content) {
-                    yield { type: 'text', content: delta.content };
-                }
-
-                if (delta.tool_calls) {
-                    for (const tc of delta.tool_calls) {
-                        const idx = tc.index ?? 0;
-                        if (!toolCalls[idx]) {
-                            toolCalls[idx] = { id: tc.id || '', name: '', args: '' };
-                        }
-                        if (tc.id) toolCalls[idx].id = tc.id;
-                        if (tc.function?.name) toolCalls[idx].name += tc.function.name;
-                        if (tc.function?.arguments) toolCalls[idx].args += tc.function.arguments;
+                    if (delta.content) {
+                        yield { type: 'text', content: delta.content };
                     }
+
+                    if (delta.tool_calls) {
+                        for (const tc of delta.tool_calls) {
+                            const idx = tc.index ?? 0;
+                            if (!toolCalls[idx]) {
+                                toolCalls[idx] = { id: tc.id || '', name: '', args: '' };
+                            }
+                            if (tc.id) toolCalls[idx].id = tc.id;
+                            if (tc.function?.name) toolCalls[idx].name += tc.function.name;
+                            if (tc.function?.arguments) toolCalls[idx].args += tc.function.arguments;
+                        }
+                    }
+                } catch {
+                    // skip malformed SSE chunks
                 }
-            } catch {
-                // skip malformed SSE chunks
             }
+            if (streamDone) break;
         }
+    } finally {
+        reader.cancel().catch(() => {});
     }
 
     // Flush any remaining lineBuffer content not terminated by \n (non-standard SSE or abrupt close)
@@ -367,57 +373,62 @@ async function* streamAnthropic(
     let currentToolArgs = '';
     let lineBuffer = '';
 
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        // Carry incomplete lines across chunk boundaries to avoid split-JSON errors
-        const chunk = decoder.decode(value, { stream: true });
-        const rawLines = (lineBuffer + chunk).split('\n');
-        lineBuffer = rawLines.pop() ?? '';
+            // Carry incomplete lines across chunk boundaries to avoid split-JSON errors
+            const chunk = decoder.decode(value, { stream: true });
+            const rawLines = (lineBuffer + chunk).split('\n');
+            lineBuffer = rawLines.pop() ?? '';
 
-        for (const line of rawLines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith('data: ')) continue;
+            for (const line of rawLines) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('data: ')) continue;
 
-            try {
-                const parsed = JSON.parse(trimmed.slice(6));
+                try {
+                    const parsed = JSON.parse(trimmed.slice(6));
 
-                switch (parsed.type) {
-                    case 'content_block_start':
-                        if (parsed.content_block?.type === 'tool_use') {
-                            currentToolId = parsed.content_block.id;
-                            currentToolName = parsed.content_block.name;
-                            currentToolArgs = '';
-                        }
-                        break;
-
-                    case 'content_block_delta':
-                        if (parsed.delta?.type === 'text_delta') {
-                            yield { type: 'text', content: parsed.delta.text };
-                        } else if (parsed.delta?.type === 'input_json_delta') {
-                            currentToolArgs += parsed.delta.partial_json;
-                        }
-                        break;
-
-                    case 'content_block_stop':
-                        if (currentToolName) {
-                            let toolArgs: Record<string, any>;
-                            try {
-                                toolArgs = JSON.parse(currentToolArgs || '{}');
-                            } catch {
-                                toolArgs = {};
+                    switch (parsed.type) {
+                        case 'content_block_start':
+                            if (parsed.content_block?.type === 'tool_use') {
+                                currentToolId = parsed.content_block.id;
+                                currentToolName = parsed.content_block.name;
+                                currentToolArgs = '';
                             }
-                            yield { type: 'tool_call', id: currentToolId, name: currentToolName, args: toolArgs };
-                            currentToolName = '';
-                            currentToolArgs = '';
-                        }
-                        break;
+                            break;
+
+                        case 'content_block_delta':
+                            if (parsed.delta?.type === 'text_delta') {
+                                yield { type: 'text', content: parsed.delta.text };
+                            } else if (parsed.delta?.type === 'input_json_delta') {
+                                currentToolArgs += parsed.delta.partial_json;
+                            }
+                            break;
+
+                        case 'content_block_stop':
+                            if (currentToolName) {
+                                let toolArgs: Record<string, any>;
+                                try {
+                                    toolArgs = JSON.parse(currentToolArgs || '{}');
+                                } catch {
+                                    toolArgs = {};
+                                }
+                                yield { type: 'tool_call', id: currentToolId, name: currentToolName, args: toolArgs };
+                                currentToolName = '';
+                                currentToolId = '';
+                                currentToolArgs = '';
+                            }
+                            break;
+                    }
+                } catch {
+                    // skip
                 }
-            } catch {
-                // skip
             }
         }
+    } finally {
+        reader.cancel().catch(() => {});
     }
 
     yield { type: 'done' };

@@ -60,6 +60,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 executionError: null as string | null,
                 showRunPanel: false,
                 showAnalysisPanel: false,
+                showCanvasDrawer: false,
 
                 // P4.1 聚焦参数字段
                 focusedParamKey: null as string | null,
@@ -850,6 +851,9 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 // P4.2: 显示/隐藏执行分析面板
                 setShowAnalysisPanel: (show: boolean) => set({ showAnalysisPanel: show }),
+
+                // 画布抽屉开关
+                setShowCanvasDrawer: (show: boolean) => set({ showCanvasDrawer: show }),
 
                 // P4.2: 更新执行触发状态
                 setRunState: (state: RunState, execId?: string | null, error?: string | null) => {

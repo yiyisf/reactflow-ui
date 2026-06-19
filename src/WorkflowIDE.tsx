@@ -200,10 +200,11 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         startSimulation,
         stopSimulation,
         mode,
-        setShowRunPanel,
         showAnalysisPanel,
         setShowAnalysisPanel,
         executionData,
+        showCanvasDrawer,
+        setShowCanvasDrawer,
     } = useWorkflowStore();
 
     const [showHealthCheck, setShowHealthCheck] = React.useState(false);
@@ -302,7 +303,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             data-brand={themeColor}
             style={{ width: '100%', height: height, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}
         >
-            {/* 顶部工具栏：操作按钮 */}
+            {/* 顶部工具栏 */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -314,25 +315,6 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 flexWrap: 'wrap',
             }}>
                 <div style={{ flex: 1 }} />
-
-                {/* P4.2: 执行验证按钮（edit 模式） */}
-                {mode === 'edit' && storeWorkflowDef && (
-                    <button
-                        onClick={() => setShowRunPanel(true)}
-                        style={{
-                            height: 28, padding: '0 10px',
-                            background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                            color: 'var(--color-accent)',
-                            border: '1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)',
-                            borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                            display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
-                        }}
-                        title="填写工作流入参并触发真实执行"
-                    >
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5z" /></svg>
-                        执行验证
-                    </button>
-                )}
 
                 {/* P4.3: 分析按钮（run 模式） */}
                 {mode === 'run' && executionData && (
@@ -435,19 +417,62 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 )}
             </div>
 
-            <div className="workflow-viewer" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <ReactFlowProvider>
-                    <WorkflowDesigner
-                        onNodeClick={handleNodeClick}
-                        edgeType={edgeType}
-                        theme={theme}
-                        nodesLocked={readOnly || !!workflowExecution}
-                        searchQuery={searchQuery}
-                        onSave={onSave}
-                        onRequestImport={onRequestImport}
-                        executionActions={executionActions}
+            {/* Main content area */}
+            <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden' }}>
+
+                {/* edit mode: AI Chat is primary panel */}
+                {mode === 'edit' && (
+                    <AIChatPanel
+                        aiConfig={aiConfig}
+                        onTriggerExecution={onTriggerExecution}
+                        onPollExecution={onPollExecution}
+                        executionPollInterval={executionPollInterval}
                     />
-                </ReactFlowProvider>
+                )}
+
+                {/* Canvas: full-width in view/run mode; right-side drawer overlay in edit mode */}
+                <div
+                    className={mode === 'edit' ? 'canvas-drawer' : 'workflow-viewer'}
+                    style={mode === 'edit'
+                        ? (showCanvasDrawer ? {} : { display: 'none' })
+                        : { flex: 1, position: 'relative', overflow: 'hidden' }
+                    }
+                >
+                    {/* Drawer header with close button (edit mode only) */}
+                    {mode === 'edit' && showCanvasDrawer && (
+                        <div className="canvas-drawer-header">
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                                画布视图
+                            </span>
+                            <button
+                                onClick={() => setShowCanvasDrawer(false)}
+                                style={{
+                                    background: 'none', border: 'none',
+                                    color: 'var(--text-secondary)', cursor: 'pointer',
+                                    fontSize: 18, padding: '2px 4px', borderRadius: 4,
+                                    display: 'flex', alignItems: 'center',
+                                }}
+                                title="关闭画布"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
+                    <div style={{ flex: 1, overflow: 'hidden', height: mode === 'edit' ? 'calc(100% - 37px)' : '100%' }}>
+                        <ReactFlowProvider>
+                            <WorkflowDesigner
+                                onNodeClick={handleNodeClick}
+                                edgeType={edgeType}
+                                theme={theme}
+                                nodesLocked={readOnly || !!workflowExecution}
+                                searchQuery={searchQuery}
+                                onSave={onSave}
+                                onRequestImport={onRequestImport}
+                                executionActions={executionActions}
+                            />
+                        </ReactFlowProvider>
+                    </div>
+                </div>
             </div>
 
             <TaskDetailPanel
@@ -467,24 +492,22 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 }}
             />
 
-            {
-                workflowExecution && (
-                    <ExecutionTaskPanel executionActions={executionActions} />
-                )
-            }
+            {workflowExecution && (
+                <ExecutionTaskPanel executionActions={executionActions} />
+            )}
 
-            <AIChatPanel aiConfig={aiConfig} />
-
-            {/* P4.2: 执行验证面板 */}
-            <WorkflowRunPanel
-                onTriggerExecution={onTriggerExecution}
-                onPollExecution={onPollExecution}
-                executionPollInterval={executionPollInterval}
-            />
+            {/* P4.2: Keep WorkflowRunPanel as fallback for view/run modes */}
+            {mode !== 'edit' && (
+                <WorkflowRunPanel
+                    onTriggerExecution={onTriggerExecution}
+                    onPollExecution={onPollExecution}
+                    executionPollInterval={executionPollInterval}
+                />
+            )}
 
             {/* P4.3: 执行分析面板（run 模式下悬浮） */}
             {mode === 'run' && <ExecutionSummaryPanel />}
-        </div >
+        </div>
     );
 });
 

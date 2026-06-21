@@ -56,6 +56,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     // P4.1: AI 参数填充状态
     const [aiFillLoading, setAiFillLoading] = useState(false);
     const [aiFillDiff, setAiFillDiff] = useState<{ generated: Record<string, any>; original: Record<string, any> } | null>(null);
+    // HTTP body 原始字符串（用于解析错误时保留用户输入）
+    const [httpBodyRaw, setHttpBodyRaw] = useState<string | null>(null);
+    const [httpBodyError, setHttpBodyError] = useState<string | null>(null);
 
     /** 打开全屏编辑器的辅助函数 */
     const openFullscreen = (title: string, value: string, language: string, onSave: (v: string) => void) => {
@@ -408,17 +411,49 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             {/* Scrollable Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: 'var(--bg-primary)' }}>
 
+                {/* ── SIMPLE (Worker) ── */}
+                {displayTask.type === 'SIMPLE' && renderSpecialSection('Worker 任务配置', '⚙️', 'var(--color-accent)', (
+                    <>
+                        <div style={{
+                            padding: '10px 12px', borderRadius: '8px', marginBottom: '12px',
+                            background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                            fontSize: '11px', color: secondaryTextColor, lineHeight: '1.7',
+                        }}>
+                            <b style={{ color: textColor }}>📌 任务名称 (name)</b> 是 Conductor Worker 注册的<b>任务定义名</b>，必须与 Worker 进程监听的名称完全一致（区分大小写）。<br />
+                            <span style={{ opacity: 0.8 }}>示例：<code>send_email_worker</code>、<code>process_payment</code></span>
+                        </div>
+                        {renderFieldValidation('name')}
+                        {renderSmallInput(
+                            'DOMAIN (可选，Worker 路由标签)',
+                            (displayTask as any).domain || '',
+                            (v) => handleChange('domain', v || undefined),
+                            'text',
+                            '如 dev、staging — 留空使用默认 Worker'
+                        )}
+                        <div style={{ fontSize: '11px', color: secondaryTextColor, marginTop: '8px', padding: '8px', borderRadius: '6px', background: 'var(--bg-secondary)' }}>
+                            💡 该 Worker 的返回结果可通过 <code style={{ fontSize: '10px', background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '3px' }}>
+                                {'${' + displayTask.taskReferenceName + '.output.<字段名>}'}
+                            </code> 被后续任务引用
+                        </div>
+                    </>
+                ))}
+
                 {/* ── HTTP ── */}
                 {displayTask.type === 'HTTP' && renderSpecialSection('HTTP 请求配置', '🌐', 'var(--color-accent)', (
                     <>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                            <select value={httpRequest.method || 'GET'} onChange={(e) => handleHttpChange('method', e.target.value)} disabled={!isEditMode}
-                                style={{ width: '90px', padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, cursor: 'pointer' }}>
-                                {['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                            <input placeholder="URI (支持 ${workflow.input.uri})" value={httpRequest.uri || ''}
-                                onChange={(e) => handleHttpChange('uri', e.target.value)} disabled={!isEditMode}
-                                style={{ flex: 1, padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}` }} />
+                        <div style={{ marginBottom: '8px' }}>
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>METHOD & URI *</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <select value={httpRequest.method || 'GET'} onChange={(e) => handleHttpChange('method', e.target.value)} disabled={!isEditMode}
+                                    style={{ width: '90px', padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, cursor: 'pointer' }}>
+                                    {['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <input placeholder="URI (支持 ${workflow.input.uri})" value={httpRequest.uri || ''}
+                                    onChange={(e) => handleHttpChange('uri', e.target.value)} disabled={!isEditMode}
+                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${(validationResults.errors.some(e => e.ref === displayTask.taskReferenceName && e.field === 'inputParameters.http_request.uri')) ? '#ef4444' : borderColor}` }} />
+                            </div>
+                            {renderFieldValidation('inputParameters.http_request.uri')}
+                            {renderFieldValidation('inputParameters.http_request.method')}
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
                             <div>
@@ -449,18 +484,48 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             </div>
                         </div>
                         <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>HEADERS (JSON)</label>
-                            <textarea value={typeof httpRequest.headers === 'object' ? JSON.stringify(httpRequest.headers, null, 2) : '{}'}
-                                onChange={(e) => { try { handleHttpChange('headers', JSON.parse(e.target.value)); } catch { } }}
-                                disabled={!isEditMode} rows={3}
-                                style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>HEADERS</label>
+                            <KeyValueEditor
+                                value={typeof httpRequest.headers === 'object' && httpRequest.headers !== null ? httpRequest.headers : {}}
+                                onChange={(v) => handleHttpChange('headers', v)}
+                                disabled={!isEditMode}
+                                taskRef={displayTask.taskReferenceName}
+                                workflowDef={workflowDef ?? undefined}
+                                placeholder="如 Authorization、X-Custom-Header 等"
+                            />
                         </div>
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>BODY (RAW/JSON)</label>
-                        <textarea
-                            value={typeof httpRequest.body === 'object' ? JSON.stringify(httpRequest.body, null, 2) : (httpRequest.body || '')}
-                            onChange={(e) => { let v = e.target.value; try { v = JSON.parse(e.target.value); } catch { } handleHttpChange('body', v); }}
-                            disabled={!isEditMode} rows={4}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        <div>
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>BODY (RAW/JSON)</label>
+                            <textarea
+                                value={httpBodyRaw !== null ? httpBodyRaw : (typeof httpRequest.body === 'object' ? JSON.stringify(httpRequest.body, null, 2) : (httpRequest.body || ''))}
+                                onChange={(e) => {
+                                    const raw = e.target.value;
+                                    setHttpBodyRaw(raw);
+                                    try {
+                                        const parsed = JSON.parse(raw);
+                                        handleHttpChange('body', parsed);
+                                        setHttpBodyError(null);
+                                    } catch {
+                                        try {
+                                            // 非 JSON 时当普通字符串保存
+                                            if (raw.trim() === '' || (!raw.trim().startsWith('{') && !raw.trim().startsWith('['))) {
+                                                handleHttpChange('body', raw);
+                                                setHttpBodyError(null);
+                                            } else {
+                                                setHttpBodyError('JSON 格式错误，请检查括号和引号');
+                                            }
+                                        } catch { setHttpBodyError('JSON 格式错误'); }
+                                    }
+                                }}
+                                onBlur={() => setHttpBodyRaw(null)}
+                                disabled={!isEditMode} rows={4}
+                                style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${httpBodyError ? '#ef4444' : borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                            {httpBodyError && (
+                                <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span>⚠️</span> {httpBodyError}
+                                </div>
+                            )}
+                        </div>
                     </>
                 ))}
 
@@ -505,13 +570,19 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'SUB_WORKFLOW' && renderSpecialSection('子工作流配置', '🏗️', 'var(--color-accent)', (
                     <>
                         {renderSmallInput('WORKFLOW NAME *', displayTask.subWorkflowParam?.name || '', (v) => handleNestedChange('subWorkflowParam', 'name', v), 'text', 'e.g. my_workflow')}
+                        {renderFieldValidation('subWorkflowParam.name')}
                         {renderSmallInput('VERSION', displayTask.subWorkflowParam?.version ?? '', (v) => handleNestedChange('subWorkflowParam', 'version', v ? parseInt(v) : undefined), 'number', '1')}
-                        {renderCodeArea('INPUT PARAMETERS MAPPING (JSON)',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
-                            { rows: 5, language: 'json' })}
-                        <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
-                            传递给子工作流的参数，支持 {'${workflow.input.xxx}'} 表达式
+                        <div style={{ marginBottom: '8px' }}>
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>INPUT PARAMETERS MAPPING</label>
+                            <KeyValueEditor
+                                ref={kvEditorRef}
+                                value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
+                                onChange={(v) => handleChange('inputParameters', v)}
+                                disabled={!isEditMode}
+                                taskRef={displayTask.taskReferenceName}
+                                workflowDef={workflowDef ?? undefined}
+                                placeholder="传递给子工作流的参数，支持 ${workflow.input.xxx} 表达式"
+                            />
                         </div>
                     </>
                 ))}
@@ -526,6 +597,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), name: v };
                             handleInputParamChange('startWorkflow', sw);
                         }, 'text', 'e.g. target_workflow')}
+                        {renderFieldValidation('inputParameters.startWorkflow.name')}
                         {renderSmallInput('VERSION', displayTask.inputParameters?.startWorkflow?.version ?? '', (v) => {
                             const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), version: v ? parseInt(v) : undefined };
                             handleInputParamChange('startWorkflow', sw);
@@ -545,7 +617,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'TERMINATE' && renderSpecialSection('终止状态配置', '⏹️', 'var(--color-accent)', (
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>TERMINATION STATUS</label>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                             {['COMPLETED', 'FAILED'].map(s => (
                                 <button key={s} onClick={() => handleInputParamChange('terminationStatus', s)} disabled={!isEditMode}
                                     style={{ flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer', background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg, color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? '#fff' : textColor, border: `1px solid ${borderColor}`, fontWeight: 'bold', fontSize: '11px' }}>
@@ -553,6 +625,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 </button>
                             ))}
                         </div>
+                        {renderFieldValidation('inputParameters.terminationStatus')}
+                        <div style={{ marginBottom: '8px' }} />
                         {renderSmallInput('TERMINATION REASON', displayTask.inputParameters?.terminationReason || '', (v) => handleInputParamChange('terminationReason', v), 'text', '终止原因...')}
                         {renderCodeArea('WORKFLOW OUTPUT (JSON)',
                             typeof displayTask.inputParameters?.workflowOutput === 'object' ? JSON.stringify(displayTask.inputParameters.workflowOutput, null, 2) : '{}',
@@ -564,7 +638,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {/* ── EVENT ── */}
                 {displayTask.type === 'EVENT' && renderSpecialSection('事件发送配置', '✉️', 'var(--color-accent)', (
                     <>
-                        {renderSmallInput('EVENT SINK *', displayTask.sink || '', (v) => handleChange('sink', v), 'text', 'e.g. sqs:queue_name 或 conductor')}
+                        {renderSmallInput('EVENT SINK *', displayTask.sink || '', (v) => handleChange('sink', v), 'text', 'e.g. sqs:queue_name 或 conductor:my_event')}
+                        {renderFieldValidation('sink')}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px', marginBottom: '8px' }}>
                             支持前缀: conductor | sqs | kafka | amqp | nats
                         </div>
@@ -577,7 +652,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     <>
                         {renderModeSwitch([{ key: 'duration', label: '等待时长' }, { key: 'until', label: '等待到指定时间' }], waitMode, (v) => setWaitMode(v as any))}
                         {waitMode === 'duration'
-                            ? renderSmallInput('DURATION', displayTask.inputParameters?.duration || '', (v) => handleInputParamChange('duration', v), 'text', 'e.g. 30s, 10m, 2 hours')
+                            ? <>{renderSmallInput('DURATION', displayTask.inputParameters?.duration || '', (v) => handleInputParamChange('duration', v), 'text', 'e.g. 30s, 10m, 2h, 1d')}{renderFieldValidation('inputParameters.duration')}</>
                             : renderSmallInput('UNTIL (时间点)', displayTask.inputParameters?.until || '', (v) => handleInputParamChange('until', v), 'text', 'e.g. 2025-06-15 09:00 GMT+00:00')}
                         <div style={{ fontSize: '11px', color: secondaryTextColor, lineHeight: '1.6', marginTop: '8px' }}>
                             此任务会使工作流进入 <b>IN_PROGRESS</b> 状态，直到时间满足或外部 API 触发完成。
@@ -675,6 +750,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 </div>
                             </>
                         )}
+                        {renderFieldValidation('dynamicForkTasksParam')}
                     </>
                 ))}
 
@@ -682,6 +758,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'DYNAMIC' && renderSpecialSection('动态任务配置', '🎯', 'var(--color-accent)', (
                     <>
                         {renderSmallInput('DYNAMIC TASK NAME PARAM *', (displayTask as any).dynamicTaskNameParam || '', (v) => handleChange('dynamicTaskNameParam', v), 'text', 'e.g. taskToExecute')}
+                        {renderFieldValidation('dynamicTaskNameParam')}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
                             运行时从 inputParameters 的指定键中读取实际任务类型名（如 "HTTP"、"SIMPLE"）
                         </div>
@@ -705,7 +782,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'KAFKA_PUBLISH' && renderSpecialSection('Kafka 推送配置', '📨', 'var(--color-accent)', (
                     <>
                         {renderSmallInput('BOOTSTRAP SERVERS *', displayTask.inputParameters?.bootStrapServers || '', (v) => handleInputParamChange('bootStrapServers', v), 'text', 'localhost:9092')}
+                        {renderFieldValidation('inputParameters.bootStrapServers')}
                         {renderSmallInput('TOPIC *', displayTask.inputParameters?.topic || '', (v) => handleInputParamChange('topic', v), 'text', 'my_topic')}
+                        {renderFieldValidation('inputParameters.topic')}
                         {renderSmallInput('KEY (消息分区键)', displayTask.inputParameters?.key || '', (v) => handleInputParamChange('key', v), 'text', '')}
                         {renderCodeArea('VALUE (消息内容)',
                             typeof displayTask.inputParameters?.value === 'object' ? JSON.stringify(displayTask.inputParameters.value, null, 2) : (displayTask.inputParameters?.value || ''),
@@ -722,12 +801,20 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'SET_VARIABLE' && renderSpecialSection('变量配置', '📦', 'var(--color-accent)', (
                     <>
                         <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px' }}>
-                            在 inputParameters 中定义要设置的变量名和值，后续任务通过 {'${workflow.variables.varName}'} 访问。
+                            定义要设置的变量名和值，后续任务通过{' '}
+                            <code style={{ fontSize: '10px', background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '3px' }}>
+                                {'${workflow.variables.varName}'}
+                            </code>{' '}访问。
                         </div>
-                        {renderCodeArea('VARIABLES (JSON)',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
-                            { rows: 6, language: 'json' })}
+                        <KeyValueEditor
+                            ref={kvEditorRef}
+                            value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
+                            onChange={(v) => handleChange('inputParameters', v)}
+                            disabled={!isEditMode}
+                            taskRef={displayTask.taskReferenceName}
+                            workflowDef={workflowDef ?? undefined}
+                            placeholder="点击 + 添加变量，如 orderTotal → ${fetch_order.output.total}"
+                        />
                     </>
                 ))}
 
@@ -811,11 +898,26 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             taskRef={displayTask.taskReferenceName}
                             workflowDef={workflowDef ?? undefined}
                         />
-                        {/* P5.4.3: 字段级校验反馈 */}
+                        {/* P5.4.3: 字段级校验反馈（通用兜底，排除已在专属字段旁显示的条目） */}
                         {(() => {
+                            // 这些 field 路径已在对应类型的专属 section 内通过 renderFieldValidation 显示
+                            const SPECIFICALLY_RENDERED = new Set([
+                                'name',
+                                'inputParameters.expression', 'inputParameters.scriptExpression',
+                                'inputParameters.queryExpression',
+                                'loopCondition', 'caseExpression',
+                                'inputParameters.http_request.uri', 'inputParameters.http_request.method',
+                                'subWorkflowParam.name',
+                                'inputParameters.startWorkflow.name',
+                                'inputParameters.terminationStatus',
+                                'dynamicTaskNameParam', 'dynamicForkTasksParam',
+                                'inputParameters.bootStrapServers', 'inputParameters.topic',
+                                'inputParameters.duration',
+                                'sink',
+                            ]);
                             const taskWarnings = [
-                                ...(validationResults.errors.filter(e => e.ref === displayTask.taskReferenceName && e.field)),
-                                ...(validationResults.warnings.filter(w => w.ref === displayTask.taskReferenceName && w.field)),
+                                ...(validationResults.errors.filter(e => e.ref === displayTask.taskReferenceName && e.field && !SPECIFICALLY_RENDERED.has(e.field))),
+                                ...(validationResults.warnings.filter(w => w.ref === displayTask.taskReferenceName && w.field && !SPECIFICALLY_RENDERED.has(w.field))),
                             ];
                             if (taskWarnings.length === 0) return null;
                             return (
@@ -823,7 +925,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                     {taskWarnings.map((item, i) => (
                                         <div key={i} style={{
                                             fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '4px',
-                                            color: item.level === 'error' || !item.level && validationResults.errors.includes(item) ? '#ef4444' : '#f59e0b',
+                                            color: item.level === 'error' || (!item.level && validationResults.errors.includes(item)) ? '#ef4444' : '#f59e0b',
                                         }}>
                                             <span style={{ flexShrink: 0, marginTop: '1px' }}>
                                                 {(item.level === 'error' || validationResults.errors.includes(item)) ? '❌' : '⚠️'}

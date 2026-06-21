@@ -154,6 +154,56 @@ export const TASK_RULES = {
                 message: 'FORK_JOIN_DYNAMIC 任务需要配置 dynamicForkTasksParam 或 forkTaskType 或 forkTaskWorkflow',
                 level: 'warning'
             }
+        ],
+        'KAFKA_PUBLISH': [
+            {
+                field: 'inputParameters.bootStrapServers', type: 'custom',
+                validate: (_val: any, task: any) => !!(task?.inputParameters?.bootStrapServers),
+                message: 'Kafka 任务缺少 Bootstrap Servers 地址 (bootStrapServers)'
+            },
+            {
+                field: 'inputParameters.topic', type: 'custom',
+                validate: (_val: any, task: any) => !!(task?.inputParameters?.topic),
+                message: 'Kafka 任务缺少目标 Topic'
+            }
+        ],
+        'WAIT': [
+            {
+                field: 'inputParameters.duration', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    if (task?.inputParameters?.until) return true;
+                    const dur: string = task?.inputParameters?.duration || '';
+                    if (!dur) return true;
+                    return /^\d+\s*(s|m|h|d|seconds?|minutes?|hours?|days?)$/i.test(dur.trim());
+                },
+                message: 'WAIT 时长格式建议为 30s、10m、2h、1d 或 "2 hours"'
+            }
+        ],
+        'SIMPLE': [
+            {
+                field: 'name', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const n: string = task?.name || '';
+                    return !n || /^[a-zA-Z0-9_]+$/.test(n);
+                },
+                message: 'Worker 任务名建议仅包含字母、数字和下划线，需与 Worker 注册的任务定义名完全一致'
+            }
+        ],
+        'EVENT': [
+            {
+                field: 'sink', type: 'custom',
+                validate: (_val: any, task: any) => !!(task?.sink),
+                message: 'EVENT 任务缺少事件目标 (sink)'
+            },
+            {
+                field: 'sink', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const sink: string = task?.sink || '';
+                    if (!sink) return true;
+                    return /^(conductor|sqs|kafka|amqp|nats):/.test(sink);
+                },
+                message: 'sink 格式应为 "协议:目标"，如 conductor:event、sqs:queue_name'
+            }
         ]
     }
 };

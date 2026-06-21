@@ -29,6 +29,12 @@ const WELCOME_MESSAGE: AIChatMessage = {
     content: '你好！我是您的流程助手。我可以帮你生成工作流框架、优化逻辑或提供参数配置建议。你想实现什么样的流程？',
 };
 
+/**
+ * AI 通过输出 `%%SHOW_RUN_FORM%%` 标记请求展示执行表单卡片。
+ * 大小写不敏感，允许 %% 与关键字之间存在空白；全局标志用于一次性剥离所有出现。
+ */
+const RUN_FORM_MARKER = /%%\s*show_run_form\s*%%/gi;
+
 /** Parse content into segments: text, code(lang, code), mermaid */
 interface TextSegment { kind: 'text'; content: string }
 interface CodeSegment { kind: 'code'; lang: string; code: string }
@@ -158,8 +164,13 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
 
     useEffect(() => { return () => { abortRef.current?.abort(); }; }, []);
 
+    // 面板在 edit 模式下常驻；外部触发 open-ai-chat 时聚焦输入框并滚动到底部，
+    // 让该事件保持有意义的行为（而非空操作）。
     useEffect(() => {
-        const handler = () => { /* panel is always open now */ };
+        const handler = () => {
+            textareaRef.current?.focus();
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        };
         window.addEventListener('open-ai-chat', handler);
         return () => window.removeEventListener('open-ai-chat', handler);
     }, []);
@@ -267,9 +278,11 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
                 controller.signal
             );
 
-            // Check if AI wants to show run form
-            if (fullResponse.includes('%%SHOW_RUN_FORM%%') || fullResponse.toLowerCase().includes('show_run_form')) {
-                const cleanedResponse = fullResponse.replace(/%%SHOW_RUN_FORM%%/g, '').trim();
+            // Check if AI wants to show run form.
+            // 要求 %% 定界符以避免正文中提及 "show_run_form" 时误触发；
+            // 检测与剥离均大小写不敏感，确保标记不会残留泄漏到用户可见消息。
+            if (RUN_FORM_MARKER.test(fullResponse)) {
+                const cleanedResponse = fullResponse.replace(RUN_FORM_MARKER, '').trim();
                 if (cleanedResponse) {
                     setMessages(prev => [...prev, {
                         id: (Date.now() + 1).toString(),

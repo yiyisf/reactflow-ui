@@ -30,7 +30,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     onPollExecution,
     executionPollInterval = 3000,
 }) => {
-    const { workflowDef, setRunState, importExecutionJSON, setMode } = useWorkflowStore();
+    const { workflowDef, setRunState, importExecutionJSON } = useWorkflowStore();
     const params: WorkflowInputParam[] = parseWorkflowInputParams(workflowDef?.inputParameters);
     const hasParams = params.length > 0;
 
@@ -103,7 +103,9 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
             );
             setWorkflowId(wId);
             setRunState('polling', wId);
-            setMode('run');
+            // 注意：刻意不调用 setMode('run')。本卡片渲染于 AIChatPanel 内部，
+            // 而 AIChatPanel 仅在 edit 模式渲染；切到 run 模式会卸载本卡片并中断轮询。
+            // 进度跟踪由本卡片内联完成，执行数据通过 importExecutionJSON 注入 store。
 
             if (!onPollExecution) {
                 if (timerRef.current) clearInterval(timerRef.current);
@@ -142,7 +144,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
             setPhase('error');
         }
     }, [workflowDef, buildInputObject, params, onTriggerExecution, onPollExecution,
-        setRunState, importExecutionJSON, setMode, executionPollInterval]);
+        setRunState, importExecutionJSON, executionPollInterval]);
 
     if (!workflowDef) return null;
 
@@ -233,7 +235,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
                     </span>
                 </div>
                 <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-secondary)' }}>
-                    工作流已完成执行。点击右上角"查看画布"按钮可查看详细执行路径。
+                    工作流已成功执行完成。
                     {workflowId && (
                         <div style={{ marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
                             ID: {workflowId}

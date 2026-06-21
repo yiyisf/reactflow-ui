@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import useWorkflowStore from '../../store/workflowStore';
 
 interface MermaidBlockProps {
     code: string;
@@ -14,6 +15,7 @@ async function ensureMermaid(): Promise<typeof import('mermaid').default> {
             mermaidInitPromise = (async () => {
                 m.initialize({
                     startOnLoad: false,
+                    // 全局默认主题；具体主题由每个图表的 init 指令按当前 store 主题覆盖
                     theme: 'dark',
                     securityLevel: 'loose',
                     fontFamily: 'var(--font-sans, sans-serif)',
@@ -28,6 +30,7 @@ async function ensureMermaid(): Promise<typeof import('mermaid').default> {
 }
 
 const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
+    const theme = useWorkflowStore((s) => s.theme);
     const containerRef = useRef<HTMLDivElement>(null);
     const [error, setError] = useState<string | null>(null);
     const idRef = useRef(`mmd-${Math.random().toString(36).slice(2)}`);
@@ -36,10 +39,15 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
         let cancelled = false;
         setError(null);
 
+        // 跟随 IDE 主题：light → 'default'（浅色），dark → 'dark'。
+        // 使用每图表 init 指令覆盖全局配置，避免主题切换时重新初始化全局 mermaid。
+        const mermaidTheme = theme === 'light' ? 'default' : 'dark';
+        const themedCode = `%%{init: {'theme': '${mermaidTheme}'}}%%\n${code.trim()}`;
+
         ensureMermaid().then(async (m) => {
             if (cancelled || !containerRef.current) return;
             try {
-                const { svg } = await m.render(idRef.current, code.trim());
+                const { svg } = await m.render(idRef.current, themedCode);
                 if (cancelled || !containerRef.current) return;
                 containerRef.current.innerHTML = svg;
                 // Make SVG responsive
@@ -56,7 +64,7 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
         });
 
         return () => { cancelled = true; };
-    }, [code]);
+    }, [code, theme]);
 
     if (error) {
         return (

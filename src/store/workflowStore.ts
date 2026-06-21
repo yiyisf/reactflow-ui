@@ -92,6 +92,10 @@ const useWorkflowStore = create<WorkflowStore>()(
                     if (currentMode === 'run' && mode !== 'run') {
                         set({ executionData: null, workflowInstance: null, dynamicRuntimeTasksByFork: {} });
                     }
+                    // 离开编辑模式时关闭画布抽屉，避免返回 edit 时抽屉意外重现
+                    if (mode !== 'edit') {
+                        set({ showCanvasDrawer: false });
+                    }
                     set({ mode });
 
                     // 切换模式后重新解析工作流（空分支显示策略依赖 mode）

@@ -3,116 +3,105 @@
     font-family: inherit;
 }
 
-.kv-table {
-    width: 100%;
+/* ── 参数卡片列表 ── */
+.kv-list {
     display: flex;
     flex-direction: column;
     gap: 4px;
     margin-bottom: 6px;
 }
 
-.kv-header-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 72px 24px;
-    gap: 6px;
-    padding: 0 2px 2px;
-}
-
-.kv-col-key,
-.kv-col-value,
-.kv-col-type,
-.kv-col-del {
-    font-size: 9px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    opacity: 0.6;
-}
-
-.kv-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 72px 24px;
-    gap: 6px;
-    align-items: center;
-}
-
-.kv-key-input,
-.kv-value-input {
-    width: 100%;
-    padding: 5px 8px;
-    border-radius: 5px;
+/* 每个参数独立卡片 */
+.kv-param {
     border: 1px solid var(--glass-border);
+    border-radius: 6px;
+    padding: 5px 8px 6px;
     background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-size: 11px;
-    font-family: var(--font-mono, monospace);
-    outline: none;
-    box-sizing: border-box;
-    min-width: 0;
+    transition: border-color 0.12s;
 }
 
-.kv-key-input:focus,
-.kv-value-input:focus {
+.kv-param:focus-within {
     border-color: var(--color-accent);
 }
 
-.kv-value-wrap {
-    position: relative;
+/* 卡片第一行：key + type + 操作按钮 */
+.kv-param-header {
     display: flex;
     align-items: center;
-    min-width: 0;
+    gap: 5px;
+    margin-bottom: 4px;
 }
 
-.kv-value-wrap .kv-value-input,
-.kv-value-wrap .kv-bool-select {
+.kv-key-input {
     flex: 1;
-    padding-right: 28px;
     min-width: 0;
+    padding: 3px 7px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    font-weight: 600;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.kv-key-input:focus {
+    border-color: var(--color-accent);
+    background: var(--bg-primary);
+}
+
+.kv-key-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.5;
+    font-weight: 400;
+}
+
+.kv-type-select {
+    flex-shrink: 0;
+    width: 66px;
+    padding: 3px 4px;
+    border-radius: 4px;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 10px;
+    cursor: pointer;
+    outline: none;
+    box-sizing: border-box;
 }
 
 .kv-ref-btn {
-    position: absolute;
-    right: 4px;
+    flex-shrink: 0;
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 12px;
-    padding: 1px 2px;
-    opacity: 0.6;
+    font-size: 13px;
+    padding: 1px 3px;
+    opacity: 0.55;
     line-height: 1;
-    flex-shrink: 0;
+    border-radius: 3px;
+    transition: opacity 0.12s, background 0.12s;
 }
 
 .kv-ref-btn:hover {
     opacity: 1;
-}
-
-.kv-type-select,
-.kv-bool-select {
-    width: 100%;
-    padding: 5px 4px;
-    border-radius: 5px;
-    border: 1px solid var(--glass-border);
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    font-size: 11px;
-    cursor: pointer;
-    outline: none;
-    box-sizing: border-box;
-    min-width: 0;
+    background: var(--color-accent-bg, rgba(59,130,246,0.15));
 }
 
 .kv-del-btn {
+    flex-shrink: 0;
     background: none;
     border: none;
     cursor: pointer;
     color: var(--text-secondary);
-    font-size: 12px;
-    padding: 2px;
-    opacity: 0.5;
+    font-size: 11px;
+    padding: 2px 3px;
+    opacity: 0.4;
     line-height: 1;
-    flex-shrink: 0;
+    border-radius: 3px;
+    transition: opacity 0.12s, color 0.12s;
 }
 
 .kv-del-btn:hover {
@@ -120,14 +109,98 @@
     color: #ef4444;
 }
 
+/* 卡片第二行：value（全宽） */
+.kv-param-value {
+    width: 100%;
+}
+
+.kv-value-input {
+    width: 100%;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    outline: none;
+    box-sizing: border-box;
+    line-height: 1.4;
+}
+
+.kv-value-input:focus {
+    border-color: var(--color-accent);
+    background: var(--bg-primary);
+}
+
+.kv-value-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.45;
+    font-style: italic;
+}
+
+/* object/array 用 textarea */
+.kv-value-textarea {
+    width: 100%;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    outline: none;
+    box-sizing: border-box;
+    line-height: 1.45;
+    resize: vertical;
+    min-height: 54px;
+}
+
+.kv-value-textarea:focus {
+    border-color: var(--color-accent);
+    background: var(--bg-primary);
+}
+
+.kv-bool-select {
+    width: 100%;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+    box-sizing: border-box;
+}
+
+/* 只读状态下的值展示 */
+.kv-value-readonly {
+    padding: 4px 8px;
+    font-size: 11px;
+    font-family: var(--font-mono, monospace);
+    color: var(--text-secondary);
+    word-break: break-all;
+    line-height: 1.4;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.kv-value-readonly .kv-expr {
+    color: var(--color-accent);
+}
+
+/* 空状态 */
 .kv-empty {
     font-size: 11px;
     color: var(--text-secondary);
     opacity: 0.5;
-    padding: 8px 0;
+    padding: 10px 4px;
     font-style: italic;
 }
 
+/* 底部操作栏 */
 .kv-footer {
     display: flex;
     gap: 8px;
@@ -152,28 +225,16 @@
     border-color: var(--color-accent);
 }
 
-.kv-mode-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-}
-
-.kv-mode-label {
-    font-size: 10px;
-    color: var(--text-secondary);
-    font-style: italic;
-}
-
 .kv-mode-btn {
     font-size: 10px;
-    padding: 2px 8px;
+    padding: 3px 9px;
     border-radius: 4px;
     border: 1px solid var(--glass-border);
     background: none;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.12s;
+    margin-left: auto;
 }
 
 .kv-mode-btn:hover:not(:disabled) {
@@ -186,19 +247,57 @@
     cursor: not-allowed;
 }
 
+/* ── 高级 JSON 模式 ── */
+.kv-advanced {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.kv-mode-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kv-mode-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.kv-mode-count {
+    display: inline-block;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 0px 6px;
+    font-size: 10px;
+    font-style: normal;
+    opacity: 0.8;
+}
+
 .kv-json-textarea {
     width: 100%;
     box-sizing: border-box;
-    padding: 10px;
-    border-radius: 8px;
+    padding: 10px 12px;
+    border-radius: 7px;
     border: 1px solid var(--glass-border);
-    background: var(--bg-tertiary);
+    background: var(--bg-primary);
     color: var(--text-primary);
     font-size: 12px;
     font-family: var(--font-mono, monospace);
-    line-height: 1.5;
+    line-height: 1.55;
     resize: vertical;
     outline: none;
+    min-height: 100px;
+    tab-size: 2;
+}
+
+.kv-json-textarea:focus {
+    border-color: var(--color-accent);
 }
 
 .kv-json-textarea.kv-json-error {
@@ -206,7 +305,11 @@
 }
 
 .kv-error-msg {
-    margin-top: 4px;
+    margin-top: 2px;
     font-size: 11px;
     color: #ef4444;
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    line-height: 1.4;
 }

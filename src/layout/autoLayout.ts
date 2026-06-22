@@ -118,9 +118,14 @@ function detectLinearChains(nodes: WorkflowNode[], edges: Edge[], minLength: num
     const visited = new Set<string>();
     const NON_CHAINABLE = new Set([
         'input', 'output',           // start/end 节点
-        'decisionNode', 'forkNode', 'joinNode', 'loopNode',  // 分支/汇合/循环节点
+        'decisionNode', 'loopNode',  // 分支/循环节点（真正会产生多路径的节点）
         'default',                   // Decision 合并节点、空分支占位节点
         'plusNode',                  // 编辑器专用"添加"占位节点，不参与蛇形链
+        // 注意：forkNode/joinNode 不再无条件排除。
+        // 普通 FORK_JOIN 的 forkNode 有 outDegree>1，会被下面的 nextIds.length===1 检查拦截；
+        // joinNode 有 inDegree>1，会被 inDegree[nextId]!==1 检查拦截。
+        // FORK_JOIN_DYNAMIC 的三节点（forkNode→dynamicPlaceholderNode→joinNode）在静态图中
+        // 都是严格串行（inDegree=outDegree=1），应被纳入蛇形链长度计算。
     ]);
     const isChainableNode = (n: WorkflowNode) =>
         !NON_CHAINABLE.has(n.type || '');

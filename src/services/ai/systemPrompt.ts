@@ -54,7 +54,14 @@ SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVEN
 - SWITCH 需要 caseValueParam 或 caseExpression，decisionCases 键值对
 - FORK_JOIN 需要 forkTasks（二维数组）和对应的 JOIN 任务
 - DO_WHILE 需要 loopCondition 和 loopOver 数组
-- HTTP 任务建议设置 timeoutSeconds 和 retryCount`;
+- HTTP 任务建议设置 timeoutSeconds 和 retryCount
+
+## 业务流程图（Mermaid）
+当用户要求展示流程图、可视化或 Mermaid 图时：
+- 输出 \`\`\`mermaid 代码块（language tag 必须是 mermaid），不要调用任何工具
+- 节点标签使用中文业务语言，不暴露 taskReferenceName 技术名称
+- SWITCH 用菱形 {}，FORK_JOIN 用并行路径，HUMAN 标注「👤 人工」
+- 代码块之前可以有一句简短说明，之后可以补充关键解读`;
 
 // ─── Build function (exported for integrators who want full control) ─────────
 
@@ -226,6 +233,16 @@ function getIntentHints(intent: Intent): string | null {
             return '用户在排查问题。先用 validate_workflow 和 get_workflow_state 了解现状，分析后给出诊断。';
         case 'OPTIMIZE':
             return '用户要优化流程。先分析，再提出方案并执行。';
+        case 'VISUALIZE':
+            return `用户要查看工作流的业务流程图。请按以下要求生成 Mermaid 流程图：
+- 直接输出 \`\`\`mermaid 代码块，不要调用任何工具
+- 使用 flowchart TD（从上到下）或 LR（左到右，适合步骤多时）
+- 节点标签使用中文业务名称（参考 taskReferenceName 但改写为可读业务词汇）
+- SWITCH/DECISION 用菱形节点 {判断条件}，各分支标注条件值
+- FORK_JOIN 画成多条并行路径，JOIN 节点后汇合
+- HUMAN 任务标注「👤 人工审批」
+- SUB_WORKFLOW 用方括号节点 [子流程名]
+- 保持简洁，突出业务逻辑，不超过 20 个节点`;
         case 'VAGUE':
             return '用户意图模糊。调用 ask_clarification 提出 2-4 个选项，帮助用户精确表达需求。不要直接创建工作流。';
         default:

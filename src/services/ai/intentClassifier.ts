@@ -6,16 +6,17 @@
  */
 
 export type Intent =
-    | 'CREATE'    // 从零创建工作流
-    | 'ADD'       // 新增节点
-    | 'MODIFY'    // 修改属性
-    | 'DELETE'    // 删除节点
-    | 'REFACTOR'  // 重构拓扑
-    | 'EXPLAIN'   // 解释说明
-    | 'DEBUG'     // 调试/诊断
-    | 'OPTIMIZE'  // 优化建议
-    | 'GENERAL'   // 通用/兜底
-    | 'VAGUE';    // 意图模糊，需要澄清
+    | 'CREATE'     // 从零创建工作流
+    | 'ADD'        // 新增节点
+    | 'MODIFY'     // 修改属性
+    | 'DELETE'     // 删除节点
+    | 'REFACTOR'   // 重构拓扑
+    | 'EXPLAIN'    // 解释说明
+    | 'DEBUG'      // 调试/诊断
+    | 'OPTIMIZE'   // 优化建议
+    | 'VISUALIZE'  // 流程图/可视化展示
+    | 'GENERAL'    // 通用/兜底
+    | 'VAGUE';     // 意图模糊，需要澄清
 
 interface IntentRule {
     intent: Intent;
@@ -63,6 +64,11 @@ const RULES: IntentRule[] = [
         intent: 'OPTIMIZE',
         keywords: ['优化', '改进', '提升', '性能', '最佳实践', '建议'],
         patterns: [/优化/, /改进/, /有什么建议/, /最佳实践/],
+    },
+    {
+        intent: 'VISUALIZE',
+        keywords: ['流程图', 'mermaid', '图表', '可视化', '业务视图', '展示流程', '画图', '画出'],
+        patterns: [/流程图/, /mermaid/i, /可视化/, /展示.*业务/, /业务.*展示/, /画.*图/, /图.*展示/],
     },
 ];
 
@@ -123,7 +129,8 @@ export function getContextOptions(intent: Intent): { includeFull: boolean } {
         case 'REFACTOR':
         case 'OPTIMIZE':
         case 'DEBUG':
-            return { includeFull: true };    // 需要全量上下文
+        case 'VISUALIZE':
+            return { includeFull: true };    // 需要全量上下文（画图需要完整拓扑）
         case 'VAGUE':
             return { includeFull: false };   // 意图模糊，精简上下文即可
         default:

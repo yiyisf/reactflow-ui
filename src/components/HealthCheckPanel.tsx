@@ -24,6 +24,8 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                 } else {
                     setSelectedTask(task);
                 }
+                // Dispatch focus event so canvas fitView centers the node
+                window.dispatchEvent(new CustomEvent('workflow-select-task', { detail: { ref } }));
             }
         }
     };

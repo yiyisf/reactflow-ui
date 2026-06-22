@@ -2,6 +2,19 @@ import dagre from 'dagre';
 import { Edge, Position } from 'reactflow';
 import { WorkflowNode, LayoutDirection, EditorMode } from '../types/workflow';
 
+// Layout result cache keyed by structural signature (LRU-50)
+const _layoutCache = new Map<string, { nodes: WorkflowNode[]; edges: Edge[] }>();
+
+function computeStructureSig(nodes: WorkflowNode[], edges: Edge[], direction: string, mode: string): string {
+    const nodeKey = nodes
+        .filter(n => n.type !== 'plusNode')
+        .map(n => `${n.id}:${n.type}:${n.data?._layoutWidth ?? ''}:${n.data?._layoutHeight ?? ''}`)
+        .sort()
+        .join('|');
+    const edgeKey = edges.map(e => `${e.source}->${e.target}`).sort().join('|');
+    return `${direction}:${mode}::${nodeKey}::${edgeKey}`;
+}
+
 /**
  * 获取节点尺寸（用于布局计算）
  * 重构后所有节点都使用 NodeLayout，统一为横向卡片
@@ -548,13 +561,20 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
     const direction = options.direction || 'TB';
     const mode = options.mode || 'view';
 
+    const sig = computeStructureSig(nodes, edges, direction, mode);
+    const cached = _layoutCache.get(sig);
+    if (cached) return cached;
+
     // Separate child nodes from main nodes
     const childNodes = nodes.filter(n => n.parentId);
     const mainNodes = nodes.filter(n => !n.parentId);
 
     if (childNodes.length === 0) {
         // No parent-child structure — use flat layout directly
-        return layoutFlatGraph(nodes, edges, options);
+        const result = layoutFlatGraph(nodes, edges, options);
+        _layoutCache.set(sig, result);
+        if (_layoutCache.size > 50) _layoutCache.delete(_layoutCache.keys().next().value!);
+        return result;
     }
 
     // Build a lookup for child nodes
@@ -625,10 +645,13 @@ export function getLayoutedElements(nodes: WorkflowNode[], edges: Edge[], option
         return n;
     });
 
-    return {
+    const result = {
         nodes: [...finalMain, ...allPositionedChildren],
         edges: [...layoutedMainEdges, ...Object.values(childEdgesByParent).flat()],
     };
+    _layoutCache.set(sig, result);
+    if (_layoutCache.size > 50) _layoutCache.delete(_layoutCache.keys().next().value!);
+    return result;
 }
 
 export function relayout(nodes: WorkflowNode[], edges: Edge[], direction: LayoutDirection = 'TB', mode: EditorMode = 'view'): { nodes: WorkflowNode[]; edges: Edge[] } {

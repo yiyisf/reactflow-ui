@@ -81,8 +81,10 @@ const AddableEdge = ({
     };
 
     const isEditMode = data?.mode === 'edit';
-    // 悬停时暂时禁用边上的动画，提高点击稳定性
-    // const shouldAnimate = animated && !isHovered; // BaseEdge doesn't override animated via prop directly efficiently, using style might be better or handled by parent class
+    // Branch labels are always visible in non-edit modes; in edit mode, show on hover
+    const showLabel = !!data?.label && (!isEditMode || isHovered);
+    // "+" add button only in edit mode on hover
+    const showAddButton = isEditMode && isHovered;
 
     return (
         <>
@@ -110,68 +112,71 @@ const AddableEdge = ({
                 onMouseLeave={handleMouseLeave}
             />
 
-            {isEditMode && isHovered && (
+            {(showLabel || showAddButton) && (
                 <EdgeLabelRenderer>
                     <div
                         style={{
                             position: 'absolute',
                             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
                             fontSize: 12,
-                            pointerEvents: 'all',
+                            pointerEvents: showAddButton ? 'all' : 'none',
                             zIndex: 2000,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center'
                         }}
                         className="nodrag nopan"
-                        onMouseEnter={handleMouseEnter}
-                        onMouseLeave={handleMouseLeave}
+                        onMouseEnter={showAddButton ? handleMouseEnter : undefined}
+                        onMouseLeave={showAddButton ? handleMouseLeave : undefined}
                     >
-                        {/* 显示连线标签 (如 Case 键名) */}
-                        {data?.label && (
+                        {/* 显示连线标签 (如 Case 键名)：非编辑模式始终可见，编辑模式悬停可见 */}
+                        {showLabel && (
                             <div style={{
-                                background: 'var(--glass-bg-accent)',
+                                background: isEditMode ? 'var(--glass-bg-accent)' : 'var(--glass-surface)',
                                 backdropFilter: 'var(--glass-blur)',
-                                color: 'var(--color-accent)',
-                                padding: '4px 10px',
+                                color: isEditMode ? 'var(--color-accent)' : 'var(--text-secondary)',
+                                padding: '3px 8px',
                                 borderRadius: '6px',
                                 fontSize: '11px',
                                 fontWeight: '700',
-                                marginBottom: '8px',
-                                border: '1px solid var(--color-accent)',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                marginBottom: showAddButton ? '8px' : 0,
+                                border: `1px solid ${isEditMode ? 'var(--color-accent)' : 'var(--glass-border)'}`,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                                 whiteSpace: 'nowrap',
-                                letterSpacing: '0.5px'
+                                letterSpacing: '0.5px',
+                                opacity: isEditMode ? 1 : 0.85,
                             }}>
                                 {data.label}
                             </div>
                         )}
 
-                        <button
-                            style={{
-                                width: '32px',
-                                height: '32px',
-                                backgroundColor: 'var(--color-accent)',
-                                color: '#fff',
-                                border: '2px solid rgba(255,255,255,0.8)',
-                                borderRadius: '50%',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: '700',
-                                fontSize: '20px',
-                                boxShadow: '0 4px 15px rgba(var(--color-accent-rgb), 0.5)',
-                                transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                                padding: 0
-                            }}
-                            className="edge-add-button"
-                            onClick={onAddClick}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            title="在此处添加任务"
-                        >
-                            +
-                        </button>
+                        {showAddButton && (
+                            <button
+                                style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    backgroundColor: 'var(--color-accent)',
+                                    color: '#fff',
+                                    border: '2px solid rgba(255,255,255,0.8)',
+                                    borderRadius: '50%',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: '700',
+                                    fontSize: '20px',
+                                    boxShadow: '0 4px 15px rgba(var(--color-accent-rgb), 0.5)',
+                                    transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                    padding: 0
+                                }}
+                                className="edge-add-button"
+                                onClick={onAddClick}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                title="在此处添加任务"
+                            >
+                                +
+                            </button>
+                        )}
                     </div>
                 </EdgeLabelRenderer>
             )}

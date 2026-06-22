@@ -58,10 +58,11 @@ SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVEN
 
 ## 业务流程图（Mermaid）
 当用户要求展示流程图、可视化或 Mermaid 图时：
-- 输出 \`\`\`mermaid 代码块（language tag 必须是 mermaid），不要调用任何工具
-- 节点标签使用中文业务语言，不暴露 taskReferenceName 技术名称
-- SWITCH 用菱形 {}，FORK_JOIN 用并行路径，HUMAN 标注「👤 人工」
-- 代码块之前可以有一句简短说明，之后可以补充关键解读`;
+- 必须基于 system prompt 注入的"画布工作流完整 JSON"，不凭记忆生成
+- 输出 \`\`\`mermaid 代码块，不调用任何工具
+- 过滤纯技术节点（SET_VARIABLE、JSON_JQ_TRANSFORM、INLINE、NOOP），上下游直连
+- 节点标签用中文业务语言，禁止直接使用 taskReferenceName
+- SWITCH 用菱形 {}，FORK_JOIN 用并行路径，HUMAN 标注「👤 人工」`;
 
 // ─── Build function (exported for integrators who want full control) ─────────
 
@@ -234,15 +235,32 @@ function getIntentHints(intent: Intent): string | null {
         case 'OPTIMIZE':
             return '用户要优化流程。先分析，再提出方案并执行。';
         case 'VISUALIZE':
-            return `用户要查看工作流的业务流程图。请按以下要求生成 Mermaid 流程图：
-- 直接输出 \`\`\`mermaid 代码块，不要调用任何工具
-- 使用 flowchart TD（从上到下）或 LR（左到右，适合步骤多时）
-- 节点标签使用中文业务名称（参考 taskReferenceName 但改写为可读业务词汇）
-- SWITCH/DECISION 用菱形节点 {判断条件}，各分支标注条件值
-- FORK_JOIN 画成多条并行路径，JOIN 节点后汇合
-- HUMAN 任务标注「👤 人工审批」
-- SUB_WORKFLOW 用方括号节点 [子流程名]
-- 保持简洁，突出业务逻辑，不超过 20 个节点`;
+            return `用户要查看工作流的业务流程图。**必须严格基于 system prompt 中注入的"画布工作流完整 JSON"生成**，不允许凭记忆或对话历史构造节点。
+
+数据来源要求：
+- 所有节点和边必须来自注入的完整 JSON，不允许增加不存在的节点
+- 不允许省略业务节点
+
+业务节点过滤（核心规则）：
+- 保留（有业务含义）：SIMPLE、HTTP、HUMAN、SUB_WORKFLOW、START_WORKFLOW、EVENT、WAIT、DO_WHILE、FORK_JOIN、SWITCH、DECISION
+- 跳过（纯数据处理、无业务含义）：SET_VARIABLE、JSON_JQ_TRANSFORM、INLINE、NOOP
+- 跳过节点后，将其上游和下游直接相连，保持流程连通性
+
+节点标签规则：
+- 优先使用 task 的 name 字段；若 name 是技术命名则改写为中文业务语言
+- HUMAN 节点：标签加「👤 人工」
+- SUB_WORKFLOW 节点：标签加「⚙ 子流程」
+- 禁止在节点标签中使用 taskReferenceName
+
+控制流规则：
+- SWITCH/DECISION：用菱形节点 {条件}，用 decisionCases 的 key 作为各分支的边标签
+- FORK_JOIN：并行分支用多条路径，对应 JOIN 节点用「汇合」标注
+- DO_WHILE：画成循环，用 loopCondition 描述循环条件
+
+输出格式：
+- 输出 \`\`\`mermaid 代码块，步骤 ≤ 8 用 flowchart TD，否则用 LR
+- 代码块前一句话描述流程主旨，代码块后可加简短解读
+- 不要调用任何工具`;
         case 'VAGUE':
             return '用户意图模糊。调用 ask_clarification 提出 2-4 个选项，帮助用户精确表达需求。不要直接创建工作流。';
         default:

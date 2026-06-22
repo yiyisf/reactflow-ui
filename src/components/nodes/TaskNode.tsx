@@ -10,6 +10,14 @@ import { Activity } from 'lucide-react';
 import useWorkflowStore from '../../store/workflowStore';
 import { getNodeMeta } from '../../utils/nodeMeta';
 
+function formatDurationShort(start?: number, end?: number): string | null {
+    if (!start) return null;
+    const ms = (end ?? Date.now()) - start;
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
+}
+
 type TaskNodeProps = NodeProps<WorkflowNodeData>;
 
 /**
@@ -20,6 +28,18 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     const { sourcePosition, targetPosition } = useNodeLayout(data);
     const { execution, isRunning, retryCount } = useNodeExecution(data.taskReferenceName);
     const viewMode = useWorkflowStore(s => s.viewMode);
+
+    // Execution summary for run mode
+    const lastAttempt = execution?.attempts?.[execution.attempts.length - 1];
+    const execDuration = isRunning && lastAttempt ? formatDurationShort(lastAttempt.startTime, lastAttempt.endTime) : null;
+    const execOutputSnippet = useMemo(() => {
+        if (!isRunning || !lastAttempt?.outputData) return null;
+        const keys = Object.keys(lastAttempt.outputData);
+        if (!keys.length) return null;
+        const first = lastAttempt.outputData[keys[0]];
+        const val = typeof first === 'object' ? JSON.stringify(first) : String(first);
+        return `${keys[0]}: ${val}`.slice(0, 28);
+    }, [isRunning, lastAttempt]);
 
     // 获取图标和标签
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === taskType), [taskType]);
@@ -74,6 +94,37 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                     status={execution?.status}
                     isRunning={isRunning}
                 />
+
+                {/* 运行态执行摘要条 */}
+                {isRunning && (execDuration || execOutputSnippet || retryCount > 0) && (
+                    <div style={{
+                        borderTop: '1px solid var(--glass-border)',
+                        padding: '3px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '10px',
+                        color: 'var(--text-secondary)',
+                        background: 'var(--bg-tertiary)',
+                        overflow: 'hidden',
+                        minHeight: '18px',
+                    }}>
+                        {execDuration && <span style={{ flexShrink: 0 }}>⏱ {execDuration}</span>}
+                        {retryCount > 0 && <span style={{ color: 'var(--status-failed)', flexShrink: 0 }}>↺ {retryCount}</span>}
+                        {execOutputSnippet && (
+                            <span style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                flex: 1,
+                                opacity: 0.8,
+                                fontFamily: 'monospace',
+                            }}>
+                                → {execOutputSnippet}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* 重试次数角标 */}
                 {isRunning && retryCount > 0 && (

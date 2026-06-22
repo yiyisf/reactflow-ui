@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import ReactFlow, {
     Background,
+    MiniMap,
     Panel,
     MarkerType,
     useReactFlow,
@@ -189,6 +190,20 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             }
         }
     }, [selectedTask?.taskReferenceName, fitView]); // 仅在引用名变化时触发定位，避免频繁跳动
+
+    // 监听节点定位事件（来自 HealthCheckPanel / ExecutionTaskPanel 等）
+    useEffect(() => {
+        const handleSelectTask = (event: any) => {
+            const ref = event.detail?.ref;
+            if (!ref) return;
+            const node = nodes.find(n => n.data.taskReferenceName === ref);
+            if (node) {
+                fitView({ nodes: [node], duration: 800, padding: 0.4 });
+            }
+        };
+        window.addEventListener('workflow-select-task', handleSelectTask);
+        return () => window.removeEventListener('workflow-select-task', handleSelectTask);
+    }, [nodes, fitView]);
 
     // 监听来自 Header 的自动缩放事件
     useEffect(() => {
@@ -411,22 +426,29 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 const isTargetInProgress = targetStatus === 'IN_PROGRESS';
 
                 if (isSourceCompleted && isTargetCompleted) {
-                    currentStyle = { ...currentStyle, stroke: 'var(--status-completed)', strokeWidth: 4 };
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-completed)', strokeWidth: 3 };
                     isAnimated = false;
                 } else if (isSourceCompleted && isTargetInProgress) {
-                    currentStyle = { ...currentStyle, stroke: 'var(--status-in-progress)', strokeWidth: 4 };
-                    isAnimated = true;
+                    currentStyle = {
+                        ...currentStyle,
+                        stroke: 'var(--status-in-progress)',
+                        strokeWidth: 3,
+                        strokeDasharray: '6,3',
+                        animation: 'edge-flow 0.8s linear infinite',
+                    };
+                    isAnimated = false; // We use CSS animation instead
                 }
             }
 
-            // 编辑模式下使用自定义边以显示 "+" 按钮（占位边除外）
+            // 编辑模式下使用自定义边以显示 "+" 按钮；有标签的边在所有模式下使用自定义边以显示标签
             const isPlaceholderEdge =
                 edge.source.endsWith('_dynamic_placeholder') ||
                 edge.target.endsWith('_dynamic_placeholder');
             // __workflow_start__ / __loop_start__* 引导边由 plusNode 承担插入逻辑，
             // 这些边本身不应显示 "+" 按钮
             const isStartGuideEdge = edge.source === '__workflow_start__' || edge.source.startsWith('__loop_start__');
-            const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge && !isStartGuideEdge;
+            const hasEdgeLabel = !!(edge.label || edge.data?.label);
+            const isAddable = (!isLoopBack && !isPlaceholderEdge && !isStartGuideEdge) && (mode === 'edit' || hasEdgeLabel);
 
             return {
                 ...edge,
@@ -529,6 +551,34 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 maxZoom={2}
             >
                 <Background color="var(--border-primary)" gap={20} />
+
+                <MiniMap
+                    style={{
+                        background: 'var(--glass-surface)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '8px',
+                    }}
+                    nodeColor={(node) => {
+                        // MiniMap renders colors as SVG fill attributes — CSS vars not supported, must use hex/rgb
+                        if (mode === 'run' && executionData) {
+                            const inst = executionData[node.data?.taskReferenceName];
+                            if (inst) {
+                                if (inst.status === 'COMPLETED') return '#0aad76';
+                                if (inst.status === 'FAILED' || inst.status === 'FAILED_WITH_TERMINAL_ERROR') return '#ef4444';
+                                if (inst.status === 'IN_PROGRESS') return '#3b82f6';
+                                if (inst.status === 'TIMED_OUT') return '#f97316';
+                                if (inst.status === 'SCHEDULED') return '#64748b';
+                            }
+                        }
+                        if (node.data?.isError) return '#ef4444';
+                        if (node.data?.hasWarning) return '#f59e0b';
+                        if (node.selected) return '#3b82f6';
+                        return '#94a3b8';
+                    }}
+                    maskColor="rgba(0,0,0,0.12)"
+                    zoomable
+                    pannable
+                />
 
                 {/* Navigation Hub: Zoom (Moved to Bottom-Left) */}
                 <Panel position="bottom-left" style={{ marginBottom: '20px', marginLeft: '20px', zIndex: 1000 }}>

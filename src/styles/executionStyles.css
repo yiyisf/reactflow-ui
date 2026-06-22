@@ -42,6 +42,13 @@
     }
 }
 
+/* IN_PROGRESS edge: Flowing dash animation */
+@keyframes edge-flow {
+    to {
+        stroke-dashoffset: -18;
+    }
+}
+
 /* COMPLETED: Green flash once */
 @keyframes status-flash-success {
     0% {

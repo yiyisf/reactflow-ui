@@ -101,6 +101,10 @@ export interface ValidationItem {
     type: 'TASK' | 'GLOBAL';
     ref: string;
     message: string;
+    /** 关联的任务字段（用于字段级内联反馈） */
+    field?: string;
+    /** 警告级别（P5.4 静态校验扩展） */
+    level?: 'error' | 'warning';
 }
 
 /**

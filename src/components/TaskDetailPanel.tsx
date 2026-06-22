@@ -1,11 +1,10 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { TaskDef } from '../types/conductor';
-import { AIServiceConfig, callAICopilot, generateTaskParameters } from '../services/aiService';
-import { generateParameterHintPrompt } from '../services/promptTemplates';
+import { AIServiceConfig, generateTaskParameters } from '../services/aiService';
 import { parseWorkflowInputParams } from '../types/conductor';
-import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
+import KeyValueEditor, { KeyValueEditorRef } from './inputs/KeyValueEditor';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
@@ -25,7 +24,8 @@ const QUICK_SNIPPETS = [
 ];
 
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
-    const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
+    const { mode, updateTask, checkTaskRefUniqueness, validationResults, workflowDef } = useWorkflowStore();
+    const kvEditorRef = useRef<KeyValueEditorRef>(null);
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
     // syncedRef: the taskReferenceName at the time localTask was last synced from `task`.
     // Used to identify the "same task" even while the user is editing the ref name field.
@@ -48,10 +48,6 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         return 'classic';
     });
 
-    const [suggesterOpen, setSuggesterOpen] = useState(false);
-    const [suggesterAnchor, setSuggesterAnchor] = useState<DOMRect | undefined>();
-    const [currentSuggestions, setCurrentSuggestions] = useState<Suggestion[]>([]);
-    const [onSelectSuggestion, setOnSelectSuggestion] = useState<(val: string) => void>(() => () => { });
 
     // 全屏编辑器状态
     type FullscreenState = { title: string; value: string; language: string; onSave: (v: string) => void } | null;
@@ -60,17 +56,15 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     // P4.1: AI 参数填充状态
     const [aiFillLoading, setAiFillLoading] = useState(false);
     const [aiFillDiff, setAiFillDiff] = useState<{ generated: Record<string, any>; original: Record<string, any> } | null>(null);
+    // HTTP body 原始字符串（用于解析错误时保留用户输入）
+    const [httpBodyRaw, setHttpBodyRaw] = useState<string | null>(null);
+    const [httpBodyError, setHttpBodyError] = useState<string | null>(null);
 
     /** 打开全屏编辑器的辅助函数 */
     const openFullscreen = (title: string, value: string, language: string, onSave: (v: string) => void) => {
         setFullscreenEditor({ title, value, language, onSave });
     };
 
-    const mockSuggestions: Suggestion[] = [
-        { label: '引用工作流输入', value: '${workflow.input.data}', description: '引用工作流启动时传入的原始数据' },
-        { label: '引用前序任务输出', value: '${previous_task.output.result}', description: '引用上一个节点的计算结果' },
-        { label: '环境变量', value: '${workflow.variables.api_key}', description: '引用工作流定义的全局变量' }
-    ];
 
     /** P4.1: 调用 AI 生成完整 inputParameters 块 */
     const handleAiFillParams = async () => {
@@ -113,44 +107,6 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         }
     };
 
-    const handleAiHintClick = async (e: React.MouseEvent, onSelect: (val: string) => void) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        setSuggesterAnchor(rect);
-        setOnSelectSuggestion(() => onSelect);
-        setCurrentSuggestions([]);
-        setSuggesterOpen(true);
-
-        const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
-        if (!apiKey) {
-            setCurrentSuggestions(mockSuggestions);
-            return;
-        }
-
-        try {
-            const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
-            const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
-            const config: Record<string, string> = { apiKey };
-            if (baseUrl) config.baseUrl = baseUrl;
-            if (model) config.model = model;
-
-            const { workflowDef } = useWorkflowStore.getState();
-            const prompt = generateParameterHintPrompt(effectiveTask!, workflowDef);
-            const response = await callAICopilot(
-                [{ role: 'system', content: 'You are a Conductor workflow expert. Return only valid JSON.' }, { role: 'user', content: prompt }],
-                config
-            );
-
-            const jsonMatch = response.match(/\[[\s\S]*\]/);
-            if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]) as Suggestion[];
-                setCurrentSuggestions(parsed);
-            } else {
-                setCurrentSuggestions(mockSuggestions);
-            }
-        } catch (err) {
-            setCurrentSuggestions(mockSuggestions);
-        }
-    };
 
     useEffect(() => {
         if (task) {
@@ -223,6 +179,12 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     };
 
     const insertSnippet = (snippet: string) => {
+        // Bug1 fix: 优先插入到 KeyValueEditor 的最近聚焦行；textarea 为兜底
+        if (kvEditorRef.current) {
+            kvEditorRef.current.insertAtFocused(snippet);
+            setShowSnippets(false);
+            return;
+        }
         if (!activeTextareaRef) return;
         const start = activeTextareaRef.selectionStart ?? 0;
         const end = activeTextareaRef.selectionEnd ?? 0;
@@ -231,6 +193,25 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         const fieldName = activeTextareaRef.getAttribute('data-field');
         if (fieldName) handleChange(fieldName, newValue);
         setShowSnippets(false);
+    };
+
+    /** P5.4.3: 在对应字段旁显示 ❌/⚠️ 校验反馈（field 为 validationRules 中配置的 field 路径） */
+    const renderFieldValidation = (fieldPath: string) => {
+        const items = [
+            ...validationResults.errors.filter(e => e.ref === displayTask.taskReferenceName && e.field === fieldPath),
+            ...validationResults.warnings.filter(w => w.ref === displayTask.taskReferenceName && w.field === fieldPath),
+        ];
+        if (items.length === 0) return null;
+        return (
+            <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {items.map((item, i) => (
+                    <div key={i} style={{ fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '4px', color: item.level === 'warning' ? '#f59e0b' : '#ef4444' }}>
+                        <span style={{ flexShrink: 0 }}>{item.level === 'warning' ? '⚠️' : '❌'}</span>
+                        <span>{item.message}</span>
+                    </div>
+                ))}
+            </div>
+        );
     };
 
     const renderSpecialSection = (title: string, icon: string, color: string, children: React.ReactNode) => (
@@ -267,42 +248,35 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         placeholder={placeholder}
                         onChange={(e) => {
                             if (isRefName) {
-                                // 引用名字段：仅更新本地草稿，不触发 store 更新（避免每次按键重新解析）
                                 setPendingRefName(e.target.value);
                             } else {
                                 handleChange(field, type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value);
                             }
                         }}
                         onFocus={isRefName ? () => {
-                            // 聚焦时初始化草稿为当前已保存值
                             if (pendingRefName === null) {
                                 setPendingRefName((displayTask as any).taskReferenceName ?? '');
                             }
                         } : undefined}
                         onBlur={isRefName ? (e) => {
-                            // 失焦时提交：值有变化且不为空时才写入 store
                             const newRef = e.target.value.trim();
-                            setPendingRefName(null); // 清除草稿
+                            setPendingRefName(null);
                             if (newRef && newRef !== displayTask.taskReferenceName) {
                                 handleChange('taskReferenceName', newRef);
                             }
                         } : undefined}
                         onKeyDown={isRefName ? (e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur(); // Enter 触发提交
-                            e.stopPropagation(); // 防止 ReactFlow 快捷键被触发
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                            e.stopPropagation();
                         } : undefined}
                         disabled={!isEditMode}
                         style={{
-                            width: '100%', padding: `8px ${isEditMode && !isRefName ? '32px' : '12px'} 8px 12px`,
+                            width: '100%', padding: '8px 12px',
                             borderRadius: '6px', border: `1px solid ${isDuplicate ? '#ef4444' : borderColor}`,
                             background: inputBg, color: textColor, fontSize: '13px', outline: 'none',
                             opacity: isEditMode ? 1 : 0.8, fontFamily: isRefName ? 'monospace' : 'inherit'
                         }}
                     />
-                    {isEditMode && !isRefName && (
-                        <button className="ai-hint-trigger" onClick={(e) => handleAiHintClick(e, (val) => handleChange(field, val))} title="AI 智能提示"
-                            style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✨</button>
-                    )}
                 </div>
             </div>
         );
@@ -437,17 +411,49 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             {/* Scrollable Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: 'var(--bg-primary)' }}>
 
+                {/* ── SIMPLE (Worker) ── */}
+                {displayTask.type === 'SIMPLE' && renderSpecialSection('Worker 任务配置', '⚙️', 'var(--color-accent)', (
+                    <>
+                        <div style={{
+                            padding: '10px 12px', borderRadius: '8px', marginBottom: '12px',
+                            background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+                            fontSize: '11px', color: secondaryTextColor, lineHeight: '1.7',
+                        }}>
+                            <b style={{ color: textColor }}>📌 任务名称 (name)</b> 是 Conductor Worker 注册的<b>任务定义名</b>，必须与 Worker 进程监听的名称完全一致（区分大小写）。<br />
+                            <span style={{ opacity: 0.8 }}>示例：<code>send_email_worker</code>、<code>process_payment</code></span>
+                        </div>
+                        {renderFieldValidation('name')}
+                        {renderSmallInput(
+                            'DOMAIN (可选，Worker 路由标签)',
+                            (displayTask as any).domain || '',
+                            (v) => handleChange('domain', v || undefined),
+                            'text',
+                            '如 dev、staging — 留空使用默认 Worker'
+                        )}
+                        <div style={{ fontSize: '11px', color: secondaryTextColor, marginTop: '8px', padding: '8px', borderRadius: '6px', background: 'var(--bg-secondary)' }}>
+                            💡 该 Worker 的返回结果可通过 <code style={{ fontSize: '10px', background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '3px' }}>
+                                {'${' + displayTask.taskReferenceName + '.output.<字段名>}'}
+                            </code> 被后续任务引用
+                        </div>
+                    </>
+                ))}
+
                 {/* ── HTTP ── */}
                 {displayTask.type === 'HTTP' && renderSpecialSection('HTTP 请求配置', '🌐', 'var(--color-accent)', (
                     <>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                            <select value={httpRequest.method || 'GET'} onChange={(e) => handleHttpChange('method', e.target.value)} disabled={!isEditMode}
-                                style={{ width: '90px', padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, cursor: 'pointer' }}>
-                                {['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                            <input placeholder="URI (支持 ${workflow.input.uri})" value={httpRequest.uri || ''}
-                                onChange={(e) => handleHttpChange('uri', e.target.value)} disabled={!isEditMode}
-                                style={{ flex: 1, padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}` }} />
+                        <div style={{ marginBottom: '8px' }}>
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>METHOD & URI *</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <select value={httpRequest.method || 'GET'} onChange={(e) => handleHttpChange('method', e.target.value)} disabled={!isEditMode}
+                                    style={{ width: '90px', padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, cursor: 'pointer' }}>
+                                    {['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <input placeholder="URI (支持 ${workflow.input.uri})" value={httpRequest.uri || ''}
+                                    onChange={(e) => handleHttpChange('uri', e.target.value)} disabled={!isEditMode}
+                                    style={{ flex: 1, padding: '10px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${(validationResults.errors.some(e => e.ref === displayTask.taskReferenceName && e.field === 'inputParameters.http_request.uri')) ? '#ef4444' : borderColor}` }} />
+                            </div>
+                            {renderFieldValidation('inputParameters.http_request.uri')}
+                            {renderFieldValidation('inputParameters.http_request.method')}
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
                             <div>
@@ -478,18 +484,49 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             </div>
                         </div>
                         <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>HEADERS (JSON)</label>
-                            <textarea value={typeof httpRequest.headers === 'object' ? JSON.stringify(httpRequest.headers, null, 2) : '{}'}
-                                onChange={(e) => { try { handleHttpChange('headers', JSON.parse(e.target.value)); } catch { } }}
-                                disabled={!isEditMode} rows={3}
-                                style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>HEADERS</label>
+                            <KeyValueEditor
+                                key={`headers-${displayTask.taskReferenceName}`}
+                                value={typeof httpRequest.headers === 'object' && httpRequest.headers !== null ? httpRequest.headers : {}}
+                                onChange={(v) => handleHttpChange('headers', v)}
+                                disabled={!isEditMode}
+                                taskRef={displayTask.taskReferenceName}
+                                workflowDef={workflowDef ?? undefined}
+                                placeholder="如 Authorization、X-Custom-Header 等"
+                            />
                         </div>
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>BODY (RAW/JSON)</label>
-                        <textarea
-                            value={typeof httpRequest.body === 'object' ? JSON.stringify(httpRequest.body, null, 2) : (httpRequest.body || '')}
-                            onChange={(e) => { let v = e.target.value; try { v = JSON.parse(e.target.value); } catch { } handleHttpChange('body', v); }}
-                            disabled={!isEditMode} rows={4}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        <div>
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>BODY (RAW/JSON)</label>
+                            <textarea
+                                value={httpBodyRaw !== null ? httpBodyRaw : (typeof httpRequest.body === 'object' ? JSON.stringify(httpRequest.body, null, 2) : (httpRequest.body || ''))}
+                                onChange={(e) => {
+                                    const raw = e.target.value;
+                                    setHttpBodyRaw(raw);
+                                    try {
+                                        const parsed = JSON.parse(raw);
+                                        handleHttpChange('body', parsed);
+                                        setHttpBodyError(null);
+                                    } catch {
+                                        try {
+                                            // 非 JSON 时当普通字符串保存
+                                            if (raw.trim() === '' || (!raw.trim().startsWith('{') && !raw.trim().startsWith('['))) {
+                                                handleHttpChange('body', raw);
+                                                setHttpBodyError(null);
+                                            } else {
+                                                setHttpBodyError('JSON 格式错误，请检查括号和引号');
+                                            }
+                                        } catch { setHttpBodyError('JSON 格式错误'); }
+                                    }
+                                }}
+                                onBlur={() => setHttpBodyRaw(null)}
+                                disabled={!isEditMode} rows={4}
+                                style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${httpBodyError ? '#ef4444' : borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                            {httpBodyError && (
+                                <div style={{ fontSize: '11px', color: '#ef4444', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span>⚠️</span> {httpBodyError}
+                                </div>
+                            )}
+                        </div>
                     </>
                 ))}
 
@@ -509,6 +546,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             },
                             { rows: 10, language: (displayTask as any).evaluatorType || 'javascript', style: { background: '#000', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' } }
                         )}
+                        {renderFieldValidation('inputParameters.expression')}
+                        {renderFieldValidation('inputParameters.scriptExpression')}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor, fontStyle: 'italic' }}>
                             提示: 使用 $.input.key 访问输入参数，返回值作为任务输出。
                         </div>
@@ -521,6 +560,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         {renderCodeArea('JQ QUERY EXPRESSION', displayTask.inputParameters?.queryExpression || '',
                             (v) => handleInputParamChange('queryExpression', v),
                             { rows: 6, language: 'jq', style: { color: 'var(--color-accent)' } })}
+                        {renderFieldValidation('inputParameters.queryExpression')}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor }}>
                             输出字段: result（首个结果）、resultList（完整列表）
                         </div>
@@ -531,13 +571,20 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'SUB_WORKFLOW' && renderSpecialSection('子工作流配置', '🏗️', 'var(--color-accent)', (
                     <>
                         {renderSmallInput('WORKFLOW NAME *', displayTask.subWorkflowParam?.name || '', (v) => handleNestedChange('subWorkflowParam', 'name', v), 'text', 'e.g. my_workflow')}
+                        {renderFieldValidation('subWorkflowParam.name')}
                         {renderSmallInput('VERSION', displayTask.subWorkflowParam?.version ?? '', (v) => handleNestedChange('subWorkflowParam', 'version', v ? parseInt(v) : undefined), 'number', '1')}
-                        {renderCodeArea('INPUT PARAMETERS MAPPING (JSON)',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
-                            { rows: 5, language: 'json' })}
-                        <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
-                            传递给子工作流的参数，支持 {'${workflow.input.xxx}'} 表达式
+                        <div style={{ marginBottom: '8px' }}>
+                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>INPUT PARAMETERS MAPPING</label>
+                            <KeyValueEditor
+                                key={`subwf-input-${displayTask.taskReferenceName}`}
+                                ref={kvEditorRef}
+                                value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
+                                onChange={(v) => handleChange('inputParameters', v)}
+                                disabled={!isEditMode}
+                                taskRef={displayTask.taskReferenceName}
+                                workflowDef={workflowDef ?? undefined}
+                                placeholder="传递给子工作流的参数，支持 ${workflow.input.xxx} 表达式"
+                            />
                         </div>
                     </>
                 ))}
@@ -552,6 +599,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), name: v };
                             handleInputParamChange('startWorkflow', sw);
                         }, 'text', 'e.g. target_workflow')}
+                        {renderFieldValidation('inputParameters.startWorkflow.name')}
                         {renderSmallInput('VERSION', displayTask.inputParameters?.startWorkflow?.version ?? '', (v) => {
                             const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), version: v ? parseInt(v) : undefined };
                             handleInputParamChange('startWorkflow', sw);
@@ -571,7 +619,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'TERMINATE' && renderSpecialSection('终止状态配置', '⏹️', 'var(--color-accent)', (
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>TERMINATION STATUS</label>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                             {['COMPLETED', 'FAILED'].map(s => (
                                 <button key={s} onClick={() => handleInputParamChange('terminationStatus', s)} disabled={!isEditMode}
                                     style={{ flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer', background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg, color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? '#fff' : textColor, border: `1px solid ${borderColor}`, fontWeight: 'bold', fontSize: '11px' }}>
@@ -579,6 +627,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 </button>
                             ))}
                         </div>
+                        {renderFieldValidation('inputParameters.terminationStatus')}
+                        <div style={{ marginBottom: '8px' }} />
                         {renderSmallInput('TERMINATION REASON', displayTask.inputParameters?.terminationReason || '', (v) => handleInputParamChange('terminationReason', v), 'text', '终止原因...')}
                         {renderCodeArea('WORKFLOW OUTPUT (JSON)',
                             typeof displayTask.inputParameters?.workflowOutput === 'object' ? JSON.stringify(displayTask.inputParameters.workflowOutput, null, 2) : '{}',
@@ -590,7 +640,8 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {/* ── EVENT ── */}
                 {displayTask.type === 'EVENT' && renderSpecialSection('事件发送配置', '✉️', 'var(--color-accent)', (
                     <>
-                        {renderSmallInput('EVENT SINK *', displayTask.sink || '', (v) => handleChange('sink', v), 'text', 'e.g. sqs:queue_name 或 conductor')}
+                        {renderSmallInput('EVENT SINK *', displayTask.sink || '', (v) => handleChange('sink', v), 'text', 'e.g. sqs:queue_name 或 conductor:my_event')}
+                        {renderFieldValidation('sink')}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px', marginBottom: '8px' }}>
                             支持前缀: conductor | sqs | kafka | amqp | nats
                         </div>
@@ -603,7 +654,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     <>
                         {renderModeSwitch([{ key: 'duration', label: '等待时长' }, { key: 'until', label: '等待到指定时间' }], waitMode, (v) => setWaitMode(v as any))}
                         {waitMode === 'duration'
-                            ? renderSmallInput('DURATION', displayTask.inputParameters?.duration || '', (v) => handleInputParamChange('duration', v), 'text', 'e.g. 30s, 10m, 2 hours')
+                            ? <>{renderSmallInput('DURATION', displayTask.inputParameters?.duration || '', (v) => handleInputParamChange('duration', v), 'text', 'e.g. 30s, 10m, 2h, 1d')}{renderFieldValidation('inputParameters.duration')}</>
                             : renderSmallInput('UNTIL (时间点)', displayTask.inputParameters?.until || '', (v) => handleInputParamChange('until', v), 'text', 'e.g. 2025-06-15 09:00 GMT+00:00')}
                         <div style={{ fontSize: '11px', color: secondaryTextColor, lineHeight: '1.6', marginTop: '8px' }}>
                             此任务会使工作流进入 <b>IN_PROGRESS</b> 状态，直到时间满足或外部 API 触发完成。
@@ -625,6 +676,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 {renderCodeArea('CASE EXPRESSION (JS)', displayTask.caseExpression || '',
                                     (v) => handleChange('caseExpression', v),
                                     { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
+                                {renderFieldValidation('caseExpression')}
                             </>
                         }
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '8px' }}>
@@ -642,6 +694,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 {renderCodeArea('LOOP CONDITION (JS) *', displayTask.loopCondition || '',
                                     (v) => handleChange('loopCondition', v),
                                     { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
+                                {renderFieldValidation('loopCondition')}
                                 <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
                                     条件为 true 时继续循环，false 时退出
                                 </div>
@@ -699,6 +752,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 </div>
                             </>
                         )}
+                        {renderFieldValidation('dynamicForkTasksParam')}
                     </>
                 ))}
 
@@ -706,6 +760,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'DYNAMIC' && renderSpecialSection('动态任务配置', '🎯', 'var(--color-accent)', (
                     <>
                         {renderSmallInput('DYNAMIC TASK NAME PARAM *', (displayTask as any).dynamicTaskNameParam || '', (v) => handleChange('dynamicTaskNameParam', v), 'text', 'e.g. taskToExecute')}
+                        {renderFieldValidation('dynamicTaskNameParam')}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
                             运行时从 inputParameters 的指定键中读取实际任务类型名（如 "HTTP"、"SIMPLE"）
                         </div>
@@ -729,7 +784,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'KAFKA_PUBLISH' && renderSpecialSection('Kafka 推送配置', '📨', 'var(--color-accent)', (
                     <>
                         {renderSmallInput('BOOTSTRAP SERVERS *', displayTask.inputParameters?.bootStrapServers || '', (v) => handleInputParamChange('bootStrapServers', v), 'text', 'localhost:9092')}
+                        {renderFieldValidation('inputParameters.bootStrapServers')}
                         {renderSmallInput('TOPIC *', displayTask.inputParameters?.topic || '', (v) => handleInputParamChange('topic', v), 'text', 'my_topic')}
+                        {renderFieldValidation('inputParameters.topic')}
                         {renderSmallInput('KEY (消息分区键)', displayTask.inputParameters?.key || '', (v) => handleInputParamChange('key', v), 'text', '')}
                         {renderCodeArea('VALUE (消息内容)',
                             typeof displayTask.inputParameters?.value === 'object' ? JSON.stringify(displayTask.inputParameters.value, null, 2) : (displayTask.inputParameters?.value || ''),
@@ -746,12 +803,21 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {displayTask.type === 'SET_VARIABLE' && renderSpecialSection('变量配置', '📦', 'var(--color-accent)', (
                     <>
                         <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px' }}>
-                            在 inputParameters 中定义要设置的变量名和值，后续任务通过 {'${workflow.variables.varName}'} 访问。
+                            定义要设置的变量名和值，后续任务通过{' '}
+                            <code style={{ fontSize: '10px', background: 'rgba(0,0,0,0.15)', padding: '1px 4px', borderRadius: '3px' }}>
+                                {'${workflow.variables.varName}'}
+                            </code>{' '}访问。
                         </div>
-                        {renderCodeArea('VARIABLES (JSON)',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
-                            { rows: 6, language: 'json' })}
+                        <KeyValueEditor
+                            key={`setvar-${displayTask.taskReferenceName}`}
+                            ref={kvEditorRef}
+                            value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
+                            onChange={(v) => handleChange('inputParameters', v)}
+                            disabled={!isEditMode}
+                            taskRef={displayTask.taskReferenceName}
+                            workflowDef={workflowDef ?? undefined}
+                            placeholder="点击 + 添加变量，如 orderTotal → ${fetch_order.output.total}"
+                        />
                     </>
                 ))}
 
@@ -762,11 +828,11 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     {renderInput('任务唯一引用名 (Reference Name)', 'taskReferenceName')}
                     {renderInput('任务描述', 'description')}
 
-                    {/* inputParameters with snippet panel + AI fill */}
+                    {/* inputParameters with snippet panel + AI fill + KeyValueEditor */}
                     <div style={{ marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', gap: '6px' }}>
                             <label style={{ fontSize: '11px', color: secondaryTextColor, fontWeight: '600', textTransform: 'uppercase', flex: 1 }}>
-                                输入参数 (inputParameters) <span style={{ opacity: 0.5, fontWeight: 'normal' }}>(JSON)</span>
+                                输入参数 (inputParameters)
                             </label>
                             {isEditMode && (
                                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -826,10 +892,54 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 </pre>
                             </div>
                         )}
-                        {renderCodeArea('',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : (displayTask.inputParameters ?? ''),
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { setLocalTask(prev => ({ ...prev!, inputParameters: v as any }) as any); } },
-                            { rows: 5, language: 'json', 'data-field': 'inputParameters', style: { outline: 'none' } })}
+                        {/* P5.1.2: KeyValueEditor 替代原始 JSON textarea */}
+                        <KeyValueEditor
+                            key={`input-params-${displayTask.taskReferenceName}`}
+                            ref={kvEditorRef}
+                            value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
+                            onChange={(v) => handleChange('inputParameters', v)}
+                            disabled={!isEditMode}
+                            taskRef={displayTask.taskReferenceName}
+                            workflowDef={workflowDef ?? undefined}
+                        />
+                        {/* P5.4.3: 字段级校验反馈（通用兜底，排除已在专属字段旁显示的条目） */}
+                        {(() => {
+                            // 这些 field 路径已在对应类型的专属 section 内通过 renderFieldValidation 显示
+                            const SPECIFICALLY_RENDERED = new Set([
+                                'name',
+                                'inputParameters.expression', 'inputParameters.scriptExpression',
+                                'inputParameters.queryExpression',
+                                'loopCondition', 'caseExpression',
+                                'inputParameters.http_request.uri', 'inputParameters.http_request.method',
+                                'subWorkflowParam.name',
+                                'inputParameters.startWorkflow.name',
+                                'inputParameters.terminationStatus',
+                                'dynamicTaskNameParam', 'dynamicForkTasksParam',
+                                'inputParameters.bootStrapServers', 'inputParameters.topic',
+                                'inputParameters.duration',
+                                'sink',
+                            ]);
+                            const taskWarnings = [
+                                ...(validationResults.errors.filter(e => e.ref === displayTask.taskReferenceName && e.field && !SPECIFICALLY_RENDERED.has(e.field))),
+                                ...(validationResults.warnings.filter(w => w.ref === displayTask.taskReferenceName && w.field && !SPECIFICALLY_RENDERED.has(w.field))),
+                            ];
+                            if (taskWarnings.length === 0) return null;
+                            return (
+                                <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                    {taskWarnings.map((item, i) => (
+                                        <div key={i} style={{
+                                            fontSize: '11px', display: 'flex', alignItems: 'flex-start', gap: '4px',
+                                            color: item.level === 'error' || (!item.level && validationResults.errors.includes(item)) ? '#ef4444' : '#f59e0b',
+                                        }}>
+                                            <span style={{ flexShrink: 0, marginTop: '1px' }}>
+                                                {(item.level === 'error' || validationResults.errors.includes(item)) ? '❌' : '⚠️'}
+                                            </span>
+                                            <span>{item.message}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -883,7 +993,6 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 </div>
             )}
 
-            <ParameterSuggester isOpen={suggesterOpen} onClose={() => setSuggesterOpen(false)} onSelect={onSelectSuggestion} suggestions={currentSuggestions} anchorRect={suggesterAnchor} />
         </div>
 
         {/* 全屏代码编辑器（Portal，挂载到 document.body） */}

@@ -2,6 +2,27 @@
  * Conductor 校验规则配置
  */
 
+/**
+ * P5.4.2: 轻量括号/引号配平检查（不做完整 JS 解析）
+ */
+function isBalanced(expr: string): boolean {
+    const stack: string[] = [];
+    let inStr: string | null = null;
+    for (let i = 0; i < expr.length; i++) {
+        const ch = expr[i];
+        if (inStr) {
+            if (ch === inStr && expr[i - 1] !== '\\') inStr = null;
+            continue;
+        }
+        if (ch === '"' || ch === "'" || ch === '`') { inStr = ch; continue; }
+        if (ch === '(' || ch === '[' || ch === '{') { stack.push(ch); continue; }
+        if (ch === ')') { if (stack.pop() !== '(') return false; continue; }
+        if (ch === ']') { if (stack.pop() !== '[') return false; continue; }
+        if (ch === '}') { if (stack.pop() !== '{') return false; continue; }
+    }
+    return stack.length === 0 && inStr === null;
+}
+
 export const WORKFLOW_RULES = [
     { field: 'name', type: 'required', message: '工作流名称 (name) 必填' },
     { field: 'version', type: 'required', message: '工作流版本 (version) 必填' },
@@ -28,13 +49,43 @@ export const TASK_RULES = {
                 field: 'inputParameters.expression', type: 'custom',
                 validate: (_val: any, task: any) => !!(task?.inputParameters?.expression || task?.inputParameters?.scriptExpression),
                 message: 'INLINE 任务缺少脚本表达式 (expression)'
+            },
+            // P5.4.2: 表达式括号/引号配平
+            {
+                field: 'inputParameters.expression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.inputParameters?.expression || task?.inputParameters?.scriptExpression || '';
+                    if (!expr) return true;
+                    return isBalanced(expr);
+                },
+                message: 'INLINE 表达式括号或引号可能不匹配'
             }
         ],
         'LAMBDA': [
-            { field: 'inputParameters.scriptExpression', type: 'required', message: 'LAMBDA 任务缺少脚本表达式 (scriptExpression)' }
+            { field: 'inputParameters.scriptExpression', type: 'required', message: 'LAMBDA 任务缺少脚本表达式 (scriptExpression)' },
+            // P5.4.2
+            {
+                field: 'inputParameters.scriptExpression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.inputParameters?.scriptExpression || '';
+                    if (!expr) return true;
+                    return isBalanced(expr);
+                },
+                message: 'LAMBDA 表达式括号或引号可能不匹配'
+            }
         ],
         'JSON_JQ_TRANSFORM': [
-            { field: 'inputParameters.queryExpression', type: 'required', message: 'JQ 任务缺少查询表达式 (queryExpression)' }
+            { field: 'inputParameters.queryExpression', type: 'required', message: 'JQ 任务缺少查询表达式 (queryExpression)' },
+            // P5.4.2: JQ 表达式首字符合法性
+            {
+                field: 'inputParameters.queryExpression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.inputParameters?.queryExpression || '';
+                    if (!expr) return true;
+                    return /^[.\[{("'a-zA-Z$@]/.test(expr.trim());
+                },
+                message: 'JQ 查询表达式首字符可疑，通常以 . 或 [ 开头'
+            }
         ],
         'SUB_WORKFLOW': [
             { field: 'subWorkflowParam.name', type: 'required', message: '子工作流任务缺少子流程名称 (name)' }
@@ -58,6 +109,16 @@ export const TASK_RULES = {
                 field: 'loopCondition', type: 'custom',
                 validate: (_val: any, task: any) => !!(task?.loopCondition || task?.inputParameters?.items),
                 message: '循环任务需要配置退出条件 (loopCondition) 或列表 (items)'
+            },
+            // P5.4.2: 括号/引号配平轻量预检
+            {
+                field: 'loopCondition', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.loopCondition || '';
+                    if (!expr) return true;
+                    return isBalanced(expr);
+                },
+                message: 'loopCondition 表达式括号或引号可能不匹配'
             }
         ],
         'DECISION': [
@@ -67,6 +128,16 @@ export const TASK_RULES = {
                     const keys = Object.keys(val || {});
                     return new Set(keys).size === keys.length;
                 }, message: '决策分支条件不能重复'
+            },
+            // P5.4.2: caseExpression 轻量预检
+            {
+                field: 'caseExpression', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const expr: string = task?.caseExpression || '';
+                    if (!expr || task?.evaluatorType !== 'javascript') return true;
+                    return isBalanced(expr);
+                },
+                message: 'caseExpression 表达式括号或引号可能不匹配'
             }
         ],
         'SWITCH': [
@@ -82,6 +153,56 @@ export const TASK_RULES = {
                 ),
                 message: 'FORK_JOIN_DYNAMIC 任务需要配置 dynamicForkTasksParam 或 forkTaskType 或 forkTaskWorkflow',
                 level: 'warning'
+            }
+        ],
+        'KAFKA_PUBLISH': [
+            {
+                field: 'inputParameters.bootStrapServers', type: 'custom',
+                validate: (_val: any, task: any) => !!(task?.inputParameters?.bootStrapServers),
+                message: 'Kafka 任务缺少 Bootstrap Servers 地址 (bootStrapServers)'
+            },
+            {
+                field: 'inputParameters.topic', type: 'custom',
+                validate: (_val: any, task: any) => !!(task?.inputParameters?.topic),
+                message: 'Kafka 任务缺少目标 Topic'
+            }
+        ],
+        'WAIT': [
+            {
+                field: 'inputParameters.duration', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    if (task?.inputParameters?.until) return true;
+                    const dur: string = task?.inputParameters?.duration || '';
+                    if (!dur) return true;
+                    return /^\d+\s*(s|m|h|d|seconds?|minutes?|hours?|days?)$/i.test(dur.trim());
+                },
+                message: 'WAIT 时长格式建议为 30s、10m、2h、1d 或 "2 hours"'
+            }
+        ],
+        'SIMPLE': [
+            {
+                field: 'name', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const n: string = task?.name || '';
+                    return !n || /^[a-zA-Z0-9_]+$/.test(n);
+                },
+                message: 'Worker 任务名建议仅包含字母、数字和下划线，需与 Worker 注册的任务定义名完全一致'
+            }
+        ],
+        'EVENT': [
+            {
+                field: 'sink', type: 'custom',
+                validate: (_val: any, task: any) => !!(task?.sink),
+                message: 'EVENT 任务缺少事件目标 (sink)'
+            },
+            {
+                field: 'sink', type: 'custom', level: 'warning',
+                validate: (_val: any, task: any) => {
+                    const sink: string = task?.sink || '';
+                    if (!sink) return true;
+                    return /^(conductor|sqs|kafka|amqp|nats):/.test(sink);
+                },
+                message: 'sink 格式应为 "协议:目标"，如 conductor:event、sqs:queue_name'
             }
         ]
     }

@@ -399,12 +399,15 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowStore.setWorkflow(def);
         workflowStore.setMode('edit');
         setShowFormWizard(false);
-    }, [workflowStore]);
+        // Auto-generate Mermaid so user immediately sees the business view
+        aiStore.setPendingAutoSend('请用Mermaid流程图展示刚创建的工作流业务逻辑');
+    }, [workflowStore, aiStore]);
 
     const handleWizardAskAi = useCallback((prompt: string) => {
         setShowFormWizard(false);
         aiStore.setChatPanelOpen(true);
-        aiStore.addMessage({ role: 'user', content: prompt });
+        // Route through AI pipeline, not just addMessage (which has no AI effect)
+        aiStore.setPendingAutoSend(prompt);
     }, [aiStore]);
 
     // ── Business view execution status map ─────────────────────────────────
@@ -505,6 +508,10 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         ];
         aiStore.setFollowUpChips(chips);
 
+        // Auto-generate Mermaid business view so the user can see the result
+        // without having to open the canvas drawer manually.
+        aiStore.setPendingAutoSend('请用Mermaid流程图展示刚刚更新的工作流业务逻辑');
+
         if (onAiMetrics) onAiMetrics(aiStore.getMetrics());
     }, [aiStore.pendingProposal, onAiMetrics]);
 
@@ -524,7 +531,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
 
     return (
         <div
-            className={`ai-workflow-ide ${layoutMode}-mode`}
+            className={`ai-workflow-ide ${layoutMode}-mode${canvasDrawerOpen ? '' : ' canvas-closed'}`}
             data-mode={currentTheme}
             data-brand={currentColor}
             style={{
@@ -532,10 +539,9 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                 '--chat-width': chatWidth + 'px',
             } as React.CSSProperties}
         >
-            {/* Left: AI Chat panel — primary view, expands to fill space when canvas is hidden */}
+            {/* Left: AI Chat panel — primary view; CSS class canvas-closed handles wide layout */}
             <div
                 className={`ai-chat-side ${aiStore.chatPanelOpen ? '' : 'collapsed'}`}
-                style={canvasDrawerOpen ? undefined : { flex: 1, width: 'auto' }}
             >
                 <AiCommandCenter
                     systemPrompt={systemPrompt}
@@ -613,10 +619,9 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                             executionStatus={executionStatusMap}
                             onStepClick={(taskRef, taskType) => {
                                 aiStore.setChatPanelOpen(true);
-                                aiStore.addMessage({
-                                    role: 'user',
-                                    content: `请介绍步骤「${taskRef}」(类型: ${taskType}) 的作用和配置建议`,
-                                });
+                                // Use setPendingAutoSend so this triggers an actual AI request,
+                                // not just a store mutation (addMessage alone has no AI effect)
+                                aiStore.setPendingAutoSend(`请介绍步骤「${taskRef}」(类型: ${taskType}) 的作用和配置建议`);
                             }}
                         />
                     </div>

@@ -2894,3 +2894,84 @@
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* ─── Canvas-closed: conversation-first full-width layout ────────────────── */
+/* Applied to .ai-workflow-ide when canvas drawer is hidden.                  */
+/* All inner sizing was designed for 420px; these rules re-calibrate for wide */
+/* viewports so proportions, readability, and component layout are correct.   */
+
+.ai-workflow-ide.canvas-closed {
+    /* Center the chat column horizontally */
+    justify-content: center;
+}
+
+.ai-workflow-ide.canvas-closed .ai-chat-side {
+    /* Fill available space but cap at a readable conversation width */
+    width: 100%;
+    max-width: 760px;
+    min-width: 0;
+    /* Remove divider — nothing to the right */
+    border-right: none;
+}
+
+/* Message bubbles: cap width so long text isn't stretched across the screen */
+.ai-workflow-ide.canvas-closed .ai-cc-messages {
+    padding: 20px 24px;
+}
+
+.ai-workflow-ide.canvas-closed .ai-cc-msg {
+    max-width: 76%;
+}
+
+.ai-workflow-ide.canvas-closed .ai-cc-msg.user {
+    max-width: 68%;
+}
+
+/* Mermaid and code blocks: fill the assistant bubble width */
+.ai-workflow-ide.canvas-closed .ai-cc-msg.assistant pre,
+.ai-workflow-ide.canvas-closed .ai-cc-streaming pre {
+    max-width: 100%;
+}
+
+/* Template gallery: 3 columns in wide mode (was 2) */
+.ai-workflow-ide.canvas-closed .ai-template-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.ai-workflow-ide.canvas-closed .ai-template-card {
+    /* Restore proportional height — no longer squished */
+    padding: 12px 14px;
+    min-height: 72px;
+}
+
+/* Welcome chips: allow them to flow naturally in wider container */
+.ai-workflow-ide.canvas-closed .ai-welcome-chips {
+    max-width: 100%;
+    gap: 8px;
+}
+
+.ai-workflow-ide.canvas-closed .ai-welcome-chip {
+    font-size: 13px;
+    padding: 7px 14px;
+}
+
+/* Input area: cap width to match message container */
+.ai-workflow-ide.canvas-closed .ai-cc-input-area {
+    padding: 12px 24px 16px;
+}
+
+/* Onboarding card: comfortable width in wide mode */
+.ai-workflow-ide.canvas-closed .ai-onboarding-card {
+    max-width: 480px;
+    align-self: center;
+}
+
+/* Follow-up chips row */
+.ai-workflow-ide.canvas-closed .ai-follow-up-chips {
+    max-width: 100%;
+}
+
+/* Node context strip at full-width */
+.ai-workflow-ide.canvas-closed .ai-node-context-strip {
+    margin: 0 24px 4px;
+}

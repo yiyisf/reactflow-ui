@@ -124,6 +124,12 @@ interface AiState {
     pendingClarification: PendingClarification | null;
     /** Pending workflow recommendation awaiting user selection */
     pendingRecommendation: PendingRecommendation | null;
+    /**
+     * Message queued for the AI pipeline from outside AiCommandCenter
+     * (e.g. proposal acceptance, canvas node click). AiCommandCenter
+     * picks this up via useEffect and calls handleSendText(), then clears it.
+     */
+    pendingAutoSend: string | null;
 }
 
 interface AiActions {
@@ -157,6 +163,8 @@ interface AiActions {
     clearClarification: () => void;
     setRecommendation: (r: Omit<PendingRecommendation, 'id'>) => string;
     clearRecommendation: () => void;
+    /** Queue a message to be sent through the AI pipeline by AiCommandCenter */
+    setPendingAutoSend: (msg: string | null) => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -193,6 +201,7 @@ const useAiStore = create<AiStore>()(
             undoStack: [],
             pendingClarification: null,
             pendingRecommendation: null,
+            pendingAutoSend: null,
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -228,6 +237,7 @@ const useAiStore = create<AiStore>()(
                 followUpChips: null,
                 pendingClarification: null,
                 pendingRecommendation: null,
+                pendingAutoSend: null,
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
@@ -302,6 +312,8 @@ const useAiStore = create<AiStore>()(
                 return id;
             },
             clearRecommendation: () => set({ pendingRecommendation: null }),
+
+            setPendingAutoSend: (msg) => set({ pendingAutoSend: msg }),
         }),
         {
             name: 'ai-workflow-config',

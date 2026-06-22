@@ -139,9 +139,9 @@ function buildWelcomeChips(
     }
     return [
         '解读一下当前工作流的业务逻辑',
-        '用Mermaid流程图展示当前工作流的业务逻辑',
         '检查并修复当前工作流的问题',
         '为当前流程添加失败重试机制',
+        '把当前流程改成并行执行',
     ];
 }
 
@@ -256,6 +256,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         undoStack,
         pendingClarification,
         pendingRecommendation,
+        pendingAutoSend,
         addMessage,
         updateMessage,
         setStreaming,
@@ -274,6 +275,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         clearClarification,
         setRecommendation,
         clearRecommendation,
+        setPendingAutoSend,
     } = useAiStore();
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
@@ -307,6 +309,14 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     useEffect(() => {
         return () => { abortRef.current?.abort(); };
     }, []);
+
+    // Consume pendingAutoSend: triggered by external code (proposal acceptance, canvas click, wizard)
+    // Wait until not streaming and no blocking overlay, then fire the queued message.
+    useEffect(() => {
+        if (!pendingAutoSend || isStreaming || pendingProposal || pendingPlan || pendingClarification) return;
+        setPendingAutoSend(null);
+        handleSendText(pendingAutoSend);
+    }, [pendingAutoSend, isStreaming, pendingProposal, pendingPlan, pendingClarification]);
 
     const autoResize = () => {
         const el = textareaRef.current;

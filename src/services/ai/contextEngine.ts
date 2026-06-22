@@ -199,6 +199,15 @@ export function formatContextForPrompt(ctx: WorkflowContext): string {
         parts.push(`### 当前校验问题\n${ctx.validationIssues.join('\n')}`);
     }
 
+    // Full workflow JSON — only injected when includeFull is requested (VISUALIZE / REFACTOR / etc.)
+    // This is the authoritative source for the AI; any diagram or analysis MUST be based on this.
+    if (ctx.fullDef) {
+        parts.push(
+            `### 画布工作流完整 JSON（以此为权威数据源，生成流程图或分析必须基于此）\n` +
+            `\`\`\`json\n${JSON.stringify(ctx.fullDef, null, 2)}\n\`\`\``
+        );
+    }
+
     if (ctx.execution) {
         const ex = ctx.execution;
         const statusLine = ex.workflowStatus ? `工作流状态：**${ex.workflowStatus}**` : '';

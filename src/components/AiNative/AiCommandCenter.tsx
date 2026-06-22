@@ -22,6 +22,8 @@ import PlanCard from './PlanCard';
 import RepairCard from './RepairCard';
 import ClarificationCard from './ClarificationCard';
 import RecommendationCard from './RecommendationCard';
+import MermaidBlock from './MermaidBlock';
+import WorkflowRunCard from './WorkflowRunCard';
 import type { ExecutionActions } from '../../types/workflow';
 import type { AiEvent } from '../../types/aiEvents';
 
@@ -48,6 +50,14 @@ interface AiCommandCenterProps {
         canRepair?: boolean;
         restrictionMessage?: string;
     };
+    /** Whether the canvas drawer is currently open */
+    canvasOpen?: boolean;
+    onOpenCanvas?: () => void;
+    onCloseCanvas?: () => void;
+    /** Trigger execution of the current workflow; returns executionId */
+    onTriggerExecution?: (workflowName: string, params: Record<string, any>) => Promise<string>;
+    /** Poll execution status by executionId */
+    onPollExecution?: (executionId: string) => Promise<{ status: string; output?: any }>;
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -58,7 +68,11 @@ const renderMarkdown = (content: string): React.ReactNode => {
         if (part.startsWith('```') && part.endsWith('```')) {
             const inner = part.slice(3, -3);
             const nlIdx = inner.indexOf('\n');
+            const lang = nlIdx >= 0 ? inner.slice(0, nlIdx).trim().toLowerCase() : '';
             const code = nlIdx >= 0 ? inner.slice(nlIdx + 1) : inner;
+            if (lang === 'mermaid') {
+                return <MermaidBlock key={i} code={code} />;
+            }
             return <pre key={i} style={{ margin: '8px 0', padding: '8px', background: 'var(--bg-primary)', borderRadius: 6, fontSize: 12, overflow: 'auto', border: '1px solid var(--border-primary)' }}><code>{code}</code></pre>;
         }
         const tokens: React.ReactNode[] = [];
@@ -125,9 +139,9 @@ function buildWelcomeChips(
     }
     return [
         '解读一下当前工作流的业务逻辑',
+        '用Mermaid流程图展示当前工作流的业务逻辑',
         '检查并修复当前工作流的问题',
         '为当前流程添加失败重试机制',
-        '把当前流程改成并行执行',
     ];
 }
 
@@ -224,6 +238,11 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     executionActions,
     onAiEvent,
     aiPermissions,
+    canvasOpen,
+    onOpenCanvas,
+    onCloseCanvas,
+    onTriggerExecution,
+    onPollExecution,
 }) => {
     const {
         messages,
@@ -274,6 +293,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const [guardBlocked, setGuardBlocked] = useState<string | null>(null);
     // D2: last failed input for retry
     const [retryInput, setRetryInput] = useState<string | null>(null);
+    // Inline execution run card
+    const [showRunCard, setShowRunCard] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -795,6 +816,15 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             )}
                         </div>
                         <div className="ai-cc-actions">
+                            {(onOpenCanvas || onCloseCanvas) && (
+                                <button
+                                    onClick={canvasOpen ? onCloseCanvas : onOpenCanvas}
+                                    title={canvasOpen ? '关闭画布' : '查看画布'}
+                                    className={`ai-canvas-toggle-btn${canvasOpen ? ' active' : ''}`}
+                                >
+                                    🗺️
+                                </button>
+                            )}
                             {showConfigButton && (
                                 <button onClick={onShowConfig} title="配置 AI 服务">⚙️</button>
                             )}
@@ -890,6 +920,19 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                                 ))}
                                             </div>
                                         )}
+                                        {/* Execute workflow quick action (non-AI, only when workflow loaded and execution wired) */}
+                                        {workflowDef && onTriggerExecution && onPollExecution && !showRunCard && (
+                                            <div className="ai-quick-actions">
+                                                <button
+                                                    className="ai-run-action-chip"
+                                                    onClick={() => setShowRunCard(true)}
+                                                    disabled={isStreaming}
+                                                    title="执行当前工作流"
+                                                >
+                                                    ▶ 执行工作流
+                                                </button>
+                                            </div>
+                                        )}
                                         {/* F2: Runtime analysis chips */}
                                         {runtimeChips.length > 0 && (
                                             <div className="ai-follow-up-chips">
@@ -912,6 +955,16 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 )}
                             </React.Fragment>
                         ))}
+
+                        {/* Inline execution run card */}
+                        {showRunCard && workflowDef && onTriggerExecution && onPollExecution && (
+                            <WorkflowRunCard
+                                workflowDef={workflowDef}
+                                onTriggerExecution={onTriggerExecution}
+                                onPollExecution={onPollExecution}
+                                onClose={() => setShowRunCard(false)}
+                            />
+                        )}
 
                         {/* PlanCard: pending AI plan awaiting user confirmation */}
                         {pendingPlan && !isStreaming && (

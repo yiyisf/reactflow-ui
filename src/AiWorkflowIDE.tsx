@@ -174,6 +174,16 @@ export interface AiWorkflowIDEProps {
     onWorkflowChange?: (def: WorkflowDef) => void;
     onRequestImport?: () => void;
     executionActions?: ExecutionActions;
+    /**
+     * 触发执行当前工作流，返回 executionId。
+     * 若提供此回调，AI 对话中将出现"执行工作流"快捷操作。
+     */
+    onTriggerExecution?: (workflowName: string, params: Record<string, any>) => Promise<string>;
+    /**
+     * 轮询执行状态，由 executionId 查询。
+     * 需与 onTriggerExecution 一起提供。
+     */
+    onPollExecution?: (executionId: string) => Promise<{ status: string; output?: any }>;
     /** AI 操作指标回调（accept/reject 次数等） */
     onAiMetrics?: (metrics: any) => void;
     /**
@@ -239,6 +249,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         onWorkflowChange,
         onRequestImport,
         executionActions,
+        onTriggerExecution,
+        onPollExecution,
         onAiMetrics,
         onAiEvent,
         aiPermissions,
@@ -255,6 +267,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     const [chatWidth, setChatWidth] = useState(420);
     const [showBusinessView, setShowBusinessView] = useState(false);
     const [showFormWizard, setShowFormWizard] = useState(false);
+    // Canvas drawer starts hidden — conversation is the primary view
+    const [canvasDrawerOpen, setCanvasDrawerOpen] = useState(false);
 
     // ── Appearance: apply once on mount ────────────────────────────────────
     const initRef = useRef(false);
@@ -518,8 +532,11 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                 '--chat-width': chatWidth + 'px',
             } as React.CSSProperties}
         >
-            {/* Left: AI Chat panel (collapsible) */}
-            <div className={`ai-chat-side ${aiStore.chatPanelOpen ? '' : 'collapsed'}`}>
+            {/* Left: AI Chat panel — primary view, expands to fill space when canvas is hidden */}
+            <div
+                className={`ai-chat-side ${aiStore.chatPanelOpen ? '' : 'collapsed'}`}
+                style={canvasDrawerOpen ? undefined : { flex: 1, width: 'auto' }}
+            >
                 <AiCommandCenter
                     systemPrompt={systemPrompt}
                     systemPromptExtra={systemPromptExtra}
@@ -528,29 +545,39 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     executionActions={executionActions}
                     onAiEvent={onAiEvent}
                     aiPermissions={aiPermissions}
+                    canvasOpen={canvasDrawerOpen}
+                    onOpenCanvas={() => setCanvasDrawerOpen(true)}
+                    onCloseCanvas={() => setCanvasDrawerOpen(false)}
+                    onTriggerExecution={onTriggerExecution}
+                    onPollExecution={onPollExecution}
                 />
             </div>
 
-            {/* Resizable divider (desktop/tablet only) */}
-            {layoutMode !== 'mobile' && (
+            {/* Resizable divider — only visible when canvas drawer is open */}
+            {layoutMode !== 'mobile' && canvasDrawerOpen && (
                 <div
                     className="ai-resize-divider"
                     onMouseDown={handleDividerDrag}
                 />
             )}
 
-            {/* Collapse/expand toggle */}
-            <button
-                className="ai-toggle-btn"
-                style={{ left: aiStore.chatPanelOpen ? chatWidth + 'px' : '0px' }}
-                onClick={() => aiStore.toggleChatPanel()}
-                title={aiStore.chatPanelOpen ? '收起 AI 面板' : '展开 AI 面板'}
-            >
-                {aiStore.chatPanelOpen ? '◀' : '▶'}
-            </button>
+            {/* Chat/canvas collapse toggle — only shown when canvas is open */}
+            {canvasDrawerOpen && (
+                <button
+                    className="ai-toggle-btn"
+                    style={{ left: aiStore.chatPanelOpen ? chatWidth + 'px' : '0px' }}
+                    onClick={() => aiStore.toggleChatPanel()}
+                    title={aiStore.chatPanelOpen ? '收起 AI 面板' : '展开 AI 面板'}
+                >
+                    {aiStore.chatPanelOpen ? '◀' : '▶'}
+                </button>
+            )}
 
-            {/* Right: Canvas + ReviewBar */}
-            <div className={`ai-canvas-side${layoutMode === 'mobile' && canvasVisible ? ' canvas-visible' : ''}`}>
+            {/* Right: Canvas + ReviewBar — hidden until user opens drawer */}
+            <div
+                className={`ai-canvas-side${layoutMode === 'mobile' && canvasVisible ? ' canvas-visible' : ''}`}
+                style={canvasDrawerOpen ? undefined : { display: 'none' }}
+            >
                 {/* Canvas toolbar: view toggle + create button */}
                 <div className="ai-canvas-toolbar">
                     <div className="biz-view-toggle">

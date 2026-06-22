@@ -34,6 +34,7 @@ import { useToast } from '../hooks/useToast';
 import { ExecutionActions } from '../types/workflow';
 import useAiStore from '../store/aiStore';
 import { parseWorkflow } from '../parser/conductorParser';
+import { getLayoutedElements } from '../layout/autoLayout';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -182,13 +183,18 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 { hideEmptyBranches: false },
             );
 
+            // Apply dagre layout so nodes get proper positions (not all stacked at 0,0)
+            const { nodes: layoutedPNodes, edges: layoutedPEdges } = getLayoutedElements(
+                pNodes, pEdges, { direction: layoutDirection, mode: 'edit' },
+            );
+
             const addedSet = new Set(pendingProposal.diff.added);
             const modifiedSet = new Set(pendingProposal.diff.modified);
             const removedSet = new Set(pendingProposal.diff.removed);
             const currentNodeMap = new Map(nodes.map(n => [n.data?.taskReferenceName, n]));
 
             // Proposed workflow nodes (all except editor-only plusNodes)
-            const previewNodes = pNodes
+            const previewNodes = layoutedPNodes
                 .filter(n => n.type !== 'plusNode')
                 .map(n => {
                     const ref = n.data?.taskReferenceName;
@@ -214,7 +220,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     data: { ...n.data, proposalStatus: 'removed' as const },
                 }));
 
-            return { nodes: [...previewNodes, ...removedNodes], edges: pEdges };
+            return { nodes: [...previewNodes, ...removedNodes], edges: layoutedPEdges };
         } catch {
             return null; // Fall back to normal rendering if parse fails
         }
@@ -629,7 +635,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             </ReactFlow>
 
             
-            {!workflowDef && <EmptyStatePanel onRequestImport={onRequestImport} />}
+            {!workflowDef && !pendingProposal && <EmptyStatePanel onRequestImport={onRequestImport} />}
 
             {workflowDef && nodes.length === 0 && mode === 'edit' && (
                 <div style={{

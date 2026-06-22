@@ -438,8 +438,11 @@ export function applyPartialProposal(
             if (selection.added.has(ref)) newTasks.push(proposedTask);
             // else: skip — don't add
         } else if (modifiedSet.has(ref)) {
-            // Use proposed if selected, current otherwise
-            newTasks.push(selection.modified.has(ref) ? proposedTask : currentTaskMap.get(ref)!);
+            // Use proposed if selected, current otherwise.
+            // currentTaskMap may not have the ref if the user manually deleted the task
+            // after the proposal was computed — fall back to proposedTask to avoid undefined.
+            const cur = currentTaskMap.get(ref);
+            newTasks.push(selection.modified.has(ref) ? proposedTask : (cur ?? proposedTask));
         } else {
             // Unchanged: keep current version
             const cur = currentTaskMap.get(ref);
@@ -447,11 +450,24 @@ export function applyPartialProposal(
         }
     }
 
-    // Re-insert removed tasks that the user chose NOT to remove
+    // Re-insert removed tasks that the user chose NOT to remove at their original positions.
+    // Appending at the end breaks Conductor's execution order; use the original index to
+    // find the correct splice point.
+    const origOrder = new Map((currentDef.tasks ?? []).map((t, i) => [t.taskReferenceName, i]));
     for (const ref of diff.removed) {
         if (!selection.removed.has(ref)) {
             const cur = currentTaskMap.get(ref);
-            if (cur) newTasks.push(cur);
+            if (!cur) continue;
+            const origIdx = origOrder.get(ref) ?? 0;
+            // Insert after the rightmost task in newTasks whose original index < origIdx
+            let insertAt = 0;
+            for (let i = 0; i < newTasks.length; i++) {
+                const taskOrigIdx = origOrder.get(newTasks[i].taskReferenceName);
+                if (taskOrigIdx !== undefined && taskOrigIdx <= origIdx) {
+                    insertAt = i + 1;
+                }
+            }
+            newTasks.splice(insertAt, 0, cur);
         }
     }
 

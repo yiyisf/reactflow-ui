@@ -206,8 +206,6 @@ export interface WorkflowState {
     executionError: string | null;
     showRunPanel: boolean;
     showAnalysisPanel: boolean;
-    /** Canvas drawer open/close state (edit mode) */
-    showCanvasDrawer: boolean;
     /** P4.1 聚焦参数字段（"去修复"跳转时使用） */
     focusedParamKey: string | null;
 }
@@ -256,8 +254,6 @@ export interface WorkflowActions {
     setShowRunPanel: (show: boolean) => void;
     /** P4.2: 显示/隐藏执行分析面板 */
     setShowAnalysisPanel: (show: boolean) => void;
-    /** Toggle canvas drawer in edit mode */
-    setShowCanvasDrawer: (show: boolean) => void;
     /** P4.2: 更新执行触发状态 */
     setRunState: (state: RunState, execId?: string | null, error?: string | null) => void;
     /** P4.3: 切回 edit 模式并聚焦到指定任务的指定参数字段 */

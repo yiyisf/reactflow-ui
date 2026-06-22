@@ -4,6 +4,59 @@
 
 ---
 
+## 🔄 v0.5.0：配置简单化 × 编辑快速 × 校验准确 (规划中)
+
+**目标**：不堆叠新功能模块，而是把 v0.4.0 闭环的起点——「配置」——做深做精，围绕三个可量化目标提升体验。
+
+> 详细设计见 [docs/v0.5.0-optimization-plan.md](docs/v0.5.0-optimization-plan.md)
+
+### P5.1：可视化参数映射（简单化 + 准确）
+- [ ] **引用上下文计算**：`getAvailableReferences()` 计算当前任务所有合法可引用源（选择器与校验同源）
+- [ ] **KeyValueEditor**：结构化键值编辑器替代手写 JSON，每行支持引用选择器与类型驱动控件
+- [ ] **ReferencePicker**：按来源分组的 `${...}` 引用一键插入，告别手敲 JSONPath
+
+### P5.2：配置一致性与统一存储（简单化）
+- [ ] **统一 inputParameters 存储**：消除 `httpRequest` 双重身份，载入归一化、导出还原 OSS 标准
+- [ ] **上下文帮助系统**：字段级 Tooltip + 示例值集中配置
+- [ ] **快捷片段重构**：分组扩充 + 下沉为所有表达式字段通用
+
+### P5.3：编辑性能优化（快速）
+- [ ] **结构化/非结构化更新分流**：非结构化编辑跳过 parseWorkflow + 重新布局，保留坐标
+- [ ] **校验防抖**：连续输入 ~300ms 防抖执行 validateWorkflow
+- [ ] **布局缓存与小流程短路**：结构签名不变时复用坐标，<30 节点跳过蛇形布局
+
+### P5.4：静态校验增强（准确）
+- [ ] **参数引用静态校验**：引用不存在/下游任务/未声明入参在设计时即提示
+- [ ] **表达式轻量预检**：INLINE/DO_WHILE/DECISION/JQ 低成本语法检查
+- [ ] **字段级实时反馈**：面板内 ❌/⚠️ 行内提示，JSON 错误不再静默吞掉
+
+---
+
+## ✅ v0.4.0：AI 参数自动化 × 执行验证闭环 × 智能结果分析 (已发布)
+
+**目标**：打通"设计 → 验证 → 修复"完整闭环，让工作流参数配置与执行验证形成 AI 辅助的自循环能力。
+
+> 详细规划见 [docs/v0.4.0-release-plan.md](docs/v0.4.0-release-plan.md)
+
+### P4.1：AI 参数配置自动化增强
+- [x] **整体参数块 AI 自动生成**：TaskDetailPanel 新增"✨ AI 填充"按钮，根据任务类型 + 上游任务 + 工作流入参自动生成完整 `inputParameters` JSON，diff 预览后一键应用
+- [x] **WorkflowInputParam Schema 增强**：`workflowDef.inputParameters` 支持结构化（type、required、description、example），向后兼容 `string[]` 旧格式
+- [ ] **参数引用有效性校验**：实时检测 `${taskRef.output.field}` 引用是否合法（规划中）
+
+### P4.2：工作流入参配置与执行验证
+- [x] **WorkflowInputParam 结构化类型**：新增 `WorkflowInputParam` TS 类型 + `parseWorkflowInputParams()` 工具函数
+- [x] **WorkflowRunPanel**：edit 模式工具栏"▶ 执行验证"，表单模式（根据 inputParameters 声明动态渲染）/ JSON 编辑器双模式
+- [x] **执行触发 Props**：`onTriggerExecution` / `onPollExecution` / `executionPollInterval`，执行后指数退避轮询，自动切换 run 模式
+- [x] **WorkflowSettingsPanel 升级**：参数配置 Tab 从 JSON textarea 升级为可视化入参编辑器
+
+### P4.3：执行结果分析
+- [x] **ExecutionSummaryPanel**：run 模式悬浮面板，概览卡片 + 成功率进度条 + 步骤时序表
+- [x] **参数问题智能诊断**：10+ 条诊断规则，自动解析 Conductor 常见错误并提供"去修复"跳转
+- [x] **executionAnalyzer 工具库**：`analyzeExecution()`、`diagnoseTask()`、`formatDuration()` 等可复用函数
+- [ ] **AI 执行诊断对话**：run 模式 AI Copilot 对话式诊断（规划中）
+
+---
+
 ## 🚀 2.0 阶段：架构重塑与专业化 (当前重点)
 
 **目标：** 实现代码质量的跃迁，建立 UI 标准，并具备面向全公司的交付能力。

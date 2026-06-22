@@ -88,6 +88,50 @@ const executionData = await fetch('/api/workflow/execution/123').then(res => res
 - 连线会高亮实际执行路径。
 - 点击节点将展示输入/输出详情面板。
 
+### 执行验证（P4.2 新增）
+
+通过 `onTriggerExecution` 和 `onPollExecution` 两个回调，IDE 可在 edit 模式下直接触发 Conductor 执行并自动切换到 run 模式展示结果。
+
+```tsx
+<WorkflowIDE
+  workflowDef={myWorkflow}
+  onTriggerExecution={async (workflowName, version, input) => {
+    // 调用后端 API 发起执行
+    const res = await fetch('/api/conductor/workflow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: workflowName, version, input }),
+    });
+    const { workflowId } = await res.json();
+    return { workflowId };
+  }}
+  onPollExecution={async (workflowId) => {
+    // 轮询执行状态；IDE 内部使用指数退避（初始 3s，最大 15s）
+    const res = await fetch(`/api/conductor/workflow/${workflowId}`);
+    if (!res.ok) return null;
+    return res.json(); // 返回 WorkflowInstance JSON
+  }}
+  executionPollInterval={3000} // 可选，默认 3000ms
+/>
+```
+
+**执行流程**：
+1. 用户在 edit 模式点击工具栏的 **"▶ 执行验证"** 按钮
+2. `WorkflowRunPanel` 弹出，根据工作流的 `inputParameters` 声明自动生成填写表单（支持表单模式 / JSON 编辑器切换）
+3. 用户填写入参后点击"发起执行"，IDE 调用 `onTriggerExecution`
+4. 获得 `workflowId` 后自动切换到 run 模式，按指数退避调用 `onPollExecution`
+5. 加载到 `WorkflowInstance` 后渲染执行状态；到达终态（COMPLETED/FAILED/TIMED_OUT/TERMINATED）后停止轮询
+
+> 未传入 `onTriggerExecution` 时，"执行验证"按钮不渲染，完全向后兼容。
+
+#### 执行验证相关 Props
+
+| 属性名 | 类型 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `onTriggerExecution` | `(name: string, version: number, input: Record<string, any>) => Promise<{ workflowId: string }>` | — | (可选) 触发工作流执行回调。返回 `workflowId` 后 IDE 自动切换 run 模式。 |
+| `onPollExecution` | `(workflowId: string) => Promise<WorkflowInstance \| null>` | — | (可选) 轮询执行状态。返回 `null` 时继续轮询，返回终态实例后停止。 |
+| `executionPollInterval` | `number` | `3000` | 初始轮询间隔（ms）。内部使用指数退避，最大退避到 15000ms。 |
+
 ### 运行态操作与权限控制 (Runtime Actions)
 
 在运行态下，您可以通过传入 `executionActions` 属性来启用对工作流实例和任务级别的控制操作，并能够开启或限制用户操作权限：
@@ -246,9 +290,10 @@ window.dispatchEvent(new CustomEvent('open-ai-chat'));
 - **自然语言建模**: 点击右下角 ✨ 图标展开对话框，输入需求即可生成 JSON 建议并一键应用。
 - **从零创建**: 空状态面板支持直接通过 AI 对话从零生成完整工作流，无需手动编排。
 - **参数智能提示**: 在节点编辑面板中，点击输入框右侧的 ✨ 图标，获取基于上下文的 JSONPath 建议。
+- **✨ AI 参数自动填充（v0.4.0）**: 节点编辑面板的 inputParameters 区域新增"AI 填充"按钮。AI 根据任务类型、工作流入参列表及上游任务列表，一键生成完整参数块，并以 diff 预览卡片展示，支持应用/取消。
 - **差异卡片 (Diff Card)**: AI 输出以结构化变更卡片展示，支持一键应用或撤销，变更过程可追溯。
 
-> 只读模式和运行态下 AI 助手面板不渲染，避免功能混淆。
+> 只读模式和运行态下 AI 助手对话面板不渲染，避免功能混淆。
 
 ---
 
@@ -297,6 +342,53 @@ window.dispatchEvent(new CustomEvent('open-ai-chat'));
 
 ---
 
+## 📊 执行结果分析（v0.4.0）
+
+run 模式下工具栏新增 **"📊 分析"** 按钮，点击展开悬浮分析面板：
+
+- **概览卡片**：总任务数、已完成、失败数、总耗时
+- **成功率进度条**：直观展示整体执行质量
+- **步骤时序表**：按 `startTime` 排序显示所有任务，字段包括状态、耗时、重试次数，点击行高亮对应节点并打开详情面板
+- **智能故障诊断**：自动解析 `reasonForIncompletion`，识别 10+ 种错误模式：
+
+| 诊断类别 | 覆盖场景 |
+| :--- | :--- |
+| 参数问题 | JSONPath 路径不存在、引用为空、类型不匹配 |
+| 网络错误 | 连接超时、HTTP 4xx/5xx |
+| 认证失败 | 401、token 无效 |
+| 任务超时 | TIMED_OUT、超时配置过小 |
+| 逻辑错误 | 循环条件表达式异常、INLINE 脚本执行失败 |
+
+- **"去修复"跳转**：每条诊断卡片提供"去修复"按钮，一键切换到 edit 模式并自动选中问题任务，直接定位到对应参数字段
+
+---
+
+## 🏗️ 工作流入参声明（v0.4.0）
+
+`WorkflowDef.inputParameters` 现支持两种格式，完全向后兼容：
+
+```ts
+// 旧格式（仍支持）
+inputParameters: ['orderId', 'userId', 'amount']
+
+// 新格式（v0.4.0），支持类型、描述、必填、示例值
+inputParameters: [
+  { name: 'orderId',  type: 'string',  required: true,  description: '订单 ID',  example: 'ORD-001' },
+  { name: 'userId',   type: 'string',  required: true,  description: '用户 ID' },
+  { name: 'amount',   type: 'number',  required: false, description: '金额（元）', example: 99.9 },
+  { name: 'metadata', type: 'object',  required: false, description: '附加元数据' },
+]
+```
+
+新格式的好处：
+- `WorkflowRunPanel` 会根据 `type` 自动渲染合适的输入控件（文本/数字/布尔选择器/JSON textarea）
+- `required: true` 的字段会在表单中标注 `*` 并在执行时进行必填校验
+- `example` 值会作为输入框的 placeholder 展示
+
+可在 **工作流设置 → 参数配置** Tab 中通过可视化编辑器管理，也可直接在 JSON 中编写。
+
+---
+
 ## 🛠️ TypeScript 支持
 
 本库提供完整的 TypeScript 定义。您可以直接导入核心类型：
@@ -308,16 +400,36 @@ import {
   WorkflowIDEProps,
   WorkflowDef,
   TaskDef,
+  WorkflowInputParam,        // v0.4.0 新增：结构化入参类型
+  WorkflowInstance,          // v0.4.0 新增：执行实例类型（用于 onPollExecution）
   AIServiceConfig,
   ExecutionActions,
   RestartOptions,
-  ViewMode
+  ViewMode,
+  RunState,                  // v0.4.0 新增：执行触发状态机类型
+  parseWorkflowInputParams,  // v0.4.0 新增：解析入参声明工具函数
 } from 'reactflow-ui';
 ```
 
 ---
 
 ## 📋 版本历史
+
+### v0.4.0
+
+**新功能**
+- **P4.1 AI 参数自动填充**：TaskDetailPanel 新增"✨ AI 填充"按钮，根据任务类型与上下文一键生成 inputParameters，diff 预览后应用
+- **P4.2 执行验证闭环**：
+  - 新增 `onTriggerExecution` / `onPollExecution` / `executionPollInterval` Props
+  - edit 模式工具栏新增"▶ 执行验证"按钮，弹出 `WorkflowRunPanel` 入参填写面板
+  - `WorkflowRunPanel` 支持表单模式（基于 `WorkflowInputParam` 声明）/ JSON 编辑器双模式
+  - 触发执行后指数退避轮询，自动切换 run 模式展示实时状态
+  - `WorkflowSettingsPanel` 参数配置 Tab 升级为可视化入参编辑器（支持 type/required/description/example）
+- **P4.3 执行结果分析**：
+  - run 模式工具栏新增"📊 分析"按钮
+  - 新增 `ExecutionSummaryPanel`：执行概览卡片、步骤时序表、智能故障诊断（10+ 错误模式）
+  - 诊断卡片"去修复"按钮：一键切换 edit 模式并选中问题任务
+- 新增 `WorkflowInputParam` 结构化类型，`WorkflowDef.inputParameters` 向后兼容 `string[]` 格式
 
 ### v0.3.0
 

@@ -34,19 +34,23 @@
 - `allowOperations` 全局权限开关，快速控制操作按钮是否可用
 
 ### 🤖 AI Copilot（智能辅助）
-- **仅在编辑模式可用**，避免干扰只读/运行态场景
 - 自然语言描述生成完整工作流，支持对话式迭代修改
 - 差异卡片（Diff Card）预览变更内容，一键应用/撤销
-- 参数智能提示：节点属性面板中基于上下文推荐 JSONPath 表达式
+- **✨ AI 参数填充（v0.4.0 新增）**：节点编辑面板一键调用 AI 生成完整 `inputParameters`，基于任务类型、上游任务列表和工作流入参自动推断，diff 预览后一键应用
 
-### 🎯 视觉体验
-- 深色/浅色主题 + 品牌主色调（科技蓝/活力橙）
-- 节点边框和阴影经过调校，深色模式下更清晰可辨
-- 切换工作流时自动执行 Fit View，无需手动缩放定位
-- 校验错误徽章（❗⚠️）仅在编辑模式显示，不干扰只读查看
+### 🔬 执行验证闭环（v0.4.0 新增）
+- **执行验证面板**：在 edit 模式下点击"▶ 执行验证"按钮，填写工作流入参（表单/JSON 双模式），一键触发真实 Conductor 执行
+- **自动切换 run 模式**：执行触发后 IDE 自动切换到运行态，通过指数退避轮询实时更新执行状态
+- **结构化入参声明**：`WorkflowSettingsPanel` 支持可视化编辑入参名称、类型、是否必填、描述和示例值
+
+### 📊 执行结果分析（v0.4.0 新增）
+- **执行概览面板**：run 模式下点击"📊 分析"，展示总任务数/成功率/失败数/总耗时概览卡片
+- **步骤时序表**：按 `startTime` 排序显示所有任务的执行状态、耗时和重试次数，点击行可高亮对应节点
+- **智能故障诊断**：自动识别 10+ 种常见 Conductor 错误模式（JSONPath 失败、HTTP 错误码、超时、认证、脚本异常等），在诊断卡片中给出可操作的修复建议
+- **"去修复"跳转**：点击诊断卡片的"去修复"按钮，一键切换到 edit 模式并选中问题任务
 
 ### 🏢 企业级能力
-- TypeScript 全量类型定义（WorkflowDef、TaskDef、ExecutionActions…）
+- TypeScript 全量类型定义（WorkflowDef、TaskDef、WorkflowInputParam、ExecutionActions…）
 - 命令式 API（`ref`）支持程序化创建、保存、导出
 - 强类型 Ref API：`getWorkflowDef()`、`save()`、`createBlankWorkflow()`
 
@@ -124,13 +128,15 @@ src/
 ├── components/        # UI 核心组件（设计器、属性面板、节点…）
 │   ├── nodes/         # 各类型节点组件（TaskNode、DecisionNode、LoopNode…）
 │   ├── AICopilot/     # AI 助手面板
-│   └── Controls/      # 工具栏、模式切换器
+│   ├── Controls/      # 工具栏、模式切换器
+│   ├── WorkflowRunPanel.tsx    # P4.2: 执行验证入参面板
+│   └── ExecutionSummaryPanel.tsx # P4.3: 执行结果分析面板
 ├── store/             # Zustand 状态管理（workflowStore）
 ├── parser/            # Conductor JSON ↔ ReactFlow 节点/边转换
 ├── layout/            # Dagre 自动布局（含蛇形布局）
 ├── types/             # TypeScript 类型定义
 ├── styles/            # CSS 变量和执行状态样式
-├── utils/             # 校验器、工作流生成工具
+├── utils/             # 校验器、executionAnalyzer（P4.3 诊断引擎）
 └── demo/              # 演示应用（开发调试用）
 ```
 
@@ -141,7 +147,9 @@ src/
 - [集成指南 (Integration Guide)](./INTEGRATION.md)
 - [最佳实践 (Best Practices)](./docs/best-practices.md)
 - [路线图 (Roadmap)](./ROADMAP.md)
+- [v0.4.0 发布计划](./docs/v0.4.0-release-plan.md)
 
 ## 📄 许可证
 
 MIT
+

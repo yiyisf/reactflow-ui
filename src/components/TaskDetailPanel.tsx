@@ -486,6 +486,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         <div style={{ marginBottom: '12px' }}>
                             <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>HEADERS</label>
                             <KeyValueEditor
+                                key={`headers-${displayTask.taskReferenceName}`}
                                 value={typeof httpRequest.headers === 'object' && httpRequest.headers !== null ? httpRequest.headers : {}}
                                 onChange={(v) => handleHttpChange('headers', v)}
                                 disabled={!isEditMode}
@@ -575,6 +576,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         <div style={{ marginBottom: '8px' }}>
                             <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>INPUT PARAMETERS MAPPING</label>
                             <KeyValueEditor
+                                key={`subwf-input-${displayTask.taskReferenceName}`}
                                 ref={kvEditorRef}
                                 value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
                                 onChange={(v) => handleChange('inputParameters', v)}
@@ -807,6 +809,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             </code>{' '}访问。
                         </div>
                         <KeyValueEditor
+                            key={`setvar-${displayTask.taskReferenceName}`}
                             ref={kvEditorRef}
                             value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
                             onChange={(v) => handleChange('inputParameters', v)}
@@ -891,6 +894,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         )}
                         {/* P5.1.2: KeyValueEditor 替代原始 JSON textarea */}
                         <KeyValueEditor
+                            key={`input-params-${displayTask.taskReferenceName}`}
                             ref={kvEditorRef}
                             value={typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? displayTask.inputParameters : {}}
                             onChange={(v) => handleChange('inputParameters', v)}

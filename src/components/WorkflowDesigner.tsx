@@ -559,19 +559,21 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         borderRadius: '8px',
                     }}
                     nodeColor={(node) => {
+                        // MiniMap renders colors as SVG fill attributes — CSS vars not supported, must use hex/rgb
                         if (mode === 'run' && executionData) {
                             const inst = executionData[node.data?.taskReferenceName];
                             if (inst) {
-                                if (inst.status === 'COMPLETED') return 'var(--status-completed)';
-                                if (inst.status === 'FAILED' || inst.status === 'FAILED_WITH_TERMINAL_ERROR') return 'var(--status-failed)';
-                                if (inst.status === 'IN_PROGRESS') return 'var(--status-in-progress)';
-                                if (inst.status === 'TIMED_OUT') return 'var(--status-timed-out)';
+                                if (inst.status === 'COMPLETED') return '#0aad76';
+                                if (inst.status === 'FAILED' || inst.status === 'FAILED_WITH_TERMINAL_ERROR') return '#ef4444';
+                                if (inst.status === 'IN_PROGRESS') return '#3b82f6';
+                                if (inst.status === 'TIMED_OUT') return '#f97316';
+                                if (inst.status === 'SCHEDULED') return '#64748b';
                             }
                         }
                         if (node.data?.isError) return '#ef4444';
                         if (node.data?.hasWarning) return '#f59e0b';
-                        if (node.selected) return 'var(--color-accent)';
-                        return 'var(--text-secondary)';
+                        if (node.selected) return '#3b82f6';
+                        return '#94a3b8';
                     }}
                     maskColor="rgba(0,0,0,0.12)"
                     zoomable

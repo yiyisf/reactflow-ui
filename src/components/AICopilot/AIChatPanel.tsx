@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './AIChatPanel.css';
 import DiffCard from './DiffCard';
-import MermaidBlock from './MermaidBlock';
-import WorkflowRunCard from './WorkflowRunCard';
 
 import useWorkflowStore from '../../store/workflowStore';
 import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage, AIServiceConfig } from '../../services/aiService';
@@ -10,17 +8,9 @@ import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates
 import { AIChatMessage } from '../../types/workflow';
 import { applyWorkflowDiff, parseDiffFromAIResponse } from '../../utils/workflowDiff';
 import { TaskType } from '../../types/conductor';
-import { WorkflowInstance } from '../../types/conductor';
 
 interface AIChatPanelProps {
     aiConfig?: Partial<AIServiceConfig>;
-    onTriggerExecution?: (
-        workflowName: string,
-        version: number,
-        input: Record<string, any>
-    ) => Promise<{ workflowId: string }>;
-    onPollExecution?: (workflowId: string) => Promise<WorkflowInstance | null>;
-    executionPollInterval?: number;
 }
 
 const WELCOME_MESSAGE: AIChatMessage = {
@@ -29,42 +19,35 @@ const WELCOME_MESSAGE: AIChatMessage = {
     content: '你好！我是您的流程助手。我可以帮你生成工作流框架、优化逻辑或提供参数配置建议。你想实现什么样的流程？',
 };
 
-/**
- * AI 通过输出 `%%SHOW_RUN_FORM%%` 标记请求展示执行表单卡片。
- * 大小写不敏感，允许 %% 与关键字之间存在空白；全局标志用于一次性剥离所有出现。
- */
-const RUN_FORM_MARKER = /%%\s*show_run_form\s*%%/gi;
-
-/** Parse content into segments: text, code(lang, code), mermaid */
-interface TextSegment { kind: 'text'; content: string }
-interface CodeSegment { kind: 'code'; lang: string; code: string }
-type Segment = TextSegment | CodeSegment;
-
-function parseSegments(content: string): Segment[] {
-    const segments: Segment[] = [];
-    const re = /```(\w*)\n?([\s\S]*?)```/g;
-    let lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(content)) !== null) {
-        if (m.index > lastIndex) {
-            segments.push({ kind: 'text', content: content.slice(lastIndex, m.index) });
+/** Lightweight markdown renderer — no external deps */
+const renderMessageContent = (content: string): React.ReactNode => {
+    // Split by code blocks first
+    const parts = content.split(/(```[\s\S]*?```)/);
+    return parts.map((part, i) => {
+        // Code block
+        if (part.startsWith('```') && part.endsWith('```')) {
+            const inner = part.slice(3, -3);
+            const newlineIdx = inner.indexOf('\n');
+            const code = newlineIdx >= 0 ? inner.slice(newlineIdx + 1) : inner;
+            return <pre key={i}><code>{code}</code></pre>;
         }
-        segments.push({ kind: 'code', lang: m[1] ?? '', code: m[2] ?? '' });
-        lastIndex = m.index + m[0].length;
-    }
-    if (lastIndex < content.length) {
-        segments.push({ kind: 'text', content: content.slice(lastIndex) });
-    }
-    return segments;
-}
+        // Inline formatting
+        return <span key={i}>{renderInline(part)}</span>;
+    });
+};
 
 const renderInline = (text: string): React.ReactNode => {
+    // Process bold, inline code, and newlines
     const tokens: React.ReactNode[] = [];
+    // Split by **bold** and `inline code`
     const re = /(\*\*[^*]+\*\*|`[^`]+`|\n)/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
+
     while ((match = re.exec(text)) !== null) {
-        if (match.index > lastIndex) tokens.push(text.slice(lastIndex, match.index));
+        if (match.index > lastIndex) {
+            tokens.push(text.slice(lastIndex, match.index));
+        }
         const m = match[0];
         if (m.startsWith('**') && m.endsWith('**')) {
             tokens.push(<strong key={match.index}>{m.slice(2, -2)}</strong>);
@@ -75,57 +58,15 @@ const renderInline = (text: string): React.ReactNode => {
         }
         lastIndex = match.index + m.length;
     }
-    if (lastIndex < text.length) tokens.push(text.slice(lastIndex));
+    if (lastIndex < text.length) {
+        tokens.push(text.slice(lastIndex));
+    }
     return tokens;
 };
 
-const renderMessageContent = (content: string): React.ReactNode => {
-    const segments = parseSegments(content);
-    return segments.map((seg, i) => {
-        if (seg.kind === 'code') {
-            if (seg.lang === 'mermaid') {
-                return <MermaidBlock key={i} code={seg.code} />;
-            }
-            return (
-                <pre key={i} style={{ position: 'relative' }}>
-                    {seg.lang && (
-                        <span style={{
-                            position: 'absolute', top: 4, right: 8,
-                            fontSize: 10, color: 'var(--text-muted)',
-                            fontFamily: 'var(--font-mono)', userSelect: 'none',
-                        }}>
-                            {seg.lang}
-                        </span>
-                    )}
-                    <code>{seg.code}</code>
-                </pre>
-            );
-        }
-        return <span key={i}>{renderInline(seg.content)}</span>;
-    });
-};
-
-/** Quick action chips shown in the header */
-const QUICK_ACTIONS = [
-    { label: '🗺 业务视图', prompt: '请分析当前工作流并用 Mermaid 流程图展示业务视角的执行流程，使用业务人员能理解的语言，隐藏纯技术节点。' },
-    { label: '▶ 发起执行', isRunForm: true },
-    { label: '📋 分析工作流', prompt: '请分析当前工作流的设计逻辑，识别潜在风险点并给出优化建议。' },
-];
-
-const AIChatPanel: React.FC<AIChatPanelProps> = ({
-    aiConfig,
-    onTriggerExecution,
-    onPollExecution,
-    executionPollInterval = 3000,
-}) => {
-    const {
-        workflowDef,
-        setWorkflow,
-        mode,
-        showCanvasDrawer,
-        setShowCanvasDrawer,
-    } = useWorkflowStore();
-
+const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
+    const { workflowDef, setWorkflow, mode } = useWorkflowStore();
+    const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [messages, setMessages] = useState<AIChatMessage[]>([WELCOME_MESSAGE]);
@@ -135,18 +76,23 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const abortRef = useRef<AbortController | null>(null);
 
+    // ─── Diff apply / undo ────────────────────────────────────────────────
     const handleApplyDiff = useCallback((msg: AIChatMessage) => {
         if (!msg.diff || msg.applied || !workflowDef) return;
         const { next, inverse } = applyWorkflowDiff(workflowDef, msg.diff);
         setWorkflow(next);
-        setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, applied: true, inverse } : m));
+        setMessages((prev) =>
+            prev.map((m) => (m.id === msg.id ? { ...m, applied: true, inverse } : m)),
+        );
     }, [workflowDef, setWorkflow]);
 
     const handleUndoDiff = useCallback((msg: AIChatMessage) => {
         if (!msg.inverse || !msg.applied || !workflowDef) return;
         const { next } = applyWorkflowDiff(workflowDef, msg.inverse);
         setWorkflow(next);
-        setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, applied: false, inverse: undefined } : m));
+        setMessages((prev) =>
+            prev.map((m) => (m.id === msg.id ? { ...m, applied: false, inverse: undefined } : m)),
+        );
     }, [workflowDef, setWorkflow]);
 
     const autoResize = () => {
@@ -162,52 +108,53 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
         el.style.height = 'auto';
     };
 
-    useEffect(() => { return () => { abortRef.current?.abort(); }; }, []);
-
-    // 面板在 edit 模式下常驻；外部触发 open-ai-chat 时聚焦输入框并滚动到底部，
-    // 让该事件保持有意义的行为（而非空操作）。
+    // Cleanup abort on unmount
     useEffect(() => {
-        const handler = () => {
-            textareaRef.current?.focus();
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        };
+        return () => { abortRef.current?.abort(); };
+    }, []);
+
+    // 监听外部事件打开面板
+    useEffect(() => {
+        const handler = () => setIsOpen(true);
         window.addEventListener('open-ai-chat', handler);
         return () => window.removeEventListener('open-ai-chat', handler);
     }, []);
 
-    useEffect(() => {
+    const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, streamingContent]);
+    };
 
+    useEffect(() => {
+        if (isOpen) {
+            scrollToBottom();
+        }
+    }, [messages, isOpen, streamingContent]);
+
+    // 构建多轮对话的完整消息历史
     const buildChatHistory = useCallback((userInput: string): ChatMessage[] => {
         const history: ChatMessage[] = [
             { role: 'system', content: CONDUCTOR_SYSTEM_PROMPT }
         ];
+
         for (const msg of messages) {
             if (msg.role === 'user' && msg.content) {
                 history.push({ role: 'user', content: msg.content });
-            } else if (msg.role === 'ai' && msg.content && !msg.thinking && !msg.cardType) {
+            } else if (msg.role === 'ai' && msg.content && !msg.thinking) {
                 history.push({ role: 'assistant', content: msg.content });
             }
         }
+
         const prompt = generateWorkflowSuggestionPrompt(userInput, workflowDef);
         history.push({ role: 'user', content: prompt });
+
         return history;
     }, [messages, workflowDef]);
-
-    const showRunForm = useCallback(() => {
-        const runCard: AIChatMessage = {
-            id: Date.now().toString(),
-            role: 'ai',
-            cardType: 'run_card',
-        };
-        setMessages(prev => [...prev, runCard]);
-    }, []);
 
     const handleSend = async (retryContent?: string) => {
         const text = retryContent || inputValue.trim();
         if (!text || isLoading) return;
 
+        // Abort previous request
         abortRef.current?.abort();
         const controller = new AbortController();
         abortRef.current = controller;
@@ -273,28 +220,14 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
             const fullResponse = await callAICopilotStream(
                 chatHistory,
                 apiConfig,
-                (token) => { setStreamingContent(prev => prev + token); },
-                () => { /* done */ },
+                (token) => {
+                    setStreamingContent(prev => prev + token);
+                },
+                () => { /* streaming done */ },
                 controller.signal
             );
 
-            // Check if AI wants to show run form.
-            // 要求 %% 定界符以避免正文中提及 "show_run_form" 时误触发；
-            // 检测与剥离均大小写不敏感，确保标记不会残留泄漏到用户可见消息。
-            if (RUN_FORM_MARKER.test(fullResponse)) {
-                const cleanedResponse = fullResponse.replace(RUN_FORM_MARKER, '').trim();
-                if (cleanedResponse) {
-                    setMessages(prev => [...prev, {
-                        id: (Date.now() + 1).toString(),
-                        role: 'ai',
-                        content: cleanedResponse,
-                    }]);
-                }
-                showRunForm();
-                setStreamingContent('');
-                return;
-            }
-
+            // 优先解析 diff-json 块（结构化 diff），否则降级到全量 json 替换
             const diff = parseDiffFromAIResponse(fullResponse);
             let parsedDiff = diff;
             if (!parsedDiff) {
@@ -324,22 +257,25 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
             setStreamingContent('');
         } catch (err: any) {
             if (err.name === 'AbortError') {
+                // User stopped generation — save what we have
                 setStreamingContent(prev => {
                     if (prev) {
-                        setMessages(p => [...p, {
+                        const interruptedMsg: AIChatMessage = {
                             id: (Date.now() + 1).toString(),
                             role: 'ai',
                             content: prev,
-                        }]);
+                        };
+                        setMessages(p => [...p, interruptedMsg]);
                     }
                     return '';
                 });
             } else {
-                setMessages(prev => [...prev, {
+                const errorMsg: AIChatMessage = {
                     id: Date.now().toString(),
                     role: 'ai',
                     content: `抱歉，目前无法连接到 AI 服务: ${err.message}`,
-                }]);
+                };
+                setMessages(prev => [...prev, errorMsg]);
                 setStreamingContent('');
             }
         } finally {
@@ -347,7 +283,9 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
         }
     };
 
-    const handleStop = () => { abortRef.current?.abort(); };
+    const handleStop = () => {
+        abortRef.current?.abort();
+    };
 
     const handleClear = () => {
         abortRef.current?.abort();
@@ -370,150 +308,70 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
         }
     };
 
-    const handleQuickAction = (action: typeof QUICK_ACTIONS[number]) => {
-        if (action.isRunForm) {
-            showRunForm();
-        } else if (action.prompt) {
-            handleSend(action.prompt);
-        }
-    };
-
-    // Only render in edit mode
+    // AI 助手仅在编辑模式下可用；只读/运行态不渲染，避免功能混乱
     if (mode !== 'edit') return null;
 
+    if (!isOpen) {
+        return (
+            <div className="ai-chat-panel collapsed" onClick={() => setIsOpen(true)}>
+                <div className="ai-header" style={{ borderBottom: 'none' }}>
+                    <div className="ai-title">
+                        <span className="ai-sparkles">✨</span>
+                        AI 助手
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="ai-chat-panel-primary">
-            {/* Header */}
+        <div className="ai-chat-panel">
             <div className="ai-header">
                 <div className="ai-title">
                     <span className="ai-sparkles">✨</span>
                     AI 助手
-                    {workflowDef && (
-                        <span style={{
-                            fontSize: 11,
-                            color: 'var(--text-muted)',
-                            fontWeight: 400,
-                            marginLeft: 6,
-                            maxWidth: 120,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                        }}>
-                            {workflowDef.name}
-                        </span>
-                    )}
                 </div>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    {/* Canvas drawer toggle */}
-                    <button
-                        className={`ai-canvas-btn${showCanvasDrawer ? ' active' : ''}`}
-                        onClick={() => setShowCanvasDrawer(!showCanvasDrawer)}
-                        title={showCanvasDrawer ? '关闭画布' : '查看画布'}
-                    >
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="1" y="3" width="14" height="10" rx="1.5" />
-                            <line x1="9" y1="3" x2="9" y2="13" />
-                            <circle cx="11.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-                            <circle cx="11.5" cy="9.5" r="1" fill="currentColor" stroke="none" />
-                        </svg>
-                        {showCanvasDrawer ? '关闭画布' : '查看画布'}
-                    </button>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                     <button className="ai-close" onClick={handleClear} title="清空对话">🗑</button>
+                    <button className="ai-close" onClick={() => setIsOpen(false)}>×</button>
                 </div>
             </div>
 
-            {/* Quick action chips */}
-            {workflowDef && (
-                <div style={{
-                    display: 'flex',
-                    gap: 6,
-                    padding: '6px 14px',
-                    borderBottom: '1px solid var(--border-primary)',
-                    flexWrap: 'wrap',
-                    background: 'rgba(0,0,0,0.04)',
-                }}>
-                    {QUICK_ACTIONS.map(action => (
-                        <button
-                            key={action.label}
-                            onClick={() => handleQuickAction(action)}
-                            disabled={isLoading}
-                            style={{
-                                padding: '3px 10px',
-                                background: 'var(--bg-secondary)',
-                                border: '1px solid var(--border-strong)',
-                                borderRadius: 20,
-                                color: 'var(--text-secondary)',
-                                fontSize: 11,
-                                cursor: 'pointer',
-                                fontFamily: 'inherit',
-                                transition: 'all 0.15s',
-                                whiteSpace: 'nowrap',
-                            }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.background = 'var(--bg-tertiary)';
-                                e.currentTarget.style.color = 'var(--text-primary)';
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.background = 'var(--bg-secondary)';
-                                e.currentTarget.style.color = 'var(--text-secondary)';
-                            }}
-                        >
-                            {action.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* Messages */}
             <div className="ai-messages">
-                {messages.map(msg => {
-                    if (msg.cardType === 'run_card') {
-                        return (
-                            <div key={msg.id} className="message ai" style={{ padding: '6px 4px', background: 'transparent', border: 'none' }}>
-                                <WorkflowRunCard
-                                    onTriggerExecution={onTriggerExecution}
-                                    onPollExecution={onPollExecution}
-                                    executionPollInterval={executionPollInterval}
-                                />
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div key={msg.id} className={`message ${msg.role}`}>
-                            <div className="message-content">
-                                {msg.thinking ? (
-                                    <div className="thinking-skeleton">
-                                        <div className="skeleton-line" style={{ width: '80%' }} />
-                                        <div className="skeleton-line" style={{ width: '60%' }} />
-                                    </div>
-                                ) : msg.role === 'ai' ? (
-                                    renderMessageContent(msg.content ?? '')
-                                ) : (
-                                    msg.content
-                                )}
-                            </div>
-                            {msg.diff && !msg.thinking && (
-                                <DiffCard
-                                    diff={msg.diff}
-                                    applied={msg.applied ?? false}
-                                    onApply={() => handleApplyDiff(msg)}
-                                    onUndo={() => handleUndoDiff(msg)}
-                                />
-                            )}
-                            {msg.role === 'ai' && msg.content && !msg.cardType && (
-                                <button
-                                    className="copy-btn"
-                                    onClick={() => handleCopy(msg)}
-                                    title="复制"
-                                >
-                                    {copiedId === msg.id ? '✓' : '📋'}
-                                </button>
+                {messages.map((msg) => (
+                    <div key={msg.id} className={`message ${msg.role}`}>
+                        <div className="message-content">
+                            {msg.thinking ? (
+                                <div className="thinking-skeleton">
+                                    <div className="skeleton-line" style={{ width: '80%' }} />
+                                    <div className="skeleton-line" style={{ width: '60%' }} />
+                                </div>
+                            ) : msg.role === 'ai' ? (
+                                renderMessageContent(msg.content ?? '')
+                            ) : (
+                                msg.content
                             )}
                         </div>
-                    );
-                })}
-
+                        {msg.diff && !msg.thinking && (
+                            <DiffCard
+                                diff={msg.diff}
+                                applied={msg.applied ?? false}
+                                onApply={() => handleApplyDiff(msg)}
+                                onUndo={() => handleUndoDiff(msg)}
+                            />
+                        )}
+                        {msg.role === 'ai' && msg.content && (
+                            <button
+                                className="copy-btn"
+                                onClick={() => handleCopy(msg)}
+                                title="复制"
+                            >
+                                {copiedId === msg.id ? '✓' : '📋'}
+                            </button>
+                        )}
+                    </div>
+                ))}
+                {/* Streaming content */}
                 {isLoading && streamingContent && (
                     <div className="message ai" style={{ opacity: 0.9 }}>
                         <div className="message-content">
@@ -522,6 +380,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
                         <span className="streaming-cursor">▊</span>
                     </div>
                 )}
+                {/* Thinking skeleton */}
                 {isLoading && !streamingContent && (
                     <div className="message ai thinking-skeleton">
                         <div className="skeleton-line" style={{ width: '80%' }} />
@@ -532,24 +391,27 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
             <div className="ai-input-area">
                 <div className="ai-input-container">
                     <textarea
                         ref={textareaRef}
                         className="ai-input"
-                        placeholder={isLoading ? 'AI 正在响应...' : '描述您的需求…（Shift+Enter 换行）'}
+                        placeholder={isLoading ? "AI 正在响应..." : "描述您的需求…（Shift+Enter 换行）"}
                         value={inputValue}
-                        onChange={e => setInputValue(e.target.value)}
+                        onChange={(e) => setInputValue(e.target.value)}
                         onInput={autoResize}
                         onKeyDown={handleKeyPress}
                         disabled={isLoading}
                         rows={2}
                     />
                     {isLoading ? (
-                        <button className="ai-send stop" onClick={handleStop} title="停止生成">⏹</button>
+                        <button className="ai-send stop" onClick={handleStop} title="停止生成">
+                            ⏹
+                        </button>
                     ) : (
-                        <button className="ai-send" onClick={() => handleSend()} title="发送">🚀</button>
+                        <button className="ai-send" onClick={() => handleSend()} title="发送">
+                            🚀
+                        </button>
                     )}
                 </div>
             </div>

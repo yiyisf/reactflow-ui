@@ -91,7 +91,7 @@
     gap: 2px;
 }
 
-.ai-cc-actions button {
+.ai-cc-actions button:not(.ai-run-header-btn) {
     background: none;
     border: none;
     cursor: pointer;
@@ -102,7 +102,7 @@
     transition: background 0.15s, color 0.15s;
 }
 
-.ai-cc-actions button:hover {
+.ai-cc-actions button:not(.ai-run-header-btn):hover {
     background: var(--bg-tertiary);
     color: var(--text-primary);
 }
@@ -3108,4 +3108,30 @@
 .ai-run-header-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+/* ─── Proposal card staleness ────────────────────────────────────────────── */
+
+.ai-proposal-card.stale {
+    border-color: rgba(245, 158, 11, 0.4);
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.ai-proposal-stale-warning {
+    font-size: 11px;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 6px;
+    padding: 6px 10px;
+    line-height: 1.5;
+}
+
+.ai-proposal-btn.accept.stale {
+    background: #f59e0b;
+}
+
+.ai-proposal-btn.accept.stale:hover {
+    filter: brightness(1.08);
 }

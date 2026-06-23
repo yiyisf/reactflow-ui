@@ -470,7 +470,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                 role: 'assistant',
                 content: `📌 工作流「${def.name}」已更新（${tasks.length} 个步骤）。以下是业务流程图：\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``,
             });
-        } catch {
+        } catch (err) {
+            console.error('[workflowToMermaid]', err);
             aiStore.addMessage({
                 role: 'assistant',
                 content: `📌 工作流「${def.name}」已更新，包含 ${tasks.length} 个步骤。`,
@@ -499,7 +500,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         aiStore.setFollowUpChips(chips);
 
         if (onAiMetrics) onAiMetrics(aiStore.getMetrics());
-    }, [aiStore.pendingProposal, onAiMetrics]);
+    }, [aiStore.pendingProposal, onAiMetrics, onAiEvent]);
 
     const handleReject = useCallback(() => {
         aiStore.recordReject();
@@ -542,7 +543,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     onCloseCanvas={() => setCanvasDrawerOpen(false)}
                     onTriggerExecution={onTriggerExecution}
                     onPollExecution={onPollExecution}
-                    onAccept={handleAccept}
+                    onAccept={() => handleAccept()}
                     onReject={handleReject}
                 />
             </div>

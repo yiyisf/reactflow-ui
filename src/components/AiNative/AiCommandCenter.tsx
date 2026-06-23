@@ -757,6 +757,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const noApiKey = !config.apiKey && showConfigButton;
     // D3: show template gallery when canvas is empty and only welcome msg exists
     const showTemplates = !workflowDef && messages.length === 1 && messages[0].id === 'welcome' && libraryItems.length === 0;
+    // Staleness: proposal was generated against an older version of the workflow
+    const isProposalStale = !!(pendingProposal && pendingProposal.baselineHash !== JSON.stringify(workflowDef));
 
     const handleClarificationSelect = useCallback((optionText: string) => {
         clearClarification();
@@ -982,11 +984,18 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
                         {/* Inline proposal card: accept / reject without opening canvas */}
                         {pendingProposal && !isStreaming && onAccept && onReject && (
-                            <div className="ai-proposal-card">
+                            <div className={`ai-proposal-card${isProposalStale ? ' stale' : ''}`}>
                                 <div className="ai-proposal-card-header">
-                                    <span className="ai-proposal-card-icon">✅</span>
-                                    <span className="ai-proposal-card-title">AI 已生成变更方案</span>
+                                    <span className="ai-proposal-card-icon">{isProposalStale ? '⚠️' : '✅'}</span>
+                                    <span className="ai-proposal-card-title">
+                                        {isProposalStale ? 'AI 变更方案（画布已修改）' : 'AI 已生成变更方案'}
+                                    </span>
                                 </div>
+                                {isProposalStale && (
+                                    <div className="ai-proposal-stale-warning">
+                                        画布在方案生成后已被手动修改，确认应用可能覆盖您的编辑。建议拒绝后重新提问。
+                                    </div>
+                                )}
                                 <div className="ai-proposal-diff-row">
                                     {pendingProposal.diff.added.length > 0 && (
                                         <span className="ai-proposal-diff-chip added">
@@ -1017,10 +1026,11 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         ✕ 拒绝
                                     </button>
                                     <button
-                                        className="ai-proposal-btn accept"
+                                        className={`ai-proposal-btn accept${isProposalStale ? ' stale' : ''}`}
                                         onClick={onAccept}
+                                        title={isProposalStale ? '⚠️ 方案基于旧版画布，应用后可能覆盖手动编辑' : undefined}
                                     >
-                                        ✓ 确认应用
+                                        {isProposalStale ? '⚠ 仍然应用' : '✓ 确认应用'}
                                     </button>
                                 </div>
                             </div>

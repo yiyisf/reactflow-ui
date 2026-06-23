@@ -136,18 +136,19 @@ function processTasks(
             let hasBranches = false;
             for (const [caseName, caseTasks] of Object.entries(cases)) {
                 hasBranches = true;
+                const safeCase = sanitizeLabel(caseName);
                 const biz = caseTasks.filter(t => !SKIP_TYPES.has(t.type));
                 if (biz.length === 0) {
-                    link(switchId, mergeId, caseName);
+                    link(switchId, mergeId, safeCase);
                 } else {
                     const sub = processTasks(biz, declared, new Set());
                     nodeDefs.push(...sub.nodeDefs);
                     edges.push(...sub.edges);
                     if (sub.firstId) {
-                        link(switchId, sub.firstId, caseName);
+                        link(switchId, sub.firstId, safeCase);
                         if (sub.lastId) link(sub.lastId, mergeId);
                     } else {
-                        link(switchId, mergeId, caseName);
+                        link(switchId, mergeId, safeCase);
                     }
                 }
             }

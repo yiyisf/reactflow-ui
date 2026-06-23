@@ -327,10 +327,10 @@ async function* streamOpenAI(
         try {
             args = JSON.parse(tc.args || '{}');
         } catch {
-            // Partial JSON from SSE truncation — fall back to {} so no-param tools
-            // (e.g. validate_workflow) still execute; param-requiring tools will fail
-            // gracefully at the executor level rather than aborting the entire turn.
-            args = {};
+            // Partial JSON from SSE truncation — inject sentinel so executor can return
+            // a meaningful error to the model instead of a misleading "missing field" error.
+            console.warn(`[streamOpenAI] truncated JSON for tool "${tc.name}":`, tc.args?.slice(0, 200));
+            args = { __truncated__: true };
         }
         yield { type: 'tool_call', id: tc.id, name: tc.name, args };
     }
@@ -359,7 +359,7 @@ async function* streamAnthropic(
 
     const body: Record<string, any> = {
         model: resolved.model,
-        max_tokens: 8192,
+        max_tokens: 16000,
         messages: chatMessages,
         stream: true,
     };
@@ -433,7 +433,9 @@ async function* streamAnthropic(
                                 try {
                                     toolArgs = JSON.parse(currentToolArgs || '{}');
                                 } catch {
-                                    toolArgs = {};
+                                    // Truncated JSON — inject sentinel so executor returns a clear error.
+                                    console.warn(`[streamAnthropic] truncated JSON for tool "${currentToolName}":`, currentToolArgs?.slice(0, 200));
+                                    toolArgs = { __truncated__: true };
                                 }
                                 yield { type: 'tool_call', id: currentToolId, name: currentToolName, args: toolArgs };
                                 currentToolName = '';

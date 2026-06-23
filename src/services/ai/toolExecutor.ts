@@ -287,14 +287,26 @@ export function executeToolCall(
     toolName: string,
     args: Record<string, any>,
 ): ToolCallResult {
+    // Sentinel from protocolAdapter when SSE JSON was truncated (output token limit hit).
+    if (args.__truncated__) {
+        return { type: 'error', text: `工具调用参数被截断（输出超出 token 限制）。请将工作流拆分为更小的步骤，或先创建骨架工作流再通过 patch_workflow 逐步完善。` };
+    }
+
     const state = useWorkflowStore.getState();
     const currentDef = state.workflowDef;
 
     switch (toolName) {
         case 'replace_workflow': {
-            const proposed = args.workflow as WorkflowDef;
-            if (!proposed?.name) {
-                return { type: 'error', text: '工作流定义缺少 name 字段' };
+            // Auto-fix: model sometimes passes WorkflowDef at the top level instead of under `workflow` key.
+            let proposed = args.workflow as WorkflowDef;
+            if (!proposed && args.name && Array.isArray(args.tasks)) {
+                proposed = args as unknown as WorkflowDef;
+            }
+            if (!proposed) {
+                return { type: 'error', text: '工具调用未包含 workflow 字段。请重新生成并确保参数结构为 { workflow: { name: "...", tasks: [...] } }' };
+            }
+            if (!proposed.name) {
+                return { type: 'error', text: '工作流定义缺少 name 字段，请补充后重新调用' };
             }
             if (!Array.isArray(proposed.tasks)) {
                 return { type: 'error', text: '工作流定义缺少 tasks 数组，请提供包含 tasks 字段的完整工作流定义' };

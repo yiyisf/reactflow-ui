@@ -461,21 +461,25 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             requestAnimationFrame(() => workflowStore.flashNodes(Array.from(flashRefs)));
         }
 
-        // Build and add the Mermaid business view synchronously — no AI round-trip needed.
+        // Append Mermaid flowchart to the last assistant message to avoid consecutive
+        // assistant messages, which break Anthropic API role-alternation requirements.
         const def = targetDef;
         const tasks = def.tasks ?? [];
+        const confirmationLine = `\n\n📌 工作流「${def.name}」已应用（${tasks.length} 个步骤）。`;
+        let mermaidSection = '';
         try {
             const mermaidCode = workflowToMermaid(def);
-            aiStore.addMessage({
-                role: 'assistant',
-                content: `📌 工作流「${def.name}」已更新（${tasks.length} 个步骤）。以下是业务流程图：\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``,
-            });
+            mermaidSection = `\n\n以下是业务流程图：\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
         } catch (err) {
             console.error('[workflowToMermaid]', err);
-            aiStore.addMessage({
-                role: 'assistant',
-                content: `📌 工作流「${def.name}」已更新，包含 ${tasks.length} 个步骤。`,
-            });
+        }
+        const appendText = confirmationLine + mermaidSection;
+        const allMsgs = useAiStore.getState().messages;
+        const lastAssistant = [...allMsgs].reverse().find(m => m.role === 'assistant' && m.id !== 'welcome');
+        if (lastAssistant) {
+            aiStore.updateMessage(lastAssistant.id, lastAssistant.content + appendText);
+        } else {
+            aiStore.addMessage({ role: 'assistant', content: appendText.trimStart() });
         }
 
         // D1: Generate context-aware follow-up chips to keep the user engaged.

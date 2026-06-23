@@ -302,26 +302,6 @@ async function* streamOpenAI(
         }
     }
 
-    // Flush any remaining lineBuffer content not terminated by \n (non-standard SSE or abrupt close)
-    if (lineBuffer.trim().startsWith('data: ')) {
-        const data = lineBuffer.trim().slice(6);
-        if (data && data !== '[DONE]') {
-            try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta;
-                if (delta?.tool_calls) {
-                    for (const tc of delta.tool_calls) {
-                        const idx = tc.index ?? 0;
-                        if (!toolCalls[idx]) toolCalls[idx] = { id: tc.id || '', name: '', args: '' };
-                        if (tc.id) toolCalls[idx].id = tc.id;
-                        if (tc.function?.name) toolCalls[idx].name += tc.function.name;
-                        if (tc.function?.arguments) toolCalls[idx].args += tc.function.arguments;
-                    }
-                }
-            } catch { /* ignore malformed trailing data */ }
-        }
-    }
-
     for (const tc of Object.values(toolCalls)) {
         let args: Record<string, any>;
         try {

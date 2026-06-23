@@ -58,6 +58,10 @@ interface AiCommandCenterProps {
     onTriggerExecution?: (workflowName: string, params: Record<string, any>) => Promise<string>;
     /** Poll execution status by executionId */
     onPollExecution?: (executionId: string) => Promise<{ status: string; output?: any }>;
+    /** Accept the pending proposal (full accept) */
+    onAccept?: () => void;
+    /** Reject the pending proposal */
+    onReject?: () => void;
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -243,6 +247,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     onCloseCanvas,
     onTriggerExecution,
     onPollExecution,
+    onAccept,
+    onReject,
 }) => {
     const {
         messages,
@@ -630,7 +636,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     const desc = describeDiff(pendingProposalResult.diff);
                     const levelNote = pendingProposalResult.inferredLevel
                         ? ` · ${pendingProposalResult.inferredLevel}` : '';
-                    fullAssistantText += `\n\n---\n✅ **已生成变更方案${levelNote}**：${desc}\n请在下方审核栏中确认或拒绝。`;
+                    fullAssistantText += `\n\n---\n✅ **已生成变更方案${levelNote}**：${desc}\n请在下方确认或拒绝此变更。`;
                     break; // Proposal is ready — pause for user review
                 }
 
@@ -826,6 +832,17 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             )}
                         </div>
                         <div className="ai-cc-actions">
+                            {/* ▶ Run workflow button — only when workflow loaded and execution wired */}
+                            {workflowDef && onTriggerExecution && onPollExecution && !showRunCard && (
+                                <button
+                                    className="ai-run-header-btn"
+                                    onClick={() => setShowRunCard(true)}
+                                    disabled={isStreaming}
+                                    title="执行当前工作流"
+                                >
+                                    ▶ 执行
+                                </button>
+                            )}
                             {(onOpenCanvas || onCloseCanvas) && (
                                 <button
                                     onClick={canvasOpen ? onCloseCanvas : onOpenCanvas}
@@ -930,19 +947,6 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                                 ))}
                                             </div>
                                         )}
-                                        {/* Execute workflow quick action (non-AI, only when workflow loaded and execution wired) */}
-                                        {workflowDef && onTriggerExecution && onPollExecution && !showRunCard && (
-                                            <div className="ai-quick-actions">
-                                                <button
-                                                    className="ai-run-action-chip"
-                                                    onClick={() => setShowRunCard(true)}
-                                                    disabled={isStreaming}
-                                                    title="执行当前工作流"
-                                                >
-                                                    ▶ 执行工作流
-                                                </button>
-                                            </div>
-                                        )}
                                         {/* F2: Runtime analysis chips */}
                                         {runtimeChips.length > 0 && (
                                             <div className="ai-follow-up-chips">
@@ -974,6 +978,52 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 onPollExecution={onPollExecution}
                                 onClose={() => setShowRunCard(false)}
                             />
+                        )}
+
+                        {/* Inline proposal card: accept / reject without opening canvas */}
+                        {pendingProposal && !isStreaming && onAccept && onReject && (
+                            <div className="ai-proposal-card">
+                                <div className="ai-proposal-card-header">
+                                    <span className="ai-proposal-card-icon">✅</span>
+                                    <span className="ai-proposal-card-title">AI 已生成变更方案</span>
+                                </div>
+                                <div className="ai-proposal-diff-row">
+                                    {pendingProposal.diff.added.length > 0 && (
+                                        <span className="ai-proposal-diff-chip added">
+                                            +{pendingProposal.diff.added.length} 新增
+                                        </span>
+                                    )}
+                                    {pendingProposal.diff.modified.length > 0 && (
+                                        <span className="ai-proposal-diff-chip modified">
+                                            ~{pendingProposal.diff.modified.length} 修改
+                                        </span>
+                                    )}
+                                    {pendingProposal.diff.removed.length > 0 && (
+                                        <span className="ai-proposal-diff-chip removed">
+                                            -{pendingProposal.diff.removed.length} 删除
+                                        </span>
+                                    )}
+                                    {pendingProposal.inferredLevel && (
+                                        <span className="ai-proposal-diff-chip level">
+                                            {pendingProposal.inferredLevel}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="ai-proposal-card-actions">
+                                    <button
+                                        className="ai-proposal-btn reject"
+                                        onClick={onReject}
+                                    >
+                                        ✕ 拒绝
+                                    </button>
+                                    <button
+                                        className="ai-proposal-btn accept"
+                                        onClick={onAccept}
+                                    >
+                                        ✓ 确认应用
+                                    </button>
+                                </div>
+                            </div>
                         )}
 
                         {/* PlanCard: pending AI plan awaiting user confirmation */}

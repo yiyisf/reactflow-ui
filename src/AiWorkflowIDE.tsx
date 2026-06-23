@@ -16,8 +16,8 @@ import AiCommandCenter from './components/AiNative/AiCommandCenter';
 import CanvasPreview from './components/AiNative/CanvasPreview';
 import ReviewBar from './components/AiNative/ReviewBar';
 import BusinessCanvas from './components/AiNative/BusinessCanvas';
-import WorkflowFormWizard from './components/AiNative/WorkflowFormWizard';
 import AiConfigPanel from './components/AiNative/AiConfigPanel';
+import { workflowToMermaid } from './utils/workflowToMermaid';
 import type { WorkflowDef } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
@@ -266,7 +266,6 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     const [canvasVisible, setCanvasVisible] = useState(false);
     const [chatWidth, setChatWidth] = useState(420);
     const [showBusinessView, setShowBusinessView] = useState(false);
-    const [showFormWizard, setShowFormWizard] = useState(false);
     // Canvas drawer starts hidden — conversation is the primary view
     const [canvasDrawerOpen, setCanvasDrawerOpen] = useState(false);
 
@@ -394,22 +393,6 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         document.addEventListener('mouseup', onMouseUp);
     }, [chatWidth]);
 
-    // ── Wizard handlers ────────────────────────────────────────────────────
-    const handleWizardComplete = useCallback((def: WorkflowDef) => {
-        workflowStore.setWorkflow(def);
-        workflowStore.setMode('edit');
-        setShowFormWizard(false);
-        // Auto-generate Mermaid so user immediately sees the business view
-        aiStore.setPendingAutoSend('请用Mermaid流程图展示刚创建的工作流业务逻辑');
-    }, [workflowStore, aiStore]);
-
-    const handleWizardAskAi = useCallback((prompt: string) => {
-        setShowFormWizard(false);
-        aiStore.setChatPanelOpen(true);
-        // Route through AI pipeline, not just addMessage (which has no AI effect)
-        aiStore.setPendingAutoSend(prompt);
-    }, [aiStore]);
-
     // ── Business view execution status map ─────────────────────────────────
     const executionStatusMap = useMemo<Record<string, string>>(() => {
         if (!workflowStore.executionData) return {};
@@ -478,14 +461,21 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             requestAnimationFrame(() => workflowStore.flashNodes(Array.from(flashRefs)));
         }
 
-        // Anchor the conversation history to the new workflow state.
+        // Build and add the Mermaid business view synchronously — no AI round-trip needed.
         const def = targetDef;
         const tasks = def.tasks ?? [];
-        const taskSummary = tasks.map(t => `${t.taskReferenceName}(${t.type})`).join(', ');
-        aiStore.addMessage({
-            role: 'assistant',
-            content: `📌 工作流已更新：「${def.name}」现包含 ${tasks.length} 个任务：${taskSummary}。`,
-        });
+        try {
+            const mermaidCode = workflowToMermaid(def);
+            aiStore.addMessage({
+                role: 'assistant',
+                content: `📌 工作流「${def.name}」已更新（${tasks.length} 个步骤）。以下是业务流程图：\n\n\`\`\`mermaid\n${mermaidCode}\n\`\`\``,
+            });
+        } catch {
+            aiStore.addMessage({
+                role: 'assistant',
+                content: `📌 工作流「${def.name}」已更新，包含 ${tasks.length} 个步骤。`,
+            });
+        }
 
         // D1: Generate context-aware follow-up chips to keep the user engaged.
         // Read validation state from store directly to avoid stale hook snapshot.
@@ -507,10 +497,6 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     : '给这个流程添加异常处理分支',
         ];
         aiStore.setFollowUpChips(chips);
-
-        // Auto-generate Mermaid business view so the user can see the result
-        // without having to open the canvas drawer manually.
-        aiStore.setPendingAutoSend('请用Mermaid流程图展示刚刚更新的工作流业务逻辑');
 
         if (onAiMetrics) onAiMetrics(aiStore.getMetrics());
     }, [aiStore.pendingProposal, onAiMetrics]);
@@ -556,6 +542,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     onCloseCanvas={() => setCanvasDrawerOpen(false)}
                     onTriggerExecution={onTriggerExecution}
                     onPollExecution={onPollExecution}
+                    onAccept={handleAccept}
+                    onReject={handleReject}
                 />
             </div>
 
@@ -584,7 +572,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                 className={`ai-canvas-side${layoutMode === 'mobile' && canvasVisible ? ' canvas-visible' : ''}`}
                 style={canvasDrawerOpen ? undefined : { display: 'none' }}
             >
-                {/* Canvas toolbar: view toggle + create button */}
+                {/* Canvas toolbar: view toggle */}
                 <div className="ai-canvas-toolbar">
                     <div className="biz-view-toggle">
                         <button
@@ -602,13 +590,6 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                             📋 业务
                         </button>
                     </div>
-                    <button
-                        className="ai-canvas-create-btn"
-                        onClick={() => setShowFormWizard(true)}
-                        title="通过表单向导创建工作流"
-                    >
-                        ✨ 创建流程
-                    </button>
                 </div>
 
                 {/* Canvas area: business view or technical canvas */}
@@ -654,15 +635,6 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                         {canvasVisible ? '对话' : '画布'}
                     </span>
                 </button>
-            )}
-
-            {/* Form wizard overlay */}
-            {showFormWizard && (
-                <WorkflowFormWizard
-                    onComplete={handleWizardComplete}
-                    onCancel={() => setShowFormWizard(false)}
-                    onAskAi={handleWizardAskAi}
-                />
             )}
 
             {/* In-app AI config dialog (only shown when no prop apiKey) */}

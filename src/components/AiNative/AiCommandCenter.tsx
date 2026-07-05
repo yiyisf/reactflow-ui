@@ -10,33 +10,19 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import useAiStore from '../../store/aiStore';
 import useWorkflowStore from '../../store/workflowStore';
 import useLibraryStore from '../../store/libraryStore';
-import { streamChat } from '../../services/ai/protocolAdapter';
-import type { Message } from '../../services/ai/protocolAdapter';
-import { TOOL_DEFINITIONS } from '../../services/ai/toolDefs';
-import { toolRegistry } from '../../services/ai/toolRegistry';
-import { validateWorkflow } from '../../utils/validator';
-import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
-import type { WorkflowLevel } from '../../types/workflowLibrary';
-import type { DiffSummary } from '../../services/ai/toolExecutor';
+import { AgentRunner } from '../../services/ai/agentRunner';
+import type { AgentRunnerOptions } from '../../services/ai/agentRunner';
+import type { WorkflowInstance } from '../../types/conductor';
 import PlanCard from './PlanCard';
 import RepairCard from './RepairCard';
 import ClarificationCard from './ClarificationCard';
 import RecommendationCard from './RecommendationCard';
 import MermaidBlock from './MermaidBlock';
+import ProposalPreviewCard from './ProposalPreviewCard';
+import AgentTimeline from './AgentTimeline';
 import WorkflowRunCard from './WorkflowRunCard';
 import type { ExecutionActions } from '../../types/workflow';
 import type { AiEvent } from '../../types/aiEvents';
-import { humanizeAiError } from '../../services/ai/errorMessages';
-
-// Run-mode tools: read-only + repair proposer (no workflow-modifying tools)
-const RUN_MODE_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
-    ['get_workflow_state', 'validate_workflow', 'search_workflow_library', 'propose_repair'].includes(t.function.name)
-);
-
-const MAX_AGENT_STEPS = 6;
-const MAX_SELF_HEAL = 2;
-import { executeToolCall, describeDiff } from '../../services/ai/toolExecutor';
-import { buildSystemPrompt } from '../../services/ai/systemPrompt';
 import LibraryPanel from './LibraryPanel';
 
 interface AiCommandCenterProps {
@@ -264,23 +250,15 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         pendingClarification,
         pendingRecommendation,
         pendingAutoSend,
-        addMessage,
-        updateMessage,
-        setStreaming,
-        setStreamingText,
-        appendStreamingText,
+        toolStatus,
+        timelineEntries,
+        retryInput,
+        setRetryInput,
         clearMessages,
-        setProposal,
-        clearProposal,
-        setPlan,
         clearPlan,
-        setRepair,
         clearRepair,
-        clearFollowUpChips,
         popUndo,
-        setClarification,
         clearClarification,
-        setRecommendation,
         clearRecommendation,
         setPendingAutoSend,
     } = useAiStore();
@@ -289,7 +267,6 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const selectedTask = useWorkflowStore(s => s.selectedTask);
     const selectTaskAction = useWorkflowStore(s => s.selectTaskAction);
     const mode = useWorkflowStore(s => s.mode);
-    const viewMode = useWorkflowStore(s => s.viewMode);
     const workflowInstance = useWorkflowStore(s => s.workflowInstance);
     const executionData = useWorkflowStore(s => s.executionData);
     const validationResults = useWorkflowStore(s => s.validationResults);
@@ -297,33 +274,35 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const [inputValue, setInputValue] = useState('');
     const [activeTab, setActiveTab] = useState<'chat' | 'library'>('chat');
-    const [toolStatus, setToolStatus] = useState<string>(''); // e.g. "正在搜索工作流库…"
-    // Pending proposal guard: stores the blocked message text
-    const [guardBlocked, setGuardBlocked] = useState<string | null>(null);
-    // D2: last failed input for retry
-    const [retryInput, setRetryInput] = useState<string | null>(null);
     // Inline execution run card
     const [showRunCard, setShowRunCard] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const abortRef = useRef<AbortController | null>(null);
+
+    // AgentRunner owns the agentic loop; options can change every render (props),
+    // so a "latest" ref feeds them to the runner without recreating the instance.
+    const optionsRef = useRef<AgentRunnerOptions>({ systemPrompt, systemPromptExtra, aiPermissions, onAiEvent });
+    optionsRef.current = { systemPrompt, systemPromptExtra, aiPermissions, onAiEvent };
+    const [runner] = useState(() => new AgentRunner(() => optionsRef.current));
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, streamingText]);
 
     useEffect(() => {
-        return () => { abortRef.current?.abort(); };
-    }, []);
+        return () => { runner.abort(); };
+    }, [runner]);
 
-    // Consume pendingAutoSend: triggered by external code (proposal acceptance, canvas click, wizard)
-    // Wait until not streaming and no blocking overlay, then fire the queued message.
+    // Consume pendingAutoSend: triggered by external code (proposal acceptance, canvas click, wizard).
+    // Pending proposal/plan/clarification/recommendation cards no longer block sending — the user
+    // can always keep talking, and a follow-up message is treated as further input on whatever is
+    // currently pending (see buildSystemPrompt's proposal-context injection).
     useEffect(() => {
-        if (!pendingAutoSend || isStreaming || pendingProposal || pendingPlan || pendingClarification) return;
+        if (!pendingAutoSend || isStreaming) return;
         setPendingAutoSend(null);
-        handleSendText(pendingAutoSend);
-    }, [pendingAutoSend, isStreaming, pendingProposal, pendingPlan, pendingClarification]);
+        runner.send(pendingAutoSend);
+    }, [pendingAutoSend, isStreaming, runner]);
 
     const autoResize = () => {
         const el = textareaRef.current;
@@ -332,363 +311,19 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         el.style.height = Math.min(el.scrollHeight, 120) + 'px';
     };
 
-    const buildHistory = useCallback((userInput: string): Message[] => {
-        const systemContent = buildSystemPrompt(userInput, { systemPrompt, systemPromptExtra, viewMode });
-        const history: Message[] = [{ role: 'system', content: systemContent }];
-        const recent = messages.slice(-20);
-        for (const msg of recent) {
-            if (msg.id === 'welcome') continue;
-            history.push({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: msg.content,
-            });
-        }
-        history.push({ role: 'user', content: userInput });
-        return history;
-    }, [messages, systemPrompt, systemPromptExtra, viewMode]);
-
-    const handleSendText = useCallback(async (text: string) => {
-        if (!text.trim() || isStreaming) return;
-
-        abortRef.current?.abort();
-        const controller = new AbortController();
-        abortRef.current = controller;
-        const { signal } = controller;
-
-        addMessage({ role: 'user', content: text });
-        setInputValue('');
-        setRetryInput(null);
-        clearFollowUpChips();
-        if (textareaRef.current) textareaRef.current.style.height = 'auto';
-        setStreaming(true);
-        setStreamingText('');
-        setToolStatus('');
-
-        // apiKey is only required in direct mode — endpoint/custom transports don't need one.
-        if (!config.apiKey && !config.transport) {
-            addMessage({ role: 'assistant', content: '⚠️ 未配置 API Key。请点击上方 ⚙️ 按钮配置 AI 服务后重试。' });
-            setStreaming(false);
-            return;
-        }
-
-        const assistantMsgId = addMessage({ role: 'assistant', content: '' });
-
-        try {
-            // Build the initial agent message history
-            const agentHistory: Message[] = buildHistory(text);
-            const customDefs = toolRegistry.getDefinitions();
-            // Permission gating: canEdit=false → read-only regardless of mode
-            const editAllowed = aiPermissions?.canEdit !== false;
-            const repairAllowed = aiPermissions?.canRepair !== false;
-            let activeDefs = mode === 'run' || !editAllowed
-                ? RUN_MODE_TOOL_DEFINITIONS
-                : [...TOOL_DEFINITIONS, ...customDefs];
-            // Remove propose_repair if repair permission is denied
-            if (!repairAllowed) {
-                activeDefs = activeDefs.filter(d => d.function.name !== 'propose_repair');
-            }
-
-            let fullAssistantText = '';
-            let selfHealCount = 0;
-
-            // ─── Agentic loop ───────────────────────────────────────────────
-            for (let step = 0; step < MAX_AGENT_STEPS; step++) {
-                if (signal.aborted) break;
-
-                // Clear streaming display between steps
-                setStreamingText('');
-                if (step > 0) setToolStatus(`🔄 步骤 ${step + 1}…`);
-
-                // Stream one model turn
-                const stepToolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
-                let stepText = '';
-
-                for await (const event of streamChat(agentHistory, activeDefs, config, signal)) {
-                    if (signal.aborted) break;
-                    switch (event.type) {
-                        case 'text':
-                            stepText += event.content;
-                            appendStreamingText(event.content);
-                            break;
-                        case 'tool_call':
-                            stepToolCalls.push({ id: event.id, name: event.name, args: event.args });
-                            break;
-                        case 'error': {
-                            const humanized = humanizeAiError(event.message);
-                            stepText += `\n\n❌ ${humanized.display}`;
-                            onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
-                            break;
-                        }
-                    }
-                }
-
-                if (stepText) {
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + stepText;
-                }
-
-                // No tool calls — model is done
-                if (!stepToolCalls.length || signal.aborted) break;
-
-                // Append assistant turn (text + tool calls) to history for next iteration
-                agentHistory.push({
-                    role: 'assistant',
-                    content: stepText,
-                    tool_calls: stepToolCalls,
-                });
-
-                // ─── Execute tool calls ─────────────────────────────────────
-                const toolResultMsgs: Message[] = [];
-                let pendingProposalResult: {
-                    proposed: WorkflowDef;
-                    diff: DiffSummary;
-                    inferredLevel?: WorkflowLevel;
-                } | null = null;
-
-                const TOOL_STATUS_LABELS: Record<string, string> = {
-                    get_workflow_state: '正在读取工作流状态…',
-                    search_workflow_library: '正在搜索工作流库…',
-                    validate_workflow: '正在校验工作流…',
-                    replace_workflow: '正在生成新工作流…',
-                    patch_workflow: '正在应用变更…',
-                    propose_plan: '正在生成执行计划…',
-                };
-
-                let pendingPlanResult: { title: string; steps: any[]; summary?: string } | null = null;
-
-                for (const tc of stepToolCalls) {
-                    if (signal.aborted) break;
-                    setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
-                    onAiEvent?.({ type: 'tool:called', timestamp: Date.now(), tool: tc.name });
-
-                    // ── propose_repair: store repair proposal and break loop ─
-                    if (tc.name === 'propose_repair') {
-                        const repairResult = {
-                            diagnosis: tc.args.diagnosis ?? '未提供诊断信息',
-                            actions: tc.args.actions ?? [],
-                        };
-                        toolResultMsgs.push({
-                            role: 'tool',
-                            content: '修复方案已展示给用户，等待用户执行操作。',
-                            tool_call_id: tc.id,
-                        });
-                        setRepair({ ...repairResult, messageId: assistantMsgId });
-                        onAiEvent?.({ type: 'repair:proposed', timestamp: Date.now() });
-                        break;
-                    }
-
-                    // ── ask_clarification: show clarification card and break loop ─
-                    if (tc.name === 'ask_clarification') {
-                        toolResultMsgs.push({
-                            role: 'tool',
-                            content: '澄清问题已展示给用户，等待用户回复。',
-                            tool_call_id: tc.id,
-                        });
-                        setClarification({
-                            question: tc.args.question ?? '请告诉我更多详情',
-                            context: tc.args.context,
-                            options: tc.args.options ?? [],
-                            messageId: assistantMsgId,
-                        });
-                        break;
-                    }
-
-                    // ── recommend_workflow: show recommendation card and break loop ─
-                    if (tc.name === 'recommend_workflow') {
-                        toolResultMsgs.push({
-                            role: 'tool',
-                            content: '已向用户展示相似工作流推荐，等待用户选择。',
-                            tool_call_id: tc.id,
-                        });
-                        setRecommendation({
-                            userIntent: tc.args.userIntent ?? '',
-                            recommendations: tc.args.recommendations ?? [],
-                            messageId: assistantMsgId,
-                        });
-                        break;
-                    }
-
-                    // ── propose_plan: store plan and break loop ─────────────
-                    if (tc.name === 'propose_plan') {
-                        pendingPlanResult = {
-                            title: tc.args.title ?? '执行计划',
-                            steps: tc.args.steps ?? [],
-                            summary: tc.args.summary,
-                        };
-                        toolResultMsgs.push({
-                            role: 'tool',
-                            content: '计划已展示给用户，等待确认后执行。',
-                            tool_call_id: tc.id,
-                        });
-                        break; // Don't process remaining tools in this step
-                    }
-
-                    // ── Custom tools from registry ──────────────────────────
-                    const customTool = toolRegistry.get(tc.name);
-                    if (customTool) {
-                        let resultContent: string;
-                        try {
-                            resultContent = await Promise.resolve(customTool.execute(tc.args));
-                        } catch (err: any) {
-                            resultContent = `工具执行失败：${err.message ?? '未知错误'}`;
-                        }
-                        toolResultMsgs.push({ role: 'tool', content: resultContent, tool_call_id: tc.id });
-                        continue;
-                    }
-
-                    // ── Built-in tools ──────────────────────────────────────
-                    let result: ReturnType<typeof executeToolCall>;
-                    try {
-                        result = executeToolCall(tc.name, tc.args);
-                    } catch (err: any) {
-                        toolResultMsgs.push({
-                            role: 'tool',
-                            content: `工具执行出错：${err?.message ?? '未知错误'}`,
-                            tool_call_id: tc.id,
-                        });
-                        continue;
-                    }
-                    let resultContent: string;
-
-                    if (result.type === 'propose' && result.proposed && result.diff) {
-                        // Self-healing: validate before creating the proposal
-                        const validation = validateWorkflow(result.proposed);
-                        if (validation.errors.length > 0 && selfHealCount < MAX_SELF_HEAL) {
-                            // Tell the model about the errors so it can self-correct
-                            selfHealCount++;
-                            const errList = validation.errors.map(e => `• ${e.message}`).join('\n');
-                            resultContent = `工作流已生成，但存在 ${validation.errors.length} 个校验错误，请修复后重新生成：\n${errList}`;
-                        } else {
-                            // Validation passed (or self-heal limit exceeded — accept with warning)
-                            pendingProposalResult = {
-                                proposed: result.proposed,
-                                diff: result.diff,
-                                inferredLevel: result.inferredLevel,
-                            };
-                            const desc = describeDiff(result.diff);
-                            const warnNote = validation.errors.length > 0
-                                ? ` ⚠️ 含 ${validation.errors.length} 个校验错误` : '';
-                            resultContent = `变更方案已生成${warnNote}：${desc}。等待用户确认。`;
-                        }
-                    } else if (result.type === 'info') {
-                        resultContent = result.text ?? '';
-                    } else {
-                        resultContent = `错误：${result.text ?? '未知错误'}`;
-                    }
-
-                    toolResultMsgs.push({ role: 'tool', content: resultContent, tool_call_id: tc.id });
-                }
-
-                // Ensure every tool call in this step has a matching tool result message.
-                // propose_repair / propose_plan break the inner loop early, leaving
-                // any sibling tools without results — Anthropic rejects mismatched history.
-                const coveredIds = new Set(toolResultMsgs.map(m => (m as any).tool_call_id));
-                for (const tc of stepToolCalls) {
-                    if (!coveredIds.has(tc.id)) {
-                        toolResultMsgs.push({
-                            role: 'tool',
-                            content: '操作已中止，等待用户确认后继续。',
-                            tool_call_id: tc.id,
-                        });
-                    }
-                }
-
-                // Append tool results to history
-                agentHistory.push(...toolResultMsgs);
-
-                // propose_repair already broke from the inner loop and stored the repair
-                // If repair was set in this step, break the outer loop too
-                if (useAiStore.getState().pendingRepair?.messageId === assistantMsgId) {
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') +
-                        '🔧 我已诊断出故障原因并准备了修复方案，请查看下方修复卡片。';
-                    break;
-                }
-
-                // ask_clarification broke the inner loop and stored the clarification
-                if (useAiStore.getState().pendingClarification?.messageId === assistantMsgId) {
-                    break;
-                }
-
-                // recommend_workflow broke the inner loop and stored the recommendation
-                if (useAiStore.getState().pendingRecommendation?.messageId === assistantMsgId) {
-                    break;
-                }
-
-                // Commit plan to store (break loop — wait for user confirmation)
-                if (pendingPlanResult) {
-                    setPlan({
-                        title: pendingPlanResult.title,
-                        steps: pendingPlanResult.steps,
-                        summary: pendingPlanResult.summary,
-                        messageId: assistantMsgId,
-                    });
-                    onAiEvent?.({ type: 'plan:created', timestamp: Date.now() });
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') +
-                        '📋 我已为你准备了一个执行计划，请查看下方方案并确认是否执行。';
-                    break; // Pause for user confirmation
-                }
-
-                // Commit proposal to store (after tool results are in history)
-                if (pendingProposalResult) {
-                    setProposal({
-                        proposedDef: pendingProposalResult.proposed,
-                        diff: pendingProposalResult.diff,
-                        inferredLevel: pendingProposalResult.inferredLevel,
-                        messageId: assistantMsgId,
-                    });
-                    onAiEvent?.({ type: 'proposal:created', timestamp: Date.now(),
-                        diff: { added: pendingProposalResult.diff.added.length, modified: pendingProposalResult.diff.modified.length, removed: pendingProposalResult.diff.removed.length },
-                        inferredLevel: pendingProposalResult.inferredLevel });
-                    const desc = describeDiff(pendingProposalResult.diff);
-                    const levelNote = pendingProposalResult.inferredLevel
-                        ? ` · ${pendingProposalResult.inferredLevel}` : '';
-                    fullAssistantText += `\n\n---\n✅ **已生成变更方案${levelNote}**：${desc}\n请在下方确认或拒绝此变更。`;
-                    break; // Proposal is ready — pause for user review
-                }
-
-                // No proposal yet: continue loop to get model's response to tool results
-            }
-
-            setToolStatus('');
-            updateMessage(assistantMsgId, fullAssistantText.trim() || '收到，已处理。');
-
-        } catch (err: any) {
-            setToolStatus('');
-            if (err.name !== 'AbortError') {
-                const humanized = humanizeAiError(err?.message);
-                updateMessage(assistantMsgId, `❌ ${humanized.display}`);
-                onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
-                setRetryInput(text);
-            } else {
-                const cur = useAiStore.getState().messages.find(m => m.id === assistantMsgId);
-                if (!cur?.content) updateMessage(assistantMsgId, '（已中止）');
-            }
-        } finally {
-            setStreaming(false);
-            setStreamingText('');
-            setToolStatus('');
-        }
-    }, [isStreaming, config, buildHistory, mode]);
-
     const handleSend = useCallback(() => {
         const text = inputValue.trim();
         if (!text) return;
-        if (pendingProposal || pendingPlan || pendingClarification || pendingRecommendation) {
-            setGuardBlocked(text);
-            return;
-        }
-        handleSendText(text);
-    }, [inputValue, pendingProposal, pendingPlan, pendingClarification, pendingRecommendation, handleSendText]);
+        setInputValue('');
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
+        runner.send(text);
+    }, [inputValue, runner]);
 
     const handleChipClick = useCallback((chip: string) => {
-        if (pendingProposal || pendingPlan || pendingClarification || pendingRecommendation) {
-            setGuardBlocked(chip);
-            return;
-        }
-        clearFollowUpChips();
-        handleSendText(chip);
-    }, [pendingProposal, pendingPlan, pendingClarification, pendingRecommendation, handleSendText, clearFollowUpChips]);
+        runner.send(chip);
+    }, [runner]);
 
-    const handleStop = () => { abortRef.current?.abort(); };
+    const handleStop = () => { runner.abort(); };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.nativeEvent.isComposing || e.keyCode === 229) return;
@@ -698,27 +333,14 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         }
     };
 
-    // Guard confirm: discard proposal and send the blocked message
-    // Use clearProposal (not recordReject) so discarding-to-chat doesn't pollute reject metrics.
-    const handleGuardConfirm = useCallback(() => {
-        const blocked = guardBlocked;
-        setGuardBlocked(null);
-        clearProposal();
-        clearPlan();
-        clearRepair();
-        clearClarification();
-        clearRecommendation();
-        if (blocked) handleSendText(blocked);
-    }, [guardBlocked, clearProposal, clearPlan, clearRepair, clearClarification, clearRecommendation, handleSendText]);
-
     // Execute the pending plan: clear it and re-prompt the AI to proceed
     const handleExecutePlan = useCallback(() => {
         const plan = useAiStore.getState().pendingPlan;
         if (!plan) return;
         clearPlan();
         onAiEvent?.({ type: 'plan:executed', timestamp: Date.now() });
-        handleSendText('请按照上述计划执行');
-    }, [clearPlan, handleSendText, onAiEvent]);
+        runner.send('请按照上述计划执行');
+    }, [clearPlan, runner, onAiEvent]);
 
     const handleCancelPlan = useCallback(() => {
         clearPlan();
@@ -772,8 +394,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const handleClarificationSelect = useCallback((optionText: string) => {
         clearClarification();
-        handleSendText(optionText);
-    }, [clearClarification, handleSendText]);
+        runner.send(optionText);
+    }, [clearClarification, runner]);
 
     const handleClarificationCustom = useCallback(() => {
         clearClarification();
@@ -782,18 +404,18 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const handleUseWorkflow = useCallback((workflowName: string) => {
         clearRecommendation();
-        handleSendText(`加载并使用工作流：${workflowName}`);
-    }, [clearRecommendation, handleSendText]);
+        runner.send(`加载并使用工作流：${workflowName}`);
+    }, [clearRecommendation, runner]);
 
     const handleModifyWorkflow = useCallback((workflowName: string) => {
         clearRecommendation();
-        handleSendText(`以「${workflowName}」为基础，按照我的需求修改`);
-    }, [clearRecommendation, handleSendText]);
+        runner.send(`以「${workflowName}」为基础，按照我的需求修改`);
+    }, [clearRecommendation, runner]);
 
     const handleCreateNew = useCallback(() => {
         clearRecommendation();
-        handleSendText('不使用现有工作流，从头创建新工作流');
-    }, [clearRecommendation, handleSendText]);
+        runner.send('不使用现有工作流，从头创建新工作流');
+    }, [clearRecommendation, runner]);
 
     // Error-node chips: when selected task has validation errors, surface fix chip
     const selectedTaskErrors = selectedTask
@@ -809,10 +431,12 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     return (
         <>
             {/* Tab bar */}
-            <div className="ai-panel-tabs">
+            <div className="ai-panel-tabs" role="tablist">
                 <button
                     className={`ai-panel-tab ${activeTab === 'chat' ? 'active' : ''}`}
                     onClick={() => setActiveTab('chat')}
+                    role="tab"
+                    aria-selected={activeTab === 'chat'}
                 >
                     💬 对话
                 </button>
@@ -820,6 +444,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     <button
                         className={`ai-panel-tab ${activeTab === 'library' ? 'active' : ''}`}
                         onClick={() => setActiveTab('library')}
+                        role="tab"
+                        aria-selected={activeTab === 'library'}
                     >
                         📚 工作流库
                         <span className="ai-panel-tab-count">{libraryItems.length}</span>
@@ -859,17 +485,19 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 <button
                                     onClick={canvasOpen ? onCloseCanvas : onOpenCanvas}
                                     title={canvasOpen ? '关闭画布' : '查看画布'}
+                                    aria-label={canvasOpen ? '关闭画布' : '查看画布'}
                                     className={`ai-canvas-toggle-btn${canvasOpen ? ' active' : ''}`}
                                 >
                                     🗺️
                                 </button>
                             )}
                             {showConfigButton && (
-                                <button onClick={onShowConfig} title="配置 AI 服务">⚙️</button>
+                                <button onClick={onShowConfig} title="配置 AI 服务" aria-label="配置 AI 服务">⚙️</button>
                             )}
                             <button
-                                onClick={() => { abortRef.current?.abort(); clearMessages(); }}
+                                onClick={() => { runner.abort(); clearMessages(); }}
                                 title="清空对话"
+                                aria-label="清空对话"
                             >🗑️</button>
                         </div>
                     </div>
@@ -888,10 +516,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         </div>
                     )}
 
-                    <div className="ai-cc-messages">
+                    <div className="ai-cc-messages" role="log" aria-live="polite" aria-relevant="additions">
                         {/* Permission restriction banner */}
                         {isRestricted && (
-                            <div className="ai-permission-banner">
+                            <div className="ai-permission-banner" role="alert">
                                 <span className="ai-permission-icon">🔒</span>
                                 <span>{restrictionMessage}</span>
                             </div>
@@ -992,58 +620,15 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             />
                         )}
 
-                        {/* Inline proposal card: accept / reject without opening canvas */}
+                        {/* Proposal preview: business step list, accept / reject without opening canvas */}
                         {pendingProposal && !isStreaming && onAccept && onReject && (
-                            <div className={`ai-proposal-card${isProposalStale ? ' stale' : ''}`}>
-                                <div className="ai-proposal-card-header">
-                                    <span className="ai-proposal-card-icon">{isProposalStale ? '⚠️' : '✅'}</span>
-                                    <span className="ai-proposal-card-title">
-                                        {isProposalStale ? 'AI 变更方案（画布已修改）' : 'AI 已生成变更方案'}
-                                    </span>
-                                </div>
-                                {isProposalStale && (
-                                    <div className="ai-proposal-stale-warning">
-                                        画布在方案生成后已被手动修改，确认应用可能覆盖您的编辑。建议拒绝后重新提问。
-                                    </div>
-                                )}
-                                <div className="ai-proposal-diff-row">
-                                    {pendingProposal.diff.added.length > 0 && (
-                                        <span className="ai-proposal-diff-chip added">
-                                            +{pendingProposal.diff.added.length} 新增
-                                        </span>
-                                    )}
-                                    {pendingProposal.diff.modified.length > 0 && (
-                                        <span className="ai-proposal-diff-chip modified">
-                                            ~{pendingProposal.diff.modified.length} 修改
-                                        </span>
-                                    )}
-                                    {pendingProposal.diff.removed.length > 0 && (
-                                        <span className="ai-proposal-diff-chip removed">
-                                            -{pendingProposal.diff.removed.length} 删除
-                                        </span>
-                                    )}
-                                    {pendingProposal.inferredLevel && (
-                                        <span className="ai-proposal-diff-chip level">
-                                            {pendingProposal.inferredLevel}
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="ai-proposal-card-actions">
-                                    <button
-                                        className="ai-proposal-btn reject"
-                                        onClick={onReject}
-                                    >
-                                        ✕ 拒绝
-                                    </button>
-                                    <button
-                                        className={`ai-proposal-btn accept${isProposalStale ? ' stale' : ''}`}
-                                        onClick={onAccept}
-                                        title={isProposalStale ? '⚠️ 方案基于旧版画布，应用后可能覆盖手动编辑' : undefined}
-                                    >
-                                        {isProposalStale ? '⚠ 仍然应用' : '✓ 确认应用'}
-                                    </button>
-                                </div>
-                            </div>
+                            <ProposalPreviewCard
+                                proposal={pendingProposal}
+                                currentDef={workflowDef}
+                                isStale={isProposalStale}
+                                onAccept={onAccept}
+                                onReject={onReject}
+                            />
                         )}
 
                         {/* PlanCard: pending AI plan awaiting user confirmation */}
@@ -1084,12 +669,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             />
                         )}
 
-                        {/* Tool call status */}
-                        {isStreaming && toolStatus && (
-                            <div className="ai-tool-status">
-                                <span className="ai-tool-spinner" />
-                                {toolStatus}
-                            </div>
+                        {/* Agent timeline: completed steps + current in-flight step */}
+                        {isStreaming && (
+                            <AgentTimeline entries={timelineEntries} activeLabel={toolStatus} />
                         )}
 
                         {/* Streaming text */}
@@ -1100,8 +682,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             </div>
                         )}
 
-                        {/* Thinking skeleton */}
-                        {isStreaming && !streamingText && !toolStatus && (
+                        {/* Thinking skeleton — only before the timeline has anything to show */}
+                        {isStreaming && !streamingText && !toolStatus && timelineEntries.length === 0 && (
                             <div className="ai-cc-thinking">
                                 <div className="ai-skeleton-line" style={{ width: '80%' }} />
                                 <div className="ai-skeleton-line" style={{ width: '60%' }} />
@@ -1132,9 +714,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     className="ai-retry-btn"
                                     onClick={() => {
                                         const t = retryInput;
-                                        if (pendingProposal) { setGuardBlocked(t); return; }
                                         setRetryInput(null);
-                                        handleSendText(t);
+                                        runner.send(t);
                                     }}
                                 >
                                     ↺ 重试上一条消息
@@ -1155,27 +736,6 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         </div>
                     )}
 
-                    {/* A3: Pending Proposal Guard dialog */}
-                    {guardBlocked && (
-                        <div className="ai-guard-overlay">
-                            <div className="ai-guard-dialog">
-                                <div className="ai-guard-icon">⚠️</div>
-                                <div className="ai-guard-title">有未审核的变更方案</div>
-                                <div className="ai-guard-desc">
-                                    发送新消息将放弃当前 AI 提案，画布不会有任何变更。
-                                </div>
-                                <div className="ai-guard-actions">
-                                    <button className="ai-guard-btn secondary" onClick={() => setGuardBlocked(null)}>
-                                        先去审核
-                                    </button>
-                                    <button className="ai-guard-btn primary" onClick={handleGuardConfirm}>
-                                        放弃方案，继续发送
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* E2: Selected node context strip */}
                     {selectedTask && !isStreaming && (
                         <div className="ai-node-context-strip">
@@ -1188,6 +748,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     className="ai-node-context-dismiss"
                                     onClick={() => selectTaskAction(null)}
                                     title="取消选中"
+                                    aria-label="取消选中节点"
                                 >
                                     ×
                                 </button>
@@ -1227,14 +788,19 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 onChange={e => setInputValue(e.target.value)}
                                 onInput={autoResize}
                                 onKeyDown={handleKeyDown}
-                                placeholder={isStreaming ? 'AI 正在思考...' : '描述你想要的工作流...（Shift+Enter 换行）'}
+                                placeholder={
+                                    isStreaming ? 'AI 正在思考...'
+                                        : pendingProposal ? '继续描述修改意见，或点击上方"应用变更"…'
+                                            : '描述你想要的工作流...（Shift+Enter 换行）'
+                                }
+                                aria-label="向 AI 描述你想要的工作流"
                                 disabled={isStreaming}
                                 rows={1}
                             />
                             {isStreaming ? (
-                                <button className="ai-cc-send-btn stop" onClick={handleStop} title="停止">⏹</button>
+                                <button className="ai-cc-send-btn stop" onClick={handleStop} title="停止" aria-label="停止生成">⏹</button>
                             ) : (
-                                <button className="ai-cc-send-btn" onClick={handleSend} title="发送（Enter）">🚀</button>
+                                <button className="ai-cc-send-btn" onClick={handleSend} title="发送（Enter）" aria-label="发送消息">🚀</button>
                             )}
                         </div>
                     </div>

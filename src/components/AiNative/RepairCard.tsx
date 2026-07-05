@@ -55,7 +55,7 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
             <div className="ai-repair-card-header">
                 <span className="ai-repair-card-icon">🔧</span>
                 <div className="ai-repair-card-title">故障诊断与修复方案</div>
-                <button className="ai-repair-dismiss" onClick={onDismiss} title="关闭">×</button>
+                <button className="ai-repair-dismiss" onClick={onDismiss} title="关闭" aria-label="关闭修复卡片">×</button>
             </div>
 
             <div className="ai-repair-diagnosis">{repair.diagnosis}</div>

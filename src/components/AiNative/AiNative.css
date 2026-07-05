@@ -833,6 +833,53 @@
     to { transform: rotate(360deg); }
 }
 
+/* ─── AgentTimeline (M2.2) ────────────────────────────────────────────────── */
+
+.ai-agent-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-self: stretch;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    margin: 4px 0;
+}
+
+.ai-agent-timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.ai-agent-timeline-icon {
+    flex-shrink: 0;
+    font-size: 11px;
+}
+
+.ai-agent-timeline-item.warning .ai-agent-timeline-icon,
+.ai-agent-timeline-item.warning .ai-agent-timeline-label {
+    color: #f59e0b;
+}
+
+.ai-agent-timeline-item.active .ai-agent-timeline-label {
+    color: var(--text-muted);
+}
+
+.ai-agent-timeline-spinner {
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--border-primary);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
 /* ─── Pending proposal guard dialog ──────────────────────────────────────── */
 
 .ai-guard-overlay {
@@ -3134,4 +3181,128 @@
 
 .ai-proposal-btn.accept.stale:hover {
     filter: brightness(1.08);
+}
+
+/* ─── Proposal preview step list (M2.2) ──────────────────────────────────── */
+
+.ai-proposal-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.ai-proposal-step {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    border-left: 2px solid transparent;
+}
+
+.ai-proposal-step-num {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-proposal-step-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+}
+
+.ai-proposal-step-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.ai-proposal-step-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.ai-proposal-step-badge.added {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.ai-proposal-step-badge.modified {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.ai-proposal-step-badge.removed {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.ai-proposal-step-changes {
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 100%;
+    padding-left: 22px;
+}
+
+.ai-proposal-step.added {
+    border-left-color: #22c55e;
+    background: rgba(34, 197, 94, 0.06);
+}
+
+.ai-proposal-step.modified {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+}
+
+.ai-proposal-step.removed {
+    border-left-color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+    opacity: 0.7;
+}
+
+.ai-proposal-step.removed .ai-proposal-step-name {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.ai-proposal-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.ai-proposal-diagram-toggle {
+    background: none;
+    border: none;
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+}
+
+.ai-proposal-followup-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
 }

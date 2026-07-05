@@ -10,8 +10,8 @@
  */
 
 import { formatContextForPrompt, buildContext } from './contextEngine';
+import type { WorkflowSnapshot } from './contextEngine';
 import { classifyIntent, getContextOptions } from './intentClassifier';
-import useLibraryStore from '../../store/libraryStore';
 import { ruleEngine } from './ruleEngine';
 import { schemaRegistry } from './schemaRegistry';
 import type { Intent } from './intentClassifier';
@@ -72,24 +72,41 @@ SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVEN
  * @param userInput       当前用户输入（用于意图识别 + 上下文注入）
  * @param systemPrompt    完全替换内置基础提示词（高级定制）
  * @param systemPromptExtra  追加内容，附加在基础层之后（适合补充业务规范、公司名等）
+ * @param pendingProposalDef 待用户确认的提案 JSON（如有）。M2.2：提案不再阻塞对话输入，
+ *                           用户可以继续描述修改意见——注入此上下文后 AI 会把新消息理解为
+ *                           "基于这份提案继续调整"，而非从当前画布另起炉灶。
  */
 export function buildSystemPrompt(
     userInput: string,
+    workflowSnapshot: WorkflowSnapshot,
+    libraryItems: WorkflowLibraryItem[],
     options?: {
         systemPrompt?: string;
         systemPromptExtra?: string;
         viewMode?: ViewMode;
+        pendingProposalDef?: import('../../types/conductor').WorkflowDef;
     },
 ): string {
-    const { systemPrompt, systemPromptExtra, viewMode } = options ?? {};
+    const { systemPrompt, systemPromptExtra, viewMode, pendingProposalDef } = options ?? {};
 
     const intent = classifyIntent(userInput);
     const contextOptions = getContextOptions(intent);
-    const ctx = buildContext(contextOptions);
+    const ctx = buildContext(workflowSnapshot, contextOptions);
     const contextBlock = formatContextForPrompt(ctx);
 
     // Base layer: use custom or built-in
     const parts = [systemPrompt ?? BASE_SYSTEM_PROMPT];
+
+    // Pending proposal awaiting user confirmation (M2.2: proposal no longer blocks chat input)
+    if (pendingProposalDef) {
+        parts.push(
+            `## 待确认的变更方案\n` +
+            `用户当前有一份尚未确认（未接受也未拒绝）的变更方案，画布上仍是旧版本。` +
+            `如果用户接下来的消息是在此方案基础上继续调整（而非提出全新需求），` +
+            `请基于下方 JSON 继续修改并通过 replace_workflow 重新生成完整方案，而不是从当前画布重新开始。\n\n` +
+            `\`\`\`json\n${JSON.stringify(pendingProposalDef, null, 2)}\n\`\`\``
+        );
+    }
 
     // Custom validation rules (injected by integrators via ruleEngine)
     const rulesBlock = ruleEngine.buildPromptSection();
@@ -104,7 +121,7 @@ export function buildSystemPrompt(
     }
 
     // Sub-workflow library catalog (injected when library is available)
-    const libraryBlock = buildLibraryCatalog();
+    const libraryBlock = buildLibraryCatalog(libraryItems);
     if (libraryBlock) {
         parts.push(libraryBlock);
     }
@@ -140,8 +157,7 @@ export function buildSystemPrompt(
 
 // ─── Library catalog builder ─────────────────────────────────────────────────
 
-function buildLibraryCatalog(): string | null {
-    const items = useLibraryStore.getState().items;
+function buildLibraryCatalog(items: WorkflowLibraryItem[]): string | null {
     if (items.length === 0) return null;
 
     const byLevel = {

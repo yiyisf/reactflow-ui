@@ -93,8 +93,8 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
 
     return (
         <div className="ai-config-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-            <div className="ai-config-dialog" style={{ width: 440 }}>
-                <h3>⚙️ AI 服务配置</h3>
+            <div className="ai-config-dialog" style={{ width: 440 }} role="dialog" aria-modal="true" aria-labelledby="ai-config-title">
+                <h3 id="ai-config-title">⚙️ AI 服务配置</h3>
 
                 <div style={{
                     padding: '8px 10px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)',
@@ -137,8 +137,9 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                 </div>
 
                 <div className="ai-config-field">
-                    <label>API Key <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label htmlFor="ai-config-api-key">API Key <span style={{ color: '#ef4444' }}>*</span></label>
                     <input
+                        id="ai-config-api-key"
                         type="password"
                         value={draft.apiKey}
                         onChange={e => { setDraft({ ...draft, apiKey: e.target.value }); resetTestResult(); }}
@@ -148,11 +149,12 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                 </div>
 
                 <div className="ai-config-field">
-                    <label>
+                    <label htmlFor="ai-config-base-url">
                         API Base URL
                         <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400 }}>留空使用默认地址</span>
                     </label>
                     <input
+                        id="ai-config-base-url"
                         type="text"
                         value={draft.baseUrl ?? ''}
                         onChange={e => { setDraft({ ...draft, baseUrl: e.target.value }); resetTestResult(); }}
@@ -161,11 +163,12 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                 </div>
 
                 <div className="ai-config-field">
-                    <label>
+                    <label htmlFor="ai-config-model">
                         模型
                         <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400 }}>留空使用默认模型</span>
                     </label>
                     <input
+                        id="ai-config-model"
                         type="text"
                         value={draft.model ?? ''}
                         onChange={e => setDraft({ ...draft, model: e.target.value })}

@@ -114,6 +114,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     const CloseBtn = () => (
         <button
             onClick={onClose}
+            aria-label="关闭执行卡片"
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, padding: 0 }}
         >
             ×

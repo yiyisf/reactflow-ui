@@ -1,10 +1,26 @@
 /**
- * AI Context Engine — 从 workflowStore 实时构建 AI 上下文
+ * AI Context Engine — 从工作流快照构建 AI 上下文
  *
  * 生成精简的结构化上下文，避免全量 JSON dump 消耗过多 token。
+ * 不直接依赖 workflowStore——调用方（AgentRunner）读取实时 store 状态后
+ * 以 WorkflowSnapshot 形式传入，使本模块保持纯函数、可脱离 store 单测。
  */
 
-import useWorkflowStore from '../../store/workflowStore';
+import type { Edge } from 'reactflow';
+import type { WorkflowDef, TaskDef, WorkflowInstance } from '../../types/conductor';
+import type { EditorMode, TaskExecutionData, ValidationResults } from '../../types/workflow';
+
+/** 调用方（AgentRunner）从 workflowStore 读取的实时状态快照 */
+export interface WorkflowSnapshot {
+    workflowDef: WorkflowDef | null;
+    edges: Edge[];
+    selectedTask: TaskDef | null;
+    executionData: Record<string, TaskExecutionData> | null;
+    mode: EditorMode;
+    workflowInstance: WorkflowInstance | null;
+    taskMap: Record<string, TaskDef>;
+    validationResults: ValidationResults;
+}
 
 export interface ExecutionContext {
     /** 实例 ID（截短） */
@@ -50,9 +66,8 @@ interface FocusTaskContext {
 /**
  * 构建工作流上下文摘要
  */
-export function buildContext(options?: { includeFull?: boolean }): WorkflowContext {
-    const state = useWorkflowStore.getState();
-    const def = state.workflowDef;
+export function buildContext(snapshot: WorkflowSnapshot, options?: { includeFull?: boolean }): WorkflowContext {
+    const def = snapshot.workflowDef;
 
     if (!def) {
         return {
@@ -70,7 +85,7 @@ export function buildContext(options?: { includeFull?: boolean }): WorkflowConte
     }));
 
     // Build topology string from edges
-    const edges = state.edges;
+    const edges = snapshot.edges;
     const adjList: Record<string, string[]> = {};
     edges.forEach(e => {
         if (!adjList[e.source]) adjList[e.source] = [];
@@ -96,17 +111,17 @@ export function buildContext(options?: { includeFull?: boolean }): WorkflowConte
 
     // Focus task
     let focusTask: FocusTaskContext | undefined;
-    if (state.selectedTask) {
-        const ref = state.selectedTask.taskReferenceName;
+    if (snapshot.selectedTask) {
+        const ref = snapshot.selectedTask.taskReferenceName;
         const upstreamRefs = edges.filter(e => e.target === ref).map(e => e.source);
         const downstreamRefs = edges.filter(e => e.source === ref).map(e => e.target);
-        const execData = state.executionData?.[ref];
+        const execData = snapshot.executionData?.[ref];
         focusTask = {
             task: {
                 ref,
-                name: state.selectedTask.name,
-                type: state.selectedTask.type,
-                inputParameters: state.selectedTask.inputParameters,
+                name: snapshot.selectedTask.name,
+                type: snapshot.selectedTask.type,
+                inputParameters: snapshot.selectedTask.inputParameters,
             },
             upstreamRefs,
             downstreamRefs,
@@ -117,26 +132,26 @@ export function buildContext(options?: { includeFull?: boolean }): WorkflowConte
 
     // Validation issues
     const validationIssues: string[] = [];
-    state.validationResults.errors.forEach(e => validationIssues.push(`❌ ${e.message}`));
-    state.validationResults.warnings.forEach(w => validationIssues.push(`⚠️ ${w.message}`));
+    snapshot.validationResults.errors.forEach(e => validationIssues.push(`❌ ${e.message}`));
+    snapshot.validationResults.warnings.forEach(w => validationIssues.push(`⚠️ ${w.message}`));
 
     // Execution context (run mode only)
     let execution: ExecutionContext | undefined;
-    if (state.mode === 'run' && state.executionData) {
-        const execMap = state.executionData;
+    if (snapshot.mode === 'run' && snapshot.executionData) {
+        const execMap = snapshot.executionData;
         const allRefs = Object.keys(execMap);
         const failed = allRefs
             .filter(r => execMap[r].status === 'FAILED' || execMap[r].status === 'FAILED_WITH_TERMINAL_ERROR' || execMap[r].status === 'TIMED_OUT')
             .map(r => ({
                 ref: r,
-                type: state.taskMap[r]?.type ?? 'UNKNOWN',
+                type: snapshot.taskMap[r]?.type ?? 'UNKNOWN',
                 reason: execMap[r].reasonForIncompletion,
             }));
         const inProgress = allRefs.filter(r => execMap[r].status === 'IN_PROGRESS' || execMap[r].status === 'SCHEDULED');
         const completed = allRefs.filter(r => execMap[r].status === 'COMPLETED' || execMap[r].status === 'COMPLETED_WITH_ERRORS');
         execution = {
-            instanceId: state.workflowInstance?.workflowId?.slice(0, 16),
-            workflowStatus: state.workflowInstance?.status,
+            instanceId: snapshot.workflowInstance?.workflowId?.slice(0, 16),
+            workflowStatus: snapshot.workflowInstance?.status,
             failedTasks: failed,
             inProgressTasks: inProgress,
             completedCount: completed.length,

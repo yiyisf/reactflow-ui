@@ -127,9 +127,25 @@ interface AiState {
     /**
      * Message queued for the AI pipeline from outside AiCommandCenter
      * (e.g. proposal acceptance, canvas node click). AiCommandCenter
-     * picks this up via useEffect and calls handleSendText(), then clears it.
+     * picks this up via useEffect and calls runner.send(), then clears it.
      */
     pendingAutoSend: string | null;
+    /** Current in-flight step label (e.g. "正在搜索工作流库…"), set by AgentRunner */
+    toolStatus: string;
+    /** Last message that failed to send, offered back via a retry button */
+    retryInput: string | null;
+    /**
+     * Append-only log of completed steps for the current agent turn (M2.2 AgentTimeline).
+     * Cleared at the start of each `send()`. Self-heal retries log their own entry so
+     * the correction is visible rather than silent.
+     */
+    timelineEntries: TimelineEntry[];
+}
+
+export interface TimelineEntry {
+    id: string;
+    label: string;
+    icon: 'done' | 'warning';
 }
 
 interface AiActions {
@@ -167,6 +183,10 @@ interface AiActions {
     setPendingAutoSend: (msg: string | null) => void;
     /** Restore conversation + pending proposal from a persisted draft (M1.4) */
     hydrateFromDraft: (messages: AiChatMessage[], pendingProposal: ProposedChange | null) => void;
+    setToolStatus: (status: string) => void;
+    setRetryInput: (input: string | null) => void;
+    addTimelineEntry: (label: string, icon?: 'done' | 'warning') => void;
+    clearTimeline: () => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -204,6 +224,9 @@ const useAiStore = create<AiStore>()(
             pendingClarification: null,
             pendingRecommendation: null,
             pendingAutoSend: null,
+            toolStatus: '',
+            retryInput: null,
+            timelineEntries: [],
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -240,6 +263,9 @@ const useAiStore = create<AiStore>()(
                 pendingClarification: null,
                 pendingRecommendation: null,
                 pendingAutoSend: null,
+                toolStatus: '',
+                retryInput: null,
+                timelineEntries: [],
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
@@ -316,6 +342,13 @@ const useAiStore = create<AiStore>()(
             clearRecommendation: () => set({ pendingRecommendation: null }),
 
             setPendingAutoSend: (msg) => set({ pendingAutoSend: msg }),
+            setToolStatus: (status) => set({ toolStatus: status }),
+            setRetryInput: (input) => set({ retryInput: input }),
+
+            addTimelineEntry: (label, icon = 'done') => set(s => ({
+                timelineEntries: [...s.timelineEntries, { id: `tl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, label, icon }],
+            })),
+            clearTimeline: () => set({ timelineEntries: [] }),
 
             hydrateFromDraft: (messages, pendingProposal) => set({
                 messages: messages.length > 0 ? messages : [WELCOME_MESSAGE],

@@ -4,13 +4,16 @@
  * All modifying operations work on WorkflowDef JSON (pure functions).
  * The result is a "proposed" def stored in aiStore for user review.
  * Actual application to the canvas uses setWorkflow(proposedDef).
+ *
+ * This module has no store dependencies — the caller (AgentRunner) reads live
+ * workflowStore/libraryStore state and passes it in via `ToolExecutionContext`.
+ * That keeps this file pure, unit-testable without a store, and reusable headless.
  */
 
-import useWorkflowStore from '../../store/workflowStore';
-import useLibraryStore from '../../store/libraryStore';
 import { validateWorkflow } from '../../utils/validator';
 import type { WorkflowDef, TaskDef } from '../../types/conductor';
 import type { WorkflowLibraryItem, WorkflowLevel } from '../../types/workflowLibrary';
+import type { ValidationResults } from '../../types/workflow';
 
 // ─── Patch operation types ───────────────────────────────────────────────────
 
@@ -22,12 +25,20 @@ export type PatchOp =
     | { op: 'add_switch_branch'; ref: string; caseName: string }
     | { op: 'add_fork_branch'; ref: string };
 
+/** Human-readable field-level changes for one modified task (M2.2: proposal preview card). */
+export interface TaskFieldChange {
+    ref: string;
+    changes: string[];
+}
+
 export interface DiffSummary {
     added: string[];
     modified: string[];
     removed: string[];
     propsChanged: boolean;
     reordered?: boolean;
+    /** Field-level change descriptions for each modified task, e.g. "超时: 5 分钟 → 10 分钟" */
+    modifiedDetails?: TaskFieldChange[];
 }
 
 export interface PartialAcceptSelection {
@@ -48,6 +59,13 @@ export interface ToolCallResult {
     inferredLevel?: WorkflowLevel;
     /** For 'info'/'error': text to append to chat */
     text?: string;
+}
+
+/** Live state the caller (AgentRunner) gathers from workflowStore/libraryStore for each tool call. */
+export interface ToolExecutionContext {
+    workflowDef: WorkflowDef | null;
+    validationResults: ValidationResults;
+    libraryItems: WorkflowLibraryItem[];
 }
 
 // ─── Recursive task search/transform ────────────────────────────────────────
@@ -185,6 +203,55 @@ export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
 
 // ─── Diff computation ────────────────────────────────────────────────────────
 
+/** Formats seconds as a friendly duration for change descriptions, e.g. 90 → "1 分 30 秒", 300 → "5 分钟". */
+function formatDuration(seconds: number | undefined): string {
+    if (!seconds) return '未设置';
+    if (seconds < 60) return `${seconds} 秒`;
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+    return rest > 0 ? `${minutes} 分 ${rest} 秒` : `${minutes} 分钟`;
+}
+
+/**
+ * Describes what changed on a single task in business language, for the proposal
+ * preview card (M2.2). Covers the fields users actually care about; anything else
+ * that changed (nested params, decision branches, …) falls back to a generic note
+ * so the list is never empty for a task `computeDiff` already flagged as modified.
+ */
+function describeTaskFieldChanges(before: TaskDef, after: TaskDef): string[] {
+    const changes: string[] = [];
+
+    if (before.name !== after.name) {
+        changes.push(`名称：「${before.name}」→「${after.name}」`);
+    }
+    if (before.type !== after.type) {
+        changes.push(`类型：${before.type} → ${after.type}`);
+    }
+    if (before.timeoutSeconds !== after.timeoutSeconds) {
+        changes.push(`超时：${formatDuration(before.timeoutSeconds)} → ${formatDuration(after.timeoutSeconds)}`);
+    }
+    if ((before.retryCount ?? 0) !== (after.retryCount ?? 0)) {
+        const b = before.retryCount ?? 0;
+        const a = after.retryCount ?? 0;
+        changes.push(a > b ? `新增失败重试（${a} 次）` : (a === 0 ? '移除了失败重试' : `重试次数：${b} → ${a}`));
+    }
+    if (JSON.stringify(before.inputParameters ?? {}) !== JSON.stringify(after.inputParameters ?? {})) {
+        changes.push('输入参数已调整');
+    }
+    if (JSON.stringify((before as any).decisionCases) !== JSON.stringify((after as any).decisionCases)) {
+        changes.push('分支条件已调整');
+    }
+    if (JSON.stringify((before as any).forkTasks) !== JSON.stringify((after as any).forkTasks)) {
+        changes.push('并行分支已调整');
+    }
+
+    if (changes.length === 0) {
+        // Something in the raw JSON differs but none of the tracked fields above caught it.
+        changes.push('配置已调整');
+    }
+    return changes;
+}
+
 export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): DiffSummary {
     const afterTasks = after.tasks ?? [];
     if (!before) {
@@ -202,12 +269,17 @@ export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): Dif
     const added: string[] = [];
     const modified: string[] = [];
     const removed: string[] = [];
+    const modifiedDetails: TaskFieldChange[] = [];
 
     for (const [ref, task] of afterMap) {
         if (!beforeMap.has(ref)) {
             added.push(ref);
-        } else if (JSON.stringify(task) !== JSON.stringify(beforeMap.get(ref))) {
-            modified.push(ref);
+        } else {
+            const beforeTask = beforeMap.get(ref)!;
+            if (JSON.stringify(task) !== JSON.stringify(beforeTask)) {
+                modified.push(ref);
+                modifiedDetails.push({ ref, changes: describeTaskFieldChanges(beforeTask, task) });
+            }
         }
     }
 
@@ -234,7 +306,7 @@ export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): Dif
         .map(t => t.taskReferenceName);
     const reordered = beforeOrder.join(',') !== afterOrder.join(',');
 
-    return { added, modified, removed, propsChanged, reordered };
+    return { added, modified, removed, propsChanged, reordered, modifiedDetails };
 }
 
 // ─── Library level compliance check ─────────────────────────────────────────
@@ -245,11 +317,10 @@ export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): Dif
  * - inferredLevel: the inferred level of the proposed workflow (based on highest sub-workflow level + 1)
  * - violations: any upward-call rule violations
  */
-function checkLevelCompliance(proposed: WorkflowDef): {
+function checkLevelCompliance(proposed: WorkflowDef, library: WorkflowLibraryItem[]): {
     inferredLevel: WorkflowLevel | null;
     violations: string[];
 } {
-    const library = useLibraryStore.getState().items;
     if (library.length === 0) return { inferredLevel: null, violations: [] };
 
     const libraryMap = new Map(library.map(w => [w.workflowName, w]));
@@ -286,14 +357,14 @@ function checkLevelCompliance(proposed: WorkflowDef): {
 export function executeToolCall(
     toolName: string,
     args: Record<string, any>,
+    ctx: ToolExecutionContext,
 ): ToolCallResult {
     // Sentinel from protocolAdapter when SSE JSON was truncated (output token limit hit).
     if (args.__truncated__) {
         return { type: 'error', text: `工具调用参数被截断（输出超出 token 限制）。请将工作流拆分为更小的步骤，或先创建骨架工作流再通过 patch_workflow 逐步完善。` };
     }
 
-    const state = useWorkflowStore.getState();
-    const currentDef = state.workflowDef;
+    const currentDef = ctx.workflowDef;
 
     switch (toolName) {
         case 'replace_workflow': {
@@ -312,7 +383,7 @@ export function executeToolCall(
                 return { type: 'error', text: '工作流定义缺少 tasks 数组，请提供包含 tasks 字段的完整工作流定义' };
             }
             const diff = computeDiff(currentDef, proposed);
-            const { inferredLevel } = checkLevelCompliance(proposed);
+            const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
             return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined };
         }
 
@@ -326,7 +397,7 @@ export function executeToolCall(
             }
             const proposed = applyPatch(currentDef, ops);
             const diff = computeDiff(currentDef, proposed);
-            const { inferredLevel } = checkLevelCompliance(proposed);
+            const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
             return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined };
         }
 
@@ -358,8 +429,8 @@ export function executeToolCall(
                 }
                 return detail.join(' | ');
             });
-            const validationSummary = state.validationResults.errors.length > 0
-                ? `\n\n校验错误：${state.validationResults.errors.map(e => e.message).join('；')}`
+            const validationSummary = ctx.validationResults.errors.length > 0
+                ? `\n\n校验错误：${ctx.validationResults.errors.map(e => e.message).join('；')}`
                 : '';
             return {
                 type: 'info',
@@ -382,7 +453,7 @@ export function executeToolCall(
         }
 
         case 'search_workflow_library': {
-            const library = useLibraryStore.getState().items;
+            const library = ctx.libraryItems;
             if (library.length === 0) {
                 return { type: 'info', text: '当前没有配置工作流库，无法搜索。' };
             }

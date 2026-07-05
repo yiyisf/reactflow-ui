@@ -165,6 +165,8 @@ interface AiActions {
     clearRecommendation: () => void;
     /** Queue a message to be sent through the AI pipeline by AiCommandCenter */
     setPendingAutoSend: (msg: string | null) => void;
+    /** Restore conversation + pending proposal from a persisted draft (M1.4) */
+    hydrateFromDraft: (messages: AiChatMessage[], pendingProposal: ProposedChange | null) => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -314,6 +316,11 @@ const useAiStore = create<AiStore>()(
             clearRecommendation: () => set({ pendingRecommendation: null }),
 
             setPendingAutoSend: (msg) => set({ pendingAutoSend: msg }),
+
+            hydrateFromDraft: (messages, pendingProposal) => set({
+                messages: messages.length > 0 ? messages : [WELCOME_MESSAGE],
+                pendingProposal,
+            }),
         }),
         {
             name: 'ai-workflow-config',

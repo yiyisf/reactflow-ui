@@ -8,7 +8,16 @@
  * - Anthropic Messages API（/messages）
  *
  * baseUrl 和 model 均为可选，不填时自动使用各提供商默认值。
+ *
+ * 传输模式：`config.transport` 未设置时，以下 provider/apiKey/baseUrl/model 字段
+ * 生效为 **direct 模式**——浏览器直连模型服务商，API Key 留存于终端用户浏览器，
+ * 仅建议用于开发调试。生产环境请通过 `transport: { type: 'endpoint', url }` 配置
+ * 集成方自己的后端代理，详见 `./transport.ts`。
  */
+
+import type { AiTransport } from './transport';
+import { streamEndpoint } from './transport';
+export type { AiTransport, AgentRequest } from './transport';
 
 // ─── 公共类型 ────────────────────────────────────────────────────────────────
 
@@ -22,11 +31,11 @@ export interface AiConfig {
      */
     provider?: 'openai' | 'anthropic' | 'auto';
 
-    /** API Key */
+    /** API Key（仅 direct 模式需要；使用 endpoint/custom 传输时可留空字符串） */
     apiKey: string;
 
     /**
-     * API 基础 URL（不含路径）。
+     * API 基础 URL（不含路径，仅 direct 模式生效）。
      * 留空时使用各提供商标准地址：
      * - OpenAI:    https://api.openai.com/v1
      * - Anthropic: https://api.anthropic.com
@@ -41,11 +50,20 @@ export interface AiConfig {
     baseUrl?: string;
 
     /**
-     * 模型名称。留空时使用各提供商默认模型：
+     * 模型名称（仅 direct 模式生效）。留空时使用各提供商默认模型：
      * - OpenAI:    gpt-4o
      * - Anthropic: claude-sonnet-4-6
      */
     model?: string;
+
+    /**
+     * 传输模式（可选）。设置后优先于上述 direct 字段生效：
+     * - `{ type: 'endpoint', url }` — 请求转发至集成方自己的后端代理（**生产环境推荐**）
+     * - `{ type: 'custom', stream }` — 完全自定义的流式实现
+     *
+     * 不设置时回退为 direct 模式（浏览器直连模型服务商，仅限开发调试）。
+     */
+    transport?: AiTransport;
 }
 
 export interface ToolCallRef {
@@ -91,7 +109,8 @@ export const PROVIDER_DEFAULTS = {
 } as const;
 
 /** 解析有效配置（填充所有默认值） */
-function resolveConfig(config: AiConfig): Required<AiConfig> & { resolvedProvider: 'openai' | 'anthropic' } {
+/** Resolves the direct-mode fields only — `transport` (if any) is handled separately by streamChat. */
+function resolveConfig(config: AiConfig): Required<Omit<AiConfig, 'transport'>> & { resolvedProvider: 'openai' | 'anthropic' } {
     // Detect provider
     let resolvedProvider: 'openai' | 'anthropic';
     if (!config.provider || config.provider === 'auto') {
@@ -444,6 +463,18 @@ export async function* streamChat(
     config: AiConfig,
     signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
+    // ── 传输层反转：endpoint / custom 优先于 direct 生效 ────────────────────
+    if (config.transport?.type === 'endpoint') {
+        yield* streamEndpoint(config.transport, { messages, tools }, signal);
+        return;
+    }
+    if (config.transport?.type === 'custom') {
+        const resolvedSignal = signal ?? new AbortController().signal;
+        yield* config.transport.stream({ messages, tools }, resolvedSignal);
+        return;
+    }
+
+    // ── direct 模式（现状：浏览器直连模型服务商，仅限开发调试） ─────────────
     if (!config.apiKey) {
         yield { type: 'error', message: '未配置 API Key，请在设置中填写。' };
         yield { type: 'done' };

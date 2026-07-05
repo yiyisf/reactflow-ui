@@ -15,7 +15,7 @@ import type { Message } from '../../services/ai/protocolAdapter';
 import { TOOL_DEFINITIONS } from '../../services/ai/toolDefs';
 import { toolRegistry } from '../../services/ai/toolRegistry';
 import { validateWorkflow } from '../../utils/validator';
-import type { WorkflowDef } from '../../types/conductor';
+import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
 import type { DiffSummary } from '../../services/ai/toolExecutor';
 import PlanCard from './PlanCard';
@@ -26,6 +26,7 @@ import MermaidBlock from './MermaidBlock';
 import WorkflowRunCard from './WorkflowRunCard';
 import type { ExecutionActions } from '../../types/workflow';
 import type { AiEvent } from '../../types/aiEvents';
+import { humanizeAiError } from '../../services/ai/errorMessages';
 
 // Run-mode tools: read-only + repair proposer (no workflow-modifying tools)
 const RUN_MODE_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
@@ -54,10 +55,10 @@ interface AiCommandCenterProps {
     canvasOpen?: boolean;
     onOpenCanvas?: () => void;
     onCloseCanvas?: () => void;
-    /** Trigger execution of the current workflow; returns executionId */
-    onTriggerExecution?: (workflowName: string, params: Record<string, any>) => Promise<string>;
-    /** Poll execution status by executionId */
-    onPollExecution?: (executionId: string) => Promise<{ status: string; output?: any }>;
+    /** Trigger execution of the current workflow. Signature matches WorkflowIDE's onTriggerExecution. */
+    onTriggerExecution?: (workflowName: string, version: number, input: Record<string, any>) => Promise<{ workflowId: string }>;
+    /** Poll execution status by workflowId. Signature matches WorkflowIDE's onPollExecution. */
+    onPollExecution?: (workflowId: string) => Promise<WorkflowInstance | null>;
     /** Accept the pending proposal (full accept) */
     onAccept?: () => void;
     /** Reject the pending proposal */
@@ -363,7 +364,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         setStreamingText('');
         setToolStatus('');
 
-        if (!config.apiKey) {
+        // apiKey is only required in direct mode — endpoint/custom transports don't need one.
+        if (!config.apiKey && !config.transport) {
             addMessage({ role: 'assistant', content: '⚠️ 未配置 API Key。请点击上方 ⚙️ 按钮配置 AI 服务后重试。' });
             setStreaming(false);
             return;
@@ -411,9 +413,12 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         case 'tool_call':
                             stepToolCalls.push({ id: event.id, name: event.name, args: event.args });
                             break;
-                        case 'error':
-                            stepText += `\n\n❌ ${event.message}`;
+                        case 'error': {
+                            const humanized = humanizeAiError(event.message);
+                            stepText += `\n\n❌ ${humanized.display}`;
+                            onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
                             break;
+                        }
                     }
                 }
 
@@ -649,7 +654,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         } catch (err: any) {
             setToolStatus('');
             if (err.name !== 'AbortError') {
-                updateMessage(assistantMsgId, `❌ AI 服务错误: ${err.message}`);
+                const humanized = humanizeAiError(err?.message);
+                updateMessage(assistantMsgId, `❌ ${humanized.display}`);
+                onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
                 setRetryInput(text);
             } else {
                 const cur = useAiStore.getState().messages.find(m => m.id === assistantMsgId);
@@ -719,6 +726,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     }, [clearPlan, onAiEvent]);
 
     const handleRepairAction = useCallback((action: import('../../store/aiStore').RepairAction) => {
+        // RepairCard only calls this after the user's inline second-click confirmation —
+        // record that confirmation distinctly from the dispatch below for a complete audit trail.
+        onAiEvent?.({ type: 'repair:confirmed', timestamp: Date.now(), repairActionType: action.type });
         const instance = useWorkflowStore.getState().workflowInstance;
         const wfId = instance?.workflowId ?? '';
         switch (action.type) {
@@ -754,7 +764,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const welcomeChips = buildWelcomeChips(!!workflowDef, libraryItems);
     const hasLibrary = libraryItems.length > 0;
-    const noApiKey = !config.apiKey && showConfigButton;
+    const noApiKey = !config.apiKey && !config.transport && showConfigButton;
     // D3: show template gallery when canvas is empty and only welcome msg exists
     const showTemplates = !workflowDef && messages.length === 1 && messages[0].id === 'welcome' && libraryItems.length === 0;
     // Staleness: proposal was generated against an older version of the workflow

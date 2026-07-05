@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { parseWorkflowInputParams } from '../../types/conductor';
-import type { WorkflowDef } from '../../types/conductor';
+import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
 
 interface WorkflowRunCardProps {
     workflowDef: WorkflowDef;
-    onTriggerExecution: (workflowName: string, params: Record<string, any>) => Promise<string>;
-    onPollExecution: (executionId: string) => Promise<{ status: string; output?: any }>;
+    /** Signature matches WorkflowIDE's onTriggerExecution — one adapter serves both components. */
+    onTriggerExecution: (workflowName: string, version: number, input: Record<string, any>) => Promise<{ workflowId: string }>;
+    /** Signature matches WorkflowIDE's onPollExecution: null while pending, WorkflowInstance once available. */
+    onPollExecution: (workflowId: string) => Promise<WorkflowInstance | null>;
     onClose: () => void;
 }
 
@@ -48,7 +50,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     );
     const [executionId, setExecutionId] = useState<string | null>(null);
     const [execStatus, setExecStatus] = useState<string>('');
-    const [execOutput, setExecOutput] = useState<any>(null);
+    const [execOutput, setExecOutput] = useState<Record<string, any> | null>(null);
     const [errorMsg, setErrorMsg] = useState<string>('');
     const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelledRef = useRef(false);
@@ -60,19 +62,24 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
         };
     }, []);
 
-    const startPolling = useCallback(async (execId: string) => {
+    const startPolling = useCallback(async (workflowId: string) => {
         const poll = async () => {
             if (cancelledRef.current) return;
             try {
-                const result = await onPollExecution(execId);
+                const instance = await onPollExecution(workflowId);
                 if (cancelledRef.current) return;
-                setExecStatus(result.status);
-                if (TERMINAL_STATUSES.has(result.status)) {
-                    if (SUCCESS_STATUSES.has(result.status)) {
-                        setExecOutput(result.output ?? null);
+                if (!instance) {
+                    // null = still pending, no status update yet — keep polling
+                    pollRef.current = setTimeout(poll, 2000);
+                    return;
+                }
+                setExecStatus(instance.status);
+                if (TERMINAL_STATUSES.has(instance.status)) {
+                    if (SUCCESS_STATUSES.has(instance.status)) {
+                        setExecOutput(instance.output ?? null);
                         setPhase('done');
                     } else {
-                        setErrorMsg(`执行结束，状态：${result.status}`);
+                        setErrorMsg(`执行结束，状态：${instance.status}`);
                         setPhase('error');
                     }
                 } else {
@@ -92,17 +99,17 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
         setPhase('running');
         setExecStatus('');
         try {
-            const execId = await onTriggerExecution(workflowDef.name, paramValues);
+            const { workflowId } = await onTriggerExecution(workflowDef.name, workflowDef.version ?? 1, paramValues);
             if (cancelledRef.current) return;
-            setExecutionId(execId);
-            await startPolling(execId);
+            setExecutionId(workflowId);
+            await startPolling(workflowId);
         } catch (e: any) {
             if (!cancelledRef.current) {
                 setErrorMsg(e?.message ?? '启动执行失败');
                 setPhase('error');
             }
         }
-    }, [workflowDef.name, paramValues, onTriggerExecution, startPolling]);
+    }, [workflowDef.name, workflowDef.version, paramValues, onTriggerExecution, startPolling]);
 
     const CloseBtn = () => (
         <button

@@ -11,6 +11,14 @@ import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from './conducto
  */
 export type ViewMode = 'business' | 'standard' | 'developer';
 
+// ─── 运行态输入 ─────────────────────────────────────────────────────────────
+
+/**
+ * `workflowExecution` prop 的公共类型（WorkflowIDE 与 AiWorkflowIDE 共用）。
+ * 兼容两种形态：完整 Conductor Workflow 实例，或裸的任务实例数组（旧兼容模式）。
+ */
+export type WorkflowExecutionInput = WorkflowInstance | TaskInstance[];
+
 // ─── AI Diff 类型 ─────────────────────────────────────────────────────────
 
 export interface WorkflowDiffRow {
@@ -250,6 +258,8 @@ export interface WorkflowActions {
     setViewMode: (viewMode: ViewMode) => void;
     startSimulation: () => void;
     stopSimulation: () => void;
+    /** 短暂高亮指定节点（如 AI 提案接受后标记新增/修改的节点），到时自动恢复原选中态 */
+    flashNodes: (refs: string[]) => void;
     /** P4.2: 显示/隐藏执行触发面板 */
     setShowRunPanel: (show: boolean) => void;
     /** P4.2: 显示/隐藏执行分析面板 */

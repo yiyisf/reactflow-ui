@@ -7,9 +7,9 @@
 首先，您需要安装组件库及其前置依赖：
 
 ```bash
-npm install reactflow-ui reactflow react react-dom
+npm install @yiyi_zhang/reactflow-ui reactflow react react-dom
 # 或者
-yarn add reactflow-ui reactflow react react-dom
+yarn add @yiyi_zhang/reactflow-ui reactflow react react-dom
 ```
 
 > **注意**: `react` 和 `react-dom` 版本需 >= 18.0.0。
@@ -20,8 +20,8 @@ yarn add reactflow-ui reactflow react react-dom
 
 ```tsx
 import React from 'react';
-import { WorkflowIDE, WorkflowDef } from 'reactflow-ui';
-import 'reactflow-ui/style.css'; // 务必引入样式文件
+import { WorkflowIDE, WorkflowDef } from '@yiyi_zhang/reactflow-ui';
+import '@yiyi_zhang/reactflow-ui/style.css'; // 务必引入样式文件
 
 const MyWorkflowApp = () => {
   const handleSave = (def: WorkflowDef) => {
@@ -182,8 +182,8 @@ const executionData = await fetch('/api/workflow/execution/123').then(res => res
 
 ```tsx
 import { useRef } from 'react';
-import { WorkflowIDE, WorkflowIDERef } from 'reactflow-ui';
-import 'reactflow-ui/style.css';
+import { WorkflowIDE, WorkflowIDERef } from '@yiyi_zhang/reactflow-ui';
+import '@yiyi_zhang/reactflow-ui/style.css';
 
 const App = () => {
   const ideRef = useRef<WorkflowIDERef>(null);
@@ -263,9 +263,10 @@ IDE 支持三种创建工作流的方式，无需预先提供 JSON：
 window.dispatchEvent(new CustomEvent('open-ai-chat'));
 ```
 
-## 🤖 AI Copilot (智能辅助)
+## 🤖 WorkflowIDE 内置 AI Copilot (智能辅助)
 
-`reactflow-ui` 集成了基于大模型的智能助手，**仅在编辑模式下可用**。
+`WorkflowIDE` 集成了基于大模型的智能助手，**仅在编辑模式下可用**。
+如果您的用户是**非技术人员**、需要以对话为主的建模体验，请参见下一节的 `AiWorkflowIDE`。
 
 ### 启用 AI 服务
 
@@ -294,6 +295,118 @@ window.dispatchEvent(new CustomEvent('open-ai-chat'));
 - **差异卡片 (Diff Card)**: AI 输出以结构化变更卡片展示，支持一键应用或撤销，变更过程可追溯。
 
 > 只读模式和运行态下 AI 助手对话面板不渲染，避免功能混淆。
+
+---
+
+## ✨ AiWorkflowIDE（AI 驱动，面向非技术用户）
+
+`AiWorkflowIDE` 是独立于 `WorkflowIDE` 的第二个核心组件：对话优先、AI 原生的工作流建模界面，
+面向不熟悉 Conductor JSON 的业务/运营人员。它与 `WorkflowIDE` 共享底层画布与校验能力，
+但交互完全围绕"描述需求 → 审阅方案 → 应用"展开，而非直接拖拽节点。
+
+### 独立子路径导入
+
+`AiWorkflowIDE` 从**独立入口** `@yiyi_zhang/reactflow-ui/ai` 导出，而非主入口。
+这样只使用 `WorkflowIDE` 的项目不会在产物中引入 AI 协议适配、工具执行、Mermaid 渲染等代码。
+
+```bash
+npm install @yiyi_zhang/reactflow-ui reactflow react react-dom
+```
+
+```tsx
+import React from 'react';
+import { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';
+import '@yiyi_zhang/reactflow-ui/style.css';
+
+const MyAiWorkflowApp = () => {
+  const handleSave = (def) => {
+    console.log('保存工作流:', def);
+  };
+
+  return (
+    <div style={{ height: '100vh', width: '100%' }}>
+      <AiWorkflowIDE
+        aiConfig={{ apiKey: 'your-key' }} // 最简用法；生产环境建议见下方安全提示
+        onSave={handleSave}
+      />
+    </div>
+  );
+};
+```
+
+### ⚠️ 生产环境安全提示 — 使用 `transport` 代理模式
+
+仅传 `aiConfig={{ apiKey }}` 时（**direct 模式**），密钥会直接留存于终端用户浏览器
+并直连大模型服务商 API，**仅适合开发调试或内部可信环境**。
+
+生产环境请通过 `aiConfig.transport` 把请求转发到您自己的后端，密钥、限流、审计都留在后端完成：
+
+```tsx
+<AiWorkflowIDE
+  aiConfig={{
+    apiKey: '',  // direct 模式字段不再需要，可留空
+    transport: {
+      type: 'endpoint',
+      url: '/api/ai/chat',        // 您的后端代理地址
+      headers: { 'X-Session-Id': sessionId }, // 可选：附加请求头
+    },
+  }}
+/>
+```
+
+后端只需接收统一的 `{ messages, tools, meta }` 请求体，以 SSE 帧
+（`data: <JSON StreamEvent>\n\n`）把模型响应转发回来。参考实现（Node/Express，可直接
+复用本仓库 `services/ai/protocolAdapter.ts` 中的 `streamOpenAI`/`streamAnthropic` 逻辑）：
+
+```js
+app.post('/api/ai/chat', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  // req.body = { messages, tools, meta } —— 在后端持有密钥调用 OpenAI/Anthropic
+  for await (const event of callYourLlmProvider(req.body)) {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  }
+  res.end();
+});
+```
+
+如果已有网关/SDK，也可以用 `transport: { type: 'custom', stream: async function* (req, signal) { ... } }`
+完全自定义流式实现，直接产出 `StreamEvent`（`text` / `tool_call` / `error` / `done`）。
+
+> 不设置 `transport` 时自动回退为 direct 模式（现状行为，向后兼容）。
+
+### 刷新不丢工作：草稿自动保存
+
+`AiWorkflowIDE` 默认所有状态存于内存，刷新页面会丢失当前编辑。开启 `draftPersist` 后，
+workflowDef、对话历史和待确认的 AI 方案会防抖（500ms）自动写入 localStorage；
+挂载时若检测到草稿会自动恢复现场，并展示可撤销的横幅"↺ 已恢复 x 分钟前的编辑 · 放弃恢复"。
+
+```tsx
+<AiWorkflowIDE
+  draftPersist={{ key: 'my-app-ai-workflow-draft' }}
+  onDraftChange={(draft) => {
+    // 可选：同时（或改为）持久化到您自己的后端
+    saveDraftToBackend(draft);
+  }}
+/>
+```
+
+> 仅在未传入 `workflowDef` prop 时生效——加载指定工作流是明确意图，不应被本地草稿覆盖。
+> 默认 `draftPersist={false}`，不写宿主页面的 localStorage。
+
+### 与 WorkflowIDE 的关系
+
+两者是姊妹组件而非替代关系：同一 Conductor 后端可以同时集成两者，
+分别服务技术编排人员（`WorkflowIDE`）与业务用户（`AiWorkflowIDE`）。
+
+`onTriggerExecution` / `onPollExecution` 两个执行回调在两个组件间**签名完全一致**
+（见上文「执行验证」一节），同一份后端适配器可以同时传给 `WorkflowIDE` 和 `AiWorkflowIDE`，
+无需为两个组件分别编写适配代码。
+
+完整 Props 列表、`workflowLibrary`（子工作流库）、`customTools`、`validationRules`、
+`taskSchemas` 等扩展点，请参考组件源码 `AiWorkflowIDEProps` 的 TSDoc 注释
+（IDE 内联提示或 `dist/ai.d.ts`）。
 
 ---
 
@@ -408,7 +521,7 @@ import {
   ViewMode,
   RunState,                  // v0.4.0 新增：执行触发状态机类型
   parseWorkflowInputParams,  // v0.4.0 新增：解析入参声明工具函数
-} from 'reactflow-ui';
+} from '@yiyi_zhang/reactflow-ui';
 ```
 
 ---

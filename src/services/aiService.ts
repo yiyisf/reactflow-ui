@@ -1,12 +1,15 @@
 /**
  * AI Interaction Service (OpenAI Standard)
+ *
+ * @deprecated 这是 WorkflowIDE 内置 AI Copilot 的遗留实现（仅 OpenAI 协议、文本解析 diff）。
+ * 新代码请使用 `AiConfig` + `services/ai/protocolAdapter`（双协议、原生 tool-call、
+ * 传输层反转）。两套实现将在后续版本收敛为一套，详见 `docs/design/` 下的架构规划。
  */
 
-export interface AIServiceConfig {
-    apiKey: string;
-    baseUrl: string;
-    model: string;
-}
+import type { AiConfig } from './ai/protocolAdapter';
+
+/** @deprecated 使用 `AiConfig`（从 `services/ai/protocolAdapter` 或 `/ai` 入口导入）代替。保留为类型别名以避免破坏现有集成代码。 */
+export type AIServiceConfig = AiConfig;
 
 export interface ChatMessage {
     role: 'system' | 'user' | 'assistant';

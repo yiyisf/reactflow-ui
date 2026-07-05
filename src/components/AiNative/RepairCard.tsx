@@ -5,7 +5,7 @@
  * Displays a diagnosis and a list of executable repair actions.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { RepairProposal, RepairAction } from '../../store/aiStore';
 
 const RISK_META = {
@@ -37,6 +37,19 @@ interface RepairCardProps {
 }
 
 const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAction, onDismiss }) => {
+    // Runtime-mutating actions (rerun/skip/retry) require an inline second click before
+    // firing — a single accidental click must never trigger a real rerun/skip/retry.
+    const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+    const handleExecClick = (action: RepairAction) => {
+        if (confirmingId !== action.id) {
+            setConfirmingId(action.id);
+            return;
+        }
+        setConfirmingId(null);
+        onExecuteAction(action);
+    };
+
     return (
         <div className="ai-repair-card">
             <div className="ai-repair-card-header">
@@ -73,14 +86,35 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
                                         </span>
                                     )}
                                     {!isModifyDef && (
-                                        <button
-                                            className="ai-repair-exec-btn"
-                                            disabled={!canExecute}
-                                            onClick={() => onExecuteAction(action)}
-                                            title={canExecute ? ACTION_TYPE_LABEL[action.type] : '当前环境不支持此操作'}
-                                        >
-                                            {ACTION_TYPE_ICON[action.type]} 执行
-                                        </button>
+                                        confirmingId === action.id ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                                    确认{ACTION_TYPE_LABEL[action.type]}？
+                                                </span>
+                                                <button
+                                                    className="ai-repair-exec-btn"
+                                                    onClick={() => handleExecClick(action)}
+                                                    autoFocus
+                                                >
+                                                    ✓ 确认
+                                                </button>
+                                                <button
+                                                    className="ai-repair-exec-btn"
+                                                    onClick={() => setConfirmingId(null)}
+                                                >
+                                                    取消
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                className="ai-repair-exec-btn"
+                                                disabled={!canExecute}
+                                                onClick={() => handleExecClick(action)}
+                                                title={canExecute ? ACTION_TYPE_LABEL[action.type] : '当前环境不支持此操作'}
+                                            >
+                                                {ACTION_TYPE_ICON[action.type]} 执行
+                                            </button>
+                                        )
                                     )}
                                 </div>
                             </div>

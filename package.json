@@ -1,6 +1,6 @@
 {
   "name": "@yiyi_zhang/reactflow-ui",
-  "version": "0.4.0",
+  "version": "0.5.0-beta.0",
   "description": "Conductor Workflow IDE — a visual workflow designer built with React 19, ReactFlow and Zustand for editing, validating and monitoring Netflix Conductor workflows.",
   "keywords": [
     "conductor",
@@ -29,6 +29,10 @@
       "import": "./dist/reactflow-ui.es.js",
       "require": "./dist/reactflow-ui.umd.js"
     },
+    "./ai": {
+      "types": "./dist/ai.d.ts",
+      "import": "./dist/reactflow-ui-ai.es.js"
+    },
     "./style.css": "./dist/reactflow-ui.css"
   },
   "files": [
@@ -36,7 +40,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && vite build --mode ai && tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "preview": "vite preview"
   },

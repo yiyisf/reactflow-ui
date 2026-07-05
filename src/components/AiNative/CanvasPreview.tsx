@@ -8,9 +8,10 @@
 import React from 'react';
 import WorkflowDesigner from '../WorkflowDesigner';
 import type { ExecutionActions } from '../../types/workflow';
+import type { WorkflowDef } from '../../types/conductor';
 
 interface CanvasPreviewProps {
-    onSave?: (def: any) => void;
+    onSave?: (def: WorkflowDef) => void;
     onRequestImport?: () => void;
     executionActions?: ExecutionActions;
 }

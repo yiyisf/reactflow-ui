@@ -96,6 +96,15 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
             <div className="ai-config-dialog" style={{ width: 440 }}>
                 <h3>⚙️ AI 服务配置</h3>
 
+                <div style={{
+                    padding: '8px 10px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)', fontSize: 11.5,
+                    color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5,
+                }}>
+                    ⚠️ 此处填写的 API Key 会直接留存于浏览器并直连模型服务商，<strong>仅建议用于开发调试</strong>。
+                    生产环境请由集成方通过 <code>aiConfig.transport</code>（endpoint 代理模式）接管 AI 请求。
+                </div>
+
                 <div className="ai-config-field">
                     <label>快速选择</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

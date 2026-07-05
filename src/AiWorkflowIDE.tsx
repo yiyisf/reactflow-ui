@@ -18,10 +18,11 @@ import ReviewBar from './components/AiNative/ReviewBar';
 import BusinessCanvas from './components/AiNative/BusinessCanvas';
 import AiConfigPanel from './components/AiNative/AiConfigPanel';
 import { workflowToMermaid } from './utils/workflowToMermaid';
-import type { WorkflowDef } from './types/conductor';
+import type { WorkflowDef, WorkflowInstance } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
+import type { AiMetrics } from './store/aiStore';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
-import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData } from './types/workflow';
+import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData, WorkflowExecutionInput } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
 import type { CustomValidationRule } from './services/ai/ruleEngine';
 import type { TaskSchema } from './services/ai/schemaRegistry';
@@ -31,8 +32,20 @@ import type { AiEvent } from './types/aiEvents';
 import { toolRegistry } from './services/ai/toolRegistry';
 import { ruleEngine } from './services/ai/ruleEngine';
 import { schemaRegistry } from './services/ai/schemaRegistry';
+import type { IdeDraft } from './services/ai/draftPersistence';
+import { isMeaningfulDraft, loadDraft, saveDraft, clearDraft } from './services/ai/draftPersistence';
 
 import './components/AiNative/AiNative.css';
+
+/** 恢复横幅文案，如"已恢复刚刚的编辑" / "已恢复 3 分钟前的编辑" */
+function formatRestoredBannerText(savedAt: number): string {
+    const minutes = Math.floor((Date.now() - savedAt) / 60000);
+    if (minutes < 1) return '已恢复刚刚的编辑';
+    if (minutes < 60) return `已恢复 ${minutes} 分钟前的编辑`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `已恢复 ${hours} 小时前的编辑`;
+    return `已恢复 ${Math.floor(hours / 24)} 天前的编辑`;
+}
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -40,8 +53,8 @@ export interface AiWorkflowIDEProps {
     // ── Workflow data ──────────────────────────────────────────────────────
     /** 初始工作流定义（编辑态） */
     workflowDef?: WorkflowDef;
-    /** 运行态执行实例数据 */
-    workflowExecution?: any;
+    /** 运行态执行实例数据（完整 Conductor Workflow 实例，或裸的任务实例数组） */
+    workflowExecution?: WorkflowExecutionInput;
 
     // ── Sub-workflow library ───────────────────────────────────────────────
     /**
@@ -175,17 +188,20 @@ export interface AiWorkflowIDEProps {
     onRequestImport?: () => void;
     executionActions?: ExecutionActions;
     /**
-     * 触发执行当前工作流，返回 executionId。
-     * 若提供此回调，AI 对话中将出现"执行工作流"快捷操作。
+     * 触发执行当前工作流。若提供此回调，AI 对话中将出现"执行工作流"快捷操作。
+     *
+     * 签名与 `WorkflowIDE` 的 `onTriggerExecution` 完全一致——同一个后端适配器可同时用于两个组件。
      */
-    onTriggerExecution?: (workflowName: string, params: Record<string, any>) => Promise<string>;
+    onTriggerExecution?: (workflowName: string, version: number, input: Record<string, any>) => Promise<{ workflowId: string }>;
     /**
-     * 轮询执行状态，由 executionId 查询。
-     * 需与 onTriggerExecution 一起提供。
+     * 轮询执行状态，由 workflowId 查询。需与 onTriggerExecution 一起提供。
+     * 返回 `null` 表示暂未获取到结果（继续轮询），返回 `WorkflowInstance` 则视为当前/终态数据。
+     *
+     * 签名与 `WorkflowIDE` 的 `onPollExecution` 完全一致。
      */
-    onPollExecution?: (executionId: string) => Promise<{ status: string; output?: any }>;
+    onPollExecution?: (workflowId: string) => Promise<WorkflowInstance | null>;
     /** AI 操作指标回调（accept/reject 次数等） */
-    onAiMetrics?: (metrics: any) => void;
+    onAiMetrics?: (metrics: AiMetrics) => void;
     /**
      * AI 生命周期事件回调（审计日志 v1）。
      *
@@ -214,6 +230,24 @@ export interface AiWorkflowIDEProps {
         canRepair?: boolean;
         restrictionMessage?: string;
     };
+
+    // ── Draft persistence（M1.4：刷新不丢工作）─────────────────────────────
+    /**
+     * 开启 localStorage 草稿自动保存（workflowDef + 对话 + 待确认提案）。
+     * 默认 `false`（不写宿主页面的 localStorage）。挂载时若检测到草稿会自动恢复现场，
+     * 并展示可放弃恢复的横幅。**仅在未传入 `workflowDef` 时生效**——显式加载指定工作流
+     * 的场景视为明确意图，不应被本地草稿覆盖。
+     *
+     * ```tsx
+     * <AiWorkflowIDE draftPersist={{ key: 'my-app-ai-workflow-draft' }} />
+     * ```
+     */
+    draftPersist?: { key: string } | false;
+    /**
+     * 草稿变化时的回调（与 `draftPersist` 独立，二者可同时使用）。
+     * 集成方可用它把草稿存到自己的后端，而非（或除了）localStorage。
+     */
+    onDraftChange?: (draft: IdeDraft) => void;
 }
 
 export interface AiWorkflowIDERef {
@@ -224,7 +258,7 @@ export interface AiWorkflowIDERef {
     /** 新建空白工作流 */
     createBlankWorkflow: (name?: string) => void;
     /** 获取 AI 使用指标 */
-    getAiMetrics: () => any;
+    getAiMetrics: () => AiMetrics;
 }
 
 // ─── Inner component (needs ReactFlowProvider above it) ──────────────────────
@@ -254,6 +288,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         onAiMetrics,
         onAiEvent,
         aiPermissions,
+        draftPersist = false,
+        onDraftChange,
     } = props;
 
     const workflowStore = useWorkflowStore();
@@ -282,12 +318,17 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
 
     // ── AI config: sync on every prop change ───────────────────────────────
     // Unlike appearance, aiConfig can change (e.g. user rotates API key).
-    const prevAiConfigRef = useRef<string>('');
+    // `transport.stream` (custom mode) is a function and JSON.stringify silently drops it,
+    // so the direct-mode fields and the transport reference are tracked separately —
+    // otherwise swapping a custom transport's closure without touching other fields
+    // would go undetected.
+    const prevAiConfigRef = useRef<{ rest: string; transport: AiConfig['transport'] }>({ rest: '', transport: undefined });
     useEffect(() => {
         if (!propAiConfig) return;
-        const serialized = JSON.stringify(propAiConfig);
-        if (serialized === prevAiConfigRef.current) return;
-        prevAiConfigRef.current = serialized;
+        const { transport, ...rest } = propAiConfig;
+        const serializedRest = JSON.stringify(rest);
+        if (serializedRest === prevAiConfigRef.current.rest && transport === prevAiConfigRef.current.transport) return;
+        prevAiConfigRef.current = { rest: serializedRest, transport };
         aiStore.setConfig(propAiConfig);
     }, [propAiConfig]);
 
@@ -334,6 +375,53 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             workflowStore.setMode('edit');
         }
     }, [propDef]);
+
+    // ── Draft persistence（M1.4：刷新不丢工作）───────────────────────────────
+    const draftKey = draftPersist ? draftPersist.key : null;
+    const [restoredDraft, setRestoredDraft] = useState<{ savedAt: number } | null>(null);
+
+    // Restore on mount only. Skipped entirely when a `workflowDef` prop is given —
+    // loading a specific workflow by prop is an explicit intent that a stale local
+    // draft must never silently override.
+    useEffect(() => {
+        if (!draftKey || propDef) return;
+        const draft = loadDraft(draftKey);
+        if (!draft) return;
+        if (draft.workflowDef) {
+            useWorkflowStore.getState().setWorkflow(draft.workflowDef);
+            useWorkflowStore.getState().setMode('edit');
+        }
+        useAiStore.getState().hydrateFromDraft(draft.messages ?? [], draft.pendingProposal ?? null);
+        setRestoredDraft({ savedAt: draft.savedAt });
+        // Intentionally mount-only: whether to restore is decided once from the
+        // props this instance was created with, not re-evaluated on every change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Debounced auto-save: workflowDef / messages / pendingProposal → localStorage + onDraftChange.
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (!draftKey && !onDraftChange) return;
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+            const def = useWorkflowStore.getState().workflowDef;
+            const msgs = useAiStore.getState().messages;
+            const proposal = useAiStore.getState().pendingProposal;
+            if (!isMeaningfulDraft(def, msgs, proposal)) return;
+            const draft: IdeDraft = { workflowDef: def, messages: msgs, pendingProposal: proposal, savedAt: Date.now() };
+            if (draftKey) saveDraft(draftKey, draft);
+            onDraftChange?.(draft);
+        }, 500);
+        return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    }, [workflowStore.workflowDef, aiStore.messages, aiStore.pendingProposal, draftKey, onDraftChange]);
+
+    const handleDiscardRestore = useCallback(() => {
+        if (draftKey) clearDraft(draftKey);
+        useWorkflowStore.getState().createBlankWorkflow();
+        useAiStore.getState().clearMessages();
+        useAiStore.getState().clearUndo();
+        setRestoredDraft(null);
+    }, [draftKey]);
 
     // ── Execution data ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -513,9 +601,10 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     }, [onAiMetrics, onAiEvent]);
 
     // ── Config button visibility ────────────────────────────────────────────
-    // Hide in-app config when the integrator has already provided an apiKey via prop.
-    // In that case, the integrator fully controls the AI config.
-    const showConfigButton = !propAiConfig?.apiKey;
+    // Hide in-app config when the integrator has already provided an apiKey OR a
+    // transport (endpoint/custom) via prop. In-app config only manages direct-mode
+    // fields, so it has nothing to offer once the integrator controls transport.
+    const showConfigButton = !propAiConfig?.apiKey && !propAiConfig?.transport;
 
     const currentTheme = workflowStore.theme || theme || 'dark';
     const currentColor = workflowStore.themeColor || themeColor || 'blue';
@@ -534,6 +623,24 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             <div
                 className={`ai-chat-side ${aiStore.chatPanelOpen ? '' : 'collapsed'}`}
             >
+                {restoredDraft && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 8, padding: '6px 12px', fontSize: 12,
+                        background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+                        borderBottom: '1px solid var(--border-primary)',
+                        color: 'var(--text-secondary)', flexShrink: 0,
+                    }}>
+                        <span>↺ {formatRestoredBannerText(restoredDraft.savedAt)}</span>
+                        <button
+                            onClick={handleDiscardRestore}
+                            style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'var(--color-accent)', fontSize: 12, fontWeight: 600, padding: 0,
+                            }}
+                        >放弃恢复</button>
+                    </div>
+                )}
                 <AiCommandCenter
                     systemPrompt={systemPrompt}
                     systemPromptExtra={systemPromptExtra}

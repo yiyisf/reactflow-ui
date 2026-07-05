@@ -93,6 +93,8 @@ export type StreamEvent =
     | { type: 'text'; content: string }
     | { type: 'tool_call'; id: string; name: string; args: Record<string, any> }
     | { type: 'error'; message: string }
+    /** Token usage for this model turn, when the provider reports it (M4.4). Best-effort — not every provider/proxy includes it, so consumers must treat this as optional. */
+    | { type: 'usage'; promptTokens?: number; completionTokens?: number }
     | { type: 'done' };
 
 // ─── Provider 默认值 ─────────────────────────────────────────────────────────
@@ -224,6 +226,9 @@ async function* streamOpenAI(
         messages: toOpenAIMessages(messages),
         temperature: 0.7,
         stream: true,
+        // Ask for a final usage-only chunk (OpenAI + most compatible providers support
+        // this; providers that don't recognize it simply ignore the field).
+        stream_options: { include_usage: true },
     };
 
     if (tools.length > 0) {
@@ -273,6 +278,18 @@ async function* streamOpenAI(
 
                 try {
                     const parsed = JSON.parse(data);
+
+                    // The final `stream_options.include_usage` chunk has an empty
+                    // `choices` array and no `delta` — handle it before the delta guard
+                    // below would otherwise skip it entirely.
+                    if (parsed.usage) {
+                        yield {
+                            type: 'usage',
+                            promptTokens: parsed.usage.prompt_tokens,
+                            completionTokens: parsed.usage.completion_tokens,
+                        };
+                    }
+
                     const delta = parsed.choices?.[0]?.delta;
                     if (!delta) continue;
 
@@ -391,6 +408,7 @@ async function* streamAnthropic(
     let currentToolName = '';
     let currentToolArgs = '';
     let lineBuffer = '';
+    let promptTokens: number | undefined;
 
     try {
         while (true) {
@@ -410,6 +428,18 @@ async function* streamAnthropic(
                     const parsed = JSON.parse(trimmed.slice(6));
 
                     switch (parsed.type) {
+                        case 'message_start':
+                            // Prompt (input) token count is reported once, up front.
+                            promptTokens = parsed.message?.usage?.input_tokens;
+                            break;
+
+                        case 'message_delta':
+                            // Output token count is cumulative and arrives near the end of the stream.
+                            if (parsed.usage?.output_tokens !== undefined) {
+                                yield { type: 'usage', promptTokens, completionTokens: parsed.usage.output_tokens };
+                            }
+                            break;
+
                         case 'content_block_start':
                             if (parsed.content_block?.type === 'tool_use') {
                                 currentToolId = parsed.content_block.id;

@@ -416,6 +416,36 @@ workflowDef、对话历史和待确认的 AI 方案会防抖（500ms）自动写
 `AiWorkflowIDE` 各自管理独立的 `workflowDef`/`onWorkflowChange`，避免依赖画布状态
 的跨实例隔离。
 
+### AI 行为信任模型
+
+`AiWorkflowIDE` 对"AI 能做什么"划分为三个明确的信任级别，作为产品承诺记录如下
+（而非隐式行为）——集成方在决定是否启用某项能力、以及如何审计时可以此为准：
+
+| 级别 | 行为 | 触发工具 | 守门方式 |
+| :--- | :--- | :--- | :--- |
+| **L-读**（只读） | 读取工作流状态、校验、搜索工作流库 | `get_workflow_state`、`validate_workflow`、`search_workflow_library` | 无需用户确认，随时可执行；`aiPermissions.canEdit=false` 时这是仅存的可用层级 |
+| **L-提案**（需人审） | 生成/修改工作流定义 | `replace_workflow`、`patch_workflow` | 永远先展示为待确认的 `ProposalPreviewCard`（业务步骤预览 + diff），用户点击"应用变更"后才写入画布；拒绝或不理会都不产生任何变更 |
+| **L-执行**（真实副作用） | 重跑任务、跳过任务、重试整个工作流 | `propose_repair` → `RepairCard` 的执行按钮 | 二次确认（点击后需再次点击"确认"才真正调用 `executionActions`）+ `onAiEvent` 强制记录 `repair:confirmed`/`repair:executed` 两个独立审计事件；`aiPermissions.canRepair=false` 时整层功能不可用 |
+
+**审计事件覆盖**：`onAiEvent` 回调收到的事件类型（`proposal:created/accepted/rejected`、
+`repair:proposed/confirmed/executed/dismissed`、`tool:called`、`ai:error` 等，完整列表见
+`AiEventType`）覆盖上述全部三层行为，可用于合规审计或行为分析。`ai:error` 事件的
+`rawMessage` 字段携带原始错误文本（HTTP 状态码、provider 报错原文等）——这些细节只
+经由审计事件提供给集成方，绝不会出现在展示给终端用户的聊天气泡中（用户看到的是
+经过人性化处理的两段式提示，见 `services/ai/errorMessages.ts`）。
+
+**外部数据的注入边界**：`workflowLibrary` 的 `description`/`tags` 字段、`customTools`
+的执行返回值都会被拼入 system prompt 或对话上下文供模型参考。这些内容来自集成方
+配置或工具执行结果，其可信度由**集成方自行把控**——如果 `customTools.execute()`
+的返回值可能包含不可信的第三方数据（如外部 API 响应），集成方应自行做好清洗，
+避免被模型误解为指令。
+
+**用量可观测**（v0.5.0 新增）：`onAiMetrics`（或 ref 的 `getAiMetrics()`）返回的
+`AiMetrics` 除 accept/reject 计数外，新增 `totalPromptTokens`/`totalCompletionTokens`
+累计 token 用量，供成本归因使用。这是**尽力而为**的统计——仅当模型服务商在流式
+响应中报告了 usage 信息时才会计入（OpenAI 官方及大多数兼容服务支持，部分第三方
+代理可能不返回该字段，此时对应轮次不计入用量但不影响正常对话）。
+
 ---
 
 ## ✏️ 编辑体验 (v0.3.0 新增)

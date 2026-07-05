@@ -335,4 +335,23 @@ describe('AgentRunner', () => {
         expect(systemMsg?.content).toContain('draft_wf');
         expect(systemMsg?.content).toContain('待确认的变更方案');
     });
+
+    it('accumulates token usage reported by the provider into aiStore metrics', async () => {
+        const { transport } = scriptedTransport([
+            [
+                { type: 'usage', promptTokens: 100, completionTokens: 20 },
+                { type: 'text', content: 'hi' },
+                { type: 'done' },
+            ],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const before = useAiStore.getState().getMetrics();
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('hello');
+
+        const after = useAiStore.getState().getMetrics();
+        expect(after.totalPromptTokens).toBe(before.totalPromptTokens + 100);
+        expect(after.totalCompletionTokens).toBe(before.totalCompletionTokens + 20);
+    });
 });

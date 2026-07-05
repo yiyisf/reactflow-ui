@@ -19,6 +19,7 @@ import RecommendationCard from './RecommendationCard';
 import MermaidBlock from './MermaidBlock';
 import ProposalPreviewCard from './ProposalPreviewCard';
 import AgentTimeline from './AgentTimeline';
+import FailureSummaryCard from './FailureSummaryCard';
 import WorkflowRunCard from './WorkflowRunCard';
 import type { ExecutionActions } from '../../types/workflow';
 import type { AiEvent } from '../../types/aiEvents';
@@ -157,6 +158,20 @@ function getRuntimeStatus(
     return 'running';
 }
 
+/** First failed task's ref + failure reason, for FailureSummaryCard (M4.1). Task *type* comes from taskMap, not executionData. */
+function getFirstFailedTask(
+    executionData?: Record<string, any> | null,
+): { ref: string; reason?: string } | null {
+    if (!executionData) return null;
+    for (const ref of Object.keys(executionData)) {
+        const data = executionData[ref];
+        if (data.status === 'FAILED' || data.status === 'FAILED_WITH_TERMINAL_ERROR' || data.status === 'TIMED_OUT') {
+            return { ref, reason: data.reasonForIncompletion };
+        }
+    }
+    return null;
+}
+
 function buildRuntimeChips(
     status: RuntimeStatus,
     workflowName: string,
@@ -270,12 +285,15 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const workflowInstance = useWorkflowStore(s => s.workflowInstance);
     const executionData = useWorkflowStore(s => s.executionData);
     const validationResults = useWorkflowStore(s => s.validationResults);
+    const taskMap = useWorkflowStore(s => s.taskMap);
     const libraryItems = libraryStore(s => s.items);
 
     const [inputValue, setInputValue] = useState('');
     const [activeTab, setActiveTab] = useState<'chat' | 'library'>('chat');
     // Inline execution run card
     const [showRunCard, setShowRunCard] = useState(false);
+    // M4.1: FailureSummaryCard dismissal, reset per execution instance (not per render)
+    const [dismissedFailureFor, setDismissedFailureFor] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -347,6 +365,36 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         onAiEvent?.({ type: 'plan:cancelled', timestamp: Date.now() });
     }, [clearPlan, onAiEvent]);
 
+    // M4.1: close the loop on a dispatched repair action — poll the (already-provided)
+    // onPollExecution until a terminal status is reached and report the outcome back
+    // into the chat, instead of the card just disappearing with no follow-up. Fire-
+    // and-forget by design: executionActions callbacks are void (not Promise-returning,
+    // a pre-1.0 API contract shared with WorkflowIDE), so completion can only be
+    // observed by polling, not by awaiting the dispatch itself.
+    const POLL_REPAIR_ATTEMPTS = 5;
+    const POLL_REPAIR_INTERVAL_MS = 3000;
+    const REPAIR_TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'TIMED_OUT', 'TERMINATED']);
+    const pollRepairOutcome = useCallback(async (wfId: string, actionLabel: string) => {
+        if (!onPollExecution || !wfId) return;
+        for (let i = 0; i < POLL_REPAIR_ATTEMPTS; i++) {
+            await new Promise(resolve => setTimeout(resolve, POLL_REPAIR_INTERVAL_MS));
+            try {
+                const instance = await onPollExecution(wfId);
+                if (instance && REPAIR_TERMINAL_STATUSES.has(instance.status)) {
+                    const outcome = instance.status === 'COMPLETED'
+                        ? `✓ ${actionLabel}成功，工作流已恢复正常执行。`
+                        : `✗ ${actionLabel}后仍未成功（状态：${instance.status}），可能需要进一步排查。`;
+                    aiStore.getState().addMessage({ role: 'assistant', content: outcome });
+                    return;
+                }
+            } catch {
+                // ignore individual poll errors — try again on the next attempt
+            }
+        }
+        // Gave up after POLL_REPAIR_ATTEMPTS without reaching a terminal state — stay
+        // silent rather than guessing at an outcome we don't actually know.
+    }, [onPollExecution, aiStore]);
+
     const handleRepairAction = useCallback((action: import('../../store/aiStore').RepairAction) => {
         // RepairCard only calls this after the user's inline second-click confirmation —
         // record that confirmation distinctly from the dispatch below for a complete audit trail.
@@ -356,19 +404,22 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         switch (action.type) {
             case 'rerun_from':
                 executionActions?.onRerunFromTask?.(wfId, action.taskRef ?? '');
+                pollRepairOutcome(wfId, `从「${action.taskRef}」重跑`);
                 break;
             case 'skip':
                 executionActions?.onSkipTask?.(wfId, action.taskRef ?? '');
+                pollRepairOutcome(wfId, `跳过「${action.taskRef}」`);
                 break;
             case 'retry_workflow':
                 executionActions?.onRetry?.(wfId);
+                pollRepairOutcome(wfId, '重试整个工作流');
                 break;
             default:
                 break;
         }
         onAiEvent?.({ type: 'repair:executed', timestamp: Date.now(), repairActionType: action.type });
         clearRepair();
-    }, [executionActions, clearRepair, onAiEvent]);
+    }, [executionActions, clearRepair, onAiEvent, pollRepairOutcome]);
 
     const handleDismissRepair = useCallback(() => {
         clearRepair();
@@ -427,6 +478,14 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     // F2: runtime status & chips
     const runtimeStatus = getRuntimeStatus(mode, workflowInstance?.status, executionData);
     const runtimeChips = buildRuntimeChips(runtimeStatus, workflowDef?.name ?? '', executionData);
+
+    // M4.1: proactive failure card — shown wherever the user currently is, not just
+    // near the welcome message. Suppressed once a RepairCard already exists for this
+    // failure (avoids showing two "please diagnose this" prompts at once) or once the
+    // user dismisses it for this specific execution instance.
+    const firstFailedTask = runtimeStatus === 'failed' ? getFirstFailedTask(executionData) : null;
+    const currentExecutionId = workflowInstance?.workflowId ?? '';
+    const showFailureCard = !!firstFailedTask && !pendingRepair && !isStreaming && dismissedFailureFor !== currentExecutionId;
 
     return (
         <>
@@ -637,6 +696,17 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 plan={pendingPlan}
                                 onExecute={handleExecutePlan}
                                 onCancel={handleCancelPlan}
+                            />
+                        )}
+
+                        {/* FailureSummaryCard: proactive failure surface (M4.1) */}
+                        {showFailureCard && firstFailedTask && (
+                            <FailureSummaryCard
+                                taskRef={firstFailedTask.ref}
+                                taskType={taskMap[firstFailedTask.ref]?.type ?? '未知类型'}
+                                reason={firstFailedTask.reason}
+                                onDiagnose={() => runner.send(`「${firstFailedTask.ref}」执行失败，请诊断失败原因并生成修复方案`)}
+                                onDismiss={() => setDismissedFailureFor(currentExecutionId)}
                             />
                         )}
 

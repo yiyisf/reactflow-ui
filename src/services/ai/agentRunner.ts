@@ -210,6 +210,9 @@ export class AgentRunner {
                             onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
                             break;
                         }
+                        case 'usage':
+                            ai.getState().recordUsage({ promptTokens: event.promptTokens, completionTokens: event.completionTokens });
+                            break;
                     }
                 }
 

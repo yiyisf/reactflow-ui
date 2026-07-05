@@ -88,6 +88,22 @@ describe('protocolAdapter / streamChat', () => {
             const events = await collect(streamChat(USER_MSG, [], { apiKey: 'bad-key', provider: 'openai' }));
             expect(events[0]).toEqual({ type: 'error', message: 'Incorrect API key provided' });
         });
+
+        it('requests stream_options.include_usage and emits a usage event from the trailing empty-choices chunk', async () => {
+            const chunks = [
+                `data: ${JSON.stringify({ choices: [{ delta: { content: 'hi' } }] })}\n\n`,
+                `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 42, completion_tokens: 7 } })}\n\n`,
+                'data: [DONE]\n\n',
+            ];
+            fetchMock.mockResolvedValue(sseResponse(chunks));
+
+            const events = await collect(streamChat(USER_MSG, [], { apiKey: 'sk-test', provider: 'openai' }));
+            expect(events).toContainEqual({ type: 'usage', promptTokens: 42, completionTokens: 7 });
+
+            const [, init] = fetchMock.mock.calls[0];
+            const body = JSON.parse(init.body);
+            expect(body.stream_options).toEqual({ include_usage: true });
+        });
     });
 
     describe('direct mode — Anthropic', () => {
@@ -118,6 +134,18 @@ describe('protocolAdapter / streamChat', () => {
             await collect(streamChat(USER_MSG, [], { apiKey: 'k', baseUrl: 'https://api.anthropic.com' }));
             const [url] = fetchMock.mock.calls[0];
             expect(url).toContain('/messages');
+        });
+
+        it('combines message_start prompt tokens with message_delta completion tokens into a usage event', async () => {
+            const chunks = [
+                `data: ${JSON.stringify({ type: 'message_start', message: { usage: { input_tokens: 100, output_tokens: 0 } } })}\n\n`,
+                `data: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text: 'hi' } })}\n\n`,
+                `data: ${JSON.stringify({ type: 'message_delta', delta: {}, usage: { output_tokens: 15 } })}\n\n`,
+            ];
+            fetchMock.mockResolvedValue(sseResponse(chunks));
+
+            const events = await collect(streamChat(USER_MSG, [], { apiKey: 'sk-ant-test', provider: 'anthropic' }));
+            expect(events).toContainEqual({ type: 'usage', promptTokens: 100, completionTokens: 15 });
         });
     });
 

@@ -77,6 +77,10 @@ export interface AiMetrics {
     totalProposals: number;
     acceptedProposals: number;
     rejectedProposals: number;
+    /** Cumulative token usage for this session (M4.4). Only incremented when the
+     *  provider reports usage — best-effort, not every provider/proxy includes it. */
+    totalPromptTokens: number;
+    totalCompletionTokens: number;
 }
 
 export interface ClarificationOption {
@@ -167,6 +171,8 @@ interface AiActions {
     recordAccept: () => void;
     recordReject: () => void;
     getMetrics: () => AiMetrics;
+    /** Accumulates token usage reported by the provider for one model turn (M4.4) */
+    recordUsage: (usage: { promptTokens?: number; completionTokens?: number }) => void;
     setFollowUpChips: (chips: string[]) => void;
     clearFollowUpChips: () => void;
     setPlan: (plan: Omit<PendingPlan, 'id'>) => string;
@@ -234,6 +240,8 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
                 totalProposals: 0,
                 acceptedProposals: 0,
                 rejectedProposals: 0,
+                totalPromptTokens: 0,
+                totalCompletionTokens: 0,
             },
 
             setConfig: (partial) => set(s => ({
@@ -299,6 +307,14 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             })),
 
             getMetrics: () => get().metrics,
+
+            recordUsage: (usage) => set(s => ({
+                metrics: {
+                    ...s.metrics,
+                    totalPromptTokens: s.metrics.totalPromptTokens + (usage.promptTokens ?? 0),
+                    totalCompletionTokens: s.metrics.totalCompletionTokens + (usage.completionTokens ?? 0),
+                },
+            })),
 
             setFollowUpChips: (chips) => set({ followUpChips: chips }),
             clearFollowUpChips: () => set({ followUpChips: null }),

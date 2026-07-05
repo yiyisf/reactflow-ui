@@ -7,9 +7,8 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import useAiStore from '../../store/aiStore';
 import useWorkflowStore from '../../store/workflowStore';
-import useLibraryStore from '../../store/libraryStore';
+import { useIdeStores } from '../../store/ideStoresContext';
 import { AgentRunner } from '../../services/ai/agentRunner';
 import type { AgentRunnerOptions } from '../../services/ai/agentRunner';
 import type { WorkflowInstance } from '../../types/conductor';
@@ -237,6 +236,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     onAccept,
     onReject,
 }) => {
+    const { aiStore, libraryStore, toolRegistry } = useIdeStores();
     const {
         messages,
         isStreaming,
@@ -261,7 +261,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         clearClarification,
         clearRecommendation,
         setPendingAutoSend,
-    } = useAiStore();
+    } = aiStore();
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
     const selectedTask = useWorkflowStore(s => s.selectedTask);
@@ -270,7 +270,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     const workflowInstance = useWorkflowStore(s => s.workflowInstance);
     const executionData = useWorkflowStore(s => s.executionData);
     const validationResults = useWorkflowStore(s => s.validationResults);
-    const libraryItems = useLibraryStore(s => s.items);
+    const libraryItems = libraryStore(s => s.items);
 
     const [inputValue, setInputValue] = useState('');
     const [activeTab, setActiveTab] = useState<'chat' | 'library'>('chat');
@@ -284,7 +284,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     // so a "latest" ref feeds them to the runner without recreating the instance.
     const optionsRef = useRef<AgentRunnerOptions>({ systemPrompt, systemPromptExtra, aiPermissions, onAiEvent });
     optionsRef.current = { systemPrompt, systemPromptExtra, aiPermissions, onAiEvent };
-    const [runner] = useState(() => new AgentRunner(() => optionsRef.current));
+    const [runner] = useState(() => new AgentRunner(() => optionsRef.current, { aiStore, libraryStore, toolRegistry }));
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -335,7 +335,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     // Execute the pending plan: clear it and re-prompt the AI to proceed
     const handleExecutePlan = useCallback(() => {
-        const plan = useAiStore.getState().pendingPlan;
+        const plan = aiStore.getState().pendingPlan;
         if (!plan) return;
         clearPlan();
         onAiEvent?.({ type: 'plan:executed', timestamp: Date.now() });

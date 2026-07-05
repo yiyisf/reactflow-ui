@@ -28,7 +28,7 @@ export interface CustomTool {
     execute: (args: Record<string, any>) => string | Promise<string>;
 }
 
-class ToolRegistry {
+export class ToolRegistry {
     private tools = new Map<string, CustomTool>();
 
     register(tool: CustomTool): void {

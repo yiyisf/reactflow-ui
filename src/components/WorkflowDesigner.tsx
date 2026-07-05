@@ -32,7 +32,8 @@ import { useShortcuts } from '../hooks/useShortcuts';
 import { useConfirm } from '../hooks/useConfirm';
 import { useToast } from '../hooks/useToast';
 import { ExecutionActions } from '../types/workflow';
-import useAiStore from '../store/aiStore';
+import useAiStoreSingleton from '../store/aiStore';
+import { useIdeStoresOptional } from '../store/ideStoresContext';
 import { parseWorkflow } from '../parser/conductorParser';
 import { getLayoutedElements } from '../layout/autoLayout';
 
@@ -168,7 +169,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         [visibleNodeIdSet, nodes.length],
     );
 
-    const pendingProposal = useAiStore(s => s.pendingProposal);
+    // Rendered under <AiWorkflowIDE> (own aiStore instance via context) or standalone
+    // under <WorkflowIDE> (no provider — falls back to the module singleton).
+    const ideStores = useIdeStoresOptional();
+    const pendingProposal = (ideStores?.aiStore ?? useAiStoreSingleton)(s => s.pendingProposal);
 
     // ─── Ghost Preview: parse proposed workflow and build overlay nodes/edges ──
     // When a proposal is pending, show the proposed canvas with diff coloring

@@ -10,8 +10,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import useWorkflowStore from './store/workflowStore';
-import useAiStore from './store/aiStore';
-import useLibraryStore from './store/libraryStore';
+import { createAiStore } from './store/aiStore';
+import { createLibraryStore } from './store/libraryStore';
+import { IdeStoresProvider } from './store/ideStoresContext';
 import AiCommandCenter from './components/AiNative/AiCommandCenter';
 import CanvasPreview from './components/AiNative/CanvasPreview';
 import ReviewBar from './components/AiNative/ReviewBar';
@@ -24,14 +25,14 @@ import type { AiMetrics } from './store/aiStore';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
 import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData, WorkflowExecutionInput } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
+import { ToolRegistry } from './services/ai/toolRegistry';
 import type { CustomValidationRule } from './services/ai/ruleEngine';
+import { ruleEngine } from './services/ai/ruleEngine';
 import type { TaskSchema } from './services/ai/schemaRegistry';
+import { schemaRegistry } from './services/ai/schemaRegistry';
 import type { PartialAcceptSelection } from './services/ai/toolExecutor';
 import { applyPartialProposal } from './services/ai/toolExecutor';
 import type { AiEvent } from './types/aiEvents';
-import { toolRegistry } from './services/ai/toolRegistry';
-import { ruleEngine } from './services/ai/ruleEngine';
-import { schemaRegistry } from './services/ai/schemaRegistry';
 import type { IdeDraft } from './services/ai/draftPersistence';
 import { isMeaningfulDraft, loadDraft, saveDraft, clearDraft } from './services/ai/draftPersistence';
 
@@ -293,8 +294,18 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     } = props;
 
     const workflowStore = useWorkflowStore();
-    const aiStore = useAiStore();
-    const libraryStore = useLibraryStore();
+
+    // Per-instance state (M3.2): each <AiWorkflowIDE> mount gets its own conversation,
+    // library, and custom-tool registry instead of sharing a page-wide singleton —
+    // mounting a second instance no longer stomps the first's state. workflowStore
+    // (canvas/task-graph) remains a shared singleton — see ideStoresContext.tsx.
+    const [stores] = useState(() => ({
+        aiStore: createAiStore(),
+        libraryStore: createLibraryStore(),
+        toolRegistry: new ToolRegistry(),
+    }));
+    const aiStore = stores.aiStore();
+    const libraryStore = stores.libraryStore();
     const [showConfig, setShowConfig] = useState(false);
 
     // ── Responsive layout state ─────────────────────────────────────────────
@@ -347,7 +358,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         const serialized = JSON.stringify((propCustomTools ?? []).map(t => t.definition.function.name));
         if (serialized === prevCustomToolsRef.current) return;
         prevCustomToolsRef.current = serialized;
-        toolRegistry.setTools(propCustomTools ?? []);
+        stores.toolRegistry.setTools(propCustomTools ?? []);
     }, [propCustomTools]);
 
     // ── Validation rules: sync on every prop change ─────────────────────────
@@ -391,7 +402,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             useWorkflowStore.getState().setWorkflow(draft.workflowDef);
             useWorkflowStore.getState().setMode('edit');
         }
-        useAiStore.getState().hydrateFromDraft(draft.messages ?? [], draft.pendingProposal ?? null);
+        stores.aiStore.getState().hydrateFromDraft(draft.messages ?? [], draft.pendingProposal ?? null);
         setRestoredDraft({ savedAt: draft.savedAt });
         // Intentionally mount-only: whether to restore is decided once from the
         // props this instance was created with, not re-evaluated on every change.
@@ -405,8 +416,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
             const def = useWorkflowStore.getState().workflowDef;
-            const msgs = useAiStore.getState().messages;
-            const proposal = useAiStore.getState().pendingProposal;
+            const msgs = stores.aiStore.getState().messages;
+            const proposal = stores.aiStore.getState().pendingProposal;
             if (!isMeaningfulDraft(def, msgs, proposal)) return;
             const draft: IdeDraft = { workflowDef: def, messages: msgs, pendingProposal: proposal, savedAt: Date.now() };
             if (draftKey) saveDraft(draftKey, draft);
@@ -418,8 +429,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     const handleDiscardRestore = useCallback(() => {
         if (draftKey) clearDraft(draftKey);
         useWorkflowStore.getState().createBlankWorkflow();
-        useAiStore.getState().clearMessages();
-        useAiStore.getState().clearUndo();
+        stores.aiStore.getState().clearMessages();
+        stores.aiStore.getState().clearUndo();
         setRestoredDraft(null);
     }, [draftKey]);
 
@@ -437,28 +448,33 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         }
     }, [workflowStore.workflowDef, onWorkflowChange]);
 
-    // ── Responsive layout: detect window size ──────────────────────────────
+    // ── Responsive layout: observe this component's own container width ────
+    // Uses ResizeObserver on the root element rather than window.innerWidth, so
+    // embedding this inside a half-width drawer/split-pane reports the correct
+    // mode instead of always reading the full viewport. Also no longer writes a
+    // `data-layout` attribute to the host page's <html> — nothing ever read it
+    // (grep confirms zero CSS consumers) and a library component has no business
+    // mutating the host document's root element; the `${layoutMode}-mode` class
+    // already on this component's own root div is the real, scoped signal.
+    const rootRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
-        const getMode = (): 'mobile' | 'tablet' | 'desktop' => {
-            const w = window.innerWidth;
-            if (w < 768) return 'mobile';
-            if (w < 1024) return 'tablet';
+        const el = rootRef.current;
+        if (!el) return;
+        const getMode = (width: number): 'mobile' | 'tablet' | 'desktop' => {
+            if (width < 768) return 'mobile';
+            if (width < 1024) return 'tablet';
             return 'desktop';
         };
-        const applyMode = () => {
-            const mode = getMode();
-            setLayoutMode(mode);
-            document.documentElement.setAttribute('data-layout', mode);
-        };
-        applyMode();
         let debounceTimer: ReturnType<typeof setTimeout>;
-        const handleResize = () => {
+        const observer = new ResizeObserver((entries) => {
+            const width = entries[0]?.contentRect.width ?? el.clientWidth;
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(applyMode, 100);
-        };
-        window.addEventListener('resize', handleResize);
+            debounceTimer = setTimeout(() => setLayoutMode(getMode(width)), 100);
+        });
+        observer.observe(el);
+        setLayoutMode(getMode(el.clientWidth));
         return () => {
-            window.removeEventListener('resize', handleResize);
+            observer.disconnect();
             clearTimeout(debounceTimer);
         };
     }, []);
@@ -500,7 +516,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             useWorkflowStore.getState().setMode('edit');
         },
         createBlankWorkflow: (name?: string) => useWorkflowStore.getState().createBlankWorkflow(name),
-        getAiMetrics: () => useAiStore.getState().getMetrics(),
+        getAiMetrics: () => stores.aiStore.getState().getMetrics(),
     }), []);
 
     // ── ReviewBar handlers ──────────────────────────────────────────────────
@@ -562,7 +578,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             console.error('[workflowToMermaid]', err);
         }
         const appendText = confirmationLine + mermaidSection;
-        const allMsgs = useAiStore.getState().messages;
+        const allMsgs = stores.aiStore.getState().messages;
         const lastAssistant = [...allMsgs].reverse().find(m => m.role === 'assistant' && m.id !== 'welcome');
         if (lastAssistant) {
             aiStore.updateMessage(lastAssistant.id, lastAssistant.content + appendText);
@@ -610,7 +626,9 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     const currentColor = workflowStore.themeColor || themeColor || 'blue';
 
     return (
+        <IdeStoresProvider stores={stores}>
         <div
+            ref={rootRef}
             className={`ai-workflow-ide ${layoutMode}-mode${canvasDrawerOpen ? '' : ' canvas-closed'}`}
             data-mode={currentTheme}
             data-brand={currentColor}
@@ -752,6 +770,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             {/* In-app AI config dialog (only shown when no prop apiKey) */}
             {showConfig && <AiConfigPanel onClose={() => setShowConfig(false)} />}
         </div>
+        </IdeStoresProvider>
     );
 });
 

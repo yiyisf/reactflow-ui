@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useRef } from 'react';
-import useAiStore from '../../store/aiStore';
+import { useIdeStores } from '../../store/ideStoresContext';
 import { PROVIDER_DEFAULTS, testConnection } from '../../services/ai/protocolAdapter';
 import type { AiConfig } from '../../services/ai/protocolAdapter';
 
@@ -25,7 +25,8 @@ const PROVIDER_PRESETS = [
 type TestState = 'idle' | 'testing' | 'ok' | 'error';
 
 const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
-    const { config, setConfig } = useAiStore();
+    const { aiStore } = useIdeStores();
+    const { config, setConfig } = aiStore();
 
     const [draft, setDraft] = useState<AiConfig>({
         provider: config.provider || 'auto',

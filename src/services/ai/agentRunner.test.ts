@@ -1,11 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AgentRunner } from './agentRunner';
+import type { AgentRunnerStores } from './agentRunner';
 import useAiStore from '../../store/aiStore';
 import useWorkflowStore from '../../store/workflowStore';
 import useLibraryStore from '../../store/libraryStore';
 import { toolRegistry } from './toolRegistry';
 import type { StreamEvent } from './protocolAdapter';
 import type { AgentRequest } from './transport';
+
+// Tests exercise AgentRunner against the module singletons — one store instance is
+// as good as another for verifying orchestration logic, and it keeps test setup simple.
+const testStores: AgentRunnerStores = { aiStore: useAiStore, libraryStore: useLibraryStore, toolRegistry };
 
 /** Builds a custom transport whose successive send()-loop steps are scripted in order. */
 function scriptedTransport(steps: StreamEvent[][]) {
@@ -39,7 +44,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('你好');
 
         const { messages, isStreaming } = useAiStore.getState();
@@ -50,7 +55,7 @@ describe('AgentRunner', () => {
 
     it('does nothing when apiKey is empty and no transport is configured', async () => {
         useAiStore.getState().setConfig({ apiKey: '', transport: undefined });
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('hi');
 
         const { messages } = useAiStore.getState();
@@ -62,7 +67,7 @@ describe('AgentRunner', () => {
         const { transport } = scriptedTransport([[{ type: 'text', content: 'should not run' }, { type: 'done' }]]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('hi');
 
         // messages untouched — send() returned immediately without adding anything
@@ -77,7 +82,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('创建一个流程');
 
         const proposal = useAiStore.getState().pendingProposal;
@@ -95,7 +100,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('创建一个流程');
 
         // A valid proposal ends the loop immediately — no extra confirmation turn is needed.
@@ -117,7 +122,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('查一下有没有相关流程');
 
         expect(useAiStore.getState().timelineEntries.map(e => e.label)).toContain('已搜索工作流库');
@@ -130,7 +135,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('第一条消息');
         expect(useAiStore.getState().timelineEntries.length).toBeGreaterThan(0);
 
@@ -152,7 +157,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('创建一个流程');
 
         expect(callCount()).toBe(3); // 2 self-heal attempts + the accepted-despite-errors 3rd
@@ -167,7 +172,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('帮我重构');
 
         const plan = useAiStore.getState().pendingPlan;
@@ -181,7 +186,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('为什么失败了');
 
         const repair = useAiStore.getState().pendingRepair;
@@ -194,7 +199,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('帮我做个审批流程');
 
         expect(useAiStore.getState().pendingClarification?.question).toBe('你想要哪种审批流程？');
@@ -206,7 +211,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('帮我创建一个虚机流程');
 
         expect(useAiStore.getState().pendingRecommendation?.recommendations[0].workflowName).toBe('create_vm');
@@ -223,7 +228,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('查询服务器数量');
 
         expect(useAiStore.getState().messages.at(-1)?.content).toBe('找到了 3 台服务器');
@@ -240,7 +245,7 @@ describe('AgentRunner', () => {
         const { transport, callCount } = scriptedTransport(infiniteSteps);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('一直问');
 
         expect(callCount()).toBe(6); // MAX_AGENT_STEPS
@@ -257,7 +262,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({ aiPermissions: { canEdit: false } }));
+        const runner = new AgentRunner(() => ({ aiPermissions: { canEdit: false } }), testStores);
         await runner.send('帮我改一下');
 
         const toolNames = seenRequests[0].tools.map(t => t.function.name);
@@ -271,7 +276,7 @@ describe('AgentRunner', () => {
         ]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({ aiPermissions: { canRepair: false } }));
+        const runner = new AgentRunner(() => ({ aiPermissions: { canRepair: false } }), testStores);
         await runner.send('诊断一下');
 
         const toolNames = seenRequests[0].tools.map(t => t.function.name);
@@ -284,7 +289,7 @@ describe('AgentRunner', () => {
         };
         useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('hi');
 
         const last = useAiStore.getState().messages.at(-1);
@@ -304,7 +309,7 @@ describe('AgentRunner', () => {
         };
         useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         const promise = runner.send('hi');
         await new Promise(resolve => setTimeout(resolve, 5));
         runner.abort();
@@ -323,7 +328,7 @@ describe('AgentRunner', () => {
         const { transport, seenRequests } = scriptedTransport([[{ type: 'text', content: 'ok' }, { type: 'done' }]]);
         useAiStore.getState().setConfig({ apiKey: '', transport });
 
-        const runner = new AgentRunner(() => ({}));
+        const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('再加一个审批步骤');
 
         const systemMsg = seenRequests[0].messages.find(m => m.role === 'system');

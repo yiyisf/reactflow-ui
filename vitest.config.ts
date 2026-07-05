@@ -20,6 +20,8 @@ export default defineConfig({
                 'src/utils/proposalPreview.ts',
                 'src/utils/taskTypeMeta.ts',
                 'src/parser/conductorParser.ts',
+                'src/store/aiStore.ts',
+                'src/store/libraryStore.ts',
             ],
         },
     },

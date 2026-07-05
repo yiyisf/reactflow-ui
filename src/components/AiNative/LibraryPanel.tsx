@@ -6,8 +6,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import useLibraryStore from '../../store/libraryStore';
-import useAiStore from '../../store/aiStore';
+import { useIdeStores } from '../../store/ideStoresContext';
 import useWorkflowStore from '../../store/workflowStore';
 import { applyPatch, computeDiff } from '../../services/ai/toolExecutor';
 import type { WorkflowLibraryItem, WorkflowLevel } from '../../types/workflowLibrary';
@@ -28,8 +27,9 @@ function makeUniqueRef(base: string, existingRefs: Set<string>): string {
 }
 
 const LibraryPanel: React.FC = () => {
-    const { items } = useLibraryStore();
-    const { setProposal } = useAiStore();
+    const { aiStore, libraryStore } = useIdeStores();
+    const { items } = libraryStore();
+    const { setProposal } = aiStore();
     const workflowDef = useWorkflowStore(s => s.workflowDef);
 
     const [query, setQuery] = useState('');

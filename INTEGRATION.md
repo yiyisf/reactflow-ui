@@ -408,6 +408,14 @@ workflowDef、对话历史和待确认的 AI 方案会防抖（500ms）自动写
 `taskSchemas` 等扩展点，请参考组件源码 `AiWorkflowIDEProps` 的 TSDoc 注释
 （IDE 内联提示或 `dist/ai.d.ts`）。
 
+### 多实例安全
+
+同一页面可以挂载多个 `<AiWorkflowIDE>`：每个实例拥有独立的对话历史、待确认提案、
+工作流库和自定义工具（`customTools`/`workflowLibrary` 互不影响）。canvas 的
+任务图状态（`workflowStore`）目前仍是跨实例共享的单例——多实例场景下建议每个
+`AiWorkflowIDE` 各自管理独立的 `workflowDef`/`onWorkflowChange`，避免依赖画布状态
+的跨实例隔离。
+
 ---
 
 ## ✏️ 编辑体验 (v0.3.0 新增)

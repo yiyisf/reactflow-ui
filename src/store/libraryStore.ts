@@ -1,11 +1,14 @@
 /**
  * Library Store — sub-workflow catalog state
  *
- * Kept separate from aiStore to avoid circular dependencies
- * (toolExecutor.ts reads this store, and aiStore imports types from toolExecutor).
+ * Kept separate from aiStore to avoid circular dependencies (aiStore imports
+ * types from toolExecutor, which used to read this store directly; since M2.1
+ * toolExecutor is pure and AgentRunner passes library items in explicitly, but
+ * the separate store is still worth keeping for its narrow, focused shape).
  *
  * Populated by AiWorkflowIDE when the workflowLibrary prop changes.
- * Read by toolExecutor (search_workflow_library) and systemPrompt (catalog injection).
+ * Read by AgentRunner (search_workflow_library / system prompt catalog) via
+ * whichever instance the owning `<AiWorkflowIDE>` created — see createLibraryStore.
  */
 
 import { create } from 'zustand';
@@ -20,10 +23,16 @@ interface LibraryActions {
     clearLibrary: () => void;
 }
 
-const useLibraryStore = create<LibraryState & LibraryActions>((set) => ({
-    items: [],
-    setLibrary: (items) => set({ items }),
-    clearLibrary: () => set({ items: [] }),
-}));
+export type LibraryStore = LibraryState & LibraryActions;
 
+/** Creates an independent LibraryStore instance (no persistence — populated fresh from props each mount). */
+export function createLibraryStore() {
+    return create<LibraryStore>((set) => ({
+        items: [],
+        setLibrary: (items) => set({ items }),
+        clearLibrary: () => set({ items: [] }),
+    }));
+}
+
+const useLibraryStore = createLibraryStore();
 export default useLibraryStore;

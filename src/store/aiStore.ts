@@ -3,9 +3,13 @@
  *
  * Manages: conversation history, proposed workflow (for review),
  * AI configuration, and usage metrics.
+ *
+ * Exposed as both a factory (`createAiStore`, for per-`<AiWorkflowIDE>`-instance
+ * isolation via IdeStoresContext — see store/ideStoresContext.tsx) and a default
+ * singleton (for callers outside that context, e.g. WorkflowIDE's shared canvas).
  */
 
-import { create } from 'zustand';
+import { create, type StateCreator } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AiConfig } from '../services/ai/protocolAdapter';
 import type { WorkflowDef } from '../types/conductor';
@@ -200,10 +204,9 @@ const WELCOME_MESSAGE: AiChatMessage = {
     timestamp: Date.now(),
 };
 
-// ─── Store ───────────────────────────────────────────────────────────────────
+// ─── Store factory ────────────────────────────────────────────────────────────
 
-const useAiStore = create<AiStore>()(
-    persist(
+const createAiStoreCreator = (): StateCreator<AiStore> =>
         (set, get) => ({
             config: {
                 provider: 'auto',
@@ -354,17 +357,37 @@ const useAiStore = create<AiStore>()(
                 messages: messages.length > 0 ? messages : [WELCOME_MESSAGE],
                 pendingProposal,
             }),
-        }),
-        {
-            name: 'ai-workflow-config',
+        });
+
+/**
+ * Creates an independent AiStore instance.
+ *
+ * @param persistKey  localStorage key for provider/baseUrl/model + metrics (never
+ *                    the apiKey or conversation itself). Pass `false` to keep this
+ *                    instance fully in-memory — no localStorage writes at all.
+ *                    Defaults to a stable shared key so existing single-instance
+ *                    integrations keep their persisted config across reloads;
+ *                    pass a unique key per instance when embedding multiple
+ *                    `<AiWorkflowIDE>` on the same page to avoid them clobbering
+ *                    each other's persisted config.
+ */
+export function createAiStore(persistKey: string | false = 'ai-workflow-config') {
+    const storeCreator = createAiStoreCreator();
+    if (persistKey === false) {
+        return create<AiStore>()(storeCreator);
+    }
+    return create<AiStore>()(
+        persist(storeCreator, {
+            name: persistKey,
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({
                 // Persist provider/baseUrl/model but NOT apiKey (kept only in memory)
                 config: { ...state.config, apiKey: '' },
                 metrics: state.metrics,
             }),
-        }
-    )
-);
+        })
+    );
+}
 
+const useAiStore = createAiStore();
 export default useAiStore;

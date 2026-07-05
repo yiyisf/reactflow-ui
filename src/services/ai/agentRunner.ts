@@ -13,15 +13,21 @@
  * actions to commit results — everything it calls into (toolExecutor,
  * systemPrompt, contextEngine) is a pure function that receives that state
  * explicitly, so those modules stay unit-testable without a store.
+ *
+ * Instancing (M3.2): `aiStore`/`libraryStore`/`toolRegistry` are injected via the
+ * constructor rather than imported as module singletons, so each `<AiWorkflowIDE>`
+ * mount gets its own isolated runner talking to its own store/registry instances
+ * (see store/ideStoresContext.tsx). `workflowStore` remains a shared singleton for
+ * now — see the architecture review's M3.2 note on that being a larger follow-up.
  */
 
-import useAiStore from '../../store/aiStore';
 import useWorkflowStore from '../../store/workflowStore';
-import useLibraryStore from '../../store/libraryStore';
+import type { AiStore } from '../../store/aiStore';
+import type { LibraryStore } from '../../store/libraryStore';
+import type { ToolRegistry } from './toolRegistry';
 import { streamChat } from './protocolAdapter';
 import type { Message } from './protocolAdapter';
 import { TOOL_DEFINITIONS } from './toolDefs';
-import { toolRegistry } from './toolRegistry';
 import { executeToolCall, describeDiff } from './toolExecutor';
 import type { DiffSummary, ToolExecutionContext } from './toolExecutor';
 import { buildSystemPrompt } from './systemPrompt';
@@ -31,6 +37,7 @@ import { humanizeAiError } from './errorMessages';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
 import type { AiEvent } from '../../types/aiEvents';
+import type { UseBoundStore, StoreApi } from 'zustand';
 
 // Run-mode tools: read-only + repair proposer (no workflow-modifying tools)
 const RUN_MODE_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
@@ -66,6 +73,12 @@ export interface AgentRunnerOptions {
     onAiEvent?: (event: AiEvent) => void;
 }
 
+export interface AgentRunnerStores {
+    aiStore: UseBoundStore<StoreApi<AiStore>>;
+    libraryStore: UseBoundStore<StoreApi<LibraryStore>>;
+    toolRegistry: ToolRegistry;
+}
+
 function snapshotWorkflow(): WorkflowSnapshot {
     const s = useWorkflowStore.getState();
     return {
@@ -80,32 +93,35 @@ function snapshotWorkflow(): WorkflowSnapshot {
     };
 }
 
-function toolExecutionContext(): ToolExecutionContext {
-    const s = useWorkflowStore.getState();
-    return {
-        workflowDef: s.workflowDef,
-        validationResults: s.validationResults,
-        libraryItems: useLibraryStore.getState().items,
-    };
-}
-
 export class AgentRunner {
     private controller: AbortController | null = null;
 
-    constructor(private getOptions: () => AgentRunnerOptions) {}
+    constructor(
+        private getOptions: () => AgentRunnerOptions,
+        private stores: AgentRunnerStores,
+    ) {}
 
     abort(): void {
         this.controller?.abort();
     }
 
-    private buildHistory(userInput: string, priorMessages: ReturnType<typeof useAiStore.getState>['messages']): Message[] {
+    private toolExecutionContext(): ToolExecutionContext {
+        const s = useWorkflowStore.getState();
+        return {
+            workflowDef: s.workflowDef,
+            validationResults: s.validationResults,
+            libraryItems: this.stores.libraryStore.getState().items,
+        };
+    }
+
+    private buildHistory(userInput: string, priorMessages: AiStore['messages']): Message[] {
         const { systemPrompt, systemPromptExtra } = this.getOptions();
         const viewMode = useWorkflowStore.getState().viewMode;
-        const pendingProposalDef = useAiStore.getState().pendingProposal?.proposedDef;
+        const pendingProposalDef = this.stores.aiStore.getState().pendingProposal?.proposedDef;
         const systemContent = buildSystemPrompt(
             userInput,
             snapshotWorkflow(),
-            useLibraryStore.getState().items,
+            this.stores.libraryStore.getState().items,
             { systemPrompt, systemPromptExtra, viewMode, pendingProposalDef },
         );
         const history: Message[] = [{ role: 'system', content: systemContent }];
@@ -119,7 +135,9 @@ export class AgentRunner {
     }
 
     async send(text: string): Promise<void> {
-        const store = useAiStore.getState();
+        const ai = this.stores.aiStore;
+        const toolRegistry = this.stores.toolRegistry;
+        const store = ai.getState();
         if (!text.trim() || store.isStreaming) return;
 
         this.controller?.abort();
@@ -139,7 +157,7 @@ export class AgentRunner {
         store.clearTimeline();
 
         const { aiPermissions, onAiEvent } = this.getOptions();
-        const config = useAiStore.getState().config;
+        const config = ai.getState().config;
 
         // apiKey is only required in direct mode — endpoint/custom transports don't need one.
         if (!config.apiKey && !config.transport) {
@@ -170,8 +188,8 @@ export class AgentRunner {
             for (let step = 0; step < MAX_AGENT_STEPS; step++) {
                 if (signal.aborted) break;
 
-                useAiStore.getState().setStreamingText('');
-                if (step > 0) useAiStore.getState().setToolStatus(`🔄 步骤 ${step + 1}…`);
+                ai.getState().setStreamingText('');
+                if (step > 0) ai.getState().setToolStatus(`🔄 步骤 ${step + 1}…`);
 
                 const stepToolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
                 let stepText = '';
@@ -181,7 +199,7 @@ export class AgentRunner {
                     switch (event.type) {
                         case 'text':
                             stepText += event.content;
-                            useAiStore.getState().appendStreamingText(event.content);
+                            ai.getState().appendStreamingText(event.content);
                             break;
                         case 'tool_call':
                             stepToolCalls.push({ id: event.id, name: event.name, args: event.args });
@@ -214,41 +232,41 @@ export class AgentRunner {
 
                 for (const tc of stepToolCalls) {
                     if (signal.aborted) break;
-                    useAiStore.getState().setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
+                    ai.getState().setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
                     onAiEvent?.({ type: 'tool:called', timestamp: Date.now(), tool: tc.name });
 
                     if (tc.name === 'propose_repair') {
                         toolResultMsgs.push({ role: 'tool', content: '修复方案已展示给用户，等待用户执行操作。', tool_call_id: tc.id });
-                        useAiStore.getState().setRepair({
+                        ai.getState().setRepair({
                             diagnosis: tc.args.diagnosis ?? '未提供诊断信息',
                             actions: tc.args.actions ?? [],
                             messageId: assistantMsgId,
                         });
-                        useAiStore.getState().addTimelineEntry('已生成修复方案');
+                        ai.getState().addTimelineEntry('已生成修复方案');
                         onAiEvent?.({ type: 'repair:proposed', timestamp: Date.now() });
                         break;
                     }
 
                     if (tc.name === 'ask_clarification') {
                         toolResultMsgs.push({ role: 'tool', content: '澄清问题已展示给用户，等待用户回复。', tool_call_id: tc.id });
-                        useAiStore.getState().setClarification({
+                        ai.getState().setClarification({
                             question: tc.args.question ?? '请告诉我更多详情',
                             context: tc.args.context,
                             options: tc.args.options ?? [],
                             messageId: assistantMsgId,
                         });
-                        useAiStore.getState().addTimelineEntry('准备澄清问题');
+                        ai.getState().addTimelineEntry('准备澄清问题');
                         break;
                     }
 
                     if (tc.name === 'recommend_workflow') {
                         toolResultMsgs.push({ role: 'tool', content: '已向用户展示相似工作流推荐，等待用户选择。', tool_call_id: tc.id });
-                        useAiStore.getState().setRecommendation({
+                        ai.getState().setRecommendation({
                             userIntent: tc.args.userIntent ?? '',
                             recommendations: tc.args.recommendations ?? [],
                             messageId: assistantMsgId,
                         });
-                        useAiStore.getState().addTimelineEntry('已匹配推荐工作流');
+                        ai.getState().addTimelineEntry('已匹配推荐工作流');
                         break;
                     }
 
@@ -259,7 +277,7 @@ export class AgentRunner {
                             summary: tc.args.summary,
                         };
                         toolResultMsgs.push({ role: 'tool', content: '计划已展示给用户，等待确认后执行。', tool_call_id: tc.id });
-                        useAiStore.getState().addTimelineEntry('已生成执行计划');
+                        ai.getState().addTimelineEntry('已生成执行计划');
                         break;
                     }
 
@@ -268,10 +286,10 @@ export class AgentRunner {
                         let resultContent: string;
                         try {
                             resultContent = await Promise.resolve(customTool.execute(tc.args));
-                            useAiStore.getState().addTimelineEntry(`已执行 ${tc.name}`);
+                            ai.getState().addTimelineEntry(`已执行 ${tc.name}`);
                         } catch (err: any) {
                             resultContent = `工具执行失败：${err.message ?? '未知错误'}`;
-                            useAiStore.getState().addTimelineEntry(`${tc.name} 执行失败`, 'warning');
+                            ai.getState().addTimelineEntry(`${tc.name} 执行失败`, 'warning');
                         }
                         toolResultMsgs.push({ role: 'tool', content: resultContent, tool_call_id: tc.id });
                         continue;
@@ -279,10 +297,10 @@ export class AgentRunner {
 
                     let result: ReturnType<typeof executeToolCall>;
                     try {
-                        result = executeToolCall(tc.name, tc.args, toolExecutionContext());
+                        result = executeToolCall(tc.name, tc.args, this.toolExecutionContext());
                     } catch (err: any) {
                         toolResultMsgs.push({ role: 'tool', content: `工具执行出错：${err?.message ?? '未知错误'}`, tool_call_id: tc.id });
-                        useAiStore.getState().addTimelineEntry(`${tc.name} 执行出错`, 'warning');
+                        ai.getState().addTimelineEntry(`${tc.name} 执行出错`, 'warning');
                         continue;
                     }
                     let resultContent: string;
@@ -294,7 +312,7 @@ export class AgentRunner {
                             const errList = validation.errors.map(e => `• ${e.message}`).join('\n');
                             resultContent = `工作流已生成，但存在 ${validation.errors.length} 个校验错误，请修复后重新生成：\n${errList}`;
                             // Self-heal made visible as its own timeline entry rather than a silent retry.
-                            useAiStore.getState().addTimelineEntry(
+                            ai.getState().addTimelineEntry(
                                 `发现 ${validation.errors.length} 处校验问题，正在自动修正…`, 'warning',
                             );
                         } else {
@@ -303,16 +321,16 @@ export class AgentRunner {
                             const warnNote = validation.errors.length > 0 ? ` ⚠️ 含 ${validation.errors.length} 个校验错误` : '';
                             resultContent = `变更方案已生成${warnNote}：${desc}。等待用户确认。`;
                             const stepCount = result.proposed.tasks?.length ?? 0;
-                            useAiStore.getState().addTimelineEntry(
+                            ai.getState().addTimelineEntry(
                                 `已生成方案 · 共 ${stepCount} 个步骤`, validation.errors.length > 0 ? 'warning' : 'done',
                             );
                         }
                     } else if (result.type === 'info') {
                         resultContent = result.text ?? '';
-                        useAiStore.getState().addTimelineEntry(TOOL_DONE_LABELS[tc.name] ?? `已执行 ${tc.name}`);
+                        ai.getState().addTimelineEntry(TOOL_DONE_LABELS[tc.name] ?? `已执行 ${tc.name}`);
                     } else {
                         resultContent = `错误：${result.text ?? '未知错误'}`;
-                        useAiStore.getState().addTimelineEntry(`${tc.name} 执行出错`, 'warning');
+                        ai.getState().addTimelineEntry(`${tc.name} 执行出错`, 'warning');
                     }
 
                     toolResultMsgs.push({ role: 'tool', content: resultContent, tool_call_id: tc.id });
@@ -330,15 +348,15 @@ export class AgentRunner {
 
                 agentHistory.push(...toolResultMsgs);
 
-                if (useAiStore.getState().pendingRepair?.messageId === assistantMsgId) {
+                if (ai.getState().pendingRepair?.messageId === assistantMsgId) {
                     fullAssistantText += (fullAssistantText ? '\n\n' : '') + '🔧 我已诊断出故障原因并准备了修复方案，请查看下方修复卡片。';
                     break;
                 }
-                if (useAiStore.getState().pendingClarification?.messageId === assistantMsgId) break;
-                if (useAiStore.getState().pendingRecommendation?.messageId === assistantMsgId) break;
+                if (ai.getState().pendingClarification?.messageId === assistantMsgId) break;
+                if (ai.getState().pendingRecommendation?.messageId === assistantMsgId) break;
 
                 if (pendingPlanResult) {
-                    useAiStore.getState().setPlan({
+                    ai.getState().setPlan({
                         title: pendingPlanResult.title,
                         steps: pendingPlanResult.steps,
                         summary: pendingPlanResult.summary,
@@ -350,7 +368,7 @@ export class AgentRunner {
                 }
 
                 if (pendingProposalResult) {
-                    useAiStore.getState().setProposal({
+                    ai.getState().setProposal({
                         proposedDef: pendingProposalResult.proposed,
                         diff: pendingProposalResult.diff,
                         inferredLevel: pendingProposalResult.inferredLevel,
@@ -370,23 +388,23 @@ export class AgentRunner {
                 // No proposal yet: continue loop to get model's response to tool results
             }
 
-            useAiStore.getState().setToolStatus('');
-            useAiStore.getState().updateMessage(assistantMsgId, fullAssistantText.trim() || '收到，已处理。');
+            ai.getState().setToolStatus('');
+            ai.getState().updateMessage(assistantMsgId, fullAssistantText.trim() || '收到，已处理。');
         } catch (err: any) {
-            useAiStore.getState().setToolStatus('');
+            ai.getState().setToolStatus('');
             if (err.name !== 'AbortError') {
                 const humanized = humanizeAiError(err?.message);
-                useAiStore.getState().updateMessage(assistantMsgId, `❌ ${humanized.display}`);
+                ai.getState().updateMessage(assistantMsgId, `❌ ${humanized.display}`);
                 onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
-                useAiStore.getState().setRetryInput(text);
+                ai.getState().setRetryInput(text);
             } else {
-                const cur = useAiStore.getState().messages.find(m => m.id === assistantMsgId);
-                if (!cur?.content) useAiStore.getState().updateMessage(assistantMsgId, '（已中止）');
+                const cur = ai.getState().messages.find(m => m.id === assistantMsgId);
+                if (!cur?.content) ai.getState().updateMessage(assistantMsgId, '（已中止）');
             }
         } finally {
-            useAiStore.getState().setStreaming(false);
-            useAiStore.getState().setStreamingText('');
-            useAiStore.getState().setToolStatus('');
+            ai.getState().setStreaming(false);
+            ai.getState().setStreamingText('');
+            ai.getState().setToolStatus('');
         }
     }
 }

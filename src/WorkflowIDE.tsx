@@ -8,7 +8,7 @@ import AIChatPanel from './components/AICopilot/AIChatPanel';
 import WorkflowRunPanel from './components/WorkflowRunPanel';
 import ExecutionSummaryPanel from './components/ExecutionSummaryPanel';
 import useWorkflowStore from './store/workflowStore';
-import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions, ViewMode } from './types/workflow';
+import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions, ViewMode, WorkflowExecutionInput } from './types/workflow';
 import { WorkflowDef, WorkflowInstance } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
 import './styles/tokens.css';
@@ -77,7 +77,8 @@ export interface WorkflowIDEProps {
      * 运行态数据 (WorkflowInstance)。
      * 当传入此属性时，IDE 会自动切换到 **Run Mode**，展示任务执行状态、连线路径高亮等。
      */
-    workflowExecution?: any; // Workflow Instance or Task List
+    /** 运行态执行实例数据（完整 Conductor Workflow 实例，或裸的任务实例数组） */
+    workflowExecution?: WorkflowExecutionInput;
 
     /**
      * 点击保存按钮时的回调函数。
@@ -403,7 +404,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                                 height: 28, padding: '0 10px',
                                 background: 'transparent',
                                 color: 'var(--text-secondary)',
-                                border: '1px solid var(--border-strong)',
+                                border: '1px solid var(--border-secondary)',
                                 borderRadius: 6, cursor: 'pointer', fontSize: 12,
                                 display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
                             }}
@@ -420,7 +421,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                                 height: 28, padding: '0 10px',
                                 background: 'transparent',
                                 color: 'var(--text-secondary)',
-                                border: '1px solid var(--border-strong)',
+                                border: '1px solid var(--border-secondary)',
                                 borderRadius: 6, cursor: 'pointer', fontSize: 12,
                                 display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
                             }}

@@ -133,14 +133,18 @@ export function findForkForJoin(tasks: TaskDef[], joinRef: string): string | nul
 export function insertTaskAfter(tasks: TaskDef[] | undefined, sourceRef: string, newTask: TaskDef): boolean {
     if (!tasks) return false;
 
+    if (sourceRef === 'start') {
+        tasks.unshift(newTask);
+        return true;
+    }
+
     const index = tasks.findIndex(t => t.taskReferenceName === sourceRef);
     if (index !== -1) {
         tasks.splice(index + 1, 0, newTask);
         return true;
     }
 
-    // 如果是 'start'，插入到顶层第一个
-
+    // 递归查找
     for (const task of tasks) {
         if (task.decisionCases) {
             for (const caseKey of Object.keys(task.decisionCases)) {

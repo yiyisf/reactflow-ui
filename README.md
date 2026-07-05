@@ -2,6 +2,10 @@
 
 基于 React 19、ReactFlow 和 Vite 构建的企业级 [Netflix Conductor](https://conductor-oss.org/) 工作流可视化设计器。
 
+提供两个可独立集成的核心组件：
+- **`WorkflowIDE`**（主入口）— 面向专业编排人员的完整可视化设计器
+- **`AiWorkflowIDE`**（`/ai` 子路径）— 对话优先、AI 驱动，面向非技术业务用户
+
 ## ✨ 核心特性
 
 ### 🎨 可视化建模
@@ -59,15 +63,17 @@
 ## 📦 安装
 
 ```bash
-npm install reactflow-ui reactflow react react-dom
+npm install @yiyi_zhang/reactflow-ui reactflow react react-dom
 ```
 
 ## 🚀 快速开始
 
+### WorkflowIDE（专业编排人员）
+
 ```tsx
 import { useRef } from 'react';
-import { WorkflowIDE, WorkflowIDERef } from 'reactflow-ui';
-import 'reactflow-ui/style.css';
+import { WorkflowIDE, WorkflowIDERef } from '@yiyi_zhang/reactflow-ui';
+import '@yiyi_zhang/reactflow-ui/style.css';
 
 function App() {
   const ideRef = useRef<WorkflowIDERef>(null);
@@ -88,6 +94,25 @@ function App() {
 ```
 
 不传 `workflowDef` 时画布显示引导面板，支持空白创建、AI 生成或导入 JSON。
+
+### AiWorkflowIDE（业务用户，AI 驱动）
+
+从独立子路径导入，避免主入口承担 AI 协议/工具执行等代码体积：
+
+```tsx
+import { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';
+import '@yiyi_zhang/reactflow-ui/style.css';
+
+function App() {
+  return (
+    <div style={{ height: '100vh' }}>
+      <AiWorkflowIDE aiConfig={{ apiKey: 'your-key' }} onSave={(def) => console.log('保存:', def)} />
+    </div>
+  );
+}
+```
+
+> ⚠️ 生产环境请勿将真实模型密钥直接下发到前端，详见 [集成指南](./INTEGRATION.md) 中 AiWorkflowIDE 章节的安全提示。
 
 详细集成步骤和 API 参考：**[集成指南 →](./INTEGRATION.md)**
 
@@ -125,19 +150,25 @@ npm run build
 
 ```
 src/
-├── components/        # UI 核心组件（设计器、属性面板、节点…）
-│   ├── nodes/         # 各类型节点组件（TaskNode、DecisionNode、LoopNode…）
-│   ├── AICopilot/     # AI 助手面板
-│   ├── Controls/      # 工具栏、模式切换器
+├── index.ts            # 主入口：WorkflowIDE + 共享类型
+├── ai.ts                # AI 入口（/ai 子路径）：AiWorkflowIDE + AI 配套类型
+├── WorkflowIDE.tsx      # 专业编排组件外壳
+├── AiWorkflowIDE.tsx    # AI 驱动组件外壳
+├── components/          # UI 核心组件（设计器、属性面板、节点…）
+│   ├── nodes/           # 各类型节点组件（TaskNode、DecisionNode、LoopNode…）
+│   ├── AICopilot/       # WorkflowIDE 内置 AI 助手面板
+│   ├── AiNative/        # AiWorkflowIDE 对话/画布/审查等组件
+│   ├── Controls/        # 工具栏、模式切换器
 │   ├── WorkflowRunPanel.tsx    # P4.2: 执行验证入参面板
 │   └── ExecutionSummaryPanel.tsx # P4.3: 执行结果分析面板
-├── store/             # Zustand 状态管理（workflowStore）
-├── parser/            # Conductor JSON ↔ ReactFlow 节点/边转换
-├── layout/            # Dagre 自动布局（含蛇形布局）
-├── types/             # TypeScript 类型定义
-├── styles/            # CSS 变量和执行状态样式
-├── utils/             # 校验器、executionAnalyzer（P4.3 诊断引擎）
-└── demo/              # 演示应用（开发调试用）
+├── services/ai/         # AI 协议适配、工具执行、system prompt 构建
+├── store/               # Zustand 状态管理（workflowStore、aiStore、libraryStore）
+├── parser/              # Conductor JSON ↔ ReactFlow 节点/边转换
+├── layout/              # Dagre 自动布局（含蛇形布局）
+├── types/               # TypeScript 类型定义
+├── styles/              # CSS 变量和执行状态样式
+├── utils/               # 校验器、executionAnalyzer（P4.3 诊断引擎）
+└── demo/                # 演示应用（开发调试用）
 ```
 
 ---

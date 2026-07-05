@@ -1,3 +1,4 @@
+import { TASK_TYPES } from '../config/taskTypes';
 import { ViewMode, WorkflowNodeData } from '../types/workflow';
 
 function truncate(s: string, max: number): string {
@@ -95,6 +96,24 @@ export function getNodeMeta(
         default:
             return fallback;
     }
+}
+
+/**
+ * Returns the header label for a node based on the current viewMode.
+ * - business:  Chinese label without the English technical suffix (e.g. "条件分支")
+ * - standard/developer: raw task type string (e.g. "SWITCH")
+ */
+export function getNodeHeader(taskType: string, viewMode: ViewMode): string {
+    if (viewMode !== 'business') return taskType;
+    const cfg = TASK_TYPES.find(t => t.type === taskType);
+    if (cfg) {
+        // Strip trailing " (EnglishTerm)": '条件分支 (Switch)' → '条件分支'
+        return cfg.label.replace(/\s*\([^)]+\)$/, '');
+    }
+    // Types not in TASK_TYPES (synthesised by parser)
+    if (taskType === 'JOIN') return '汇聚';
+    if (taskType === 'EXCLUSIVE_JOIN') return '排他汇聚';
+    return taskType;
 }
 
 /** Truncate helper exported for use in node components (e.g. DecisionNode). */

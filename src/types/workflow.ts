@@ -11,6 +11,14 @@ import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from './conducto
  */
 export type ViewMode = 'business' | 'standard' | 'developer';
 
+// ─── 运行态输入 ─────────────────────────────────────────────────────────────
+
+/**
+ * `workflowExecution` prop 的公共类型（WorkflowIDE 与 AiWorkflowIDE 共用）。
+ * 兼容两种形态：完整 Conductor Workflow 实例，或裸的任务实例数组（旧兼容模式）。
+ */
+export type WorkflowExecutionInput = WorkflowInstance | TaskInstance[];
+
 // ─── AI Diff 类型 ─────────────────────────────────────────────────────────
 
 export interface WorkflowDiffRow {
@@ -43,6 +51,8 @@ export interface AIChatMessage {
     diff?: WorkflowDiff;
     applied?: boolean;
     inverse?: WorkflowDiff;
+    /** Special card types rendered inline in the chat stream */
+    cardType?: 'run_card';
 }
 
 /**
@@ -136,6 +146,8 @@ export interface WorkflowNodeData {
     isDynamicRuntime?: boolean; // FORK_JOIN_DYNAMIC 运行时动态生成的子任务节点
     simRunning?: boolean; // 模拟执行中：蓝色脉冲
     simDone?: boolean;    // 模拟执行完成：绿色
+    /** AI diff overlay: which change category this node belongs to in the pending proposal */
+    proposalStatus?: 'added' | 'modified' | 'removed';
     _layoutWidth?: number;  // 循环容器预计算宽度（由 layoutLoopChildren 设置）
     _layoutHeight?: number; // 循环容器预计算高度（由 layoutLoopChildren 设置）
 }
@@ -246,6 +258,8 @@ export interface WorkflowActions {
     setViewMode: (viewMode: ViewMode) => void;
     startSimulation: () => void;
     stopSimulation: () => void;
+    /** 短暂高亮指定节点（如 AI 提案接受后标记新增/修改的节点），到时自动恢复原选中态 */
+    flashNodes: (refs: string[]) => void;
     /** P4.2: 显示/隐藏执行触发面板 */
     setShowRunPanel: (show: boolean) => void;
     /** P4.2: 显示/隐藏执行分析面板 */

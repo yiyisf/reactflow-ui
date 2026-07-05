@@ -6,7 +6,7 @@ import { WorkflowNodeData } from '../../types/workflow';
 import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
-import { truncate } from '../../utils/nodeMeta';
+import { truncate, getNodeHeader } from '../../utils/nodeMeta';
 import PromptDialog from '../PromptDialog';
 import ConfirmDialog from '../ConfirmDialog';
 
@@ -106,6 +106,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
             executionStatus={execution?.status}
             simRunning={data.simRunning}
             simDone={data.simDone}
+            proposalStatus={data.proposalStatus}
         >
             <div style={{ position: 'relative' }}>
                 <Handle type="target" position={targetPosition} style={{ background: '#fff', [layoutDirection === 'LR' ? 'left' : 'top']: '-5px' }} />
@@ -163,7 +164,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                             marginBottom: '4px',
                             color: 'var(--color-accent)'
                         }}>
-                            {data.taskType}
+                            {getNodeHeader(data.taskType, viewMode)}
                         </div>
 
                         {/* Title (Label) */}

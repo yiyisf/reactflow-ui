@@ -3,6 +3,7 @@ import ReactFlow, {
     Background,
     Panel,
     MarkerType,
+    MiniMap,
     useReactFlow,
     Edge,
 } from 'reactflow';
@@ -82,34 +83,50 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         viewMode,
         selectedTask,
         setSelectedTask,
+        selectTaskAction,
         theme,
         edgeType,
         addNode,
         nodesLocked,
         executionData,
         validationResults,
+        isDetailPanelOpen,
         setIsDetailPanelOpen,
         workflowDef,
         dynamicRuntimeTasksByFork,
         layoutDirection,
         simState,
+        isSimRunning,
         workflowLoadKey,
     } = useWorkflowStore();
 
     // ─── 视图模式过滤：计算可见节点 ID 集合 ─────────────────────────────
     const visibleNodeIdSet = useMemo(() => {
-        // run 模式和 edit 模式始终显示所有节点，避免影响编辑/监控
-        if (mode === 'run' || mode === 'edit') {
+        if (viewMode === 'developer') {
             return new Set(nodes.map((n) => n.id));
         }
         const allowed = CATEGORY_VISIBILITY[viewMode];
         const visible = new Set<string>();
         // First pass: determine which non-child nodes are visible
         nodes.forEach((n) => {
-            // 工具节点（plusNode / placeholder）不受视图模式控制
-            if (n.type === 'plusNode' || n.type === 'dynamicPlaceholderNode') {
+            // 工具节点（plusNode / placeholder）在 developer 模式下显示；在精简视图下仅当其关联父节点可见时保留
+            if (n.type === 'dynamicPlaceholderNode') {
                 visible.add(n.id);
                 return;
+            }
+            if (n.type === 'plusNode') {
+                if (mode === 'edit' && (!n.data?.parentRef || visible.has(n.data.parentRef))) {
+                    visible.add(n.id);
+                }
+                return;
+            }
+            // 运行态下，失败/运行中/超时的节点始终可见，避免关键异常被视图过滤隐藏
+            if (mode === 'run' && executionData) {
+                const st = executionData[n.id]?.status;
+                if (st === 'FAILED' || st === 'FAILED_WITH_TERMINAL_ERROR' || st === 'TIMED_OUT' || st === 'IN_PROGRESS') {
+                    visible.add(n.id);
+                    return;
+                }
             }
             // Child nodes (loop body): will be handled in second pass based on parent visibility
             if (n.parentId) return;
@@ -120,11 +137,19 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         // Second pass: include child nodes whose parent is visible
         nodes.forEach((n) => {
             if (n.parentId && visible.has(n.parentId)) {
-                visible.add(n.id);
+                if (n.type === 'plusNode') {
+                    if (mode === 'edit') visible.add(n.id);
+                    return;
+                }
+                const cfg = TASK_TYPES.find((t) => t.type === n.data.taskType);
+                const cat = cfg?.viewCategory ?? 'business';
+                if (allowed.includes(cat)) {
+                    visible.add(n.id);
+                }
             }
         });
         return visible;
-    }, [nodes, viewMode, mode]);
+    }, [nodes, viewMode, mode, executionData]);
 
     // 在业务/标准模式下，折叠经过隐藏节点的边（BFS 穿越）
     const collapseEdgesOverHidden = useCallback(
@@ -337,9 +362,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         setActiveEdgeData(null);
     }, [activeEdgeData, addNode]);
 
-    // 运行态：计算 FORK_JOIN_DYNAMIC 动态子任务节点和边
+    // 运行态：计算 FORK_JOIN_DYNAMIC 动态子任务节点和边，并通过 Dagre 自动重排避免遮挡重叠
     const dynamicForkData = useMemo(() => {
         const empty = {
+            layoutedNodes: null as typeof nodes | null,
             extraNodes: [] as typeof nodes,
             extraEdges: [] as typeof edges,
             removedEdgeIds: new Set<string>(),
@@ -355,20 +381,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         const allRemovedEdgeIds = new Set<string>();
         const allRemovedNodeIds = new Set<string>();
 
-        const isHorizontal = layoutDirection === 'LR';
-        const NODE_HALF_H = 47;
-        const NODE_HALF_W = 120;
-
-        const dynamicEdgeBase = {
-            animated: true,
-            style: { stroke: '#10b981', strokeDasharray: '4,4' },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#10b981' },
-        };
-
         for (const forkNode of forkNodes) {
             const forkTasks = dynamicRuntimeTasksByFork[forkNode.id] || [];
             const placeholderId = `${forkNode.id}_dynamic_placeholder`;
-            const placeholderNode = nodes.find(n => n.id === placeholderId);
             const forkToPlaceholderEdge = edges.find(e => e.target === placeholderId);
             const placeholderOutEdge = edges.find(e => e.source === placeholderId);
 
@@ -395,30 +410,15 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
 
             if (!forkTasks.length) continue;
 
-            const count = forkTasks.length;
-            const centerX = placeholderNode
-                ? placeholderNode.position.x + 110
-                : (forkNode.position.x + joinNode.position.x) / 2;
-            const centerY = placeholderNode
-                ? placeholderNode.position.y + 35
-                : (forkNode.position.y + joinNode.position.y) / 2;
-
-            forkTasks.forEach((task, idx) => {
+            forkTasks.forEach((task) => {
                 const nodeId = `dynamic_rt_${task.referenceTaskName}`;
-                const x = isHorizontal
-                    ? centerX - NODE_HALF_W
-                    : forkNode.position.x + (idx - (count - 1) / 2) * 280;
-                const y = isHorizontal
-                    ? centerY - NODE_HALF_H + (idx - (count - 1) / 2) * 110
-                    : centerY - NODE_HALF_H;
-
                 allExtraNodes.push({
                     id: nodeId,
                     type: 'taskNode',
                     data: {
-                        label: task.referenceTaskName,
+                        label: task.taskDefName || task.referenceTaskName,
                         task: {
-                            name: task.referenceTaskName,
+                            name: task.taskDefName || task.referenceTaskName,
                             taskReferenceName: task.referenceTaskName,
                             type: task.taskType || 'SIMPLE',
                         },
@@ -427,15 +427,43 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         isDynamicRuntime: true,
                         layoutDirection,
                     },
-                    position: { x, y },
+                    position: { x: 0, y: 0 },
                 } as typeof nodes[0]);
 
-                allExtraEdges.push({ id: `e-${forkNode.id}-${nodeId}`, source: forkNode.id, target: nodeId, ...dynamicEdgeBase });
-                allExtraEdges.push({ id: `e-${nodeId}-${joinNodeId}`, source: nodeId, target: joinNodeId, ...dynamicEdgeBase });
+                allExtraEdges.push({
+                    id: `e-${forkNode.id}-${nodeId}`,
+                    source: forkNode.id,
+                    target: nodeId,
+                    style: { strokeDasharray: '4,4' },
+                });
+                allExtraEdges.push({
+                    id: `e-${nodeId}-${joinNodeId}`,
+                    source: nodeId,
+                    target: joinNodeId,
+                    style: { strokeDasharray: '4,4' },
+                });
             });
         }
 
+        let layoutedNodes: typeof nodes | null = null;
+        if (allExtraNodes.length > 0) {
+            const combinedNodes = [
+                ...nodes.filter(n => !allRemovedNodeIds.has(n.id)),
+                ...allExtraNodes,
+            ];
+            const combinedEdges = [
+                ...edges.filter(e => !allRemovedEdgeIds.has(e.id)),
+                ...allExtraEdges,
+            ];
+            const layouted = getLayoutedElements(combinedNodes, combinedEdges, {
+                direction: layoutDirection,
+                mode: 'run',
+            });
+            layoutedNodes = layouted.nodes;
+        }
+
         return {
+            layoutedNodes,
             extraNodes: allExtraNodes,
             extraEdges: allExtraEdges,
             removedEdgeIds: allRemovedEdgeIds,
@@ -446,78 +474,107 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     // 为边添加元数据和箭头标记
     const processedEdges = useMemo(() => {
         // 先折叠经过隐藏节点的边，再处理样式
-        const visibleEdges = collapseEdgesOverHidden(
+        const baseVisibleEdges = collapseEdgesOverHidden(
             edges.filter(edge => !dynamicForkData.removedEdgeIds.has(edge.id))
         );
-        const mappedEdges = visibleEdges
-          .map((edge) => {
+        const allRawEdges = [...baseVisibleEdges, ...dynamicForkData.extraEdges];
+        const hasSimState = isSimRunning || Object.keys(simState).length > 0;
+
+        const resolveTaskRef = (nodeId: string) =>
+            nodeId.startsWith('dynamic_rt_') ? nodeId.slice('dynamic_rt_'.length) : nodeId;
+
+        return allRawEdges.map((edge) => {
             const isLoopBack = edge.id.includes('loop-back');
+            const isDynamicEdge = edge.source.startsWith('dynamic_rt_') || edge.target.startsWith('dynamic_rt_');
             // 连线颜色：浅色/深色主题略有区别，加深使其更醒目
             const edgeStroke = theme === 'light' ? '#64748b' : '#94a3b8';
-            const baseStyle = {
+            const baseStyle: React.CSSProperties = {
                 ...edge.style,
                 stroke: edgeStroke,
-                strokeWidth: 2,
-                // 只有循环回退线使用虚线；其余一律实线
-                strokeDasharray: isLoopBack ? '5,5' : undefined,
+                strokeWidth: 2.2,
+                strokeDasharray: isLoopBack ? '5,5' : isDynamicEdge ? '4,4' : undefined,
             };
 
-            let currentStyle = { ...baseStyle };
-            // 编辑/查看模式：全部不动画（使用静态实线，减少视觉噪音）
-            // 运行模式：根据执行状态决定是否动画
+            let currentStyle: React.CSSProperties = { ...baseStyle };
             let isAnimated = false;
 
-            // 如果是运行模式且有执行数据，应用动态样式
+            // 运行模式且有执行数据：全状态高亮 + 未执行分支弱化
             if (mode === 'run' && executionData) {
-                const sourceStatus = executionData[edge.source]?.status;
-                const targetStatus = executionData[edge.target]?.status;
+                const sourceRef = resolveTaskRef(edge.source);
+                const targetRef = resolveTaskRef(edge.target);
+                const sourceStatus = executionData[sourceRef]?.status;
+                const targetStatus = executionData[targetRef]?.status;
 
-                const isSourceCompleted = sourceStatus === 'COMPLETED';
-                const isTargetCompleted = targetStatus === 'COMPLETED';
-                const isTargetInProgress = targetStatus === 'IN_PROGRESS';
+                const isSourceReached =
+                    sourceStatus === 'COMPLETED' || sourceStatus === 'COMPLETED_WITH_ERRORS';
 
-                if (isSourceCompleted && isTargetCompleted) {
-                    currentStyle = { ...currentStyle, stroke: 'var(--status-completed)', strokeWidth: 4 };
+                if (isSourceReached && (targetStatus === 'COMPLETED' || targetStatus === 'COMPLETED_WITH_ERRORS')) {
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-completed)', strokeWidth: 3.2, opacity: 1 };
                     isAnimated = false;
-                } else if (isSourceCompleted && isTargetInProgress) {
-                    currentStyle = { ...currentStyle, stroke: 'var(--status-in-progress)', strokeWidth: 4 };
+                } else if (isSourceReached && (targetStatus === 'IN_PROGRESS' || targetStatus === 'SCHEDULED')) {
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-in-progress)', strokeWidth: 3.5, opacity: 1 };
+                    isAnimated = true;
+                } else if (isSourceReached && (targetStatus === 'FAILED' || targetStatus === 'FAILED_WITH_TERMINAL_ERROR')) {
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-failed)', strokeWidth: 3.5, opacity: 1 };
+                    isAnimated = false;
+                } else if (isSourceReached && targetStatus === 'TIMED_OUT') {
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-timed-out)', strokeWidth: 3.5, opacity: 1 };
+                    isAnimated = false;
+                } else {
+                    // 未走到的分支或已跳过的分支降低透明度，突出主执行链路
+                    currentStyle = { ...currentStyle, stroke: edgeStroke, strokeWidth: 1.8, opacity: 0.28 };
+                    isAnimated = false;
+                }
+            } else if (hasSimState) {
+                // 模拟运行模式：同步高亮连线与流动动效
+                const srcSim = simState[edge.source];
+                const tgtSim = simState[edge.target];
+                if (srcSim === 'done' && tgtSim === 'done') {
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-completed)', strokeWidth: 3.2 };
+                    isAnimated = false;
+                } else if (srcSim === 'done' && tgtSim === 'running') {
+                    currentStyle = { ...currentStyle, stroke: 'var(--status-in-progress)', strokeWidth: 3.5 };
                     isAnimated = true;
                 }
             }
 
-            // 编辑模式下使用自定义边以显示 "+" 按钮（占位边除外）
+            // 编辑模式下允许在普通连线上显示 "+" 按钮（占位边、回退边、引导边除外）
             const isPlaceholderEdge =
                 edge.source.endsWith('_dynamic_placeholder') ||
                 edge.target.endsWith('_dynamic_placeholder');
-            // __workflow_start__ / __loop_start__* 引导边由 plusNode 承担插入逻辑，
-            // 这些边本身不应显示 "+" 按钮
-            const isStartGuideEdge = edge.source === '__workflow_start__' || edge.source.startsWith('__loop_start__');
+            const isStartGuideEdge =
+                edge.source === '__workflow_start__' ||
+                edge.source.startsWith('__loop_start__') ||
+                edge.target.startsWith('__loop_end__') ||
+                edge.target.includes('_empty_');
             const isAddable = mode === 'edit' && !isLoopBack && !isPlaceholderEdge && !isStartGuideEdge;
 
             return {
                 ...edge,
-                type: isAddable ? 'addableEdge' : edgeType,
+                // 统一使用 addableEdge 渲染器，确保所有模式下分支胶囊标签常驻且风格一致
+                type: 'addableEdge',
                 data: {
                     ...edge.data,
                     mode,
+                    isAddable,
                     edgeType, // 传入全局样式设置
                     label: edge.label
                 },
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
-                    width: 20,
-                    height: 20,
-                    color: currentStyle.stroke, // 使用当前线条颜色确保箭头颜色匹配
+                    width: 18,
+                    height: 18,
+                    color: String(currentStyle.stroke || edgeStroke),
                 },
                 style: currentStyle,
                 animated: isAnimated,
             };
         });
-        return [...mappedEdges, ...dynamicForkData.extraEdges];
-    }, [edges, edgeType, theme, mode, executionData, dynamicForkData, collapseEdgesOverHidden]);
+    }, [edges, edgeType, theme, mode, executionData, dynamicForkData, collapseEdgesOverHidden, isSimRunning, simState]);
 
     // 背景颜色 - 使用 CSS变量
     const backgroundColor = 'var(--bg-secondary)';
+    const realNodeCount = useMemo(() => nodes.filter(n => n.type !== 'plusNode').length, [nodes]);
 
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', background: backgroundColor }}>
@@ -531,9 +588,13 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     const warningRefs = new Set(validationResults.warnings.filter(w => w.type === 'TASK').map(w => w.ref));
                     const query = searchQuery.toLowerCase();
 
-                    const baseNodes = nodes
-                    .filter(n => !dynamicForkData.removedNodeIds.has(n.id) && visibleNodeIdSet.has(n.id))
-                    .map(node => {
+                    const sourceNodes = dynamicForkData.layoutedNodes
+                        ? dynamicForkData.layoutedNodes.filter(n => n.id.startsWith('dynamic_rt_') || visibleNodeIdSet.has(n.id))
+                        : nodes
+                            .filter(n => !dynamicForkData.removedNodeIds.has(n.id) && visibleNodeIdSet.has(n.id))
+                            .concat(dynamicForkData.extraNodes);
+
+                    return sourceNodes.map(node => {
                         const ref = node.data.taskReferenceName;
                         const sim = simState[ref];
                         return {
@@ -544,18 +605,14 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                 isError: mode === 'edit' && errorRefs.has(ref),
                                 hasWarning: mode === 'edit' && warningRefs.has(ref),
                                 isHighlighted: searchQuery ? (
-                                    node.data.label.toLowerCase().includes(query) ||
-                                    node.data.taskReferenceName.toLowerCase().includes(query)
+                                    (node.data.label || '').toLowerCase().includes(query) ||
+                                    (node.data.taskReferenceName || '').toLowerCase().includes(query)
                                 ) : false,
                                 simRunning: sim === 'running',
                                 simDone: sim === 'done',
                             }
                         };
                     });
-                    return baseNodes.concat(dynamicForkData.extraNodes.map(node => ({
-                        ...node,
-                        data: { ...node.data, isError: false, hasWarning: false, isHighlighted: false },
-                    })) as typeof baseNodes);
                 }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode, ghostOverlay])}
                 edges={ghostOverlay?.edges ?? processedEdges}
                 onNodesChange={onNodesChange}
@@ -598,10 +655,43 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             >
                 <Background color="var(--border-primary)" gap={20} />
 
-                {/* Navigation Hub: Zoom (Moved to Bottom-Left) */}
+                {/* Navigation Hub: Zoom (Bottom-Left) */}
                 <Panel position="bottom-left" style={{ marginBottom: '20px', marginLeft: '20px', zIndex: 1000 }}>
                     <ControlHub />
                 </Panel>
+
+                {/* 缩略导航图（当真实节点数 >= 5 且右侧详情抽屉未打开时展示） */}
+                {realNodeCount >= 5 && !isDetailPanelOpen && !showHealthCheck && (
+                    <MiniMap
+                        position="bottom-right"
+                        pannable
+                        zoomable
+                        style={{
+                            marginBottom: 20,
+                            marginRight: 20,
+                            width: 160,
+                            height: 110,
+                            backgroundColor: 'var(--glass-surface)',
+                        }}
+                        maskColor={theme === 'light' ? 'rgba(241, 245, 249, 0.7)' : 'rgba(15, 23, 42, 0.7)'}
+                        nodeColor={(node) => {
+                            if (node.type === 'plusNode') return 'transparent';
+                            if (mode === 'run' && executionData) {
+                                const ref = node.data?.taskReferenceName;
+                                const st = executionData[ref]?.status;
+                                if (st === 'COMPLETED') return '#10b981';
+                                if (st === 'FAILED' || st === 'FAILED_WITH_TERMINAL_ERROR') return '#ef4444';
+                                if (st === 'IN_PROGRESS' || st === 'SCHEDULED') return '#3b82f6';
+                                if (st === 'TIMED_OUT' || st === 'COMPLETED_WITH_ERRORS') return '#f59e0b';
+                                return '#64748b';
+                            }
+                            if (node.type === 'decisionNode') return '#f59e0b';
+                            if (node.type === 'forkNode' || node.type === 'joinNode') return '#10b981';
+                            if (node.type === 'loopNode') return '#8b5cf6';
+                            return '#3b82f6';
+                        }}
+                    />
+                )}
 
                 {/* 运行态状态栏 */}
                 {mode === 'run' && (
@@ -615,17 +705,14 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     onClose={() => setShowHealthCheck(false)}
                     theme={theme}
                     onTaskSelect={(task) => {
-                        setSelectedTask(task);
-                        // setIsDetailPanelOpen(true); // You may need to expose this state if HealthCheckPanel needs to open it
+                        selectTaskAction(task, true);
                     }}
                 />
 
                 {/* Mode Slider (Top Center) — view‑detail switcher */}
-                {mode !== 'run' && (
-                    <Panel position="top-center" style={{ marginTop: '14px' }}>
-                        <ModeSlider />
-                    </Panel>
-                )}
+                <Panel position="top-center" style={{ marginTop: '14px' }}>
+                    <ModeSlider />
+                </Panel>
 
                 {/* Action Bar (Top Right) */}
                 <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>

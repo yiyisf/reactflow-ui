@@ -151,21 +151,23 @@
 /* ---- Status Badge ---- */
 
 .execution-status-badge {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
+    font-size: 11px;
+    font-weight: 700;
     color: #fff;
     border: 2px solid var(--bg-secondary);
     z-index: 10;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+
+.execution-status-badge.scheduled {
+    background: var(--status-scheduled);
 }
 
 .execution-status-badge.in-progress {
@@ -180,8 +182,29 @@
     background: var(--status-completed);
 }
 
+.execution-status-badge.completed-with-errors {
+    background: var(--status-completed-with-errors);
+    color: #0f172a;
+}
+
 .execution-status-badge.failed {
     background: var(--status-failed);
+}
+
+.execution-status-badge.timed-out {
+    background: var(--status-timed-out);
+}
+
+.execution-status-badge.skipped {
+    background: var(--status-skipped);
+}
+
+.execution-status-badge.canceled {
+    background: var(--status-canceled);
+}
+
+.execution-status-badge.unknown {
+    background: var(--status-scheduled);
 }
 
 /* ---- Execution Status Bar ---- */

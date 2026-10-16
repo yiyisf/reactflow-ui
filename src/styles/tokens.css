@@ -25,11 +25,16 @@
     --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
+    --node-radius: 12px;
 
     --z-dropdown: 1000;
     --z-sticky: 1100;
     --z-modal: 1300;
     --z-popover: 1500;
+
+    --glass-blur: blur(16px);
+    --node-glow-color: rgba(59, 130, 246, 0.45);
+    --color-accent-rgb: 59, 130, 246;
 }
 
 /* ------------------------------------------------------------------
@@ -46,8 +51,10 @@
     --bg-highlight: rgba(255, 255, 255, 0.05);
 
     /* Glass Effect */
-    --glass-surface: rgba(30, 41, 59, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-surface: rgba(30, 41, 59, 0.78);
+    --glass-bg: rgba(30, 41, 59, 0.72);
+    --glass-bg-accent: rgba(30, 41, 59, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.16);
 
     /* Typography */
     --text-primary: #f8fafc;
@@ -59,12 +66,12 @@
     --text-inverse: #0f172a;
 
     /* Borders */
-    --border-primary: rgba(255, 255, 255, 0.18);
-    --border-secondary: rgba(255, 255, 255, 0.32);
+    --border-primary: rgba(255, 255, 255, 0.16);
+    --border-secondary: rgba(255, 255, 255, 0.30);
 
     /* Node shadows — 深色模式下加强阴影可见度 */
-    --node-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), 0 1px 6px rgba(0, 0, 0, 0.35);
-    --node-shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.4);
+    --node-shadow: 0 6px 22px rgba(0, 0, 0, 0.50), 0 2px 6px rgba(0, 0, 0, 0.32);
+    --node-shadow-hover: 0 10px 30px rgba(0, 0, 0, 0.62), 0 3px 10px rgba(0, 0, 0, 0.38);
 }
 
 /* ------------------------------------------------------------------
@@ -78,28 +85,30 @@
     /* White */
     --bg-tertiary: #f1f5f9;
     /* Slate 100 */
-    --bg-highlight: rgba(0, 0, 0, 0.05);
+    --bg-highlight: rgba(0, 0, 0, 0.04);
 
     /* Glass Effect */
-    --glass-surface: rgba(255, 255, 255, 0.8);
-    --glass-border: rgba(0, 0, 0, 0.15);
+    --glass-surface: rgba(255, 255, 255, 0.88);
+    --glass-bg: rgba(255, 255, 255, 0.92);
+    --glass-bg-accent: rgba(255, 255, 255, 0.96);
+    --glass-border: rgba(15, 23, 42, 0.12);
 
     /* Typography */
     --text-primary: #0f172a;
     /* Slate 900 */
-    --text-secondary: #64748b;
-    /* Slate 500 */
+    --text-secondary: #475569;
+    /* Slate 600 */
     --text-muted: #94a3b8;
     /* Slate 400 */
     --text-inverse: #ffffff;
 
     /* Borders */
-    --border-primary: rgba(0, 0, 0, 0.15);
-    --border-secondary: rgba(0, 0, 0, 0.28);
+    --border-primary: rgba(15, 23, 42, 0.12);
+    --border-secondary: rgba(15, 23, 42, 0.24);
 
     /* Node shadows — 浅色模式下保持适中阴影 */
-    --node-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.12);
-    --node-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.14);
+    --node-shadow: 0 4px 16px rgba(15, 23, 42, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06);
+    --node-shadow-hover: 0 8px 24px rgba(15, 23, 42, 0.15), 0 2px 6px rgba(15, 23, 42, 0.09);
 }
 
 /* ------------------------------------------------------------------
@@ -110,6 +119,8 @@
 
     /* Dark Mode Defaults */
     --color-accent: #3b82f6;
+    --color-accent-rgb: 59, 130, 246;
+    --node-glow-color: rgba(59, 130, 246, 0.45);
     /* Blue 500 */
     --color-accent-hover: #60a5fa;
     /* Blue 400 */
@@ -120,6 +131,8 @@
 
 [data-brand='blue'][data-mode='light'] {
     --color-accent: #2563eb;
+    --color-accent-rgb: 37, 99, 235;
+    --node-glow-color: rgba(37, 99, 235, 0.35);
     /* Blue 600 - Darker for Light Mode */
     --color-accent-hover: #1d4ed8;
     /* Blue 700 */
@@ -133,6 +146,8 @@
 [data-brand='orange'] {
     /* Dark Mode Defaults */
     --color-accent: #E75213;
+    --color-accent-rgb: 231, 82, 19;
+    --node-glow-color: rgba(231, 82, 19, 0.45);
     /* Custom Orange */
     --color-accent-hover: #fb923c;
     /* Orange 400 */
@@ -143,6 +158,8 @@
 
 [data-brand='orange'][data-mode='light'] {
     --color-accent: #ea580c;
+    --color-accent-rgb: 234, 88, 12;
+    --node-glow-color: rgba(234, 88, 12, 0.35);
     /* Orange 600 */
     --color-accent-hover: #c2410c;
     /* Orange 700 */
@@ -151,11 +168,130 @@
 }
 
 /* ------------------------------------------------------------------
-   UTILITIES
+   UTILITIES & CORE CANVAS STYLES
    ------------------------------------------------------------------ */
 .glass-panel {
     background: var(--glass-surface);
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+}
+
+.react-flow__node {
+    cursor: pointer;
+}
+
+.react-flow__edge-path {
+    stroke-width: 2.2;
+    transition: stroke-width 0.2s ease, stroke 0.2s ease, opacity 0.2s ease;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+    stroke: var(--color-accent) !important;
+    stroke-width: 3.2;
+    filter: drop-shadow(0 0 5px var(--color-accent));
+}
+
+.react-flow__connection-path {
+    stroke: var(--color-accent);
+    stroke-width: 2.5;
+    stroke-dasharray: 5, 5;
+    animation: dashdraw 0.5s linear infinite;
+}
+
+.react-flow__edge.animated path {
+    stroke-dasharray: 6, 4;
+    animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+    from { stroke-dashoffset: 10; }
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes breathing-glow {
+    0%, 100% {
+        box-shadow: 0 0 6px var(--node-glow-color), 0 0 12px var(--node-glow-color);
+    }
+    50% {
+        box-shadow: 0 0 18px var(--node-glow-color), 0 0 32px var(--node-glow-color);
+    }
+}
+
+.node-wrapper-glass {
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1.5px solid rgba(var(--color-accent-rgb), 0.38) !important;
+    border-radius: var(--node-radius);
+    overflow: visible;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--node-shadow);
+}
+
+.node-wrapper-glass:hover {
+    border-color: rgba(var(--color-accent-rgb), 0.65) !important;
+    box-shadow: var(--node-shadow-hover);
+    transform: translateY(-1px);
+}
+
+[data-mode='light'] .node-wrapper-glass {
+    border: 1.5px solid rgba(var(--color-accent-rgb), 0.35) !important;
+    box-shadow: var(--node-shadow), 0 2px 8px rgba(var(--color-accent-rgb), 0.08);
+}
+
+.node-wrapper-selected {
+    outline: 2px solid var(--color-accent) !important;
+    outline-offset: 2px;
+    animation: breathing-glow 2.5s infinite ease-in-out;
+    border-color: var(--color-accent) !important;
+}
+
+.node-wrapper-highlighted {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 40px rgba(251, 191, 36, 0.4) !important;
+    border-color: #fbbf24 !important;
+    transform: scale(1.02);
+    z-index: 50;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.decision-node-wrapper {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+
+.edge-add-button:hover {
+    transform: scale(1.18) rotate(90deg);
+    background-color: var(--color-accent-hover) !important;
+}
+
+.react-flow__controls {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+}
+
+.react-flow__controls button {
+    background: var(--glass-surface);
+    border-color: var(--glass-border);
+    color: var(--text-primary);
+    fill: var(--text-primary);
+}
+
+.react-flow__controls button:hover {
+    background: var(--bg-tertiary);
+}
+
+.react-flow__minimap {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+    border-radius: 10px;
+    overflow: hidden;
     border: 1px solid var(--glass-border);
 }
 

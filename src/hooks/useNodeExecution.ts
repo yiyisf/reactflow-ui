@@ -13,5 +13,15 @@ export const useNodeExecution = (taskReferenceName: string) => {
     const lastAttempt = execution?.attempts[execution.attempts.length - 1];
     const retryCount = hasLoopIterations ? 0 : (lastAttempt?.retryCount ?? 0);
 
-    return { mode, execution, isRunning, retryCount };
+    let durationText: string | undefined;
+    if (isRunning && execution?.startTime) {
+        if (execution.endTime && execution.endTime >= execution.startTime) {
+            const ms = execution.endTime - execution.startTime;
+            durationText = ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`;
+        } else if (execution.status === 'IN_PROGRESS' || execution.status === 'SCHEDULED') {
+            durationText = '运行中';
+        }
+    }
+
+    return { mode, execution, isRunning, retryCount, durationText };
 };

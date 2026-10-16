@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
-import HealthCheckPanel from './components/HealthCheckPanel';
 import ExecutionTaskPanel from './components/ExecutionTaskPanel';
 import AIChatPanel from './components/AICopilot/AIChatPanel';
 import WorkflowRunPanel from './components/WorkflowRunPanel';
@@ -206,8 +205,6 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         setShowAnalysisPanel,
         executionData,
     } = useWorkflowStore();
-
-    const [showHealthCheck, setShowHealthCheck] = React.useState(false);
 
     // 导出 JSON
     const handleExportJson = useCallback(() => {
@@ -457,15 +454,6 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 onClose={() => setIsDetailPanelOpen(false)}
                 theme={theme}
                 aiConfig={aiConfig}
-            />
-
-            <HealthCheckPanel
-                isOpen={showHealthCheck}
-                onClose={() => setShowHealthCheck(false)}
-                theme={theme}
-                onTaskSelect={(task) => {
-                    selectTaskAction(task, true);
-                }}
             />
 
             {

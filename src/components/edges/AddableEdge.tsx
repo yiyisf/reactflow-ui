@@ -80,9 +80,10 @@ const AddableEdge = ({
         }, 100);
     };
 
-    const isEditMode = data?.mode === 'edit';
-    // 悬停时暂时禁用边上的动画，提高点击稳定性
-    // const shouldAnimate = animated && !isHovered; // BaseEdge doesn't override animated via prop directly efficiently, using style might be better or handled by parent class
+    const isAddable = Boolean(data?.isAddable ?? (data?.mode === 'edit'));
+    const hasLabel = Boolean(data?.label);
+    const baseStrokeWidth = typeof style?.strokeWidth === 'number' ? style.strokeWidth : 2.2;
+    const edgeOpacity = typeof style?.opacity === 'number' ? style.opacity : 1;
 
     return (
         <>
@@ -92,86 +93,95 @@ const AddableEdge = ({
                 markerEnd={markerEnd}
                 style={{
                     ...style,
-                    strokeWidth: isHovered ? 4 : 2,
-                    stroke: isHovered ? '#fbbf24' : style?.stroke,
-                    transition: 'stroke 0.2s, stroke-width 0.2s',
+                    strokeWidth: isAddable && isHovered ? baseStrokeWidth + 1.4 : baseStrokeWidth,
+                    stroke: isAddable && isHovered ? 'var(--color-accent)' : style?.stroke,
+                    transition: 'stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.25s ease',
                     pointerEvents: 'none'
                 }}
             />
 
-            {/* 交互感知层 */}
-            <path
-                d={edgePath}
-                fill="none"
-                stroke="transparent"
-                strokeWidth={20}
-                style={{ cursor: isEditMode ? 'pointer' : 'default', pointerEvents: 'all' }}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-            />
+            {/* 交互感知层（仅在可添加节点时启用悬停感知） */}
+            {isAddable && (
+                <path
+                    d={edgePath}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth={22}
+                    style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                />
+            )}
 
-            {isEditMode && isHovered && (
+            {(hasLabel || (isAddable && isHovered)) && (
                 <EdgeLabelRenderer>
                     <div
                         style={{
                             position: 'absolute',
                             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
                             fontSize: 12,
-                            pointerEvents: 'all',
-                            zIndex: 2000,
+                            pointerEvents: isAddable ? 'all' : 'none',
+                            zIndex: isHovered ? 2000 : 10,
                             display: 'flex',
                             flexDirection: 'column',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: '6px',
+                            opacity: isHovered ? 1 : edgeOpacity,
+                            transition: 'opacity 0.2s ease',
                         }}
                         className="nodrag nopan"
-                        onMouseEnter={handleMouseEnter}
-                        onMouseLeave={handleMouseLeave}
+                        onMouseEnter={isAddable ? handleMouseEnter : undefined}
+                        onMouseLeave={isAddable ? handleMouseLeave : undefined}
                     >
-                        {/* 显示连线标签 (如 Case 键名) */}
-                        {data?.label && (
+                        {/* 始终显示连线标签 (如 Decision Case / default / 分支名) */}
+                        {hasLabel && (
                             <div style={{
                                 background: 'var(--glass-bg-accent)',
                                 backdropFilter: 'var(--glass-blur)',
-                                color: 'var(--color-accent)',
-                                padding: '4px 10px',
-                                borderRadius: '6px',
+                                WebkitBackdropFilter: 'var(--glass-blur)',
+                                color: 'var(--text-primary)',
+                                padding: '2px 8px',
+                                borderRadius: '999px',
                                 fontSize: '11px',
-                                fontWeight: '700',
-                                marginBottom: '8px',
-                                border: '1px solid var(--color-accent)',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                fontWeight: 600,
+                                border: `1px solid ${isHovered ? 'var(--color-accent)' : 'var(--border-secondary)'}`,
+                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.22)',
                                 whiteSpace: 'nowrap',
-                                letterSpacing: '0.5px'
+                                letterSpacing: '0.3px',
+                                lineHeight: 1.4,
                             }}>
                                 {data.label}
                             </div>
                         )}
 
-                        <button
-                            style={{
-                                width: '32px',
-                                height: '32px',
-                                backgroundColor: 'var(--color-accent)',
-                                color: '#fff',
-                                border: '2px solid rgba(255,255,255,0.8)',
-                                borderRadius: '50%',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontWeight: '700',
-                                fontSize: '20px',
-                                boxShadow: '0 4px 15px rgba(var(--color-accent-rgb), 0.5)',
-                                transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                                padding: 0
-                            }}
-                            className="edge-add-button"
-                            onClick={onAddClick}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            title="在此处添加任务"
-                        >
-                            +
-                        </button>
+                        {isAddable && isHovered && (
+                            <button
+                                style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    backgroundColor: 'var(--color-accent)',
+                                    color: '#fff',
+                                    border: '2px solid rgba(255,255,255,0.85)',
+                                    borderRadius: '50%',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontWeight: 700,
+                                    fontSize: '18px',
+                                    lineHeight: 1,
+                                    boxShadow: '0 4px 14px rgba(var(--color-accent-rgb), 0.5)',
+                                    transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                    padding: 0
+                                }}
+                                className="edge-add-button"
+                                onClick={onAddClick}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                title="在此处添加任务"
+                            >
+                                +
+                            </button>
+                        )}
                     </div>
                 </EdgeLabelRenderer>
             )}

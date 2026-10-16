@@ -36,6 +36,8 @@ import type { AiEvent } from './types/aiEvents';
 import type { IdeDraft } from './services/ai/draftPersistence';
 import { isMeaningfulDraft, loadDraft, saveDraft, clearDraft } from './services/ai/draftPersistence';
 
+import './styles/tokens.css';
+import './styles/executionStyles.css';
 import './components/AiNative/AiNative.css';
 
 /** 恢复横幅文案，如"已恢复刚刚的编辑" / "已恢复 3 分钟前的编辑" */

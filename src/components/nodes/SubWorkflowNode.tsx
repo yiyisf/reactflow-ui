@@ -20,7 +20,7 @@ const SUB_WORKFLOW_COLOR = 'var(--color-accent)';
  */
 const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
     const { sourcePosition, targetPosition } = useNodeLayout(data);
-    const { execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
     const viewMode = useWorkflowStore(s => s.viewMode);
 
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'SUB_WORKFLOW'), []);
@@ -43,8 +43,8 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
         >
             <div
                 style={{
-                    borderRadius: '8px',
-                    background: 'var(--bg-secondary)',
+                    borderRadius: '10px',
+                    background: 'transparent',
                     position: 'relative'
                 }}
             >
@@ -52,7 +52,9 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
                     icon={IconComponent}
                     header={getNodeHeader('SUB_WORKFLOW', viewMode)}
                     title={data.taskReferenceName}
-                    meta={getNodeMeta('SUB_WORKFLOW', data, viewMode, `Flow: ${subWorkflowName} (v${version})`)}
+                    subTitle={data.label && data.label !== data.taskReferenceName ? data.label : undefined}
+                    meta={getNodeMeta('SUB_WORKFLOW', data, viewMode, `Flow: ${subWorkflowName}${version !== undefined ? ` (v${version})` : ''}`)}
+                    duration={durationText}
                     color={SUB_WORKFLOW_COLOR}
                     status={execution?.status}
                     isRunning={isRunning}

@@ -12,24 +12,22 @@ function getNodeDimensions(node: WorkflowNode, _direction: LayoutDirection = 'TB
         return { width: node.data._layoutWidth as number, height: node.data._layoutHeight as number };
     }
 
-    let width = 240; // NodeLayout 的 min-width
-    let height = 80;  // NodeLayout 的标准高度
+    let width = 240; // NodeLayout 的标准宽度
+    let height = 84; // NodeLayout 的标准高度
 
     switch (node.type) {
         case 'decisionNode':
-            // 菱形 DecisionNode (150x150 旋转后的边界框约为 212x212)
-            width = 212;
-            height = 160;
+            // 菱形 DecisionNode 外层容器严格为 164x164（内部 122x122 旋转 45°）
+            width = 164;
+            height = 164;
             break;
         case 'forkNode':
-            // ForkJoinNode 使用 NodeLayout
             width = 240;
-            height = 95;
+            height = 84;
             break;
         case 'joinNode':
-            // ForkJoinNode 使用 NodeLayout
             width = 240;
-            height = 95;
+            height = 84;
             break;
         case 'dynamicPlaceholderNode':
             width = 220;
@@ -41,17 +39,14 @@ function getNodeDimensions(node: WorkflowNode, _direction: LayoutDirection = 'TB
             height = 200;
             break;
         case 'subWorkflowNode':
-            // SubWorkflowNode 使用 NodeLayout
             width = 240;
-            height = 95;
+            height = 84;
             break;
         case 'eventNode':
-            // EventNode 使用 NodeLayout
             width = 240;
-            height = 85;
+            height = 84;
             break;
         case 'default':
-            // DefaultNode 使用 NodeLayout
             width = 240;
             height = 40;
             break;
@@ -63,7 +58,7 @@ function getNodeDimensions(node: WorkflowNode, _direction: LayoutDirection = 'TB
         default:
             // 默认 TaskNode 尺寸
             width = 240;
-            height = 95;
+            height = 84;
             break;
     }
 
@@ -334,6 +329,18 @@ function layoutFlatGraph(nodes: WorkflowNode[], edges: Edge[], options: AutoLayo
         }
     });
 
+    //统计每个虚拟/真实目标节点的入度，用于区分分支起始边与汇合边
+    const targetInDegree: Record<string, number> = {};
+    edges.forEach(edge => {
+        const sourceChainIdx = nodeToChainIndex[edge.source];
+        const targetChainIdx = nodeToChainIndex[edge.target];
+        const sourceId = sourceChainIdx !== undefined ? `__CHAIN_${sourceChainIdx}` : edge.source;
+        const targetId = targetChainIdx !== undefined ? `__CHAIN_${targetChainIdx}` : edge.target;
+        if (sourceId !== targetId) {
+            targetInDegree[targetId] = (targetInDegree[targetId] || 0) + 1;
+        }
+    });
+
     // 3.2 添加边 (重连到虚拟节点)
     edges.forEach(edge => {
         const sourceChainIdx = nodeToChainIndex[edge.source];
@@ -347,7 +354,10 @@ function layoutFlatGraph(nodes: WorkflowNode[], edges: Edge[], options: AutoLayo
 
         // 如果源和目标是同一个虚拟节点（即链内部的边），则忽略
         if (sourceId !== targetId) {
-            dagreGraph.setEdge(sourceId, targetId);
+            // 汇合边（目标节点有多个入边，如分支汇入后续节点或 JOIN）使用较低权重 1，
+            // 分支内推进边使用较高权重 2，确保各分支的起始节点严格对齐在分叉节点后的第一列/行
+            const isConvergenceEdge = (targetInDegree[targetId] || 0) > 1;
+            dagreGraph.setEdge(sourceId, targetId, { weight: isConvergenceEdge ? 1 : 2 });
         }
     });
 

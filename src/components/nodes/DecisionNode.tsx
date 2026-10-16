@@ -25,7 +25,7 @@ type DialogState =
  */
 const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     const { layoutDirection } = useNodeLayout(data);
-    const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { mode, execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
     const { addDecisionBranch, removeDecisionBranch, renameDecisionBranch, viewMode } = useWorkflowStore();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [dialog, setDialog] = useState<DialogState>({ type: 'none' });
@@ -108,12 +108,27 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
             simDone={data.simDone}
             proposalStatus={data.proposalStatus}
         >
-            <div style={{ position: 'relative' }}>
-                <Handle type="target" position={targetPosition} style={{ background: '#fff', [layoutDirection === 'LR' ? 'left' : 'top']: '-5px' }} />
+            <div style={{
+                position: 'relative',
+                width: '164px',
+                height: '164px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+            }}>
+                <Handle
+                    type="target"
+                    position={targetPosition}
+                    style={{
+                        background: '#fff',
+                        [layoutDirection === 'LR' ? 'left' : 'top']: '-3px',
+                        zIndex: 15,
+                    }}
+                />
 
                 {/* 运行态徽章 */}
                 {isRunning && execution?.status && (
-                    <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 20 }}>
+                    <div style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20 }}>
                         <ExecutionStatusBadge status={execution.status} />
                     </div>
                 )}
@@ -121,23 +136,28 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                 <div
                     className={executionClass}
                     style={{
-                        width: '150px',
-                        height: '150px',
+                        width: '122px',
+                        height: '122px',
+                        boxSizing: 'border-box',
+                        borderRadius: '10px',
                         background: isRunning && execution?.status
                             ? undefined
-                            : 'var(--bg-secondary)',
+                            : 'var(--glass-bg)',
+                        backdropFilter: 'var(--glass-blur)',
+                        WebkitBackdropFilter: 'var(--glass-blur)',
                         border: selected
-                            ? '4px solid #fbbf24'
-                            : (isRunning && execution?.status ? undefined : '4px solid var(--border-primary)'),
+                            ? '2.5px solid var(--color-accent)'
+                            : (isRunning && execution?.status ? undefined : '2px solid rgba(var(--color-accent-rgb), 0.45)'),
                         transform: 'rotate(45deg)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         boxShadow: selected
-                            ? '0 10px 30px rgba(0,0,0,0.3), 0 0 0 4px rgba(251, 191, 36, 0.3)'
-                            : (isRunning && execution?.status ? undefined : '0 4px 12px rgba(0,0,0,0.15)'),
-                        transition: 'all 0.3s ease',
+                            ? '0 8px 26px rgba(0,0,0,0.35), 0 0 0 3px var(--node-glow-color)'
+                            : (isRunning && execution?.status ? undefined : 'var(--node-shadow)'),
+                        transition: 'all 0.25s ease',
                         cursor: 'pointer',
+                        flexShrink: 0,
                     }}
                     onClick={() => mode === 'edit' && setIsMenuOpen(!isMenuOpen)}
                 >
@@ -146,8 +166,8 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                             transform: 'rotate(-45deg)',
                             color: '#fff',
                             textAlign: 'center',
-                            padding: '10px',
-                            width: '100%',
+                            padding: '6px',
+                            width: '116px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
@@ -156,55 +176,76 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     >
                         {/* Header (Task Type) */}
                         <div style={{
-                            fontSize: '14px',
+                            fontSize: '10px',
                             fontWeight: 700,
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px',
-                            opacity: 0.7,
-                            marginBottom: '4px',
+                            opacity: 0.85,
+                            marginBottom: '2px',
                             color: 'var(--color-accent)'
                         }}>
                             {getNodeHeader(data.taskType, viewMode)}
                         </div>
 
-                        {/* Title (Label) */}
+                        {/* Title (Reference Name / Label) */}
                         <div style={{
-                            fontSize: '18px',
+                            fontSize: '12px',
                             fontWeight: 600,
                             color: 'var(--text-primary)',
-                            lineHeight: '1.2',
-                            wordBreak: 'break-word',
-                            maxHeight: '60px',
+                            lineHeight: 1.25,
+                            maxWidth: '104px',
                             overflow: 'hidden',
-                            marginBottom: '4px'
-                        }}>
-                            {data.label}
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }} title={data.taskReferenceName}>
+                            {data.taskReferenceName}
                         </div>
+
+                        {data.label && data.label !== data.taskReferenceName && (
+                            <div style={{
+                                fontSize: '10px',
+                                color: 'var(--text-secondary)',
+                                maxWidth: '98px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                marginTop: '1px',
+                            }} title={data.label}>
+                                {data.label}
+                            </div>
+                        )}
 
                         {mode === 'edit' && (
                             <div style={{
-                                marginTop: '4px',
-                                width: '24px',
-                                height: '24px',
-                                fontSize: '16px',
-                                background: 'rgba(255,255,255,0.1)',
+                                width: '18px',
+                                height: '18px',
+                                fontSize: '12px',
+                                background: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                                border: '1px solid rgba(var(--color-accent-rgb), 0.4)',
                                 borderRadius: '50%',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 margin: '4px auto 0',
-                                color: 'var(--text-secondary)'
-                            }}>
+                                color: 'var(--color-accent)',
+                                fontWeight: 700,
+                            }} title="管理决策分支">
                                 +
                             </div>
                         )}
 
-                        {/* 运行态时间 */}
-                        {isRunning && execution?.startTime && (
-                            <div style={{ fontSize: '9px', opacity: 0.7, marginTop: '8px' }}>
-                                {execution.endTime
-                                    ? `${((execution.endTime - execution.startTime) / 1000).toFixed(1)}s`
-                                    : '◌'}
+                        {/* 运行态耗时 */}
+                        {isRunning && durationText && (
+                            <div style={{
+                                fontSize: '10px',
+                                fontFamily: 'var(--font-mono, monospace)',
+                                color: 'var(--text-secondary)',
+                                background: 'var(--bg-tertiary)',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                marginTop: '3px',
+                            }}>
+                                {durationText}
                             </div>
                         )}
                     </div>
@@ -214,7 +255,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                 {mode === 'edit' && isMenuOpen && (
                     <div className="glass-panel" style={{
                         position: 'absolute',
-                        top: '160px',
+                        top: '170px',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         backgroundColor: 'var(--glass-surface)',
@@ -338,13 +379,13 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     return (
                         <div style={{
                             position: 'absolute',
-                            top: '158px',
+                            top: '166px',
                             left: '50%',
                             transform: 'translateX(-50%)',
                             textAlign: 'center',
                             fontSize: 10,
                             color: 'var(--text-secondary)',
-                            maxWidth: 140,
+                            maxWidth: 150,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -356,18 +397,18 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     );
                 })()}
 
-                {/* 分支输出 Handles */}
+                {/* 分支输出 Handles — 精确对齐菱形四角顶点 */}
                 {layoutDirection === 'TB' ? (
                     <>
-                        <Handle type="source" position={Position.Bottom} style={{ background: '#fff', bottom: '-5px' }} />
-                        <Handle type="source" position={Position.Left} id="left" style={{ background: '#fff', left: '-5px' }} />
-                        <Handle type="source" position={Position.Right} id="right" style={{ background: '#fff', right: '-5px' }} />
+                        <Handle type="source" position={Position.Bottom} style={{ background: '#fff', bottom: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Left} id="left" style={{ background: '#fff', left: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Right} id="right" style={{ background: '#fff', right: '-3px', zIndex: 15 }} />
                     </>
                 ) : (
                     <>
-                        <Handle type="source" position={Position.Right} style={{ background: '#fff', right: '-5px' }} />
-                        <Handle type="source" position={Position.Top} id="top" style={{ background: '#fff', top: '-5px' }} />
-                        <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#fff', bottom: '-5px' }} />
+                        <Handle type="source" position={Position.Right} style={{ background: '#fff', right: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Top} id="top" style={{ background: '#fff', top: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#fff', bottom: '-3px', zIndex: 15 }} />
                     </>
                 )}
             </div>

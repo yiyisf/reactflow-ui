@@ -12,8 +12,180 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
     {
         type: 'function',
         function: {
+            name: 'init_workflow_blueprint',
+            description: '【阶段 1/4：定义工作流蓝图与元信息】在创建或大范围重构复杂工作流时，首先调用此工具定义工作流名称、描述、版本、超时策略及工作流级输入/输出参数契约。调用后请继续调用 scaffold_workflow_topology 编排任务拓扑。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    name: {
+                        type: 'string',
+                        description: '工作流唯一英文标识名（如 order_fulfillment_flow）',
+                    },
+                    description: {
+                        type: 'string',
+                        description: '工作流业务目标与场景描述（中文）',
+                    },
+                    version: {
+                        type: 'number',
+                        description: '版本号，默认 1',
+                    },
+                    ownerEmail: {
+                        type: 'string',
+                        description: '负责人邮箱（如 team@example.com）',
+                    },
+                    timeoutPolicy: {
+                        type: 'string',
+                        enum: ['TIME_OUT_WF', 'ALERT_ONLY'],
+                        description: '超时策略（默认 ALERT_ONLY）',
+                    },
+                    timeoutSeconds: {
+                        type: 'number',
+                        description: '工作流整体超时时间（秒，默认 3600）',
+                    },
+                    failureWorkflow: {
+                        type: 'string',
+                        description: '失败补偿子工作流名称（可选）',
+                    },
+                    inputParameters: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: '工作流期望接收的输入参数字段名列表（如 ["orderId", "userId", "amount"]）',
+                    },
+                    outputParameters: {
+                        type: 'object',
+                        description: '工作流输出参数映射（可选，也可在阶段 3 补充）',
+                    },
+                },
+                required: ['name', 'description'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'scaffold_workflow_topology',
+            description: '【阶段 2/4：设计整体任务编排拓扑】在定义工作流蓝图后调用，构建完整的任务节点拓扑骨架（包含顺序节点、SWITCH 条件分支、FORK_JOIN 并行与 JOIN 汇合、DO_WHILE 循环等结构）。此阶段专注任务划分、唯一 taskReferenceName 和控制流拓扑正确性；详细参数可在阶段 3 补充。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    tasks: {
+                        type: 'array',
+                        description: '按执行顺序排列的顶层 TaskDef 数组（可包含嵌套的 decisionCases / defaultCase / forkTasks / loopOver）',
+                        items: {
+                            type: 'object',
+                        },
+                    },
+                },
+                required: ['tasks'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'configure_workflow_tasks',
+            description: '【阶段 3/4：逐项或分批补充任务配置与数据流】对已编排好拓扑的任务补充具体配置（inputParameters 数据流引用 ${workflow.input.x} / ${upstream_ref.output.y}、HTTP 请求配置、SUB_WORKFLOW 引用、timeoutSeconds、retryCount 等）。支持一次配置全部或分多次按模块配置，完成后调用 commit_workflow_proposal 整体验证。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    configurations: {
+                        type: 'array',
+                        description: '每个任务的详细配置项列表',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                ref: {
+                                    type: 'string',
+                                    description: '目标任务的 taskReferenceName（支持顶层或分支/循环内嵌套任务）',
+                                },
+                                name: {
+                                    type: 'string',
+                                    description: '任务显示名称（可选更新）',
+                                },
+                                description: {
+                                    type: 'string',
+                                    description: '任务业务说明',
+                                },
+                                inputParameters: {
+                                    type: 'object',
+                                    description: '任务输入参数及上下游数据流引用（如 { "orderId": "${workflow.input.orderId}" }）',
+                                },
+                                httpRequest: {
+                                    type: 'object',
+                                    description: '[HTTP 任务] 请求配置 { uri, method, headers, body }，会自动规范化到 inputParameters.http_request',
+                                },
+                                subWorkflowParam: {
+                                    type: 'object',
+                                    description: '[SUB_WORKFLOW 任务] 子工作流配置 { name, version }',
+                                },
+                                timeoutSeconds: {
+                                    type: 'number',
+                                    description: '任务超时秒数',
+                                },
+                                retryCount: {
+                                    type: 'number',
+                                    description: '失败重试次数',
+                                },
+                                retryLogic: {
+                                    type: 'string',
+                                    enum: ['FIXED', 'EXPONENTIAL_BACKOFF', 'LINEAR_BACKOFF'],
+                                    description: '重试退避策略',
+                                },
+                                optional: {
+                                    type: 'boolean',
+                                    description: '是否为可选任务（失败不中断主流程）',
+                                },
+                                caseValueParam: {
+                                    type: 'string',
+                                    description: '[SWITCH/DECISION] 分支判断参数名',
+                                },
+                                caseExpression: {
+                                    type: 'string',
+                                    description: '[SWITCH] 分支评估表达式',
+                                },
+                                loopCondition: {
+                                    type: 'string',
+                                    description: '[DO_WHILE] 循环继续条件表达式',
+                                },
+                                joinOn: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    description: '[JOIN] 等待汇合的分支末尾 taskReferenceName 列表',
+                                },
+                            },
+                            required: ['ref'],
+                        },
+                    },
+                    outputParameters: {
+                        type: 'object',
+                        description: '工作流最终输出参数映射（如 { "result": "${final_task.output.data}" }）',
+                    },
+                },
+                required: ['configurations'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'commit_workflow_proposal',
+            description: '【阶段 4/4：整体验证配置并提交方案】对当前工作流草稿执行全量语义、控制流与上下游数据流引用校验。校验通过后正式生成变更方案展示给用户；若发现问题将返回精确诊断供你修正。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    summary: {
+                        type: 'string',
+                        description: '本次工作流设计或重构的架构摘要说明（可选）',
+                    },
+                },
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
             name: 'replace_workflow',
-            description: '用完整的工作流 JSON 替换当前画布。适用于：从零创建工作流、大范围结构重构。',
+            description: '用完整的工作流 JSON 替换当前画布。适用于：极简工作流（1-2 个节点）快速创建，或直接提交完整 WorkflowDef。对于 3 个及以上节点或含分支/并行的复杂流程，请优先使用四阶段渐进工具（init_workflow_blueprint -> scaffold_workflow_topology -> configure_workflow_tasks -> commit_workflow_proposal）。',
             parameters: {
                 type: 'object',
                 properties: {
@@ -52,7 +224,15 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
                                 },
                                 afterRef: {
                                     type: 'string',
-                                    description: '[add_task] 插入到哪个任务之后（taskReferenceName）。不传则追加到末尾',
+                                    description: '[add_task] 插入到哪个任务之后（支持顶层或嵌套分支内的 taskReferenceName）。不传则追加到末尾',
+                                },
+                                parentRef: {
+                                    type: 'string',
+                                    description: '[add_task] 可选：插入到指定容器节点内部（SWITCH / FORK_JOIN / DO_WHILE 的 taskReferenceName）',
+                                },
+                                branchName: {
+                                    type: 'string',
+                                    description: '[add_task] 可选：当 parentRef 为 SWITCH 时指定分支名（或 "default"）；当为 FORK_JOIN 时指定分支索引（如 "0", "1"）',
                                 },
                                 // update_task / remove_task
                                 ref: {

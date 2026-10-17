@@ -15,6 +15,8 @@ export type AiEventType =
     | 'proposal:accepted'
     | 'proposal:accepted:partial'
     | 'proposal:rejected'
+    | 'stage:completed'
+    | 'session:resumed'
     | 'plan:created'
     | 'plan:executed'
     | 'plan:cancelled'
@@ -34,6 +36,8 @@ export interface AiEvent {
     timestamp: number;
     /** For tool:called events */
     tool?: string;
+    /** For stage:completed events */
+    phase?: string;
     /** For repair:executed / repair:confirmed events */
     repairActionType?: string;
     /** For proposal events: change counts */
@@ -46,3 +50,4 @@ export interface AiEvent {
     /** For ai:error events: the raw underlying error text (HTTP status, provider message, etc.) — not shown to the user */
     rawMessage?: string;
 }
+

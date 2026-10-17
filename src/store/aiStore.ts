@@ -11,9 +11,10 @@
 
 import { create, type StateCreator } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { AiConfig } from '../services/ai/protocolAdapter';
+import type { AiConfig, Message } from '../services/ai/protocolAdapter';
 import type { WorkflowDef } from '../types/conductor';
 import type { DiffSummary } from '../services/ai/toolExecutor';
+import type { SynthesisPhase, VerificationSummary } from '../services/ai/workflowSynthesizer';
 import type { WorkflowLevel } from '../types/workflowLibrary';
 import useWorkflowStore from './workflowStore';
 
@@ -34,6 +35,8 @@ export interface ProposedChange {
     diff: DiffSummary;
     /** Inferred workflow level based on sub-workflow references */
     inferredLevel?: WorkflowLevel;
+    /** Holistic semantic & data-flow verification summary */
+    verification?: VerificationSummary;
     /** Message that triggered this proposal */
     messageId: string;
     /**
@@ -41,6 +44,26 @@ export interface ProposedChange {
      * Used to detect stale proposals when the user has edited the canvas during review.
      */
     baselineHash: string;
+}
+
+/**
+ * PI-style Durable Execution Checkpoint.
+ * Captures the complete state of an in-flight or interrupted multi-phase agent session
+ * so it can be resumed (`runner.resume()`) or committed (`runner.commitDraftNow()`)
+ * without re-running completed phases.
+ */
+export interface DurableSessionCheckpoint {
+    sessionId: string;
+    userPrompt: string;
+    assistantMsgId: string;
+    phase: SynthesisPhase;
+    workingDraft: WorkflowDef | null;
+    agentHistory: Message[];
+    stepIndex: number;
+    selfHealCount: number;
+    status: 'running' | 'paused' | 'failed' | 'completed';
+    lastError?: string;
+    updatedAt: number;
 }
 
 export interface RepairAction {
@@ -148,6 +171,12 @@ interface AiState {
      * the correction is visible rather than silent.
      */
     timelineEntries: TimelineEntry[];
+    /** Current progressive workflow synthesis phase ('idle' | 'blueprint' | 'topology' | 'configure' | 'verify' | 'completed') */
+    synthesisPhase: SynthesisPhase;
+    /** In-progress workflow draft accumulated across progressive synthesis stages */
+    workingDraft: WorkflowDef | null;
+    /** PI-style durable session checkpoint for pause/resume/fault-recovery */
+    durableCheckpoint: DurableSessionCheckpoint | null;
 }
 
 export interface TimelineEntry {
@@ -191,12 +220,19 @@ interface AiActions {
     clearRecommendation: () => void;
     /** Queue a message to be sent through the AI pipeline by AiCommandCenter */
     setPendingAutoSend: (msg: string | null) => void;
-    /** Restore conversation + pending proposal from a persisted draft (M1.4) */
-    hydrateFromDraft: (messages: AiChatMessage[], pendingProposal: ProposedChange | null) => void;
+    /** Restore conversation + pending proposal + optional durable checkpoint from a persisted draft (M1.4) */
+    hydrateFromDraft: (
+        messages: AiChatMessage[],
+        pendingProposal: ProposedChange | null,
+        durableCheckpoint?: DurableSessionCheckpoint | null,
+    ) => void;
     setToolStatus: (status: string) => void;
     setRetryInput: (input: string | null) => void;
     addTimelineEntry: (label: string, icon?: 'done' | 'warning') => void;
     clearTimeline: () => void;
+    setSynthesisStage: (phase: SynthesisPhase, draft?: WorkflowDef | null) => void;
+    saveCheckpoint: (checkpoint: DurableSessionCheckpoint | null) => void;
+    clearCheckpoint: () => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -236,6 +272,9 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             toolStatus: '',
             retryInput: null,
             timelineEntries: [],
+            synthesisPhase: 'idle',
+            workingDraft: null,
+            durableCheckpoint: null,
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -277,6 +316,9 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
                 toolStatus: '',
                 retryInput: null,
                 timelineEntries: [],
+                synthesisPhase: 'idle',
+                workingDraft: null,
+                durableCheckpoint: null,
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
@@ -299,11 +341,17 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             recordAccept: () => set(s => ({
                 metrics: { ...s.metrics, acceptedProposals: s.metrics.acceptedProposals + 1 },
                 pendingProposal: null,
+                synthesisPhase: 'idle',
+                workingDraft: null,
+                durableCheckpoint: null,
             })),
 
             recordReject: () => set(s => ({
                 metrics: { ...s.metrics, rejectedProposals: s.metrics.rejectedProposals + 1 },
                 pendingProposal: null,
+                synthesisPhase: 'idle',
+                workingDraft: null,
+                durableCheckpoint: null,
             })),
 
             getMetrics: () => get().metrics,
@@ -369,9 +417,20 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             })),
             clearTimeline: () => set({ timelineEntries: [] }),
 
-            hydrateFromDraft: (messages, pendingProposal) => set({
+            setSynthesisStage: (phase, draft) => set(s => ({
+                synthesisPhase: phase,
+                workingDraft: draft !== undefined ? draft : s.workingDraft,
+            })),
+
+            saveCheckpoint: (checkpoint) => set({ durableCheckpoint: checkpoint }),
+            clearCheckpoint: () => set({ durableCheckpoint: null, synthesisPhase: 'idle', workingDraft: null }),
+
+            hydrateFromDraft: (messages, pendingProposal, durableCheckpoint) => set({
                 messages: messages.length > 0 ? messages : [WELCOME_MESSAGE],
                 pendingProposal,
+                durableCheckpoint: durableCheckpoint ?? null,
+                synthesisPhase: durableCheckpoint?.phase ?? 'idle',
+                workingDraft: durableCheckpoint?.workingDraft ?? null,
             }),
         });
 

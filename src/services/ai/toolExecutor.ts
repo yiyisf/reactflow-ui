@@ -10,7 +10,16 @@
  * That keeps this file pure, unit-testable without a store, and reusable headless.
  */
 
-import { validateWorkflow } from '../../utils/validator';
+import {
+    applyBlueprint,
+    applyTopologyScaffold,
+    applyTaskConfigurations,
+    verifyWorkflowSemantics,
+    normalizeWorkflowDef,
+    collectAllTasksInOrder,
+    type SynthesisPhase,
+    type VerificationSummary,
+} from './workflowSynthesizer';
 import type { WorkflowDef, TaskDef } from '../../types/conductor';
 import type { WorkflowLibraryItem, WorkflowLevel } from '../../types/workflowLibrary';
 import type { ValidationResults } from '../../types/workflow';
@@ -18,7 +27,7 @@ import type { ValidationResults } from '../../types/workflow';
 // ─── Patch operation types ───────────────────────────────────────────────────
 
 export type PatchOp =
-    | { op: 'add_task'; task: TaskDef; afterRef?: string }
+    | { op: 'add_task'; task: TaskDef; afterRef?: string; parentRef?: string; branchName?: string }
     | { op: 'update_task'; ref: string; changes: Partial<TaskDef> }
     | { op: 'remove_task'; ref: string }
     | { op: 'update_props'; props: Partial<WorkflowDef> }
@@ -50,20 +59,30 @@ export interface PartialAcceptSelection {
 }
 
 export interface ToolCallResult {
-    type: 'propose' | 'info' | 'error';
+    type: 'propose' | 'stage' | 'info' | 'error';
     /** For 'propose': the new WorkflowDef to show in ReviewBar */
     proposed?: WorkflowDef;
     /** For 'propose': human-readable change summary */
     diff?: DiffSummary;
     /** For 'propose': inferred level based on sub-workflow references (L1/L2/L3) */
     inferredLevel?: WorkflowLevel;
-    /** For 'info'/'error': text to append to chat */
+    /** For 'propose' / 'stage': deep semantic verification report */
+    verification?: VerificationSummary;
+    /** For 'stage': updated working draft in the progressive synthesis pipeline */
+    workingDraft?: WorkflowDef;
+    /** For 'stage': current progressive synthesis phase */
+    phase?: SynthesisPhase;
+    /** For 'stage': human-readable timeline entry label */
+    timelineLabel?: string;
+    /** For 'info'/'error'/'stage': text to return as tool result to the model */
     text?: string;
 }
 
 /** Live state the caller (AgentRunner) gathers from workflowStore/libraryStore for each tool call. */
 export interface ToolExecutionContext {
     workflowDef: WorkflowDef | null;
+    /** In-progress draft accumulated across progressive synthesis stages within the current durable session */
+    workingDraft?: WorkflowDef | null;
     validationResults: ValidationResults;
     libraryItems: WorkflowLibraryItem[];
 }
@@ -120,6 +139,74 @@ function transformTasksRecursively(
     return result;
 }
 
+/**
+ * Inserts `newTask` immediately after `afterRef` anywhere in the task tree (top-level or nested).
+ * Returns `{ tasks, inserted }`.
+ */
+function insertTaskAfterRefRecursively(
+    tasks: TaskDef[],
+    afterRef: string,
+    newTask: TaskDef,
+): { tasks: TaskDef[]; inserted: boolean } {
+    const idx = tasks.findIndex(t => t.taskReferenceName === afterRef);
+    if (idx >= 0) {
+        return {
+            tasks: [...tasks.slice(0, idx + 1), newTask, ...tasks.slice(idx + 1)],
+            inserted: true,
+        };
+    }
+
+    let inserted = false;
+    const nextTasks = tasks.map(t => {
+        if (inserted) return t;
+        let updated = t;
+
+        if (t.decisionCases && typeof t.decisionCases === 'object') {
+            const newCases: Record<string, TaskDef[]> = {};
+            for (const [k, branch] of Object.entries(t.decisionCases)) {
+                if (!inserted && Array.isArray(branch)) {
+                    const res = insertTaskAfterRefRecursively(branch, afterRef, newTask);
+                    newCases[k] = res.tasks;
+                    if (res.inserted) inserted = true;
+                } else {
+                    newCases[k] = branch;
+                }
+            }
+            if (inserted) updated = { ...updated, decisionCases: newCases };
+        }
+
+        if (!inserted && Array.isArray(t.defaultCase)) {
+            const res = insertTaskAfterRefRecursively(t.defaultCase, afterRef, newTask);
+            if (res.inserted) {
+                inserted = true;
+                updated = { ...updated, defaultCase: res.tasks };
+            }
+        }
+
+        if (!inserted && Array.isArray(t.forkTasks)) {
+            const newBranches = t.forkTasks.map(branch => {
+                if (inserted || !Array.isArray(branch)) return branch;
+                const res = insertTaskAfterRefRecursively(branch, afterRef, newTask);
+                if (res.inserted) inserted = true;
+                return res.tasks;
+            });
+            if (inserted) updated = { ...updated, forkTasks: newBranches };
+        }
+
+        if (!inserted && Array.isArray(t.loopOver)) {
+            const res = insertTaskAfterRefRecursively(t.loopOver, afterRef, newTask);
+            if (res.inserted) {
+                inserted = true;
+                updated = { ...updated, loopOver: res.tasks };
+            }
+        }
+
+        return updated;
+    });
+
+    return { tasks: nextTasks, inserted };
+}
+
 // ─── Pure JSON patch function ────────────────────────────────────────────────
 
 export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
@@ -129,17 +216,37 @@ export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
         switch (op.op) {
             case 'add_task': {
                 const task = op.task;
-                if (op.afterRef) {
-                    const idx = result.tasks.findIndex(t => t.taskReferenceName === op.afterRef);
-                    if (idx >= 0) {
-                        result.tasks = [
-                            ...result.tasks.slice(0, idx + 1),
-                            task,
-                            ...result.tasks.slice(idx + 1),
-                        ];
-                    } else {
-                        result.tasks = [...result.tasks, task];
-                    }
+                if (op.parentRef) {
+                    result.tasks = transformTasksRecursively(
+                        result.tasks,
+                        t => t.taskReferenceName === op.parentRef,
+                        parent => {
+                            if (parent.type === 'SWITCH' || parent.type === 'DECISION') {
+                                const branchKey = op.branchName || Object.keys(parent.decisionCases ?? {})[0] || 'default';
+                                if (branchKey === 'default') {
+                                    return { ...parent, defaultCase: [...(parent.defaultCase ?? []), task] };
+                                }
+                                const cases = { ...(parent.decisionCases ?? {}) };
+                                cases[branchKey] = [...(cases[branchKey] ?? []), task];
+                                return { ...parent, decisionCases: cases };
+                            }
+                            if (parent.type === 'FORK_JOIN') {
+                                const forkTasks = [...(parent.forkTasks ?? [])];
+                                const branchIdx = op.branchName !== undefined ? parseInt(op.branchName, 10) : 0;
+                                const safeIdx = Number.isNaN(branchIdx) ? 0 : Math.max(0, branchIdx);
+                                while (forkTasks.length <= safeIdx) forkTasks.push([]);
+                                forkTasks[safeIdx] = [...forkTasks[safeIdx], task];
+                                return { ...parent, forkTasks };
+                            }
+                            if (parent.type === 'DO_WHILE') {
+                                return { ...parent, loopOver: [...(parent.loopOver ?? []), task] };
+                            }
+                            return parent;
+                        },
+                    );
+                } else if (op.afterRef) {
+                    const res = insertTaskAfterRefRecursively(result.tasks, op.afterRef, task);
+                    result.tasks = res.inserted ? res.tasks : [...result.tasks, task];
                 } else {
                     result.tasks = [...result.tasks, task];
                 }
@@ -365,8 +472,106 @@ export function executeToolCall(
     }
 
     const currentDef = ctx.workflowDef;
+    const activeDraft = ctx.workingDraft ?? currentDef;
 
     switch (toolName) {
+        case 'init_workflow_blueprint': {
+            if (!args.name) {
+                return { type: 'error', text: 'init_workflow_blueprint 缺少必填的 name 字段' };
+            }
+            const nextDraft = applyBlueprint(activeDraft, {
+                name: args.name,
+                description: args.description,
+                version: args.version,
+                ownerEmail: args.ownerEmail,
+                timeoutPolicy: args.timeoutPolicy,
+                timeoutSeconds: args.timeoutSeconds,
+                failureWorkflow: args.failureWorkflow,
+                inputParameters: args.inputParameters,
+                outputParameters: args.outputParameters,
+            });
+            const inputCount = nextDraft.inputParameters?.length ?? 0;
+            const inputNote = inputCount > 0 ? `（含 ${inputCount} 项输入契约：${nextDraft.inputParameters!.join(', ')}）` : '';
+            return {
+                type: 'stage',
+                phase: 'blueprint',
+                workingDraft: nextDraft,
+                timelineLabel: `阶段 1/4：已定义工作流「${nextDraft.name}」元信息${inputNote}`,
+                text: `✅ 阶段 1 完成：工作流「${nextDraft.name}」蓝图已初始化${inputNote}。请继续调用 scaffold_workflow_topology 设计整体任务编排拓扑。`,
+            };
+        }
+
+        case 'scaffold_workflow_topology': {
+            if (!Array.isArray(args.tasks) || args.tasks.length === 0) {
+                return { type: 'error', text: 'scaffold_workflow_topology 需要提供非空的 tasks 数组' };
+            }
+            const { workflow: nextDraft, autoFixed } = applyTopologyScaffold(activeDraft, {
+                tasks: args.tasks as TaskDef[],
+            });
+            const allTasks = collectAllTasksInOrder(nextDraft.tasks);
+            const refsList = allTasks.map(t => `${t.taskReferenceName}(${t.type})`).join(' → ');
+            const autoFixNote = autoFixed.length > 0 ? `\n自动规范化：${autoFixed.join('；')}` : '';
+            return {
+                type: 'stage',
+                phase: 'topology',
+                workingDraft: nextDraft,
+                timelineLabel: `阶段 2/4：已编排任务拓扑 · 共 ${allTasks.length} 个节点`,
+                text: `✅ 阶段 2 完成：已编排 ${allTasks.length} 个任务节点（${refsList}）。${autoFixNote}\n请继续调用 configure_workflow_tasks 为各任务补充详细参数与上下游数据流引用。`,
+            };
+        }
+
+        case 'configure_workflow_tasks': {
+            if (!activeDraft || !activeDraft.tasks || activeDraft.tasks.length === 0) {
+                return {
+                    type: 'error',
+                    text: '当前尚未构建工作流任务拓扑，请先调用 init_workflow_blueprint 和 scaffold_workflow_topology。',
+                };
+            }
+            if (!Array.isArray(args.configurations) || args.configurations.length === 0) {
+                return { type: 'error', text: 'configure_workflow_tasks 的 configurations 数组不能为空' };
+            }
+            const { workflow: nextDraft, configuredRefs, missingRefs, autoFixed } = applyTaskConfigurations(
+                activeDraft,
+                {
+                    configurations: args.configurations,
+                    outputParameters: args.outputParameters,
+                    inputParameters: args.inputParameters,
+                },
+            );
+            const allTasks = collectAllTasksInOrder(nextDraft.tasks);
+            const missingNote = missingRefs.length > 0
+                ? `\n⚠️ 以下 ref 未在拓扑中找到，请检查拼写：${missingRefs.join(', ')}`
+                : '';
+            const autoFixNote = autoFixed.length > 0 ? `\n自动规范化：${autoFixed.join('；')}` : '';
+            return {
+                type: 'stage',
+                phase: 'configure',
+                workingDraft: nextDraft,
+                timelineLabel: `阶段 3/4：已补充 ${configuredRefs.length}/${allTasks.length} 个任务配置与数据流`,
+                text: `✅ 阶段 3 进展：已更新 ${configuredRefs.length} 个任务配置（${configuredRefs.join(', ')}）。${missingNote}${autoFixNote}\n若所有关键任务均已配置完毕，请调用 commit_workflow_proposal 执行整体校验并提交方案。`,
+            };
+        }
+
+        case 'commit_workflow_proposal': {
+            if (!activeDraft || !activeDraft.tasks || activeDraft.tasks.length === 0) {
+                return {
+                    type: 'error',
+                    text: '当前没有可提交的工作流草稿，请先编排任务后再提交。',
+                };
+            }
+            const { workflow: normalizedDraft, autoFixed } = normalizeWorkflowDef(activeDraft);
+            const verification = verifyWorkflowSemantics(normalizedDraft, autoFixed);
+            const diff = computeDiff(currentDef, normalizedDraft);
+            const { inferredLevel } = checkLevelCompliance(normalizedDraft, ctx.libraryItems);
+            return {
+                type: 'propose',
+                proposed: normalizedDraft,
+                diff,
+                inferredLevel: inferredLevel ?? undefined,
+                verification,
+            };
+        }
+
         case 'replace_workflow': {
             // Auto-fix: model sometimes passes WorkflowDef at the top level instead of under `workflow` key.
             let proposed = args.workflow as WorkflowDef;
@@ -382,9 +587,13 @@ export function executeToolCall(
             if (!Array.isArray(proposed.tasks)) {
                 return { type: 'error', text: '工作流定义缺少 tasks 数组，请提供包含 tasks 字段的完整工作流定义' };
             }
+            if (proposed.version === undefined) {
+                proposed = { ...proposed, version: 1 };
+            }
             const diff = computeDiff(currentDef, proposed);
             const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
-            return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined };
+            const verification = verifyWorkflowSemantics(proposed);
+            return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined, verification };
         }
 
         case 'patch_workflow': {
@@ -392,28 +601,31 @@ export function executeToolCall(
             if (!ops?.length) {
                 return { type: 'error', text: '操作列表为空' };
             }
-            if (!currentDef) {
+            const targetBase = activeDraft ?? currentDef;
+            if (!targetBase) {
                 return { type: 'error', text: '当前没有加载工作流，请先创建或加载一个工作流' };
             }
-            const proposed = applyPatch(currentDef, ops);
+            const proposed = applyPatch(targetBase, ops);
             const diff = computeDiff(currentDef, proposed);
             const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
-            return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined };
+            const verification = verifyWorkflowSemantics(proposed);
+            return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined, verification };
         }
 
         case 'get_workflow_state': {
-            if (!currentDef) {
+            const targetDef = activeDraft ?? currentDef;
+            if (!targetDef) {
                 return { type: 'info', text: '当前没有加载任何工作流，画布为空。' };
             }
             if (args.includeFull) {
                 return {
                     type: 'info',
-                    text: `工作流「${currentDef.name}」完整定义：\n\`\`\`json\n${JSON.stringify(currentDef, null, 2)}\n\`\`\``,
+                    text: `工作流「${targetDef.name}」完整定义：\n\`\`\`json\n${JSON.stringify(targetDef, null, 2)}\n\`\`\``,
                 };
             }
             // Return per-task detail (inputParameters, timeoutSeconds, retryCount, etc.)
             // Don't repeat the basic task list — that's already in the system prompt context.
-            const taskDetails = currentDef.tasks.map(t => {
+            const taskDetails = targetDef.tasks.map(t => {
                 const detail: string[] = [`**${t.taskReferenceName}** (${t.type})`];
                 if (t.timeoutSeconds) detail.push(`超时: ${t.timeoutSeconds}s`);
                 if (t.retryCount !== undefined) detail.push(`重试: ${t.retryCount}`);
@@ -434,21 +646,25 @@ export function executeToolCall(
                 : '';
             return {
                 type: 'info',
-                text: `工作流「${currentDef.name}」各任务详情：\n${taskDetails.join('\n')}${validationSummary}`,
+                text: `工作流「${targetDef.name}」各任务详情：\n${taskDetails.join('\n')}${validationSummary}`,
             };
         }
 
         case 'validate_workflow': {
-            if (!currentDef) {
+            const targetDef = activeDraft ?? currentDef;
+            if (!targetDef) {
                 return { type: 'info', text: '当前没有加载工作流，无法校验。' };
             }
-            const results = validateWorkflow(currentDef);
+            const results = verifyWorkflowSemantics(targetDef);
             if (results.isValid && results.warnings.length === 0) {
-                return { type: 'info', text: '✅ 工作流校验通过，没有错误或警告。' };
+                return {
+                    type: 'info',
+                    text: `✅ 工作流校验通过（共 ${results.totalTasks} 个任务，${results.configuredTasks} 个已配置参数，${results.dataFlowLinks} 处数据流引用），没有错误或警告。`,
+                };
             }
             const lines: string[] = [];
-            results.errors.forEach(e => lines.push(`❌ ${e.message}`));
-            results.warnings.forEach(w => lines.push(`⚠️ ${w.message}`));
+            results.errors.forEach(e => lines.push(`❌ [${e.ref || 'GLOBAL'}] ${e.message}`));
+            results.warnings.forEach(w => lines.push(`⚠️ [${w.ref || 'GLOBAL'}] ${w.message}`));
             return { type: 'info', text: `校验结果：\n${lines.join('\n')}` };
         }
 

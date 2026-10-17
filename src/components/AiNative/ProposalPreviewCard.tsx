@@ -1,11 +1,11 @@
 /**
- * ProposalPreviewCard — business step preview for AI proposals (UX Phase A / M2.2)
+ * ProposalPreviewCard — business step preview for AI proposals (UX Phase A / M2.2 + Semantic Verification Badge)
  *
  * Replaces the old "+N 新增 ~N 修改" number-chip summary with an actual preview of
  * what the workflow will look like: every step in business language, added steps
  * highlighted green, modified steps yellow with a one-line change description,
- * removed steps struck through in place. The goal is that a non-technical user can
- * tell what changed in ~10 seconds without opening the canvas.
+ * removed steps struck through in place, plus a holistic semantic & data-flow
+ * verification badge.
  */
 
 import React, { useState } from 'react';
@@ -32,7 +32,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 
 const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, currentDef, isStale, onAccept, onReject }) => {
     const [showDiagram, setShowDiagram] = useState(false);
-    const { proposedDef, diff, inferredLevel } = proposal;
+    const { proposedDef, diff, inferredLevel, verification } = proposal;
     const steps = buildProposalSteps(currentDef, proposedDef, diff);
     const totalSteps = steps.filter(s => s.status !== 'removed').length;
 
@@ -53,11 +53,33 @@ const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, cur
                     {isStale ? '变更方案（画布已修改）' : `变更方案 · ${proposedDef.name || '工作流'}`}
                 </span>
                 {inferredLevel && <span className="ai-proposal-diff-chip level">{inferredLevel}</span>}
+                {verification && (
+                    <span
+                        className={`ai-proposal-verify-badge ${verification.isValid ? 'passed' : 'warn'}`}
+                        title={
+                            verification.isValid
+                                ? `已通过拓扑完整性与数据流引用校验（${verification.configuredTasks}/${verification.totalTasks} 已配置）`
+                                : verification.errors.map(e => e.message).join('\n')
+                        }
+                    >
+                        {verification.isValid
+                            ? `✓ 拓扑与数据流校验通过${verification.dataFlowLinks > 0 ? ` · ${verification.dataFlowLinks} 处数据流引用` : ''}`
+                            : `⚠ ${verification.errors.length} 项待完善`}
+                    </span>
+                )}
             </div>
 
             {isStale && (
                 <div className="ai-proposal-stale-warning" role="alert">
                     画布在方案生成后已被手动修改，确认应用可能覆盖您的编辑。建议拒绝后重新提问。
+                </div>
+            )}
+
+            {verification && !verification.isValid && verification.errors.length > 0 && (
+                <div className="ai-proposal-verify-alert" role="alert">
+                    {verification.errors.slice(0, 3).map((err, idx) => (
+                        <div key={idx}>• {err.message}</div>
+                    ))}
                 </div>
             )}
 
@@ -85,6 +107,11 @@ const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, cur
                     {diff.added.length > 0 && ` · ${diff.added.length} 新增`}
                     {diff.modified.length > 0 && ` · ${diff.modified.length} 修改`}
                     {diff.removed.length > 0 && ` · ${diff.removed.length} 删除`}
+                    {verification && verification.autoFixed.length > 0 && (
+                        <span className="ai-proposal-autofix-hint" title={verification.autoFixed.join('\n')}>
+                            {' '}· 已自动补全 {verification.autoFixed.length} 项规范配置
+                        </span>
+                    )}
                 </span>
                 <button className="ai-proposal-diagram-toggle" onClick={() => setShowDiagram(v => !v)}>
                     {showDiagram ? '收起流程图' : '查看流程图'}

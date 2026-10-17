@@ -267,6 +267,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         pendingAutoSend,
         toolStatus,
         timelineEntries,
+        synthesisPhase,
+        workingDraft,
+        durableCheckpoint,
         retryInput,
         setRetryInput,
         clearMessages,
@@ -275,6 +278,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         popUndo,
         clearClarification,
         clearRecommendation,
+        clearCheckpoint,
         setPendingAutoSend,
     } = aiStore();
 
@@ -739,9 +743,14 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             />
                         )}
 
-                        {/* Agent timeline: completed steps + current in-flight step */}
+                        {/* Agent timeline: 4-phase stepper + completed steps + current in-flight step */}
                         {isStreaming && (
-                            <AgentTimeline entries={timelineEntries} activeLabel={toolStatus} />
+                            <AgentTimeline
+                                entries={timelineEntries}
+                                activeLabel={toolStatus}
+                                synthesisPhase={synthesisPhase}
+                                workingDraft={workingDraft}
+                            />
                         )}
 
                         {/* Streaming text */}
@@ -777,8 +786,65 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             </div>
                         )}
 
+                        {/* PI Durable Session Recovery Card: resume interrupted or failed multi-stage synthesis */}
+                        {durableCheckpoint && (durableCheckpoint.status === 'paused' || durableCheckpoint.status === 'failed') && !isStreaming && !pendingProposal && (
+                            <div className={`ai-checkpoint-card ${durableCheckpoint.status}`} role="region" aria-label="断点续跑恢复">
+                                <div className="ai-checkpoint-header">
+                                    <span className="ai-checkpoint-icon">
+                                        {durableCheckpoint.status === 'failed' ? '⚡' : '⏸'}
+                                    </span>
+                                    <span className="ai-checkpoint-title">
+                                        {durableCheckpoint.status === 'failed'
+                                            ? '编排生成异常中断 · 已保存阶段断点'
+                                            : '编排生成已暂停 · 可从当前断点继续'}
+                                    </span>
+                                </div>
+                                <div className="ai-checkpoint-meta">
+                                    <span>
+                                        进度：
+                                        {durableCheckpoint.phase === 'blueprint' ? '阶段 1/4（蓝图定义）'
+                                            : durableCheckpoint.phase === 'topology' ? '阶段 2/4（拓扑编排）'
+                                                : durableCheckpoint.phase === 'configure' ? '阶段 3/4（任务配置）'
+                                                    : durableCheckpoint.phase === 'verify' ? '阶段 4/4（整体校验）'
+                                                        : `第 ${durableCheckpoint.stepIndex} 步`}
+                                    </span>
+                                    {durableCheckpoint.workingDraft?.name && (
+                                        <span>
+                                            草稿：{durableCheckpoint.workingDraft.name}
+                                            {Array.isArray(durableCheckpoint.workingDraft.tasks) && durableCheckpoint.workingDraft.tasks.length > 0
+                                                ? `（已构建 ${durableCheckpoint.workingDraft.tasks.length} 个顶层节点）`
+                                                : ''}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="ai-checkpoint-actions">
+                                    <button
+                                        className="ai-checkpoint-btn resume"
+                                        onClick={() => runner.resume()}
+                                    >
+                                        ▶ 从断点继续生成
+                                    </button>
+                                    {durableCheckpoint.workingDraft && Array.isArray(durableCheckpoint.workingDraft.tasks) && durableCheckpoint.workingDraft.tasks.length > 0 && (
+                                        <button
+                                            className="ai-checkpoint-btn commit"
+                                            onClick={() => runner.commitDraftNow()}
+                                            title="对当前已生成的草稿立即执行语义校验并生成变更方案"
+                                        >
+                                            ✓ 校验并采用当前草稿
+                                        </button>
+                                    )}
+                                    <button
+                                        className="ai-checkpoint-btn discard"
+                                        onClick={() => clearCheckpoint()}
+                                    >
+                                        ✕ 放弃断点
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* D2: Retry button after AI error */}
-                        {retryInput && !isStreaming && (
+                        {retryInput && !isStreaming && !durableCheckpoint && (
                             <div className="ai-retry-row">
                                 <button
                                     className="ai-retry-btn"

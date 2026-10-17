@@ -43,41 +43,52 @@ body {
   background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-color);
-  padding: 20px 30px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  padding: 0 20px;
+  height: 54px;
+  min-height: 54px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 100;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  width: 100%;
+  height: 100%;
+  gap: 16px;
 }
 
 .app-title {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .title-icon {
-  font-size: 28px;
-  filter: drop-shadow(0 0 10px rgba(var(--color-accent-rgb), 0.5));
-  /* Assumes we might need RGB, but for now let's use the hex token if supported by browser filters or just keep generic */
-  /* Actually, CSS vars in filter drop-shadow work if the var is a color. */
-  filter: drop-shadow(0 0 10px var(--color-accent));
+  font-size: 20px;
+  filter: drop-shadow(0 0 8px var(--color-accent));
 }
 
 .header-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .sample-buttons {
@@ -94,58 +105,75 @@ body {
   background: rgba(139, 92, 246, 0.15);
   border: 1px solid rgba(139, 92, 246, 0.3);
   color: var(--text-primary);
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 4px 10px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .settings-btn:hover {
   background: rgba(139, 92, 246, 0.25);
   border-color: rgba(139, 92, 246, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
 .sample-btn {
   background: rgba(59, 130, 246, 0.15);
   border: 1px solid rgba(59, 130, 246, 0.3);
   color: var(--text-primary);
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 4px 10px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sample-btn:hover {
   background: rgba(59, 130, 246, 0.25);
   border-color: rgba(59, 130, 246, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .upload-btn {
-  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
-  border: none;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .upload-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  background: var(--bg-highlight);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .file-info {
@@ -308,104 +336,7 @@ body {
   height: 100%;
 }
 
-/* React Flow Customization */
-.react-flow__node {
-  cursor: pointer;
-}
-
-.react-flow__edge-path {
-  stroke-width: 2;
-}
-
-.react-flow__edge.animated path {
-  stroke-dasharray: 5;
-  animation: dashdraw 0.5s linear infinite;
-}
-
-@keyframes dashdraw {
-  from {
-    stroke-dashoffset: 10;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* 视觉升级 2.0: 呼吸灯动效 */
-@keyframes breathing-glow {
-  0% {
-    box-shadow: 0 0 5px var(--node-glow-color), 0 0 10px var(--node-glow-color);
-  }
-
-  50% {
-    box-shadow: 0 0 20px var(--node-glow-color), 0 0 35px var(--node-glow-color);
-  }
-
-  100% {
-    box-shadow: 0 0 5px var(--node-glow-color), 0 0 10px var(--node-glow-color);
-  }
-}
-
-.node-wrapper-glass {
-  background: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur);
-  border: 2px solid rgba(var(--color-accent-rgb), 0.55) !important;
-  border-radius: var(--node-radius);
-  overflow: visible;
-  /* 修复：确保错误指示器和删除按钮不被裁剪 */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: var(--node-shadow, 0 4px 20px rgba(0, 0, 0, 0.45), 0 1px 6px rgba(0, 0, 0, 0.28));
-}
-
-.node-wrapper-glass:hover {
-  box-shadow: var(--node-shadow-hover, 0 8px 28px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.32));
-}
-
-/* Light 模式增强对比度 */
-.app.light-theme .node-wrapper-glass {
-  border: 2px solid rgba(var(--color-accent-rgb), 0.65) !important;
-  box-shadow: var(--node-shadow, 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.12)),
-              0 2px 8px rgba(var(--color-accent-rgb), 0.15);
-}
-
-.node-wrapper-selected {
-  outline: 2px solid var(--node-glow-color) !important;
-  outline-offset: 2px;
-  animation: breathing-glow 2.5s infinite ease-in-out;
-  border-color: var(--node-glow-color) !important;
-}
-
-.node-wrapper-highlighted {
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 40px rgba(251, 191, 36, 0.4) !important;
-  border-color: #fbbf24 !important;
-  transform: scale(1.02);
-  z-index: 50;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-}
-
-.node-content-modern {
-  padding: 12px;
-  background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.05));
-}
-
-.react-flow__controls {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.react-flow__controls button {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-.react-flow__controls button:hover {
-  background: rgba(51, 65, 85, 0.9);
-}
-
-.react-flow__minimap {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
+/* React Flow & Node Wrapper core styles have been migrated to tokens.css */
 
 /* Scrollbar */
 ::-webkit-scrollbar {
@@ -524,62 +455,84 @@ body {
 }
 
 .mode-btn {
-  background: transparent;
-  border: none;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
   color: var(--text-secondary);
-  padding: 6px 16px;
+  padding: 5px 12px;
   border-radius: 7px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
 }
 
 .mode-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-highlight);
+  border-color: var(--color-accent);
 }
 
 .mode-btn.active {
   background: var(--color-accent);
+  border-color: var(--color-accent);
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .divider {
   width: 1px;
-  height: 24px;
+  height: 20px;
   background: var(--border-color);
-  margin: 0 8px;
+  margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .sample-select {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 4px 10px;
+  border-radius: 7px;
   font-size: 13px;
   outline: none;
   cursor: pointer;
+  height: 32px;
+  max-width: 170px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .save-btn {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border: none;
   color: white;
-  padding: 10px 20px;
-  border-radius: 8px;
+  padding: 5px 14px;
+  border-radius: 7px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .save-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
 }
 
 .opacity-70 {
@@ -605,6 +558,12 @@ body {
 
 .app.light-theme .mode-btn {
   color: #64748b;
+  border-color: #cbd5e1;
+}
+
+.app.light-theme .mode-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .app.light-theme .mode-btn.active {
@@ -615,6 +574,7 @@ body {
 .app.light-theme .sample-select {
   background: white;
   border-color: #cbd5e1;
+  color: #0f172a;
 }
 
 .settings-btn.active {
@@ -629,17 +589,20 @@ body {
   align-items: center;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 4px 12px;
-  width: 280px;
-  transition: all 0.3s ease;
+  border-radius: 7px;
+  padding: 2px 10px;
+  width: 150px;
+  height: 32px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .search-container:focus-within {
   border-color: var(--accent-primary);
   background: rgba(0, 0, 0, 0.3);
-  width: 350px;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  width: 190px;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
 }
 
 .search-icon {
@@ -755,98 +718,118 @@ body {
 
 /* --- P2.3 Visual Polish --- */
 
-/* 详情面板侧滑转场样式已迁移至 tokens.css，此处不再重复定义 */
+/* 详情面板侧滑转场样式与连线样式已迁移至 tokens.css，此处不再重复定义 */
 
-/* 连线优化 */
-.react-flow__connection-path {
-  stroke: var(--color-accent);
-  stroke-width: 2.5;
-  stroke-dasharray: 5, 5;
-  animation: dashdraw 0.5s linear infinite;
+/* AI Config Modal & Backdrop */
+.ai-config-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease-out;
 }
 
-@keyframes dashdraw {
-  from {
-    stroke-dashoffset: 10;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.react-flow__edge-path {
-  stroke-width: 2.5;
-  transition: stroke-width 0.2s, stroke 0.2s;
-}
-
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--color-accent) !important;
-  stroke-width: 3.5;
-  filter: drop-shadow(0 0 5px var(--color-accent));
-}
-
-.edge-add-button:hover {
-  transform: scale(1.2) rotate(90deg);
-  background-color: var(--color-accent-hover) !important;
-}
-
-/* AI Config Popover */
-.ai-config-popover {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 320px;
-  padding: 20px;
-  background: var(--glass-bg-accent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+.ai-config-modal {
+  width: 460px;
+  max-width: 92vw;
+  background: var(--bg-secondary);
   border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  z-index: 2000;
-  animation: popoverSlideIn 0.2s ease-out;
+  border-radius: 14px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
-@keyframes popoverSlideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.ai-config-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .ai-config-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.ai-config-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
+.ai-config-close {
+  background: transparent;
+  border: none;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-  margin-top: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-.ai-config-label:first-of-type {
-  margin-top: 0;
+.ai-config-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.ai-config-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ai-config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-config-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ai-config-help {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.7;
 }
 
 .ai-config-input {
   width: 100%;
   padding: 8px 12px;
   background: var(--bg-tertiary);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border-primary);
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
+  box-sizing: border-box;
   transition: border-color 0.2s;
 }
 
@@ -862,13 +845,13 @@ body {
 
 .ai-config-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 20px;
+  gap: 10px;
+  margin-top: 8px;
   justify-content: flex-end;
 }
 
 .ai-config-btn {
-  padding: 7px 18px;
+  padding: 8px 18px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -898,15 +881,19 @@ body {
 }
 
 /* Light theme overrides */
-.app.light-theme .ai-config-popover {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(0, 0, 0, 0.1);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+.app.light-theme .ai-config-modal {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
 }
 
 .app.light-theme .ai-config-input {
-  background: #fff;
-  border-color: #e2e8f0;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.app.light-theme .ai-config-close:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* Decision 节点特殊处理：移除背景和圆角以显示菱形 */

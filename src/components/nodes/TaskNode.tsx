@@ -18,7 +18,7 @@ type TaskNodeProps = NodeProps<WorkflowNodeData>;
 const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
     const taskType = data.taskType || 'SIMPLE';
     const { sourcePosition, targetPosition } = useNodeLayout(data);
-    const { execution, isRunning, retryCount } = useNodeExecution(data.taskReferenceName);
+    const { execution, isRunning, retryCount, durationText } = useNodeExecution(data.taskReferenceName);
     const viewMode = useWorkflowStore(s => s.viewMode);
 
     // 获取图标和标签
@@ -58,9 +58,9 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
             proposalStatus={data.proposalStatus}
         >
             <div style={{
-                borderRadius: '8px',
-                background: isNoop ? 'var(--bg-tertiary)' : 'var(--bg-secondary)',
-                opacity: isNoop ? 0.7 : 1,
+                borderRadius: '10px',
+                background: isNoop ? 'var(--bg-tertiary)' : 'transparent',
+                opacity: isNoop ? 0.75 : 1,
                 position: 'relative',
                 // 动态运行时节点用虚线边框标注
                 outline: isDynamicRuntime ? '2px dashed var(--color-accent)' : 'none',
@@ -70,7 +70,9 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                     icon={IconComponent}
                     header={getNodeHeader(taskType, viewMode)}
                     title={data.taskReferenceName}
+                    subTitle={data.label && data.label !== data.taskReferenceName ? data.label : undefined}
                     meta={meta}
+                    duration={durationText}
                     color={color}
                     status={execution?.status}
                     isRunning={isRunning}

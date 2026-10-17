@@ -8,12 +8,13 @@ import { TASK_TYPES } from '../../config/taskTypes';
 import { Repeat } from 'lucide-react';
 import { getNodeMeta, getNodeHeader } from '../../utils/nodeMeta';
 import ConfirmDialog from '../ConfirmDialog';
+import ExecutionStatusBadge from './ExecutionStatusBadge';
 
 type LoopNodeProps = NodeProps<WorkflowNodeData>;
 
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const { sourcePosition, targetPosition } = useNodeLayout(data);
-    const { execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
     const { executionData, selectTaskAction, mode, viewMode, removeNode } = useWorkflowStore();
     const [showConfirm, setShowConfirm] = useState(false);
 
@@ -148,26 +149,33 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '8px',
                 padding: '8px 12px',
-                background: 'var(--bg-tertiary)',
+                background: 'var(--glass-surface)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 borderBottom: '1px solid var(--border-primary)',
                 borderRadius: '8px 8px 0 0',
                 flexShrink: 0,
-                minHeight: '42px',
+                minHeight: '44px',
                 pointerEvents: 'auto',
             }}>
                 {/* Loop icon */}
                 <div style={{ color: 'var(--color-accent)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                    <IconComponent size={14} />
+                    <IconComponent size={15} />
                 </div>
 
                 {/* Labels */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-accent)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                        {getNodeHeader('DO_WHILE', viewMode)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--color-accent)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            {getNodeHeader('DO_WHILE', viewMode)}
+                        </span>
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
+                            ↻ {loopOver.length} 个子任务
+                        </span>
                     </div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {data.taskReferenceName}
                     </div>
                     {/* viewMode-aware meta: business shows description, developer shows loop condition */}
@@ -182,6 +190,21 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     )}
                 </div>
 
+                {/* Runtime duration pill */}
+                {isRunning && durationText && (
+                    <span style={{
+                        fontSize: '10px',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        color: 'var(--text-secondary)',
+                        background: 'var(--bg-secondary)',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        flexShrink: 0,
+                    }}>
+                        {durationText}
+                    </span>
+                )}
+
                 {/* Iteration badge in run mode */}
                 {isRunning && totalIterations > 0 && (
                     <div
@@ -192,17 +215,17 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                             fontSize: '10px', fontWeight: 700, cursor: 'pointer',
                             flexShrink: 0,
                         }}
+                        title={`共执行 ${totalIterations} 次迭代`}
                     >
                         ×{totalIterations}
                     </div>
                 )}
 
-                {/* Execution status dot */}
+                {/* Execution status badge */}
                 {isRunning && execution?.status && (
-                    <div style={{
-                        width: '8px', height: '8px', borderRadius: '50%',
-                        background: statusColor, flexShrink: 0,
-                    }} />
+                    <div style={{ position: 'relative', width: 20, height: 20, flexShrink: 0 }}>
+                        <ExecutionStatusBadge status={execution.status} />
+                    </div>
                 )}
             </div>
 

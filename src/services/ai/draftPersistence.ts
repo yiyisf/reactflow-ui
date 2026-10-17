@@ -9,18 +9,24 @@
  */
 
 import type { WorkflowDef } from '../../types/conductor';
-import type { AiChatMessage, ProposedChange } from '../../store/aiStore';
+import type { AiChatMessage, ProposedChange, DurableSessionCheckpoint } from '../../store/aiStore';
 
 export interface IdeDraft {
     workflowDef: WorkflowDef | null;
     messages: AiChatMessage[];
     pendingProposal: ProposedChange | null;
+    durableCheckpoint?: DurableSessionCheckpoint | null;
     savedAt: number;
 }
 
 /** 判断草稿是否包含有意义的内容（避免刚挂载、仅有欢迎语时就落一份空草稿） */
-export function isMeaningfulDraft(workflowDef: WorkflowDef | null, messages: AiChatMessage[], pendingProposal: ProposedChange | null): boolean {
-    return !!workflowDef || messages.some(m => m.id !== 'welcome') || !!pendingProposal;
+export function isMeaningfulDraft(
+    workflowDef: WorkflowDef | null,
+    messages: AiChatMessage[],
+    pendingProposal: ProposedChange | null,
+    durableCheckpoint?: DurableSessionCheckpoint | null,
+): boolean {
+    return !!workflowDef || messages.some(m => m.id !== 'welcome') || !!pendingProposal || !!durableCheckpoint;
 }
 
 export function loadDraft(key: string): IdeDraft | null {

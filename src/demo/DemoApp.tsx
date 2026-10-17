@@ -34,16 +34,14 @@ function DemoApp() {
   const [aiDraft, setAiDraft] = useState(aiConfig);
   const aiConfigRef = useRef<HTMLDivElement>(null);
 
-  // Close popover on outside click
+  // Handle Escape key to close modal
   useEffect(() => {
     if (!showAiConfig) return;
-    const handler = (e: MouseEvent) => {
-      if (aiConfigRef.current && !aiConfigRef.current.contains(e.target as Node)) {
-        setShowAiConfig(false);
-      }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAiConfig(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showAiConfig]);
 
   const saveAiConfig = () => {
@@ -147,10 +145,10 @@ function DemoApp() {
     >
       <header className="app-header">
         <div className="header-content">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
             <h1 className="app-title">
               <span className="title-icon">⚡</span>
-              Conductor Workflow IDE <span style={{ fontSize: '12px', opacity: 0.6 }}>(Demo)</span>
+              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>(Demo)</span>
             </h1>
 
             {/* 搜索框 */}
@@ -174,7 +172,7 @@ function DemoApp() {
           <div className="header-actions">
             {/* 视图模式切换（运行态自动锁定为开发模式） */}
             {!workflowExecution && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-tertiary)', borderRadius: 8, padding: 3, border: '1px solid var(--border-primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-tertiary)', borderRadius: 7, padding: 3, border: '1px solid var(--border-primary)', height: 32, boxSizing: 'border-box' }}>
                 {(['business', 'standard', 'developer'] as ViewMode[]).map((m) => {
                   const labels: Record<ViewMode, string> = { business: '业务', standard: '标准', developer: '开发' };
                   const titles: Record<ViewMode, string> = { business: '仅展示核心业务节点', standard: '业务 + 控制流节点', developer: '展示所有节点（含数据转换）' };
@@ -184,8 +182,8 @@ function DemoApp() {
                       onClick={() => setViewMode(m)}
                       title={titles[m]}
                       style={{
-                        padding: '4px 10px',
-                        borderRadius: 6,
+                        padding: '3px 9px',
+                        borderRadius: 5,
                         border: 'none',
                         cursor: 'pointer',
                         fontSize: 12,
@@ -194,6 +192,7 @@ function DemoApp() {
                         background: viewMode === m ? 'var(--color-accent)' : 'transparent',
                         color: viewMode === m ? '#fff' : 'var(--text-secondary)',
                         transition: 'all 0.15s',
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       {labels[m]}
@@ -203,7 +202,7 @@ function DemoApp() {
               </div>
             )}
             {workflowExecution && (
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '4px 8px', background: 'var(--bg-tertiary)', borderRadius: 6, border: '1px solid var(--border-primary)' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '5px 10px', background: 'var(--bg-tertiary)', borderRadius: 7, border: '1px solid var(--border-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 运行态 · 开发模式
               </span>
             )}
@@ -215,123 +214,87 @@ function DemoApp() {
                   onClick={() => setAllowOperations(prev => !prev)}
                   title={allowOperations ? "切换至操作受限状态" : "切换至允许操作状态"}
                   style={{
-                    background: !allowOperations ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-tertiary)',
-                    border: !allowOperations ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid var(--border-primary)',
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    color: !allowOperations ? 'var(--status-failed)' : 'var(--text-primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    transition: 'all 0.2s',
+                    background: !allowOperations ? 'rgba(239, 68, 68, 0.15)' : undefined,
+                    borderColor: !allowOperations ? 'rgba(239, 68, 68, 0.4)' : undefined,
+                    color: !allowOperations ? 'var(--status-failed)' : undefined,
                   }}
                 >
-                  {allowOperations ? '🔓 操作授权' : '🔒 操作受限'}
+                  {allowOperations ? '🔓 操作授权' : '🔒 受限'}
                 </button>
                 <div className="divider"></div>
               </>
             )}
 
-            <div className="divider"></div>
-
             <button
               className={`mode-btn ${isReadOnly ? 'active' : ''}`}
               onClick={() => setIsReadOnly(!isReadOnly)}
               title={isReadOnly ? "切换到编辑模式" : "切换到只读模式"}
-              style={{
-                background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-primary)',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                fontWeight: 500
-              }}
             >
-              {isReadOnly ? '👁️ 仅查看' : '✏️ 编辑中'}
+              {isReadOnly ? '👁️ 只读' : '✏️ 编辑'}
             </button>
-
-            <div className="divider"></div>
 
             <button
               className={`mode-btn ${useNewAiMode ? 'active' : ''}`}
               onClick={() => setUseNewAiMode(!useNewAiMode)}
-              title={useNewAiMode ? "切换回旧版设计器" : "体验全新 AI 工作流设计器"}
+              title={useNewAiMode ? "切换回经典设计器" : "体验全新 AI 工作流设计器"}
               style={{
-                background: useNewAiMode ? 'var(--color-accent)' : 'var(--bg-tertiary)',
-                border: '1px solid var(--border-primary)',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: useNewAiMode ? '#fff' : 'var(--text-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                fontWeight: 500
+                background: useNewAiMode ? 'var(--color-accent)' : undefined,
+                color: useNewAiMode ? '#fff' : undefined,
               }}
             >
-              {useNewAiMode ? '✨ AiWorkflowIDE' : '💻 WorkflowIDE'}
+              {useNewAiMode ? '✨ AI 模式' : '💻 经典模式'}
             </button>
 
             <div className="divider"></div>
 
-            <ThemeControls />
+            {/* 合并工作流示例下拉选择器 */}
+            <select
+              className="sample-select"
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) return;
+                const [kind, name] = val.split(':');
+                if (kind === 'def') loadSampleWorkflow(name);
+                else if (kind === 'exec') loadExecutionExample(name);
+                e.target.value = '';
+              }}
+              defaultValue=""
+              title="载入官方示例工作流（包含编辑态与运行态案例）"
+            >
+              <option value="" disabled>📁 示例工作流...</option>
+              <optgroup label="── 编辑态流程 ──">
+                <option value="def:simple-workflow">简单流程 (Simple)</option>
+                <option value="def:decision-workflow">分支流程 (Decision)</option>
+                <option value="def:fork-join-workflow">并行流程 (Fork/Join)</option>
+                <option value="def:complex-workflow">复杂综合流程</option>
+              </optgroup>
+              <optgroup label="── 运行态实例 ──">
+                <option value="exec:human-approval">▶ HUMAN 审批 (RUNNING)</option>
+                <option value="exec:mixed-status">✗ CI/CD 流水线 (FAILED)</option>
+                <option value="exec:loop-iterations">✓ DO_WHILE 循环 (3次)</option>
+                <option value="exec:retry-tasks">✓ 任务重试机制</option>
+                <option value="exec:fork-dynamic">✓ 动态并行 FORK</option>
+                <option value="exec:switch-branches">✓ SWITCH 分支执行</option>
+              </optgroup>
+            </select>
 
+            {/* 文件管理快捷按钮 */}
             <button
               className="mode-btn"
               onClick={() => {
                 setWorkflowJson(null);
                 setCurrentDef(null);
+                setWorkflowExecution(null);
                 ideRef.current?.createBlankWorkflow();
               }}
               title="新建空白工作流"
-              style={{
-                background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-primary)',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: 'var(--text-primary)',
-                fontSize: '13px',
-                fontWeight: 500
-              }}
             >
               📄 新建
             </button>
 
-            <select className="sample-select" onChange={(e) => loadSampleWorkflow(e.target.value)}>
-              <option value="">编辑态示例...</option>
-              <option value="simple-workflow">简单流程</option>
-              <option value="decision-workflow">分支流程</option>
-              <option value="fork-join-workflow">并行流程</option>
-              <option value="complex-workflow">复杂流程</option>
-            </select>
-
-            <select
-              className="sample-select"
-              onChange={(e) => loadExecutionExample(e.target.value)}
-              style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }}
-            >
-              <option value="">运行态示例...</option>
-              <option value="human-approval">▶ HUMAN 人工审批（RUNNING · 暂停/终止/跳过任务）</option>
-              <option value="mixed-status">✗ CI/CD 流水线（FAILED · 重试/重启）</option>
-              <option value="loop-iterations">✓ DO_WHILE 循环迭代 ×3（COMPLETED · 重启）</option>
-              <option value="retry-tasks">✓ 任务重试机制（COMPLETED · 重启）</option>
-              <option value="fork-dynamic">✓ FORK_JOIN_DYNAMIC 动态并行（COMPLETED · 重启）</option>
-              <option value="switch-branches">✓ SWITCH 分支执行（COMPLETED · 重启）</option>
-            </select>
-
             <label className="upload-btn">
               <input type="file" accept=".json" onChange={handleFileUpload} style={{ display: 'none' }} />
-              📤 上传
+              📤 导入
             </label>
 
             {(currentDef || workflowJson) && (
@@ -339,16 +302,6 @@ function DemoApp() {
                 className="mode-btn"
                 onClick={handleExport}
                 title="导出当前工作流 JSON"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-primary)',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
-                  fontWeight: 500
-                }}
               >
                 📥 导出
               </button>
@@ -356,65 +309,19 @@ function DemoApp() {
 
             <div className="divider"></div>
 
-            <div style={{ position: 'relative' }} ref={aiConfigRef}>
-              <button
-                className="mode-btn"
-                onClick={() => { setAiDraft(aiConfig); setShowAiConfig(v => !v); }}
-                title="配置 AI 服务"
-                style={{
-                  background: aiConfig.apiKey ? 'var(--color-success)' : 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-primary)',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: aiConfig.apiKey ? '#fff' : 'var(--text-primary)',
-                  fontSize: '13px',
-                  fontWeight: 500
-                }}
-              >
-                🤖 AI {aiConfig.apiKey ? '✓' : '配置'}
-              </button>
+            <ThemeControls />
 
-              {showAiConfig && (
-                <div className="ai-config-popover">
-                  <div className="ai-config-title">AI 服务配置</div>
-
-                  <label className="ai-config-label">API Key</label>
-                  <input
-                    className="ai-config-input"
-                    type="password"
-                    placeholder="sk-..."
-                    value={aiDraft.apiKey}
-                    onChange={e => setAiDraft(d => ({ ...d, apiKey: e.target.value }))}
-                    autoFocus
-                  />
-
-                  <label className="ai-config-label">Base URL</label>
-                  <input
-                    className="ai-config-input"
-                    type="text"
-                    placeholder="https://api.openai.com/v1"
-                    value={aiDraft.baseUrl}
-                    onChange={e => setAiDraft(d => ({ ...d, baseUrl: e.target.value }))}
-                  />
-
-                  <label className="ai-config-label">Model</label>
-                  <input
-                    className="ai-config-input"
-                    type="text"
-                    placeholder="gpt-4o"
-                    value={aiDraft.model}
-                    onChange={e => setAiDraft(d => ({ ...d, model: e.target.value }))}
-                    onKeyDown={e => { if (e.key === 'Enter') saveAiConfig(); }}
-                  />
-
-                  <div className="ai-config-actions">
-                    <button className="ai-config-btn cancel" onClick={() => setShowAiConfig(false)}>取消</button>
-                    <button className="ai-config-btn save" onClick={saveAiConfig}>保存</button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <button
+              className="mode-btn"
+              onClick={() => { setAiDraft(aiConfig); setShowAiConfig(true); }}
+              title="配置 AI 服务（API Key / Base URL / 模型）"
+              style={{
+                background: aiConfig.apiKey ? 'var(--color-success)' : undefined,
+                color: aiConfig.apiKey ? '#fff' : undefined,
+              }}
+            >
+              🤖 AI {aiConfig.apiKey ? '已配置 ✓' : '配置'}
+            </button>
           </div>
         </div>
       </header>
@@ -475,6 +382,76 @@ function DemoApp() {
           />
         )}
       </div>
+
+      {/* 全局居中 AI 服务配置弹窗 */}
+      {showAiConfig && (
+        <div className="ai-config-backdrop" onClick={() => setShowAiConfig(false)}>
+          <div className="ai-config-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ai-config-modal-header">
+              <div className="ai-config-title">
+                <span style={{ fontSize: 20 }}>🤖</span>
+                <span>AI 服务与模型配置</span>
+              </div>
+              <button
+                className="ai-config-close"
+                onClick={() => setShowAiConfig(false)}
+                title="关闭 (Esc)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="ai-config-modal-body">
+              <div className="ai-config-field">
+                <label className="ai-config-label">API Key</label>
+                <input
+                  className="ai-config-input"
+                  type="password"
+                  placeholder="sk-..."
+                  value={aiDraft.apiKey}
+                  onChange={(e) => setAiDraft((d) => ({ ...d, apiKey: e.target.value }))}
+                  autoFocus
+                />
+                <span className="ai-config-help">支持 OpenAI、DeepSeek、Moonshot、通义千问等兼容服务的 API Key</span>
+              </div>
+
+              <div className="ai-config-field">
+                <label className="ai-config-label">Base URL (接口地址)</label>
+                <input
+                  className="ai-config-input"
+                  type="text"
+                  placeholder="https://api.openai.com/v1"
+                  value={aiDraft.baseUrl}
+                  onChange={(e) => setAiDraft((d) => ({ ...d, baseUrl: e.target.value }))}
+                />
+              </div>
+
+              <div className="ai-config-field">
+                <label className="ai-config-label">Model (模型名称)</label>
+                <input
+                  className="ai-config-input"
+                  type="text"
+                  placeholder="gpt-4o / deepseek-chat"
+                  value={aiDraft.model}
+                  onChange={(e) => setAiDraft((d) => ({ ...d, model: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveAiConfig();
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="ai-config-actions">
+              <button className="ai-config-btn cancel" onClick={() => setShowAiConfig(false)}>
+                取消
+              </button>
+              <button className="ai-config-btn save" onClick={saveAiConfig}>
+                保存配置
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -36,6 +36,8 @@ import type { AiEvent } from './types/aiEvents';
 import type { IdeDraft } from './services/ai/draftPersistence';
 import { isMeaningfulDraft, loadDraft, saveDraft, clearDraft } from './services/ai/draftPersistence';
 
+import './styles/tokens.css';
+import './styles/executionStyles.css';
 import './components/AiNative/AiNative.css';
 
 /** 恢复横幅文案，如"已恢复刚刚的编辑" / "已恢复 3 分钟前的编辑" */
@@ -402,14 +404,18 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             useWorkflowStore.getState().setWorkflow(draft.workflowDef);
             useWorkflowStore.getState().setMode('edit');
         }
-        stores.aiStore.getState().hydrateFromDraft(draft.messages ?? [], draft.pendingProposal ?? null);
+        stores.aiStore.getState().hydrateFromDraft(
+            draft.messages ?? [],
+            draft.pendingProposal ?? null,
+            draft.durableCheckpoint ?? null,
+        );
         setRestoredDraft({ savedAt: draft.savedAt });
         // Intentionally mount-only: whether to restore is decided once from the
         // props this instance was created with, not re-evaluated on every change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Debounced auto-save: workflowDef / messages / pendingProposal → localStorage + onDraftChange.
+    // Debounced auto-save: workflowDef / messages / pendingProposal / durableCheckpoint → localStorage + onDraftChange.
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
         if (!draftKey && !onDraftChange) return;
@@ -418,13 +424,20 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             const def = useWorkflowStore.getState().workflowDef;
             const msgs = stores.aiStore.getState().messages;
             const proposal = stores.aiStore.getState().pendingProposal;
-            if (!isMeaningfulDraft(def, msgs, proposal)) return;
-            const draft: IdeDraft = { workflowDef: def, messages: msgs, pendingProposal: proposal, savedAt: Date.now() };
+            const checkpoint = stores.aiStore.getState().durableCheckpoint;
+            if (!isMeaningfulDraft(def, msgs, proposal, checkpoint)) return;
+            const draft: IdeDraft = {
+                workflowDef: def,
+                messages: msgs,
+                pendingProposal: proposal,
+                durableCheckpoint: checkpoint,
+                savedAt: Date.now(),
+            };
             if (draftKey) saveDraft(draftKey, draft);
             onDraftChange?.(draft);
         }, 500);
         return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-    }, [workflowStore.workflowDef, aiStore.messages, aiStore.pendingProposal, draftKey, onDraftChange]);
+    }, [workflowStore.workflowDef, aiStore.messages, aiStore.pendingProposal, aiStore.durableCheckpoint, draftKey, onDraftChange]);
 
     const handleDiscardRestore = useCallback(() => {
         if (draftKey) clearDraft(draftKey);
@@ -624,12 +637,13 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
 
     const currentTheme = workflowStore.theme || theme || 'dark';
     const currentColor = workflowStore.themeColor || themeColor || 'blue';
+    const isCanvasOpen = canvasDrawerOpen || !aiStore.chatPanelOpen;
 
     return (
         <IdeStoresProvider stores={stores}>
         <div
             ref={rootRef}
-            className={`ai-workflow-ide ${layoutMode}-mode${canvasDrawerOpen ? '' : ' canvas-closed'}`}
+            className={`ai-workflow-ide ${layoutMode}-mode${isCanvasOpen ? '' : ' canvas-closed'}`}
             data-mode={currentTheme}
             data-brand={currentColor}
             style={{
@@ -669,7 +683,12 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     aiPermissions={aiPermissions}
                     canvasOpen={canvasDrawerOpen}
                     onOpenCanvas={() => setCanvasDrawerOpen(true)}
-                    onCloseCanvas={() => setCanvasDrawerOpen(false)}
+                    onCloseCanvas={() => {
+                        setCanvasDrawerOpen(false);
+                        if (!aiStore.chatPanelOpen) {
+                            aiStore.setChatPanelOpen(true);
+                        }
+                    }}
                     onTriggerExecution={onTriggerExecution}
                     onPollExecution={onPollExecution}
                     onAccept={() => handleAccept()}
@@ -677,33 +696,53 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                 />
             </div>
 
-            {/* Resizable divider — only visible when canvas drawer is open */}
-            {layoutMode !== 'mobile' && canvasDrawerOpen && (
+            {/* Resizable divider — only visible when canvas drawer is open and chat panel is open */}
+            {layoutMode !== 'mobile' && isCanvasOpen && aiStore.chatPanelOpen && (
                 <div
                     className="ai-resize-divider"
                     onMouseDown={handleDividerDrag}
                 />
             )}
 
-            {/* Chat/canvas collapse toggle — only shown when canvas is open */}
-            {canvasDrawerOpen && (
+            {/* Chat/canvas collapse toggle — visible whenever canvas is open or chat is collapsed */}
+            {isCanvasOpen && (
                 <button
-                    className="ai-toggle-btn"
-                    style={{ left: aiStore.chatPanelOpen ? chatWidth + 'px' : '0px' }}
-                    onClick={() => aiStore.toggleChatPanel()}
-                    title={aiStore.chatPanelOpen ? '收起 AI 面板' : '展开 AI 面板'}
+                    className={`ai-toggle-btn ${aiStore.chatPanelOpen ? 'expanded' : 'collapsed'}`}
+                    style={
+                        aiStore.chatPanelOpen
+                            ? { left: chatWidth + 'px' }
+                            : { left: '0px' }
+                    }
+                    onClick={() => {
+                        const nextOpen = !aiStore.chatPanelOpen;
+                        aiStore.toggleChatPanel();
+                        if (!nextOpen) {
+                            setCanvasDrawerOpen(true);
+                        }
+                    }}
+                    title={aiStore.chatPanelOpen ? '收起 AI 对话面板' : '展开 AI 对话面板'}
+                    aria-label={aiStore.chatPanelOpen ? '收起 AI 对话面板' : '展开 AI 对话面板'}
                 >
                     {aiStore.chatPanelOpen ? '◀' : '▶'}
                 </button>
             )}
 
-            {/* Right: Canvas + ReviewBar — hidden until user opens drawer */}
+            {/* Right: Canvas + ReviewBar */}
             <div
                 className={`ai-canvas-side${layoutMode === 'mobile' && canvasVisible ? ' canvas-visible' : ''}`}
-                style={canvasDrawerOpen ? undefined : { display: 'none' }}
+                style={isCanvasOpen ? undefined : { display: 'none' }}
             >
-                {/* Canvas toolbar: view toggle */}
+                {/* Canvas toolbar: expand-chat shortcut when collapsed + view toggle */}
                 <div className="ai-canvas-toolbar">
+                    {!aiStore.chatPanelOpen && (
+                        <button
+                            className="ai-canvas-expand-chat-btn"
+                            onClick={() => aiStore.setChatPanelOpen(true)}
+                            title="展开 AI 对话面板"
+                        >
+                            💬 展开 AI 对话
+                        </button>
+                    )}
                     <div className="biz-view-toggle">
                         <button
                             className={`biz-view-toggle-btn ${!showBusinessView ? 'active' : ''}`}

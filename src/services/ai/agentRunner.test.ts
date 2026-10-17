@@ -354,4 +354,157 @@ describe('AgentRunner', () => {
         expect(after.totalPromptTokens).toBe(before.totalPromptTokens + 100);
         expect(after.totalCompletionTokens).toBe(before.totalCompletionTokens + 20);
     });
+
+    it('executes the 4-phase progressive workflow synthesis pipeline end-to-end', async () => {
+        const { transport, callCount } = scriptedTransport([
+            // Step 1: Phase 1 — init_workflow_blueprint
+            [{
+                type: 'tool_call',
+                id: 'tc_bp',
+                name: 'init_workflow_blueprint',
+                args: {
+                    name: 'payment_audit_flow',
+                    description: '支付与风控审批流',
+                    inputParameters: ['orderId'],
+                    outputParameters: { status: '${charge_api_ref.output.response.body.status}' },
+                },
+            }],
+            // Step 2: Phase 2 — scaffold_workflow_topology
+            [{
+                type: 'tool_call',
+                id: 'tc_topo',
+                name: 'scaffold_workflow_topology',
+                args: {
+                    tasks: [
+                        { name: 'charge_api', taskReferenceName: 'charge_api_ref', type: 'HTTP' },
+                        { name: 'notify_user', taskReferenceName: 'notify_user_ref', type: 'SIMPLE' },
+                    ],
+                },
+            }],
+            // Step 3: Phase 3 — configure_workflow_tasks
+            [{
+                type: 'tool_call',
+                id: 'tc_cfg',
+                name: 'configure_workflow_tasks',
+                args: {
+                    configurations: [
+                        {
+                            taskReferenceName: 'charge_api_ref',
+                            httpRequest: {
+                                uri: 'https://pay.internal/charge/${workflow.input.orderId}',
+                                method: 'POST',
+                            },
+                        },
+                        {
+                            taskReferenceName: 'notify_user_ref',
+                            inputParameters: {
+                                chargeResult: '${charge_api_ref.output.response.body.status}',
+                            },
+                        },
+                    ],
+                },
+            }],
+            // Step 4: Phase 4 — commit_workflow_proposal
+            [
+                { type: 'text', content: '已完成四阶段构建与校验。' },
+                { type: 'tool_call', id: 'tc_commit', name: 'commit_workflow_proposal', args: { summary: '四阶段完成' } },
+            ],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('帮我创建一个支付与风控审批流');
+
+        expect(callCount()).toBe(4);
+        const proposal = useAiStore.getState().pendingProposal;
+        expect(proposal).not.toBeNull();
+        expect(proposal?.proposedDef.name).toBe('payment_audit_flow');
+        expect(proposal?.proposedDef.tasks).toHaveLength(2);
+        expect(proposal?.verification?.isValid).toBe(true);
+        expect(proposal?.verification?.dataFlowLinks).toBeGreaterThanOrEqual(2);
+    });
+
+    it('auto-commits a workingDraft via safety net if the model finishes speaking without calling commit_workflow_proposal', async () => {
+        const { transport } = scriptedTransport([
+            [{
+                type: 'tool_call',
+                id: 'tc_bp',
+                name: 'init_workflow_blueprint',
+                args: { name: 'auto_commit_wf', inputParameters: ['userId'] },
+            }],
+            [{
+                type: 'tool_call',
+                id: 'tc_topo',
+                name: 'scaffold_workflow_topology',
+                args: {
+                    tasks: [
+                        {
+                            name: 'fetch_profile',
+                            taskReferenceName: 'fetch_profile_ref',
+                            type: 'HTTP',
+                            httpRequest: { uri: 'https://api.internal/users/${workflow.input.userId}', method: 'GET' },
+                        },
+                    ],
+                },
+            }],
+            // Model finishes speaking without calling commit_workflow_proposal
+            [{ type: 'text', content: '工作流已为您准备好！' }, { type: 'done' }],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('创建用户信息查询流程');
+
+        const proposal = useAiStore.getState().pendingProposal;
+        expect(proposal).not.toBeNull();
+        expect(proposal?.proposedDef.name).toBe('auto_commit_wf');
+        expect(proposal?.verification?.isValid).toBe(true);
+    });
+
+    it('supports PI durable checkpointing and commitDraftNow / resume after interruption', async () => {
+        // Simulate a mid-synthesis failure on step 2 after step 1 succeeded
+        let call = 0;
+        const stream = async function* (): AsyncGenerator<StreamEvent> {
+            call++;
+            if (call === 1) {
+                yield {
+                    type: 'tool_call',
+                    id: 'tc_1',
+                    name: 'scaffold_workflow_topology',
+                    args: {
+                        tasks: [
+                            { name: 'task_a', taskReferenceName: 'task_a_ref', type: 'SIMPLE' },
+                        ],
+                    },
+                };
+                return;
+            }
+            if (call === 2) {
+                throw new Error('503 Service Unavailable');
+            }
+            yield {
+                type: 'tool_call',
+                id: 'tc_2',
+                name: 'commit_workflow_proposal',
+                args: {},
+            };
+        };
+        useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('构建多阶段任务流');
+
+        // After step 2 throws, a durableCheckpoint in 'failed' state with the partial workingDraft is saved
+        const cp = useAiStore.getState().durableCheckpoint;
+        expect(cp).not.toBeNull();
+        expect(cp?.status).toBe('failed');
+        expect(cp?.phase).toBe('topology');
+        expect(cp?.workingDraft?.tasks).toHaveLength(1);
+
+        // User resumes from the checkpoint — call 3 runs commit_workflow_proposal and succeeds!
+        await runner.resume();
+        expect(useAiStore.getState().pendingProposal).not.toBeNull();
+        expect(useAiStore.getState().pendingProposal?.proposedDef.tasks).toHaveLength(1);
+    });
 });
+

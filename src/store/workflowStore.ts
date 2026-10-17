@@ -313,6 +313,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     const task = findTaskByRef(newDef.tasks, taskRef);
                     if (task) {
+                        const changedKeys = typeof field === 'object' ? Object.keys(field) : [field];
                         if (typeof field === 'object') {
                             Object.assign(task, field);
                         } else {
@@ -320,18 +321,60 @@ const useWorkflowStore = create<WorkflowStore>()(
                         }
 
                         syncForkJoinOn(newDef.tasks);
-
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
 
-                        set({
-                            workflowDef: newDef,
-                            nodes: layoutedNodes,
-                            edges: layoutedEdges,
-                            taskMap,
-                            validationResults
-                        });
+                        const STRUCTURAL_FIELDS = new Set([
+                            'taskReferenceName',
+                            'type',
+                            'decisionCases',
+                            'defaultCase',
+                            'forkTasks',
+                            'loopOver',
+                            'joinOn',
+                        ]);
+                        const isStructuralChange = changedKeys.some(k => STRUCTURAL_FIELDS.has(k));
+
+                        if (isStructuralChange) {
+                            const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
+                            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
+                            const nextSelected = get().selectedTask?.taskReferenceName === taskRef ? task : get().selectedTask;
+
+                            set({
+                                workflowDef: newDef,
+                                nodes: layoutedNodes,
+                                edges: layoutedEdges,
+                                taskMap,
+                                selectedTask: nextSelected,
+                                validationResults
+                            });
+                        } else {
+                            // 非拓扑结构变更（如入参、描述、名称、超时、重试、表达式等）：原地更新节点数据，保留用户拖拽后的节点坐标
+                            const updatedNodes = get().nodes.map(n => {
+                                if (n.data?.taskReferenceName === taskRef) {
+                                    return {
+                                        ...n,
+                                        data: {
+                                            ...n.data,
+                                            label: task.name || n.data.label,
+                                            task,
+                                            loopCondition: task.loopCondition ?? n.data.loopCondition,
+                                            subWorkflowName: task.subWorkflowParam?.name ?? n.data.subWorkflowName,
+                                        },
+                                    };
+                                }
+                                return n;
+                            });
+                            const updatedTaskMap = { ...get().taskMap, [taskRef]: task };
+                            const nextSelected = get().selectedTask?.taskReferenceName === taskRef ? task : get().selectedTask;
+
+                            set({
+                                workflowDef: newDef,
+                                nodes: updatedNodes,
+                                taskMap: updatedTaskMap,
+                                selectedTask: nextSelected,
+                                validationResults,
+                            });
+                        }
                     }
                 },
 
@@ -342,18 +385,24 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     Object.assign(newDef, properties);
                     syncForkJoinOn(newDef.tasks);
-
-                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                     const validationResults = validateWorkflow(newDef);
 
-                    set({
-                        workflowDef: newDef,
-                        nodes: layoutedNodes,
-                        edges: layoutedEdges,
-                        taskMap,
-                        validationResults
-                    });
+                    if ('tasks' in properties) {
+                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
+                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
+                        set({
+                            workflowDef: newDef,
+                            nodes: layoutedNodes,
+                            edges: layoutedEdges,
+                            taskMap,
+                            validationResults
+                        });
+                    } else {
+                        set({
+                            workflowDef: newDef,
+                            validationResults,
+                        });
+                    }
                 },
 
                 addNode: (newNode: any, sourceId: string, _targetId: string, _edgeId: string, edgeData: any = {}) => {

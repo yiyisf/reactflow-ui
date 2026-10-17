@@ -20,7 +20,7 @@ const FORK_JOIN_COLOR = 'var(--color-accent)';
  */
 export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
-    const { mode, execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { mode, execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
     const { addForkBranch } = useWorkflowStore();
     const updateNodeInternals = useUpdateNodeInternals();
 
@@ -50,8 +50,8 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
             <div
                 className={`fork-node ${isDynamic ? 'dynamic' : 'static'}`}
                 style={{
-                    borderRadius: '8px',
-                    background: 'var(--bg-secondary)',
+                    borderRadius: '10px',
+                    background: 'transparent',
                     position: 'relative'
                 }}
             // onClick moved to '+' button
@@ -60,7 +60,9 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     icon={IconComponent}
                     header={getNodeHeader(isDynamic ? 'FORK_JOIN_DYNAMIC' : 'FORK_JOIN', viewMode)}
                     title={data.taskReferenceName}
+                    subTitle={data.label && data.label !== data.taskReferenceName ? data.label : undefined}
                     meta={getNodeMeta(data.taskType, data, viewMode, isDynamic ? 'Dynamic Parallel Execution' : 'Parallel Execution')}
+                    duration={durationText}
                     color={FORK_JOIN_COLOR}
                     status={execution?.status}
                     isRunning={isRunning}
@@ -158,7 +160,7 @@ ForkNode.displayName = 'ForkNode';
  */
 export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
-    const { execution, isRunning } = useNodeExecution(data.taskReferenceName);
+    const { execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
     const viewMode = useWorkflowStore(s => s.viewMode);
 
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'JOIN'), []);
@@ -177,8 +179,8 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
         >
             <div
                 style={{
-                    borderRadius: '8px',
-                    background: 'var(--bg-secondary)',
+                    borderRadius: '10px',
+                    background: 'transparent',
                     position: 'relative'
                 }}
             >
@@ -186,7 +188,9 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     icon={IconComponent}
                     header={getNodeHeader(data.taskType === 'EXCLUSIVE_JOIN' ? 'EXCLUSIVE_JOIN' : 'JOIN', viewMode)}
                     title={data.taskReferenceName}
+                    subTitle={data.label && data.label !== data.taskReferenceName ? data.label : undefined}
                     meta={getNodeMeta(data.taskType, data, viewMode, data.taskType === 'EXCLUSIVE_JOIN' ? 'Wait for any task' : 'Wait for tasks')}
+                    duration={durationText}
                     color={FORK_JOIN_COLOR}
                     status={execution?.status}
                     isRunning={isRunning}

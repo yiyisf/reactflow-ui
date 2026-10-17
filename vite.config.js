@@ -9,10 +9,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // - 默认（`vite build`）        → 主入口 src/index.ts（WorkflowIDE + 共享类型），产出 ES + UMD
 // - `vite build --mode ai`      → AI 入口 src/ai.ts（AiWorkflowIDE），仅产出 ES
 //   （UMD 需要单一全局变量、不支持真正的多 entry 代码分割，AI 场景不做 UMD 承诺）
-// https://vite.dev/config/
 export default defineConfig(({ mode }) => {
+  const isDemo = mode === 'demo'
   const isAi = mode === 'ai'
 
+  // Demo SPA 模式（用于独立站点与 Vercel 等平台托管部署）
+  if (isDemo) {
+    return {
+      plugins: [react()],
+      build: {
+        outDir: 'dist',
+        emptyOutDir: true,
+      }
+    }
+  }
+
+  // 库模式打包（供 npm 发布引用）
   return {
     plugins: [react()],
     build: {

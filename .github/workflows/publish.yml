@@ -20,8 +20,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          # 注意：配置 Trusted Publishing (OIDC) 时不要传 registry-url，
-          # 否则 setup-node 会注入传统静态 token 配置覆盖 OIDC 凭证
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm to latest (npm v11.5.1+ required for Trusted Publishing OIDC)
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci

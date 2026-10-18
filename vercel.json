@@ -3,7 +3,8 @@
   "framework": "vite",
   "buildCommand": "npm run build:demo",
   "outputDirectory": "dist",
+  "cleanUrls": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/app", "destination": "/app.html" }
   ]
 }

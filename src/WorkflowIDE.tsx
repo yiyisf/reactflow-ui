@@ -286,7 +286,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
 
     // Handle node click
     const handleNodeClick = (task: any) => {
-        if (!workflowExecution) {
+        if (mode !== 'run' && !workflowExecution) {
             selectTaskAction(task, true);
         } else {
             setSelectedTask(task);
@@ -439,7 +439,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         onNodeClick={handleNodeClick}
                         edgeType={edgeType}
                         theme={theme}
-                        nodesLocked={readOnly || !!workflowExecution}
+                        nodesLocked={readOnly || mode === 'run' || !!workflowExecution}
                         searchQuery={searchQuery}
                         onSave={onSave}
                         onRequestImport={onRequestImport}
@@ -450,14 +450,14 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
 
             <TaskDetailPanel
                 task={selectedTask}
-                isOpen={isDetailPanelOpen}
+                isOpen={isDetailPanelOpen && mode !== 'run'}
                 onClose={() => setIsDetailPanelOpen(false)}
                 theme={theme}
                 aiConfig={aiConfig}
             />
 
             {
-                workflowExecution && (
+                (workflowExecution || mode === 'run') && (
                     <ExecutionTaskPanel executionActions={executionActions} />
                 )
             }

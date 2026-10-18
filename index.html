@@ -1,13 +1,1400 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>reactflow-ui</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <title>[Product Launch] Conductor Workflow IDE v1.0 GA · 让工作流编排与联调从 4.5 小时缩短至 12 分钟</title>
+  <style>
+    /* ==========================================================================
+       STYLE: Bento Launchpad (现代暗黑流光发布风 / 开发者产品推广)
+       SCENARIO: Conductor Workflow IDE (@yiyi_zhang/reactflow-ui) v1.0.0 GA 正式发布页
+       CORE RULE: 拒绝枯燥功能罗列！首屏直给 Before vs. After 耗时对比、一行命令极速体验、可拖动 ROI 收益计算器
+       ========================================================================== */
+    :root {
+      --bg-dark: #06080F;
+      --bg-card: #0E1322;
+      --bg-card-hover: #141C32;
+      --bg-panel: #090D18;
+      --bg-glass: rgba(14, 19, 34, 0.82);
+
+      --border-dim: #1E2942;
+      --border-glow: #6366F1;
+
+      --text-white: #F8FAFC;
+      --text-body: #94A3B8;
+      --text-muted: #64748B;
+
+      --brand-primary: #6366F1;
+      --brand-cyan: #06B6D4;
+      --brand-emerald: #10B981;
+      --brand-amber: #F59E0B;
+      --brand-rose: #F43F5E;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+      --radius-md: 12px;
+      --radius-lg: 18px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse 85% 55% at 50% -10%, rgba(99, 102, 241, 0.25), transparent 70%),
+        radial-gradient(ellipse 50% 40% at 85% 20%, rgba(6, 182, 212, 0.12), transparent 65%),
+        var(--bg-dark);
+      color: var(--text-white);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Sticky Top Nav */
+    .launch-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(6, 8, 15, 0.86);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-dim);
+      padding: 0.75rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-size: 0.85rem;
+    }
+
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-weight: 800;
+      color: var(--text-white);
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+
+    .version-pill {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #A5B4FC;
+      background: rgba(99, 102, 241, 0.16);
+      border: 1px solid rgba(99, 102, 241, 0.42);
+      padding: 0.18rem 0.68rem;
+      border-radius: 999px;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .ghost-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-body);
+      border: 1px solid var(--border-dim);
+      padding: 0.44rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .ghost-btn:hover {
+      color: var(--text-white);
+      border-color: var(--brand-primary);
+    }
+
+    .cta-btn {
+      background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan));
+      color: #FFF;
+      border: none;
+      padding: 0.46rem 1.05rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .cta-btn:hover { opacity: 0.93; transform: translateY(-1px); }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 5rem;
+    }
+
+    /* ==========================================================================
+       L1 首屏决策层：核心价值主张 + 一行命令极速体验 + 首屏 Before/After + 首屏 ROI 计算器
+       ========================================================================== */
+    .hero-section {
+      text-align: center;
+      max-width: 920px;
+      margin: 0 auto 2.2rem;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--brand-cyan);
+      background: rgba(6, 182, 212, 0.1);
+      border: 1px solid rgba(6, 182, 212, 0.32);
+      padding: 0.3rem 0.95rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+
+    .hero-title {
+      font-size: 2.85rem;
+      line-height: 1.15;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.95rem;
+      background: linear-gradient(180deg, #FFFFFF 0%, #A5B4FC 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.06rem;
+      color: var(--text-body);
+      margin-bottom: 1.5rem;
+      max-width: 780px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Quick Install Command Box with Package Manager Switcher */
+    .install-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .pm-tabs {
+      display: inline-flex;
+      gap: 0.35rem;
+      background: rgba(14, 19, 34, 0.9);
+      padding: 0.22rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-dim);
+    }
+
+    .pm-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      font-weight: 600;
+      padding: 0.22rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .pm-tab.active {
+      background: rgba(99, 102, 241, 0.22);
+      color: #C7D2FE;
+    }
+
+    .install-shell {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.9rem;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-glow);
+      box-shadow: 0 0 32px rgba(99, 102, 241, 0.22);
+      padding: 0.62rem 0.8rem 0.62rem 1.2rem;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: #E2E8F0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .install-shell .prompt-char { color: var(--brand-cyan); user-select: none; font-weight: 700; }
+
+    .copy-cli-btn {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(6, 182, 212, 0.28));
+      border: 1px solid rgba(99, 102, 241, 0.5);
+      color: #FFF;
+      padding: 0.36rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-weight: 700;
+      transition: all 0.15s;
+    }
+
+    .copy-cli-btn:hover { background: var(--brand-primary); }
+
+    /* First-Screen Dual Core: Before vs After + Interactive ROI Calculator Side-by-Side */
+    .first-screen-grid {
+      display: grid;
+      grid-template-columns: 1.12fr 0.88fr;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .fs-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      padding: 1.4rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .fs-panel.roi-highlight {
+      border-color: rgba(99, 102, 241, 0.45);
+      background: linear-gradient(155deg, rgba(99, 102, 241, 0.1) 0%, var(--bg-card) 65%);
+    }
+
+    .panel-badge-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.65rem;
+    }
+
+    .bento-tag {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--brand-cyan);
+      font-weight: 700;
+    }
+
+    .speedup-pill {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 800;
+      color: #34D399;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fs-title {
+      font-size: 1.18rem;
+      font-weight: 700;
+      color: var(--text-white);
+      margin-bottom: 0.9rem;
+    }
+
+    /* Before vs After Compact Visual Bars in First Screen */
+    .ba-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem;
+    }
+
+    .ba-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 0.95rem 1rem;
+    }
+
+    .ba-box.after {
+      border-color: rgba(16, 185, 129, 0.45);
+      background: linear-gradient(165deg, rgba(16, 185, 129, 0.09) 0%, var(--bg-panel) 70%);
+    }
+
+    .ba-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.84rem;
+      font-weight: 700;
+      margin-bottom: 0.65rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .ba-time {
+      font-family: var(--font-mono);
+      font-size: 1.05rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ba-step {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--text-body);
+      padding: 0.36rem 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ba-step:last-child { border-bottom: none; }
+
+    .ba-step strong {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+    }
+
+    /* Interactive ROI Calculator */
+    .roi-calc-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.15rem;
+    }
+
+    .slider-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.7rem;
+      font-size: 0.82rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 52%;
+      accent-color: var(--brand-primary);
+      cursor: pointer;
+    }
+
+    .roi-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.65rem;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--border-dim);
+      margin-top: 0.3rem;
+    }
+
+    .roi-kpi-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 0.55rem 0.65rem;
+      text-align: left;
+    }
+
+    .roi-kpi-val {
+      font-family: var(--font-mono);
+      font-size: 1.12rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--brand-emerald);
+    }
+
+    .roi-kpi-lbl {
+      font-size: 0.71rem;
+      color: var(--text-body);
+      margin-top: 0.1rem;
+    }
+
+    /* Quantified Impact Strip */
+    .impact-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.15rem;
+      margin-bottom: 3.2rem;
+    }
+
+    .impact-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 1.15rem 1.35rem;
+      text-align: left;
+    }
+
+    .impact-num {
+      font-family: var(--font-mono);
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--text-white);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+      margin-bottom: 0.22rem;
+    }
+
+    .impact-label {
+      font-size: 0.84rem;
+      color: var(--text-body);
+      font-weight: 600;
+    }
+
+    .impact-sub {
+      font-size: 0.74rem;
+      color: var(--brand-emerald);
+      margin-top: 0.2rem;
+      font-family: var(--font-mono);
+    }
+
+    /* Section Header */
+    .sec-head {
+      margin-bottom: 1.35rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .sec-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-white);
+    }
+
+    .sec-sub {
+      font-size: 0.88rem;
+      color: var(--text-body);
+    }
+
+    /* L2: Bento Grid User-Benefit Showcase */
+    .bento-showcase {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: minmax(240px, auto);
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .bento-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bento-box:hover {
+      border-color: var(--brand-primary);
+      transform: translateY(-2px);
+    }
+
+    .bento-span-2 {
+      grid-column: span 2;
+    }
+
+    .bento-h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin: 0.4rem 0 0.45rem;
+      color: var(--text-white);
+    }
+
+    .bento-p {
+      font-size: 0.86rem;
+      color: var(--text-body);
+      margin-bottom: 0.95rem;
+    }
+
+    /* Interactive Mini Sandbox inside Bento 1 */
+    .mini-sandbox {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 0.9rem 1rem;
+    }
+
+    .sandbox-preset-bar {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .preset-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-dim);
+      color: var(--text-body);
+      padding: 0.3rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-chip.active {
+      background: rgba(99, 102, 241, 0.22);
+      border-color: var(--brand-primary);
+      color: #FFF;
+    }
+
+    .sandbox-console {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      padding-top: 0.55rem;
+      border-top: 1px dashed var(--border-dim);
+      color: #CBD5E1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Mini W-LSP Intellisense Preview inside Bento 2 */
+    .wlsp-demo-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 0.75rem;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+    }
+
+    .wlsp-input-line {
+      color: #E2E8F0;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid var(--border-dim);
+      margin-bottom: 0.45rem;
+    }
+
+    .wlsp-pop-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.28rem 0.45rem;
+      border-radius: 5px;
+      background: rgba(99, 102, 241, 0.16);
+      color: #C7D2FE;
+      margin-bottom: 0.22rem;
+    }
+
+    /* Time-Travel Mini Scrubber inside Bento 4 */
+    .tt-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+    }
+
+    .gantt-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 56px;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      margin-bottom: 0.35rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .gantt-track {
+      height: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .gantt-bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-radius: 999px;
+      transition: opacity 0.15s;
+    }
+
+    /* 3-Step Quickstart Tabs */
+    .quickstart-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+
+    .qs-tabs {
+      display: flex;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-dim);
+      flex-wrap: wrap;
+    }
+
+    .qs-tab {
+      padding: 0.85rem 1.35rem;
+      background: transparent;
+      border: none;
+      color: var(--text-body);
+      font-weight: 600;
+      font-size: 0.84rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+
+    .qs-tab.active {
+      color: var(--text-white);
+      border-bottom-color: var(--brand-primary);
+      background: var(--bg-card);
+    }
+
+    .qs-content-wrap {
+      position: relative;
+    }
+
+    .qs-content {
+      padding: 1.4rem 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #E2E8F0;
+      white-space: pre-wrap;
+      line-height: 1.65;
+      overflow-x: auto;
+    }
+
+    /* L3 Evidence Drawer */
+    details.evidence-drawer {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.35rem;
+      margin-bottom: 1rem;
+    }
+
+    details.evidence-drawer summary {
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text-white);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      list-style: none;
+    }
+
+    details.evidence-drawer summary::-webkit-details-marker { display: none; }
+
+    .evidence-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.82rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .evidence-table th, .evidence-table td {
+      border-bottom: 1px solid var(--border-dim);
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+    }
+
+    .evidence-table th {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 980px) {
+      .first-screen-grid, .impact-strip, .bento-showcase, .ba-columns {
+        grid-template-columns: 1fr;
+      }
+      .bento-span-2 { grid-column: span 1; }
+      .hero-title { font-size: 2.1rem; }
+    }
+
+    @media print {
+      body { background: #FFF; color: #000; }
+      .launch-nav { position: static; background: #FFF; }
+      .fs-panel, .bento-box, .impact-card, .quickstart-box { border-color: #CBD5E1; background: #FFF; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Launch Bar -->
+  <header class="launch-nav">
+    <div class="nav-left">
+      <a href="/" class="brand-logo">
+        <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+          <defs>
+            <linearGradient id="nav-bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#11172B" />
+              <stop offset="100%" stop-color="#090D18" />
+            </linearGradient>
+            <linearGradient id="nav-bd" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#6366F1" stop-opacity="0.8" />
+              <stop offset="100%" stop-color="#06B6D4" stop-opacity="0.5" />
+            </linearGradient>
+            <linearGradient id="nav-top" x1="9" y1="16" x2="23" y2="10" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#818CF8" />
+              <stop offset="100%" stop-color="#22D3EE" />
+            </linearGradient>
+            <linearGradient id="nav-bot" x1="9" y1="16" x2="23" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#6366F1" />
+              <stop offset="100%" stop-color="#34D399" />
+            </linearGradient>
+          </defs>
+          <rect x="1.25" y="1.25" width="29.5" height="29.5" rx="8" fill="url(#nav-bg)" stroke="url(#nav-bd)" stroke-width="1.5" />
+          <path d="M 9.5 16 C 15 16, 15.5 10, 22.5 10" stroke="url(#nav-top)" stroke-width="2.4" stroke-linecap="round" />
+          <path d="M 9.5 16 C 15 16, 15.5 22, 22.5 22" stroke="url(#nav-bot)" stroke-width="2.4" stroke-linecap="round" />
+          <circle cx="9.5" cy="16" r="3.4" fill="#6366F1" />
+          <circle cx="9.5" cy="16" r="1.4" fill="#F8FAFC" />
+          <circle cx="22.5" cy="10" r="2.7" fill="#22D3EE" />
+          <circle cx="22.5" cy="22" r="2.7" fill="#34D399" />
+        </svg>
+        <span>Conductor Workflow IDE</span>
+      </a>
+      <span class="version-pill">RELEASE v1.0.0 GA</span>
+      <span style="color:var(--text-muted);">@yiyi_zhang/reactflow-ui · 下一代 AI 原生工作流编排与本地确定性沙箱 IDE</span>
+    </div>
+    <div class="nav-right">
+      <a href="/app" class="ghost-btn">🎮 进入在线交互演练场</a>
+      <button class="cta-btn" onclick="document.getElementById('quickstart').scrollIntoView({behavior:'smooth'})">
+        30 秒极速接入 →
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- ========================================================================
+         L1 首屏决策层：直击痛点的价值主张 + 一行命令极速体验 + Before/After + ROI 计算器
+         ======================================================================== -->
+    <section class="hero-section">
+      <div class="hero-eyebrow">🚀 Conductor Workflow IDE 1.0 正式发布 · 终结“手搓千行 JSON + 苦等测试环境联调”</div>
+      <h1 class="hero-title">把 4.5 小时的工作流手写排错与部署联调，压缩成 12 分钟的零延迟闭环</h1>
+      <p class="hero-subtitle">
+        为什么工作流推进慢？因为过去工程师 80% 的时间浪费在<strong>手写 `${taskRef.output}` 拼写排错</strong>与<strong>等待后端预发环境验证分支逻辑</strong>。v1.0 内置 <strong>W-LSP 确定性语言服务</strong>与<strong>浏览器 0ms 确定性沙箱引擎</strong>，在前端即可完成全分支故障注入演练与 AI 协同建模。
+      </p>
+
+      <!-- 一行命令极速体验入口 -->
+      <div class="install-wrap">
+        <div class="pm-tabs">
+          <button class="pm-tab active" onclick="switchPM('npm', this)">npm 安装集成</button>
+          <button class="pm-tab" onclick="switchPM('pnpm', this)">pnpm</button>
+          <button class="pm-tab" onclick="switchPM('ai', this)">AI 双栏工作台入口</button>
+          <button class="pm-tab" onclick="switchPM('demo', this)">本地一键启动演练场</button>
+        </div>
+        <div class="install-shell">
+          <span class="prompt-char">$</span>
+          <span id="cli-cmd">npm install @yiyi_zhang/reactflow-ui reactflow react react-dom</span>
+          <button class="copy-cli-btn" onclick="copyInstall(this)">一键复制命令</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 首屏核心双栏：左 Before vs. After 耗时对比 | 右 可拖动 ROI 收益计算器 -->
+    <section class="first-screen-grid">
+      <!-- 首屏左：Before vs. After 耗时对比 -->
+      <div class="fs-panel">
+        <div>
+          <div class="panel-badge-row">
+            <span class="bento-tag">Before vs. After · 单条 15 节点工作流交付耗时实测</span>
+            <span class="speedup-pill">⚡ 提效 95.5% (4.5h → 12min)</span>
+          </div>
+          <div class="fs-title">拒绝自嗨式架构空谈：看看工程师每天真实省下的时间</div>
+        </div>
+
+        <div class="ba-columns">
+          <!-- Before -->
+          <div class="ba-box">
+            <div class="ba-head" style="color:#FB7185;">
+              <span>❌ 传统手搓 JSON + 预发联调</span>
+              <span class="ba-time">4.5 小时</span>
+            </div>
+            <div class="ba-step">
+              <span>1. 手写 DSL 拓扑与嵌套 SWITCH/DO_WHILE</span>
+              <strong style="color:#FB7185;">~75 min</strong>
+            </div>
+            <div class="ba-step">
+              <span>2. 翻找上游文档核对 ${taskRef.output.xxx}</span>
+              <strong style="color:#FB7185;">~50 min</strong>
+            </div>
+            <div class="ba-step">
+              <span>3. 部署测试环境造数据验证异常/超时分支</span>
+              <strong style="color:#FB7185;">~110 min</strong>
+            </div>
+            <div class="ba-step">
+              <span>4. 修改节点引用名导致下游断链返工排查</span>
+              <strong style="color:#FB7185;">~35 min</strong>
+            </div>
+          </div>
+
+          <!-- After -->
+          <div class="ba-box after">
+            <div class="ba-head" style="color:var(--brand-emerald);">
+              <span>✅ Workflow IDE v1.0 闭环流</span>
+              <span class="ba-time">12 分钟</span>
+            </div>
+            <div class="ba-step">
+              <span>1. AI 对话生成骨架 + Cmd+K 原位微调</span>
+              <strong style="color:var(--brand-emerald);">2 min</strong>
+            </div>
+            <div class="ba-step">
+              <span>2. 键入 ${ 触发 W-LSP 0ms 补全与实时值预览</span>
+              <strong style="color:var(--brand-emerald);">3 min</strong>
+            </div>
+            <div class="ba-step">
+              <span>3. 浏览器本地沙箱注入 Mock 与故障 0ms 试跑</span>
+              <strong style="color:var(--brand-emerald);">5 min</strong>
+            </div>
+            <div class="ba-step">
+              <span>4. 引用名变更全图自动重构 + 双向 JSON 同步</span>
+              <strong style="color:var(--brand-emerald);">2 min</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 首屏右：可拖动的 ROI 收益计算器 -->
+      <div class="fs-panel roi-highlight">
+        <div>
+          <div class="panel-badge-row">
+            <span class="bento-tag">Interactive ROI Calculator · 团队收益实时测算</span>
+            <span style="font-family:var(--font-mono); font-size:0.72rem; color:#A5B4FC;">支持双滑块拖动</span>
+          </div>
+          <div class="fs-title">拖动滑块，立即测算您的团队接入后每月释放的研发产能</div>
+        </div>
+
+        <div class="roi-calc-box">
+          <div class="slider-row">
+            <span>参与编排/联调人数：<strong id="dev-count-label" style="color:var(--brand-cyan);">20 人</strong></span>
+            <input id="dev-slider" type="range" min="2" max="150" value="20" oninput="recalcROI()" />
+          </div>
+          <div class="slider-row">
+            <span>人均每月新增/变更流程：<strong id="wf-count-label" style="color:#A5B4FC;">4 条 / 月</strong></span>
+            <input id="wf-slider" type="range" min="1" max="20" value="4" oninput="recalcROI()" />
+          </div>
+
+          <div class="roi-kpi-grid">
+            <div class="roi-kpi-item">
+              <div id="roi-hours" class="roi-kpi-val">344 h</div>
+              <div class="roi-kpi-lbl">每月节省联调与排错工时</div>
+            </div>
+            <div class="roi-kpi-item">
+              <div id="roi-money" class="roi-kpi-val" style="color:var(--brand-cyan);">¥17.2 万</div>
+              <div class="roi-kpi-lbl">折合月度研发产能释放</div>
+            </div>
+            <div class="roi-kpi-item">
+              <div id="roi-bugs" class="roi-kpi-val" style="color:var(--brand-amber);">48 次</div>
+              <div class="roi-kpi-lbl">每月提前拦截参数断链事故</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 大核心量化指标条 -->
+    <section class="impact-strip">
+      <div class="impact-card">
+        <div class="impact-num">0 ms</div>
+        <div class="impact-label">浏览器本地确定性沙箱试跑</div>
+        <div class="impact-sub">✓ 无需后端服务即可跑通全分支</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">100%</div>
+        <div class="impact-label">跨节点参数引用断链自动拦截</div>
+        <div class="impact-sub">★ W-LSP 拓扑祖先推导 + 自动重命名</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">3 级</div>
+        <div class="impact-label">角色视图与语义缩放 (LOD)</div>
+        <div class="impact-sub">📋 业务 / 🔧 标准 / 💻 全开发同图协同</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">-60 MB</div>
+        <div class="impact-label">移除外部冗余依赖瘦身</div>
+        <div class="impact-sub">⚡ 原生 Dagre SVG 引擎 + 159 项单测全绿</div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         L2 交互分析层：四大痛点终结者 Bento 展台（内嵌可点击沙箱与时间旅行滑块）
+         ======================================================================== -->
+    <div class="sec-head">
+      <div>
+        <div class="sec-title">四大工程痛点，如何在 v1.0 中被彻底终结？</div>
+        <div class="sec-sub">拒绝纸上谈兵——直接在下方卡片中点击按钮或拖动时间轴体验</div>
+      </div>
+    </div>
+
+    <section class="bento-showcase">
+      <!-- Bento 1 (Span 2): Interactive Sandbox Fault Injection Simulator -->
+      <div class="bento-box bento-span-2">
+        <div>
+          <div class="bento-tag">Pillar 01 · In-Browser Deterministic Sandbox &amp; Mock Console</div>
+          <div class="bento-h3">痛点终结：无需部署测试环境，在浏览器里注入 Mock 数据与节点故障一键试跑</div>
+          <p class="bento-p">
+            以前为了验证“支付超时后是否能正确走退款补偿分支”，需要改代码、发预发、造脏数据。现在打开 <strong>🧪 人工模拟数据配置台</strong>，自定义 <code>workflow.input</code>、覆写单节点输出或直接注入 <code>FAILED / TIMED_OUT</code>，0ms 即可在画布上验证整条分支走向：
+          </p>
+        </div>
+
+        <div class="mini-sandbox">
+          <div class="sandbox-preset-bar">
+            <button class="preset-chip active" onclick="runMiniSandbox('vip', this)">⚡ 场景 A：模拟 VIP 订单正常履约 (amount=1999)</button>
+            <button class="preset-chip" onclick="runMiniSandbox('fail', this)">💥 场景 B：向支付节点注入 502 TIMED_OUT 故障</button>
+            <button class="preset-chip" onclick="runMiniSandbox('loop', this)">🔄 场景 C：模拟 DO_WHILE 库存轮询 3 次迭代</button>
+          </div>
+
+          <!-- Interactive SVG Topology Preview -->
+          <svg viewBox="0 0 680 86" style="width:100%; height:82px; display:block;">
+            <!-- Edges -->
+            <line id="sb-edge-1" x1="135" y1="42" x2="215" y2="42" stroke="#10B981" stroke-width="2.5" />
+            <line id="sb-edge-2" x1="345" y1="42" x2="425" y2="22" stroke="#10B981" stroke-width="2.5" />
+            <line id="sb-edge-3" x1="345" y1="42" x2="425" y2="66" stroke="#334155" stroke-width="2" stroke-dasharray="4,4" />
+            <line id="sb-edge-4" x1="545" y1="22" x2="590" y2="42" stroke="#10B981" stroke-width="2.5" />
+
+            <!-- Node 1: verify_order -->
+            <rect x="10" y="20" width="125" height="44" rx="8" fill="#0E1726" stroke="#10B981" stroke-width="2" />
+            <text x="22" y="39" fill="#F8FAFC" font-size="11" font-weight="700">1. verify_order</text>
+            <text x="22" y="55" fill="#34D399" font-size="10" font-family="monospace">COMPLETED · 45ms</text>
+
+            <!-- Node 2: charge_card -->
+            <rect id="sb-node-2" x="215" y="20" width="130" height="44" rx="8" fill="#0E1726" stroke="#10B981" stroke-width="2" />
+            <text x="227" y="39" fill="#F8FAFC" font-size="11" font-weight="700">2. charge_card</text>
+            <text id="sb-node-2-sub" x="227" y="55" fill="#34D399" font-size="10" font-family="monospace">COMPLETED · 120ms</text>
+
+            <!-- Node 3A: ship_vip -->
+            <rect id="sb-node-3a" x="425" y="4" width="120" height="36" rx="7" fill="#0E1726" stroke="#10B981" stroke-width="2" />
+            <text x="435" y="20" fill="#F8FAFC" font-size="10.5" font-weight="700">3a. vip_dispatch</text>
+            <text id="sb-node-3a-sub" x="435" y="33" fill="#34D399" font-size="9.5" font-family="monospace">COMPLETED · 80ms</text>
+
+            <!-- Node 3B: refund_compensate -->
+            <rect id="sb-node-3b" x="425" y="48" width="120" height="36" rx="7" fill="#0E1726" stroke="#334155" stroke-width="1.5" />
+            <text x="435" y="64" fill="#94A3B8" font-size="10.5" font-weight="700">3b. compensate</text>
+            <text id="sb-node-3b-sub" x="435" y="77" fill="#64748B" font-size="9.5" font-family="monospace">SKIPPED</text>
+
+            <!-- Node 4: notify_user -->
+            <rect id="sb-node-4" x="590" y="20" width="82" height="44" rx="8" fill="#0E1726" stroke="#10B981" stroke-width="2" />
+            <text x="600" y="39" fill="#F8FAFC" font-size="11" font-weight="700">4. notify</text>
+            <text id="sb-node-4-sub" x="600" y="55" fill="#34D399" font-size="9.5" font-family="monospace">DONE · 30ms</text>
+          </svg>
+
+          <div class="sandbox-console">
+            <span id="sb-console-msg">✅ 沙箱推演完成：SWITCH 命中 [vip] 分支，全链路 4 节点执行成功</span>
+            <span id="sb-console-time" style="color:var(--brand-cyan);">总耗时: 275ms</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bento 2: W-LSP & Data Lineage -->
+      <div class="bento-box">
+        <div>
+          <div class="bento-tag">Pillar 02 · W-LSP &amp; Data Lineage</div>
+          <div class="bento-h3">痛点终结：告别手敲 JSONPath 与改名断链</div>
+          <p class="bento-p">
+            键入 <code>${</code> 即刻计算 DAG 严格上游祖先，融合运行态真实样本与 Schema 弹出 0ms 补全；修改节点引用名时全图下游自动重构。
+          </p>
+        </div>
+        <div class="wlsp-demo-box">
+          <div class="wlsp-input-line">url: "https://api.pay/v1/<span style="color:var(--brand-cyan);">${charge_</span>|"</div>
+          <div class="wlsp-pop-item">
+            <span>charge_card.output.txId</span>
+            <span style="color:#34D399;">⚡ "tx_99201"</span>
+          </div>
+          <div class="wlsp-pop-item" style="background:transparent; color:#94A3B8;">
+            <span>workflow.input.orderId</span>
+            <span style="color:#A5B4FC;">⚡ "ORD-2026"</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bento 3: Canvas-Native AI & Shadow Graph Diff -->
+      <div class="bento-box">
+        <div>
+          <div class="bento-tag">Pillar 03 · Cmd+K Copilot &amp; Shadow Diff</div>
+          <div class="bento-h3">痛点终结：画布内联 Cmd+K 微调 + 架构级视觉 Diff</div>
+          <p class="bento-p">
+            不论在对话栏描述需求，还是选中节点按 <code>Cmd+K</code> 微调，AI 提案都会以 <strong>👻 Shadow Graph</strong> 在画布上高亮 <code>+新增</code> / <code>~修改</code> / <code>-移除</code>，支持逐节点勾选采纳。
+          </p>
+        </div>
+        <div style="display:flex; gap:0.45rem; font-family:var(--font-mono); font-size:0.75rem;">
+          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:rgba(16,185,129,0.15); color:#34D399;">+2 新增节点</span>
+          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:rgba(245,158,11,0.15); color:#FBBF24;">~1 修改参数</span>
+          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:rgba(244,63,94,0.15); color:#FB7185;">✓ 支持部分采纳</span>
+        </div>
+      </div>
+
+      <!-- Bento 4 (Span 2): Interactive Time-Travel Waterfall Scrubber -->
+      <div class="bento-box bento-span-2">
+        <div>
+          <div class="bento-tag">Pillar 04 · Time-Travel Waterfall &amp; Live Split-View Sync</div>
+          <div class="bento-h3">痛点终结：拖动毫秒级时间旅行滑块，像看录像一样回放并发分支瓶颈</div>
+          <p class="bento-p">
+            面对复杂的 <code>FORK_JOIN</code> 并行分支与 <code>DO_WHILE</code> 多轮循环，底部一键展开<strong>📊 并发甘特瀑布流</strong>。试着拖动下方时间轴滑块，实时观察不同时刻各并行任务的运行状态切换：
+          </p>
+        </div>
+
+        <div class="tt-box">
+          <div class="slider-row" style="margin-bottom:0.55rem;">
+            <span>🕒 时间旅行回放游标 (<strong id="tt-time-label" style="color:var(--brand-cyan);">T = 280 ms</strong> / 420 ms)</span>
+            <input type="range" min="0" max="420" value="280" oninput="scrubTimeTravel(this.value)" />
+          </div>
+          <div class="gantt-row">
+            <span>1. verify_order</span>
+            <div class="gantt-track"><div id="gt-1" class="gantt-bar" style="left:0%; width:22%; background:#10B981;"></div></div>
+            <span id="gt-st-1" style="color:#34D399;">DONE</span>
+          </div>
+          <div class="gantt-row">
+            <span>2a. fork_risk</span>
+            <div class="gantt-track"><div id="gt-2" class="gantt-bar" style="left:22%; width:38%; background:#10B981;"></div></div>
+            <span id="gt-st-2" style="color:#34D399;">DONE</span>
+          </div>
+          <div class="gantt-row">
+            <span>2b. fork_quota</span>
+            <div class="gantt-track"><div id="gt-3" class="gantt-bar" style="left:22%; width:55%; background:#3B82F6;"></div></div>
+            <span id="gt-st-3" style="color:#60A5FA;">RUNNING</span>
+          </div>
+          <div class="gantt-row" style="margin-bottom:0;">
+            <span>3. settle_order</span>
+            <div class="gantt-track"><div id="gt-4" class="gantt-bar" style="left:77%; width:23%; background:#475569; opacity:0.35;"></div></div>
+            <span id="gt-st-4" style="color:#64748B;">PENDING</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         L2 极速接入指南：3 步完成前端或 CI 集成
+         ======================================================================== -->
+    <div id="quickstart" class="sec-head">
+      <div>
+        <div class="sec-title">3 种模式极速接入您的系统 (Quickstart Guide)</div>
+        <div class="sec-sub">按需选择专业编排器、AI 原生双栏工作台或无头沙箱/血缘 SDK</div>
+      </div>
+      <button class="copy-cli-btn" onclick="copyCodeSnippet(this)">复制当前代码片段</button>
+    </div>
+
+    <section class="quickstart-box">
+      <div class="qs-tabs">
+        <button class="qs-tab active" onclick="switchQS('pro', this)">模式 1：专业编排工作台 (&lt;WorkflowIDE /&gt;)</button>
+        <button class="qs-tab" onclick="switchQS('ai', this)">模式 2：AI 原生双栏工作台 (&lt;AiWorkflowIDE /&gt;)</button>
+        <button class="qs-tab" onclick="switchQS('sdk', this)">模式 3：编程式沙箱与血缘校验 SDK (CI / 单测集成)</button>
+      </div>
+      <div class="qs-content-wrap">
+        <div id="qs-body" class="qs-content">import { useRef } from 'react';
+import { WorkflowIDE, WorkflowIDERef } from '@yiyi_zhang/reactflow-ui';
+import '@yiyi_zhang/reactflow-ui/style.css';
+
+export function MyWorkflowStudio() {
+  const ideRef = useRef&lt;WorkflowIDERef&gt;(null);
+
+  return (
+    &lt;div style={{ height: '100vh', width: '100%' }}&gt;
+      &lt;WorkflowIDE
+        ref={ideRef}
+        theme="dark"
+        themeColor="blue"
+        onSave={(def) =&gt; fetch('/api/workflows', { method: 'POST', body: JSON.stringify(def) })}
+      /&gt;
+    &lt;/div&gt;
+  );
+}</div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         L3 折叠证据层：v1.0.0 架构与质量门禁基准数据
+         ======================================================================== -->
+    <details class="evidence-drawer">
+      <summary>
+        <span>📂 [L3 技术溯源] 查看 v1.0.0 四大核心支柱能力矩阵、包体积基准与全量导出符号表</span>
+        <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--brand-cyan);">点击展开 ▾</span>
+      </summary>
+      <table class="evidence-table">
+        <thead>
+          <tr>
+            <th>能力维度</th>
+            <th>v0.3 ~ v0.4 旧版能力</th>
+            <th>v1.0.0 GA 正式版能力</th>
+            <th>工程量化收益</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>变量引用与重构</strong></td>
+            <td>静态固定模版片段，改名需手动全局查找替换</td>
+            <td><strong>W-LSP 语言服务</strong>：DAG 严格祖先推导 + 五源 Schema 推断 + 改名自动重写下游</td>
+            <td style="color:var(--brand-emerald);">拼写与断链故障率降至 0%</td>
+          </tr>
+          <tr>
+            <td><strong>流程验证与调试</strong></td>
+            <td>必须对接后端 Conductor 实例或仅做简单高亮演示</td>
+            <td><strong>0ms 浏览器确定性沙箱</strong> + 🧪 人工模拟数据/故障注入台 + 📊 时间旅行甘特瀑布流</td>
+            <td style="color:var(--brand-emerald);">单流程联调耗时从 110min 降至 5min</td>
+          </tr>
+          <tr>
+            <td><strong>AI 协同范式</strong></td>
+            <td>仅侧边栏全量替换 JSON，Mermaid 依赖重达 60MB+</td>
+            <td><strong>画布内联 Cmd+K 微调</strong> + 👻 Shadow Graph 部分采纳 + 零依赖 Dagre 原生 SVG 渲染</td>
+            <td style="color:var(--brand-emerald);">npm 安装体积减少 60MB+，首屏零闪烁</td>
+          </tr>
+          <tr>
+            <td><strong>视图与代码同步</strong></td>
+            <td>弹窗式导入导出 JSON，大图缩小时文字重叠</td>
+            <td><strong>300ms 防抖双向实时分屏 JSON</strong> + 三级语义缩放 (Semantic LOD) + 统一毛玻璃胶囊栏</td>
+            <td style="color:var(--brand-emerald);">百节点大图 60fps 丝滑缩放</td>
+          </tr>
+        </tbody>
+      </table>
+    </details>
+  </div>
+
+  <script>
+    const pmCommands = {
+      npm: 'npm install @yiyi_zhang/reactflow-ui reactflow react react-dom',
+      pnpm: 'pnpm add @yiyi_zhang/reactflow-ui reactflow react react-dom',
+      ai: "import { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';",
+      demo: 'git clone https://github.com/yiyisf/reactflow-ui.git && cd reactflow-ui && npm i && npm run dev'
+    };
+
+    function switchPM(key, btn) {
+      document.querySelectorAll('.pm-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('cli-cmd').textContent = pmCommands[key];
+    }
+
+    function copyInstall(btn) {
+      const cmd = document.getElementById('cli-cmd').textContent;
+      navigator.clipboard.writeText(cmd);
+      const orig = btn.textContent;
+      btn.textContent = "✓ 已复制";
+      setTimeout(() => btn.textContent = orig, 1600);
+    }
+
+    function recalcROI() {
+      const devs = parseInt(document.getElementById('dev-slider').value, 10);
+      const wfs = parseInt(document.getElementById('wf-slider').value, 10);
+      document.getElementById('dev-count-label').textContent = devs + ' 人';
+      document.getElementById('wf-count-label').textContent = wfs + ' 条 / 月';
+
+      // 每条工作流从 4.5h (270min) 降至 12min，单流程净省 4.3 小时
+      const savedHours = Math.round(devs * wfs * 4.3);
+      const savedMoney = (savedHours * 0.05).toFixed(1);
+      const preventedBugs = Math.round(devs * wfs * 0.6);
+
+      document.getElementById('roi-hours').textContent = savedHours + ' h';
+      document.getElementById('roi-money').textContent = '¥' + savedMoney + ' 万';
+      document.getElementById('roi-bugs').textContent = preventedBugs + ' 次';
+    }
+
+    function runMiniSandbox(scene, btn) {
+      document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const n2 = document.getElementById('sb-node-2');
+      const n2Sub = document.getElementById('sb-node-2-sub');
+      const n3a = document.getElementById('sb-node-3a');
+      const n3aSub = document.getElementById('sb-node-3a-sub');
+      const n3b = document.getElementById('sb-node-3b');
+      const n3bSub = document.getElementById('sb-node-3b-sub');
+      const n4 = document.getElementById('sb-node-4');
+      const n4Sub = document.getElementById('sb-node-4-sub');
+      const e2 = document.getElementById('sb-edge-2');
+      const e3 = document.getElementById('sb-edge-3');
+      const e4 = document.getElementById('sb-edge-4');
+      const msg = document.getElementById('sb-console-msg');
+      const time = document.getElementById('sb-console-time');
+
+      if (scene === 'vip') {
+        n2.setAttribute('stroke', '#10B981');
+        n2Sub.textContent = 'COMPLETED · 120ms';
+        n2Sub.setAttribute('fill', '#34D399');
+
+        e2.setAttribute('stroke', '#10B981');
+        e2.removeAttribute('stroke-dasharray');
+        e3.setAttribute('stroke', '#334155');
+        e3.setAttribute('stroke-dasharray', '4,4');
+
+        n3a.setAttribute('stroke', '#10B981');
+        n3aSub.textContent = 'COMPLETED · 80ms';
+        n3aSub.setAttribute('fill', '#34D399');
+
+        n3b.setAttribute('stroke', '#334155');
+        n3bSub.textContent = 'SKIPPED';
+        n3bSub.setAttribute('fill', '#64748B');
+
+        n4.setAttribute('stroke', '#10B981');
+        n4Sub.textContent = 'DONE · 30ms';
+        n4Sub.setAttribute('fill', '#34D399');
+        e4.setAttribute('stroke', '#10B981');
+
+        msg.textContent = '✅ 沙箱推演完成：SWITCH 命中 [vip] 分支，全链路 4 节点执行成功';
+        msg.style.color = '#34D399';
+        time.textContent = '总耗时: 275ms';
+      } else if (scene === 'fail') {
+        n2.setAttribute('stroke', '#F43F5E');
+        n2Sub.textContent = 'TIMED_OUT · 502ms';
+        n2Sub.setAttribute('fill', '#FB7185');
+
+        e2.setAttribute('stroke', '#334155');
+        e2.setAttribute('stroke-dasharray', '4,4');
+        e3.setAttribute('stroke', '#F59E0B');
+        e3.removeAttribute('stroke-dasharray');
+
+        n3a.setAttribute('stroke', '#334155');
+        n3aSub.textContent = 'SKIPPED';
+        n3aSub.setAttribute('fill', '#64748B');
+
+        n3b.setAttribute('stroke', '#F59E0B');
+        n3bSub.textContent = 'COMPENSATED · 95ms';
+        n3bSub.setAttribute('fill', '#FBBF24');
+
+        n4.setAttribute('stroke', '#F43F5E');
+        n4Sub.textContent = 'TERMINATED';
+        n4Sub.setAttribute('fill', '#FB7185');
+        e4.setAttribute('stroke', '#334155');
+
+        msg.textContent = '⚠️ 故障注入生效：charge_card 触发 502 超时，自动路由至 3b. compensate 退款补偿分支';
+        msg.style.color = '#FBBF24';
+        time.textContent = '总耗时: 642ms';
+      } else {
+        n2.setAttribute('stroke', '#8B5CF6');
+        n2Sub.textContent = 'LOOP [1][2][3] · 210ms';
+        n2Sub.setAttribute('fill', '#C4B5FD');
+
+        e2.setAttribute('stroke', '#10B981');
+        e2.removeAttribute('stroke-dasharray');
+        e3.setAttribute('stroke', '#334155');
+        e3.setAttribute('stroke-dasharray', '4,4');
+
+        n3a.setAttribute('stroke', '#10B981');
+        n3aSub.textContent = 'ITER #3 PASS · 65ms';
+        n3aSub.setAttribute('fill', '#34D399');
+
+        n3b.setAttribute('stroke', '#334155');
+        n3bSub.textContent = 'SKIPPED';
+        n3bSub.setAttribute('fill', '#64748B');
+
+        n4.setAttribute('stroke', '#10B981');
+        n4Sub.textContent = 'DONE · 30ms';
+        n4Sub.setAttribute('fill', '#34D399');
+        e4.setAttribute('stroke', '#10B981');
+
+        msg.textContent = '🔄 循环推演完成：生成 __1 / __2 / __3 三轮迭代快照，可在节点胶囊一键切片查看';
+        msg.style.color = '#C4B5FD';
+        time.textContent = '总耗时: 350ms';
+      }
+    }
+
+    function scrubTimeTravel(val) {
+      const t = parseInt(val, 10);
+      document.getElementById('tt-time-label').textContent = 'T = ' + t + ' ms';
+
+      const setBar = (id, stId, start, end) => {
+        const bar = document.getElementById(id);
+        const st = document.getElementById(stId);
+        if (t < start) {
+          bar.style.background = '#475569';
+          bar.style.opacity = '0.35';
+          st.textContent = 'PENDING';
+          st.style.color = '#64748B';
+        } else if (t >= start && t < end) {
+          bar.style.background = '#3B82F6';
+          bar.style.opacity = '1';
+          st.textContent = 'RUNNING';
+          st.style.color = '#60A5FA';
+        } else {
+          bar.style.background = '#10B981';
+          bar.style.opacity = '1';
+          st.textContent = 'DONE';
+          st.style.color = '#34D399';
+        }
+      };
+
+      setBar('gt-1', 'gt-st-1', 0, 90);
+      setBar('gt-2', 'gt-st-2', 90, 250);
+      setBar('gt-3', 'gt-st-3', 90, 320);
+      setBar('gt-4', 'gt-st-4', 320, 420);
+    }
+
+    const qsSnippets = {
+      pro: `import { useRef } from 'react';
+import { WorkflowIDE, WorkflowIDERef } from '@yiyi_zhang/reactflow-ui';
+import '@yiyi_zhang/reactflow-ui/style.css';
+
+export function MyWorkflowStudio() {
+  const ideRef = useRef<WorkflowIDERef>(null);
+
+  return (
+    <div style={{ height: '100vh', width: '100%' }}>
+      <WorkflowIDE
+        ref={ideRef}
+        theme="dark"
+        themeColor="blue"
+        onSave={(def) => fetch('/api/workflows', { method: 'POST', body: JSON.stringify(def) })}
+      />
+    </div>
+  );
+}`,
+      ai: `import { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';
+import '@yiyi_zhang/reactflow-ui/style.css';
+
+export function MyAiWorkflowStudio() {
+  return (
+    <div style={{ height: '100vh', width: '100%' }}>
+      <AiWorkflowIDE
+        aiConfig={{
+          // 生产环境推荐通过后端代理转发，避免在前端暴露模型 API Key
+          transport: { type: 'endpoint', url: '/api/ai/workflow-agent' },
+        }}
+        draftPersist={{ key: 'corp-workflow-draft' }}
+        onSave={(def) => console.log('保存工作流:', def)}
+      />
+    </div>
+  );
+}`,
+      sdk: `import { executeLocalSandboxDryRun, buildDataFlowGraph } from '@yiyi_zhang/reactflow-ui';
+
+// 1. 在 CI 流水线或前端单测中 0ms 演练故障注入与分支覆盖
+const instance = executeLocalSandboxDryRun(workflowDef, {
+  workflowInput: { orderId: 'ORD-2026', vipLevel: 3 },
+  taskMocks: {
+    charge_card: { status: 'TIMED_OUT', reasonForIncompletion: '模拟网关 502 超时' }
+  }
+});
+
+// 2. 静态提取全局数据流血缘图谱，拦截非法跨分支引用
+const dfg = buildDataFlowGraph(workflowDef);
+console.assert(dfg.diagnostics.length === 0, '发现非法参数引用:', dfg.diagnostics);`
+    };
+
+    function switchQS(key, btn) {
+      document.querySelectorAll('.qs-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('qs-body').textContent = qsSnippets[key];
+    }
+
+    function copyCodeSnippet(btn) {
+      const code = document.getElementById('qs-body').textContent;
+      navigator.clipboard.writeText(code);
+      const orig = btn.textContent;
+      btn.textContent = "✓ 已复制代码片段";
+      setTimeout(() => btn.textContent = orig, 1600);
+    }
+  </script>
+</body>
 </html>

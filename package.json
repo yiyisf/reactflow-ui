@@ -1,14 +1,17 @@
 {
   "name": "@yiyi_zhang/reactflow-ui",
-  "version": "0.5.0-beta.0",
-  "description": "Conductor Workflow IDE — a visual workflow designer built with React 19, ReactFlow and Zustand for editing, validating and monitoring Netflix Conductor workflows.",
+  "version": "1.0.0",
+  "description": "Conductor Workflow IDE — Next-Gen AI-Native visual workflow designer with W-LSP data lineage, deterministic in-browser sandbox dry-run, time-travel waterfall debugger, and live split-view sync built with React 19, ReactFlow and Zustand.",
   "keywords": [
     "conductor",
     "workflow",
     "reactflow",
     "react",
     "visual-editor",
-    "dag"
+    "dag",
+    "ai-workflow",
+    "wlsp",
+    "sandbox"
   ],
   "license": "MIT",
   "repository": {
@@ -51,7 +54,6 @@
   "dependencies": {
     "dagre": "^0.8.5",
     "lucide-react": "^0.562.0",
-    "mermaid": "^11.15.0",
     "react-hotkeys-hook": "^5.2.1",
     "zundo": "^2.3.0",
     "zustand": "^5.0.9"

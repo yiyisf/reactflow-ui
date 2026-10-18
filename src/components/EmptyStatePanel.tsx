@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { BrandLogo } from './BrandLogo';
 import './EmptyStatePanel.css';
 
 interface EmptyStatePanelProps {
@@ -24,6 +25,9 @@ const EmptyStatePanel: React.FC<EmptyStatePanelProps> = ({ onRequestImport }) =>
 
     return (
         <div className="empty-state-panel">
+            <div style={{ marginBottom: 12 }}>
+                <BrandLogo size={46} />
+            </div>
             <h2 className="empty-state-title">创建新工作流</h2>
             <p className="empty-state-subtitle">
                 从空白画布开始设计，或让 AI 帮你生成完整流程

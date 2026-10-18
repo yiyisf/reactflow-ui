@@ -46,4 +46,29 @@ export type { AiMetrics } from './store/aiStore';
 // ── 共享基础类型（与主入口一致，供仅引入 /ai 的集成方使用） ─────────────────
 export type { WorkflowDef, TaskDef, WorkflowInputParam, WorkflowInstance } from './types/conductor';
 export { parseWorkflowInputParams } from './types/conductor';
-export type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData } from './types/workflow';
+export type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData, WorkflowExecutionInput } from './types/workflow';
+
+// ── v1.0.0: W-LSP & 浏览器本地沙箱引擎 ──────────────────────────────────────
+export {
+    getCompletionItems,
+    buildDataFlowGraph,
+    refactorTaskReferenceName,
+    getUpstreamAncestors,
+    inferTaskOutputSchema,
+} from './services/wlsp/workflowLsp';
+export type {
+    WlspCompletionItem,
+    DataFlowGraph,
+    DataFlowEdge,
+    InferredField,
+    UpstreamTaskInfo,
+} from './services/wlsp/workflowLsp';
+export {
+    executeLocalSandboxDryRun,
+    buildDefaultWorkflowMockInput,
+    generateDefaultTaskOutputPreview,
+} from './utils/localSandboxEngine';
+export type {
+    SandboxDryRunOptions,
+    TaskMockOverride,
+} from './utils/localSandboxEngine';

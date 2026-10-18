@@ -107,4 +107,84 @@ describe('In-Browser Deterministic Dry-Run Sandbox Engine', () => {
     expect(executedRefs).toContain('loop_worker_ref');
     expect(executedRefs).toContain('loop_worker_ref__2');
   });
+
+  it('supports manual TaskMockOverride for custom outputData, forceCase routing, custom durationMs, and FAILED fault injection', () => {
+    const wf: WorkflowDef = {
+      name: 'manual_mock_wf',
+      version: 1,
+      tasks: [
+        {
+          name: 'risk_check',
+          taskReferenceName: 'risk_check_ref',
+          type: 'HTTP',
+          inputParameters: {},
+        },
+        {
+          name: 'route_decision',
+          taskReferenceName: 'route_decision_ref',
+          type: 'SWITCH',
+          caseValueParam: 'risk',
+          inputParameters: {
+            risk: '${risk_check_ref.output.riskLevel}',
+          },
+          decisionCases: {
+            LOW: [
+              {
+                name: 'auto_approve',
+                taskReferenceName: 'auto_approve_ref',
+                type: 'SIMPLE',
+              },
+            ],
+            HIGH: [
+              {
+                name: 'manual_audit',
+                taskReferenceName: 'manual_audit_ref',
+                type: 'SIMPLE',
+              },
+            ],
+          },
+        },
+        {
+          name: 'final_settlement',
+          taskReferenceName: 'final_settlement_ref',
+          type: 'SIMPLE',
+        },
+      ],
+    };
+
+    const instance = executeLocalSandboxDryRun(wf, {
+      taskMocks: {
+        risk_check_ref: {
+          __isMockOverride: true,
+          status: 'COMPLETED',
+          durationMs: 888,
+          outputData: { riskLevel: 'LOW', customTag: 'mocked-by-user' },
+        },
+        // Force SWITCH to take HIGH branch despite riskLevel being LOW
+        route_decision_ref: {
+          __isMockOverride: true,
+          forceCase: 'HIGH',
+        },
+        // Inject failure on manual_audit_ref so final_settlement_ref is short-circuited
+        manual_audit_ref: {
+          __isMockOverride: true,
+          status: 'FAILED',
+          reasonForIncompletion: 'Simulated audit rejection',
+        },
+      },
+    });
+
+    expect(instance.status).toBe('FAILED');
+    const executedRefs = instance.tasks.map((t) => t.referenceTaskName);
+    expect(executedRefs).toEqual(['risk_check_ref', 'route_decision_ref', 'manual_audit_ref']);
+    expect(executedRefs).not.toContain('final_settlement_ref');
+
+    const riskTask = instance.tasks.find((t) => t.referenceTaskName === 'risk_check_ref');
+    expect(riskTask?.outputData?.customTag).toBe('mocked-by-user');
+    expect((riskTask?.endTime || 0) - (riskTask?.startTime || 0)).toBe(888);
+
+    const auditTask = instance.tasks.find((t) => t.referenceTaskName === 'manual_audit_ref');
+    expect(auditTask?.status).toBe('FAILED');
+    expect(auditTask?.reasonForIncompletion).toBe('Simulated audit rejection');
+  });
 });

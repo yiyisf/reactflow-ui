@@ -1034,13 +1034,15 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }),
                 runLocalSandboxDryRun: (
                     mockInput?: Record<string, any>,
-                    taskMocks?: Record<string, Record<string, any>>
+                    taskMocks?: Record<string, any>,
+                    maxLoopIterations?: number
                 ) => {
                     const { workflowDef } = get();
                     if (!workflowDef) return;
                     const instance = executeLocalSandboxDryRun(workflowDef, {
                         workflowInput: mockInput,
                         taskMocks,
+                        maxLoopIterations,
                     });
                     get().importExecutionJSON(instance);
                     set({ showWaterfallPanel: true });

@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useMemo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { TaskDef } from '../types/conductor';
 import { AIServiceConfig, callAICopilot, generateTaskParameters } from '../services/aiService';
@@ -6,6 +6,7 @@ import { generateParameterHintPrompt } from '../services/promptTemplates';
 import { parseWorkflowInputParams } from '../types/conductor';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
+import { getCompletionItems } from '../services/wlsp/workflowLsp';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
@@ -25,7 +26,16 @@ const QUICK_SNIPPETS = [
 ];
 
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
-    const { mode, updateTask, checkTaskRefUniqueness } = useWorkflowStore();
+    const {
+        mode,
+        updateTask,
+        checkTaskRefUniqueness,
+        workflowDef,
+        executionData,
+        workflowInstance,
+        lastRefactorNotice,
+        clearRefactorNotice,
+    } = useWorkflowStore();
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
     // syncedRef: the taskReferenceName at the time localTask was last synced from `task`.
     // Used to identify the "same task" even while the user is editing the ref name field.
@@ -52,6 +62,18 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     const [suggesterAnchor, setSuggesterAnchor] = useState<DOMRect | undefined>();
     const [currentSuggestions, setCurrentSuggestions] = useState<Suggestion[]>([]);
     const [onSelectSuggestion, setOnSelectSuggestion] = useState<(val: string) => void>(() => () => { });
+
+    // W-LSP 零延迟确定性变量补全列表（基于 DAG 拓扑祖先与多源 Schema 推断）
+    const activeTaskRef = task?.taskReferenceName || localTask?.taskReferenceName || '';
+    const wlspItems = useMemo(() => {
+        if (!workflowDef || !activeTaskRef) return [];
+        return getCompletionItems(
+            workflowDef as any,
+            activeTaskRef,
+            executionData,
+            workflowInstance?.input
+        );
+    }, [workflowDef, activeTaskRef, executionData, workflowInstance?.input]);
 
     // 全屏编辑器状态
     type FullscreenState = { title: string; value: string; language: string; onSave: (v: string) => void } | null;
@@ -117,9 +139,14 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         setSuggesterAnchor(rect);
         setOnSelectSuggestion(() => onSelect);
-        setCurrentSuggestions([]);
         setSuggesterOpen(true);
 
+        // W-LSP items are already available in 0ms via wlspItems prop; only fall back to LLM if wlspItems is empty
+        if (wlspItems.length > 0) {
+            return;
+        }
+
+        setCurrentSuggestions([]);
         const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
         if (!apiKey) {
             setCurrentSuggestions(mockSuggestions);
@@ -266,11 +293,23 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         value={currentVal}
                         placeholder={placeholder}
                         onChange={(e) => {
+                            const nextVal = e.target.value;
                             if (isRefName) {
                                 // 引用名字段：仅更新本地草稿，不触发 store 更新（避免每次按键重新解析）
-                                setPendingRefName(e.target.value);
+                                setPendingRefName(nextVal);
                             } else {
-                                handleChange(field, type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value);
+                                handleChange(field, type === 'number' ? (nextVal === '' ? undefined : Number(nextVal)) : nextVal);
+                                const pos = e.target.selectionStart ?? 0;
+                                if (type === 'text' && pos >= 2 && nextVal.slice(pos - 2, pos) === '${') {
+                                    const rect = e.target.getBoundingClientRect();
+                                    setSuggesterAnchor(rect);
+                                    setOnSelectSuggestion(() => (selectedExpr: string) => {
+                                        const before = nextVal.slice(0, pos - 2);
+                                        const after = nextVal.slice(pos);
+                                        handleChange(field, before + selectedExpr + after);
+                                    });
+                                    setSuggesterOpen(true);
+                                }
                             }
                         }}
                         onFocus={isRefName ? () => {
@@ -354,7 +393,22 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 <textarea
                     value={value}
                     placeholder={ph}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => {
+                        const nextVal = e.target.value;
+                        onChange(nextVal);
+                        // W-LSP auto-trigger when user types "${"
+                        const pos = e.target.selectionStart ?? 0;
+                        if (pos >= 2 && nextVal.slice(pos - 2, pos) === '${') {
+                            const rect = e.target.getBoundingClientRect();
+                            setSuggesterAnchor(rect);
+                            setOnSelectSuggestion(() => (selectedExpr: string) => {
+                                const before = nextVal.slice(0, pos - 2);
+                                const after = nextVal.slice(pos);
+                                onChange(before + selectedExpr + after);
+                            });
+                            setSuggesterOpen(true);
+                        }
+                    }}
                     disabled={!isEditMode}
                     rows={rows}
                     data-field={dataField}
@@ -368,7 +422,25 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     const renderSmallInput = (label: string, value: any, onChange: (v: any) => void, type: 'text' | 'number' = 'text', placeholder?: string) => (
         <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>{label}</label>
-            <input type={type} value={value ?? ''} placeholder={placeholder} onChange={(e) => onChange(type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value)}
+            <input
+                type={type}
+                value={value ?? ''}
+                placeholder={placeholder}
+                onChange={(e) => {
+                    const nextVal = e.target.value;
+                    onChange(type === 'number' ? (nextVal === '' ? undefined : Number(nextVal)) : nextVal);
+                    const pos = e.target.selectionStart ?? 0;
+                    if (type === 'text' && pos >= 2 && nextVal.slice(pos - 2, pos) === '${') {
+                        const rect = e.target.getBoundingClientRect();
+                        setSuggesterAnchor(rect);
+                        setOnSelectSuggestion(() => (selectedExpr: string) => {
+                            const before = nextVal.slice(0, pos - 2);
+                            const after = nextVal.slice(pos);
+                            onChange(before + selectedExpr + after);
+                        });
+                        setSuggesterOpen(true);
+                    }
+                }}
                 disabled={!isEditMode}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: '12px', outline: 'none' }}
             />
@@ -760,16 +832,61 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '16px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '1px' }}>通用参数与属性</div>
 
                     {renderInput('任务唯一引用名 (Reference Name)', 'taskReferenceName')}
+                    {lastRefactorNotice && lastRefactorNotice.newRef === displayTask.taskReferenceName && (
+                        <div style={{
+                            marginBottom: '16px', padding: '10px 12px', borderRadius: '8px',
+                            background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)',
+                            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px'
+                        }}>
+                            <div style={{ fontSize: '11px', color: '#34d399', lineHeight: 1.5 }}>
+                                <b>🔗 W-LSP 全图级联重构已生效</b><br />
+                                引用名 <code>{lastRefactorNotice.oldRef}</code> → <code>{lastRefactorNotice.newRef}</code>，已自动同步 <b>{lastRefactorNotice.replacedCount}</b> 处下游表达式（涉及节点：{lastRefactorNotice.affectedTasks.join(', ')}）
+                            </div>
+                            <button
+                                onClick={clearRefactorNotice}
+                                style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer', fontSize: '12px', padding: '2px' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                    )}
                     {renderInput('任务描述', 'description')}
 
                     {/* inputParameters with snippet panel + AI fill */}
                     <div style={{ marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', gap: '6px' }}>
                             <label style={{ fontSize: '11px', color: secondaryTextColor, fontWeight: '600', textTransform: 'uppercase', flex: 1 }}>
-                                输入参数 (inputParameters) <span style={{ opacity: 0.5, fontWeight: 'normal' }}>(JSON)</span>
+                                输入参数 (inputParameters) <span style={{ opacity: 0.5, fontWeight: 'normal' }}>(JSON / 输入 ${'{'} 自动补全)</span>
                             </label>
                             {isEditMode && (
                                 <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                        onClick={(e) => {
+                                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                            setSuggesterAnchor(rect);
+                                            setOnSelectSuggestion(() => (val: string) => {
+                                                if (activeTextareaRef) {
+                                                    insertSnippet(val);
+                                                } else {
+                                                    const cur = typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null
+                                                        ? { ...displayTask.inputParameters }
+                                                        : {};
+                                                    cur[`param_${Object.keys(cur).length + 1}`] = val;
+                                                    handleChange('inputParameters', cur);
+                                                }
+                                            });
+                                            setSuggesterOpen(true);
+                                        }}
+                                        title="打开 W-LSP 上游变量与 Schema 零延迟补全器"
+                                        style={{
+                                            fontSize: '11px', background: 'rgba(56, 189, 248, 0.14)',
+                                            border: '1px solid rgba(56, 189, 248, 0.35)', borderRadius: '4px', padding: '2px 8px',
+                                            cursor: 'pointer', color: '#38bdf8', fontWeight: 600,
+                                            display: 'flex', alignItems: 'center', gap: '4px'
+                                        }}
+                                    >
+                                        ⚡ 变量补全
+                                    </button>
                                     <button
                                         onClick={handleAiFillParams}
                                         disabled={aiFillLoading}
@@ -883,7 +1000,14 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 </div>
             )}
 
-            <ParameterSuggester isOpen={suggesterOpen} onClose={() => setSuggesterOpen(false)} onSelect={onSelectSuggestion} suggestions={currentSuggestions} anchorRect={suggesterAnchor} />
+            <ParameterSuggester
+                isOpen={suggesterOpen}
+                onClose={() => setSuggesterOpen(false)}
+                onSelect={onSelectSuggestion}
+                suggestions={currentSuggestions}
+                wlspItems={wlspItems}
+                anchorRect={suggesterAnchor}
+            />
         </div>
 
         {/* 全屏代码编辑器（Portal，挂载到 document.body） */}

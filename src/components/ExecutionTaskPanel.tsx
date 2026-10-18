@@ -424,11 +424,21 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                 )}
 
                 {activeTab === 'input' && (
-                    <JsonBlock data={displayInput} />
+                    <StructuredJsonViewer
+                        data={displayInput}
+                        taskReferenceName={isGlobal ? undefined : selectedTask.taskReferenceName}
+                        expressionScope={isGlobal ? 'workflow.input' : 'input'}
+                        maxHeight="calc(100vh - 280px)"
+                    />
                 )}
 
                 {activeTab === 'output' && (
-                    <JsonBlock data={displayOutput} />
+                    <StructuredJsonViewer
+                        data={displayOutput}
+                        taskReferenceName={isGlobal ? undefined : selectedTask.taskReferenceName}
+                        expressionScope="output"
+                        maxHeight="calc(100vh - 280px)"
+                    />
                 )}
             </div>
         </div>
@@ -436,23 +446,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
 };
 
 /* ── Helpers ── */
-
-const JsonBlock: React.FC<{ data: any }> = ({ data }) => (
-    <div style={{
-        background: 'var(--bg-tertiary)',
-        padding: 16,
-        borderRadius: 10,
-        border: '1px solid var(--glass-border)',
-        fontFamily: "'Fira Code', monospace",
-        fontSize: 12,
-        lineHeight: 1.6,
-        color: 'var(--text-primary)',
-        wordBreak: 'break-all',
-        whiteSpace: 'pre-wrap',
-    }}>
-        {JSON.stringify(data ?? {}, null, 2)}
-    </div>
-);
+import StructuredJsonViewer from './StructuredJsonViewer';
 
 const taskOpBtnStyle: React.CSSProperties = {
     display: 'inline-flex',

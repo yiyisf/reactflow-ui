@@ -15,7 +15,15 @@ type LoopNodeProps = NodeProps<WorkflowNodeData>;
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const { sourcePosition, targetPosition } = useNodeLayout(data);
     const { execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
-    const { executionData, selectTaskAction, mode, viewMode, removeNode } = useWorkflowStore();
+    const {
+        executionData,
+        selectTaskAction,
+        mode,
+        viewMode,
+        removeNode,
+        activeLoopIterations,
+        setLoopIteration,
+    } = useWorkflowStore();
     const [showConfirm, setShowConfirm] = useState(false);
 
     const task = data.task;
@@ -24,17 +32,19 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const taskConfig = useMemo(() => TASK_TYPES.find(t => t.type === 'DO_WHILE'), []);
     const IconComponent = taskConfig?.icon || Repeat;
 
-    // Infer total iterations from loop body execution data
+    // Infer total iterations from loop body execution data or loop task's own iteration count
     const totalIterations = useMemo(() => {
-        if (!isRunning || !executionData || loopOver.length === 0) return 0;
-        let maxIter = 0;
+        if (!isRunning || !executionData) return 0;
+        let maxIter = execution?.iteration ?? 0;
         loopOver.forEach(subTask => {
             const subExec = executionData[subTask.taskReferenceName];
             if (subExec?.totalIterations) maxIter = Math.max(maxIter, subExec.totalIterations);
             else if (subExec?.attempts.some(a => (a.iteration ?? 0) > 0)) maxIter = Math.max(maxIter, subExec.attempts.length);
         });
         return maxIter;
-    }, [isRunning, executionData, loopOver]);
+    }, [isRunning, executionData, loopOver, execution?.iteration]);
+
+    const currentActiveIter = activeLoopIterations[data.taskReferenceName] || totalIterations;
 
     const loopCondition = data.loopCondition || task?.loopCondition || '';
 
@@ -68,18 +78,12 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 height: '100%',
                 border: borderStyle,
                 borderRadius: '10px',
-                // 背景透明：ReactFlow 的边渲染在 SVG 层（DOM 中排在节点 div 之前），
-                // 透明背景让 SVG 连线可透过容器显示。
                 background: 'transparent',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
                 overflow: 'visible',
                 boxSizing: 'border-box',
-                // pointer-events: none 让鼠标事件穿透到 SVG 层（循环体内的边）。
-                // CSS 规范：none 不会影响子元素——子元素依然可以接收事件，
-                // 且子元素触发的事件照常通过 DOM 冒泡到 ReactFlow 的 .react-flow__node
-                // wrapper，节点选中与拖拽不受影响。
                 pointerEvents: 'none',
             }}
         >
@@ -106,7 +110,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                         zIndex: 100,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                         padding: 0,
-                        pointerEvents: 'auto',  // 恢复：删除按钮需要响应点击
+                        pointerEvents: 'auto',
                     }}
                     title="删除循环任务"
                 >
@@ -122,7 +126,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     backgroundColor: '#ef4444', color: 'white', border: '2px solid white',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '14px', zIndex: 101, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                    pointerEvents: 'auto',  // 恢复：错误徽章需要 title tooltip
+                    pointerEvents: 'auto',
                 }} title="此节点配置有误">❗</div>
             )}
             {!data.isError && data.hasWarning && (
@@ -132,7 +136,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     backgroundColor: '#f59e0b', color: 'white', border: '2px solid white',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '14px', zIndex: 101, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                    pointerEvents: 'auto',  // 恢复：警告徽章需要 title tooltip
+                    pointerEvents: 'auto',
                 }} title="此节点有警告信息">⚠️</div>
             )}
 
@@ -144,8 +148,6 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             )}
 
             {/* ── Header bar ─────────────────────────────── */}
-            {/* pointerEvents: auto 恢复：header 需响应点击（选中节点、迭代次数 badge 等）
-                子元素触发的事件会通过 DOM 冒泡传到 ReactFlow wrapper，完成节点选中逻辑 */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -178,7 +180,6 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {data.taskReferenceName}
                     </div>
-                    {/* viewMode-aware meta: business shows description, developer shows loop condition */}
                     {(viewMode === 'business' || viewMode === 'developer') && meta && (
                         <div style={{
                             fontSize: '9px', color: 'var(--text-secondary)',
@@ -229,6 +230,57 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 )}
             </div>
 
+            {/* ── Run-mode Iteration Switcher Strip ──────── */}
+            {isRunning && totalIterations > 1 && (
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 10px',
+                        background: 'rgba(15, 23, 42, 0.72)',
+                        borderBottom: '1px solid var(--border-primary)',
+                        flexShrink: 0,
+                        pointerEvents: 'auto',
+                        overflowX: 'auto',
+                    }}
+                >
+                    <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, marginRight: '2px' }}>
+                        切换轮次:
+                    </span>
+                    {Array.from({ length: totalIterations }, (_, idx) => idx + 1).map((iterNum) => {
+                        const isSelectedIter = currentActiveIter === iterNum;
+                        return (
+                            <button
+                                key={iterNum}
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLoopIteration(data.taskReferenceName, iterNum);
+                                }}
+                                style={{
+                                    fontSize: '9px',
+                                    padding: '1px 7px',
+                                    borderRadius: '999px',
+                                    border: isSelectedIter
+                                        ? '1px solid #38bdf8'
+                                        : '1px solid rgba(148, 163, 184, 0.25)',
+                                    background: isSelectedIter
+                                        ? 'rgba(56, 189, 248, 0.22)'
+                                        : 'rgba(30, 41, 59, 0.6)',
+                                    color: isSelectedIter ? '#38bdf8' : '#cbd5e1',
+                                    fontWeight: isSelectedIter ? 700 : 500,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                #{iterNum}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* ── Condition strip (developer mode only) ──── */}
             {showConditionStrip && (
                 <div style={{
@@ -241,16 +293,13 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     flexShrink: 0,
-                    pointerEvents: 'auto',  // 恢复：条件展示条是不透明区域，应正常响应
+                    pointerEvents: 'auto',
                 }}>
                     until: {loopCondition}
                 </div>
             )}
 
             {/* ── Body area (children rendered by ReactFlow) ─── */}
-            {/* pointer-events: none 必须显式设置：HTML 元素不从父元素继承 pointer-events，
-                默认值始终是 'auto'。若不显式写 none，此 div 会拦截鼠标事件，
-                阻止其到达 SVG 层中边的悬停感知路径。 */}
             <div style={{
                 flex: 1,
                 position: 'relative',

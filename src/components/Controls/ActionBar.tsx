@@ -29,6 +29,7 @@ const Divider: React.FC = () => (
 const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthCheck, onShowSettings, executionActions }) => {
     const {
         mode,
+        setMode,
         validationResults,
         workflowInstance,
         workflowDef,
@@ -206,6 +207,12 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         title="并发甘特瀑布流与时间旅行调试器 (Time-Travel)"
                         onClick={() => setShowWaterfallPanel(!showWaterfallPanel)}
                         active={showWaterfallPanel}
+                    />
+                    <ControlButton
+                        icon="✏️"
+                        label="返回编辑"
+                        title="退出试跑/运行态视图，返回工作流编排画布"
+                        onClick={() => setMode('edit')}
                     />
                 </>
             )}

@@ -1,135 +1,74 @@
 # Conductor Workflow IDE 发展路线图 (ROADMAP)
 
-本文档概述了 Conductor Workflow IDE 的未来发展方向，旨在从一个基础的设计工具进化为生产级、智能化的全流程建模平台。
+本文档记录 Conductor Workflow IDE (`@yiyi_zhang/reactflow-ui`) 的演进历程与未来规划，见证其从可视化流程图组件进化为**下一代 AI 原生工作流编排与仿真 IDE**。
 
 ---
 
-## 🔄 v0.5.0：配置简单化 × 编辑快速 × 校验准确 (规划中)
+## ✅ v1.0.0 GA：四大核心支柱架构 × 本地确定性沙箱 × W-LSP 语言服务 (已发布 🎉)
 
-**目标**：不堆叠新功能模块，而是把 v0.4.0 闭环的起点——「配置」——做深做精，围绕三个可量化目标提升体验。
+**目标**：对标 Temporal UI、n8n、LangGraph Studio 与 Cursor，打造兼具**零延迟确定性工程体验**与**画布原生 AI 协同能力**的 `1.0.0` 正式版。
 
-> 详细设计见 [docs/v0.5.0-optimization-plan.md](docs/v0.5.0-optimization-plan.md)
+### 🧬 支柱一：确定性工作流语言服务 (W-LSP) 与数据血缘图谱
+- [x] **DAG 拓扑上游祖先计算 (`getUpstreamAncestors`)**：递归穿透 `SWITCH`、`FORK_JOIN`、`DO_WHILE` 嵌套容器，精确计算当前节点合法可引用的上游任务集合
+- [x] **五源融合 Schema 推断与 0ms 自动补全 (`getCompletionItems`)**：融合运行态真实 Output、人工 Mock Output、`TaskSchema` 契约、节点配置自省与类型默认字段，提供带 `⚡ 实时值预览` 的 `${` 自动补全
+- [x] **Portal 视口自适应补全浮层 (`ParameterSuggester`)**：基于 `createPortal` 挂载至 `document.body` 并支持碰撞翻转，彻底消除侧边抽屉滚动截断
+- [x] **画布级数据血缘图谱 (`buildDataFlowGraph`)**：一键开启蓝色虚线动态血缘连线，可视化跨节点 `${taskRef.output.xxx}` 字段级流向
+- [x] **跨节点安全引用重构 (`refactorTaskReferenceName`)**：修改 `taskReferenceName` 自动重写全图下游引用表达式
 
-### P5.1：可视化参数映射（简单化 + 准确）
-- [ ] **引用上下文计算**：`getAvailableReferences()` 计算当前任务所有合法可引用源（选择器与校验同源）
-- [ ] **KeyValueEditor**：结构化键值编辑器替代手写 JSON，每行支持引用选择器与类型驱动控件
-- [ ] **ReferencePicker**：按来源分组的 `${...}` 引用一键插入，告别手敲 JSONPath
+### ⚡ 支柱二：浏览器本地确定性沙箱 (0ms Dry-Run) 与时间旅行调试器
+- [x] **纯前端确定性沙箱引擎 (`localSandboxEngine`)**：无需后端服务即可在浏览器内执行 `SIMPLE`、`HTTP`、`INLINE`、`SWITCH`（真实表达式路由）、`FORK_JOIN`（并发波次计算）、`DO_WHILE`（多轮迭代展开）、`SET_VARIABLE`、`TERMINATE`
+- [x] **🧪 人工模拟数据与故障注入配置台 (`SandboxConfigModal`)**：支持自定义全局 `workflow.input`、单节点 Mock Output、自定义耗时、`SWITCH` 分支强制路由，以及 `FAILED` / `TIMED_OUT` 故障注入
+- [x] **📊 并发甘特瀑布流与时间旅行回放 (`ExecutionWaterfallPanel`)**：支持并发甘特图可视化、毫秒级时间轴拖拽回放 (`Time-Travel Scrubber`) 与 `0.5x / 1x / 2x` 倍速播放
+- [x] **🔄 循环迭代切片器 (`LoopIterationPill`) & 结构化 JSON 树 (`StructuredJsonViewer`)**：支持按轮次切换 `DO_WHILE` 迭代快照，以及树形检索与一键复制 JSONPath
 
-### P5.2：配置一致性与统一存储（简单化）
-- [ ] **统一 inputParameters 存储**：消除 `httpRequest` 双重身份，载入归一化、导出还原 OSS 标准
-- [ ] **上下文帮助系统**：字段级 Tooltip + 示例值集中配置
-- [ ] **快捷片段重构**：分组扩充 + 下沉为所有表达式字段通用
+### 🤖 支柱三：画布原生 AI Co-Pilot (`Cmd+K`) 与 Shadow Graph 视觉 Diff
+- [x] **画布内联微调指令栏 (`InlineCanvasCopilot`)**：支持 `Cmd+K` / `Ctrl+K` 选中节点原位唤起 AI 微调指令浮层
+- [x] **👻 Shadow Graph 架构级 Diff 预览**：画布原位渲染 `+新增` / `~修改` / `-移除` 预览节点，支持一键全部采纳或部分采纳 (`Partial Accept`)
+- [x] **零外部依赖的轻量级流程图渲染 (`MermaidBlock`)**：内置基于 Dagre 的原生 SVG 渲染器，移除 60MB+ 的外部 `mermaid` 依赖
 
-### P5.3：编辑性能优化（快速）
-- [ ] **结构化/非结构化更新分流**：非结构化编辑跳过 parseWorkflow + 重新布局，保留坐标
-- [ ] **校验防抖**：连续输入 ~300ms 防抖执行 validateWorkflow
-- [ ] **布局缓存与小流程短路**：结构签名不变时复用坐标，<30 节点跳过蛇形布局
+### 🎛️ 支柱四：双向实时代码同步、语义级缩放与统一工具栏
+- [x] **双向实时分屏 JSON 编辑器 (`JsonPreviewPanel`)**：支持画布与 JSON DSL 代码 300ms 防抖双向实时同步与错误定位
+- [x] **三级语义缩放 (`Semantic Zoom LOD`)**：根据缩放倍率自动切换宏观色块 (`<0.55x`)、标准卡片 (`0.55x~1.15x`) 与微距参数透视 (`>1.15x`)
+- [x] **统一毛玻璃胶囊工具栏 (`ActionBar` & `ModeSlider`)**：整合三级视图切换滑块、数据血缘、AI 微调、历史栈、健康检查、沙箱试运行与返回编辑入口
 
-### P5.4：静态校验增强（准确）
-- [ ] **参数引用静态校验**：引用不存在/下游任务/未声明入参在设计时即提示
-- [ ] **表达式轻量预检**：INLINE/DO_WHILE/DECISION/JQ 低成本语法检查
-- [ ] **字段级实时反馈**：面板内 ❌/⚠️ 行内提示，JSON 错误不再静默吞掉
+---
+
+## ✅ v0.5.0：AI 原生双栏编排 IDE (`AiWorkflowIDE`) 与企业级扩展能力 (已发布)
+
+- [x] **独立 `/ai` 子路径导出 (`@yiyi_zhang/reactflow-ui/ai`)**：按需加载 AI 编排能力，保持主入口轻量
+- [x] **多模型与生产级代理传输层 (`AiTransport`)**：支持 OpenAI / Claude / DeepSeek / Qwen 及企业后端 `endpoint` / `custom` 代理模式
+- [x] **多轮 Agentic 工具调用与子工作流复用库 (`L1/L2/L3`)**：内置分层调用规范校验、自定义工具注册表 (`ToolRegistry`)、自定义校验规则引擎 (`RuleEngine`) 与任务 Schema 注册表 (`SchemaRegistry`)
+- [x] **本地草稿持久化 (`draftPersist`) 与多实例隔离 (`IdeStoresProvider`)**：刷新页面不丢失工作流与对话上下文，支持同页多实例挂载
 
 ---
 
 ## ✅ v0.4.0：AI 参数自动化 × 执行验证闭环 × 智能结果分析 (已发布)
 
-**目标**：打通"设计 → 验证 → 修复"完整闭环，让工作流参数配置与执行验证形成 AI 辅助的自循环能力。
-
-> 详细规划见 [docs/v0.4.0-release-plan.md](docs/v0.4.0-release-plan.md)
-
-### P4.1：AI 参数配置自动化增强
-- [x] **整体参数块 AI 自动生成**：TaskDetailPanel 新增"✨ AI 填充"按钮，根据任务类型 + 上游任务 + 工作流入参自动生成完整 `inputParameters` JSON，diff 预览后一键应用
-- [x] **WorkflowInputParam Schema 增强**：`workflowDef.inputParameters` 支持结构化（type、required、description、example），向后兼容 `string[]` 旧格式
-- [ ] **参数引用有效性校验**：实时检测 `${taskRef.output.field}` 引用是否合法（规划中）
-
-### P4.2：工作流入参配置与执行验证
-- [x] **WorkflowInputParam 结构化类型**：新增 `WorkflowInputParam` TS 类型 + `parseWorkflowInputParams()` 工具函数
-- [x] **WorkflowRunPanel**：edit 模式工具栏"▶ 执行验证"，表单模式（根据 inputParameters 声明动态渲染）/ JSON 编辑器双模式
-- [x] **执行触发 Props**：`onTriggerExecution` / `onPollExecution` / `executionPollInterval`，执行后指数退避轮询，自动切换 run 模式
-- [x] **WorkflowSettingsPanel 升级**：参数配置 Tab 从 JSON textarea 升级为可视化入参编辑器
-
-### P4.3：执行结果分析
-- [x] **ExecutionSummaryPanel**：run 模式悬浮面板，概览卡片 + 成功率进度条 + 步骤时序表
-- [x] **参数问题智能诊断**：10+ 条诊断规则，自动解析 Conductor 常见错误并提供"去修复"跳转
-- [x] **executionAnalyzer 工具库**：`analyzeExecution()`、`diagnoseTask()`、`formatDuration()` 等可复用函数
-- [ ] **AI 执行诊断对话**：run 模式 AI Copilot 对话式诊断（规划中）
+- [x] **P4.1 整体参数块 AI 自动生成**：`TaskDetailPanel` 支持"✨ AI 填充"及 Diff 预览
+- [x] **P4.2 工作流入参配置与执行验证**：结构化 `WorkflowInputParam`、`WorkflowRunPanel` 表单/JSON 双模式、`onTriggerExecution` / `onPollExecution` 指数退避轮询
+- [x] **P4.3 执行结果分析与智能故障诊断**：`ExecutionSummaryPanel` 概览卡片、步骤时序表、10+ 种 Conductor 错误模式诊断与一键"去修复"跳转
 
 ---
 
-## 🚀 2.0 阶段：架构重塑与专业化 (当前重点)
+## ✅ v0.2.0 ~ v0.3.0：核心交互基建与库化交付 (已发布)
 
-**目标：** 实现代码质量的跃迁，建立 UI 标准，并具备面向全公司的交付能力。
-
-### P1: 架构基石 (TypeScript & Reliability)
-- [ ] **全站 TypeScript 化**：从 JS 迁移到 TS，建立全量类型约束。
-- [ ] **领域模型定义**：定义 `Workflow`, `Task`, `Instance` 等核心 Interface 规范。
-- [ ] **状态机重写**：基于 TS 改写 Zustand Store，确保复杂的 Fork/Join 逻辑在开发阶段即无误。
-
-### P2: 设计革命 (Modern Design System & Interaction)
-
-#### P2.1: Design System (完成)
-- [x] **UI Token 引入**：建立统一的色彩、边距、阴影、层级规范体系。
-- [x] **主题架构**：支持 Dark/Light 模式与品牌色切换。
-
-#### P2.2: 交互基建 (Core Interaction) (完成)
-- [x] **撤销/重做**：引入 History 栈 (Undo/Redo)。
-- [x] **快捷键统一**：统一 Delete 键与 UI 删除按钮的行为。
-- [x] **智能剪贴板**：跨层级复制粘贴与自动连线。
-
-#### P2.3: 组件级视觉升级 (Component Visual Polish) [已暂缓/忽略]
-- [ ] **节点组件 2.0**：重构 `NodeWrapper`，支持玻璃拟态、呼吸动效、边缘 Glow transition。
-- [ ] **交互动效**：优化连线时的吸附感、点击反馈以及面板弹出的动效衔接。
-
-#### P2.4: 整体页面重塑 (Layout Redesign)
-- [ ] **全站 UI 布局重绘**：基于设计规范重绘侧边栏、顶部菜单及背景纹理，建立系统级视觉一致性。
-- [x] **超大流程布局优化**：实现智能蛇形布局 (Snake Layout)，支持 TB/LR 双向折行，解决 >30 节点的大图展示难题。
-- [x] **布局间距自适应**：基于节点数量动态调整 Dagre RankSep/NodeSep。
-- [x] **拓扑结构精简**：移除冗余的 `START`/`END`/`JOIN` 虚拟节点，实现更纯粹的业务逻辑可视化。
-
-#### P2.5: 运行态能力 (Runtime Capabilities) (完成)
-- [x] **执行可视化**：支持加载 Conductor 运行态 JSON，显示节点状态（成功/失败/运行中）。
-- [x] **路径高亮**：动态高亮实际执行路径。
-- [x] **详情面板**：运行态下支持查看 Input/Output 及重试记录。
-
-### P3: 库化交付 (Library Mode & Distribution)
-- [x] **解耦业务逻辑**：将项目重构为内聚的 UI 组件，支持 Props 注入和 Event 回调。
-- [x] **Vite Lib Mode 适配**：支持构建 ESM、UMD 格式的包文件。
-- [x] **NPM 生态发布**：(模拟完成) 发布并维护首个稳定版 NPM 包，支持 `npm install` 快速接入。
-
-### P4: 开发者生态 (Documentation & Onboarding) (完成)
-- [x] **IT 接入指南**：详细描述如何将 IDE 嵌入到现有 Java/React 后台系统中。
-- [x] **API 参考手册**：基于 TSDoc 自动生成的实时文档。
-- [x] **最佳实践案例**：提供常见业务场景的建模案例库。
+- [x] **全站 TypeScript 化与领域模型完备定义**
+- [x] **UI Token 体系与 Dark/Light × Blue/Orange 主题架构**
+- [x] **撤销/重做 (`zundo`)、快捷键体系、跨层级剪贴板**
+- [x] **超大流程智能蛇形布局 (`Snake Layout`) 与 `DO_WHILE` 容器化子图渲染**
+- [x] **运行态全套生命周期控制**：暂停、继续、终止、重试、跨版本重启、跳过任务、从指定任务重跑
 
 ---
 
-## 🧠 3.0 阶段：智慧升华与仿真 (智能化、高交互)
+## 🔭 v1.1.0+ 未来演进方向 (Next Horizon)
 
-**目标：** 引入 AI 与仿真能力，极大幅度降低复杂流程的建模与调试成本。
+### 1. 多人实时协同编排 (Multiplayer Collaboration)
+- [ ] 基于 Yjs / CRDT 的多用户画布光标同步与节点锁机制
+- [ ] 团队级评论批注锚点（Canvas Sticky Notes & Review Threads）
 
-### P5: 视觉化 Diff 与版本管理
-- [ ] **图面对比算法**：实现两个 JSON 版本的逻辑差异提取。
-- [ ] **变更着色渲染**：在图上用颜色标识变更（绿-新增，红-删除，黄-修改）。
-- [ ] **快照回溯**：支持查看任意历史版本预览，并一键回滚。
+### 2. 沙箱录制与回归测试套件 (Workflow Test Suite)
+- [ ] 将 `SandboxConfigModal` 配置的入参、Mock 输出与故障注入保存为可复用的测试用例集（Test Suites）
+- [ ] 一键批量执行多组沙箱断言（例如：断言 VIP 订单必走极速通道、断言支付超时必触发退款补偿）并导出 CI 报告
 
-### P6: 零配置流程仿真器 (Workflow Simulator)
-- [ ] **模拟运行引擎**：在前端执行流程逻辑，无需后端 Conductor 服务。
-- [ ] **数据流动动画**：实时演示 Mock Data 在节点间的流转动态过程。
-- [ ] **Mock 管理器**：支持为每个节点预设 Input/Output 模拟数据。
-
-### P7: 专家级预设库 (Preset library)
-- [ ] **典型拓扑模板**：内置 Saga 事务、多级补偿、动态 Fork 优化模式。
-- [ ] **私有云模板库**：支持用户将自己的优秀设计保存为局部模板，供团队共享。
-
-### P8: AI 灵感辅助 (AI Copilot) (完成)
-- [x] **自然语言建模**：通过对话生成工作流框架（Prompt to JSON）。
-- [x] **语义校验**：利用 AI 发现业务层面的逻辑瑕疵并提供优化建议。
-- [x] **参数预测**：根据上下文自动补全 InputParameters 的映射关系。
-
----
-
-## 📅 执行原则
-1. **P1 优先**：TypeScript 是所有高级特性的地基，必须首先完成。
-2. **渐进迭代**：每个 Feature 分支必须保持功能原子性，严禁大规模破坏性合入。
-3. **向后兼容**：所有 2.0+ 的更新必须确保能够平滑解析旧版的 Conductor JSON 定义。
+### 3. 性能剖析热力图 (Historical Telemetry Heatmap)
+- [ ] 聚合生产环境数千次执行的 P50 / P95 / P99 耗时与失败率数据，直接在画布节点与边上渲染性能瓶颈热力图

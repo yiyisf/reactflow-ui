@@ -6,6 +6,7 @@ import type { ViewMode } from '../types/workflow';
 import type { WorkflowDef } from '../types/conductor';
 import { useTheme } from '../hooks/useTheme';
 import { ThemeControls } from '../components/ThemeControls';
+import { BrandLogo } from '../components/BrandLogo';
 import '../styles/tokens.css';
 import './DemoApp.css';
 import '../styles/executionStyles.css';
@@ -146,9 +147,9 @@ function DemoApp() {
       <header className="app-header">
         <div className="header-content">
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
-            <h1 className="app-title">
-              <span className="title-icon">⚡</span>
-              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>(Demo)</span>
+            <h1 className="app-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '9px' }}>
+              <BrandLogo size={26} />
+              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>v1.0</span>
             </h1>
 
             {/* 搜索框 */}
@@ -244,6 +245,21 @@ function DemoApp() {
             >
               {useNewAiMode ? '✨ AI 模式' : '💻 经典模式'}
             </button>
+
+            <a
+              href="/"
+              className="mode-btn"
+              title="查看 Conductor Workflow IDE v1.0.0 产品发布与 ROI 测算宣传首页"
+              style={{
+                textDecoration: 'none',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2))',
+                borderColor: 'rgba(99, 102, 241, 0.45)',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+              }}
+            >
+              🚀 v1.0 宣传页
+            </a>
 
             <div className="divider"></div>
 

@@ -540,31 +540,89 @@ inputParameters: [
 
 ---
 
-## 🛠️ TypeScript 支持
+## 🌟 v1.0.0 下一代 IDE 核心能力说明
 
-本库提供完整的 TypeScript 定义。您可以直接导入核心类型：
+### 1. 确定性工作流语言服务 (W-LSP) 与数据血缘图谱
+- **`${` 零延迟智能补全 (`ParameterSuggester`)**：在节点配置抽屉任意参数或表达式框中输入 `${` 时，自动基于 DAG 拓扑计算当前节点的严格上游祖先节点，融合运行态真实输出、沙箱 Mock 数据、`TaskSchema`、节点配置自省与类型默认字段弹出补全列表，并展示 `⚡ 实时值预览`。
+- **画布数据血缘图谱 (`🔗 数据血缘`)**：点击右上角胶囊工具栏的 **`🔗 数据血缘`**，画布自动渲染跨节点参数引用的蓝色动态虚线连线 (`🔗 taskRef.output.field`)；选中任意节点时自动聚焦与该节点直接关联的上下游数据流。
+- **跨节点安全引用重构 (`refactorTaskReferenceName`)**：在节点详情抽屉修改 `taskReferenceName` 并回车/失焦提交时，自动重写全图所有下游节点对该引用名的 `${oldRef...}` 表达式引用。
+
+### 2. 浏览器本地确定性沙箱试跑 (`⚡ 沙箱试运行 | 🧪`) 与时间旅行调试器
+- **一键 0ms 极速试跑 (`⚡ 沙箱试运行`)**：无需后端服务，在浏览器本地直接按拓扑与条件表达式推演整条工作流（支持 `SWITCH` 真实条件路由、`FORK_JOIN` 并发波次耗时、`DO_WHILE` 多轮迭代、`INLINE` 脚本求值）。
+- **人工模拟数据配置台 (`🧪`)**：
+  - **工作流全局入参 (`workflow.input`)**：自动扫描显式入参声明与全图隐式引用的 `${workflow.input.xxx}`，生成可编辑 JSON 模板。
+  - **节点级 Mock 与故障注入**：可为任意节点覆写 Mock Output JSON、模拟执行耗时 (`durationMs`)、强制指定 `SWITCH` 命中分支，或注入 `FAILED` / `TIMED_OUT` 异常以验证容错分支。
+- **并发甘特瀑布流与时间旅行回放 (`📊 瀑布流回放`)**：
+  - 运行态底部展开并发甘特图，直观定位慢节点与并行瓶颈。
+  - 拖动**时间旅行滑块 (`Time-Travel Scrubber`)** 或点击 `0.5x / 1x / 2x` 倍速播放，画布节点与边按毫秒级时间轴实时回放历史状态。
+  - 点击右上角工具栏 **`✏️ 返回编辑`** 可随时一键退出试跑回到编排画布。
+
+### 3. 画布内联 AI 微调 (`Cmd+K`) 与双向实时分屏 JSON 同步
+- **画布内联 AI 微调 (`⌘K AI微调`)**：选中节点或按下 `Cmd+K` / `Ctrl+K` 即可原位唤起 AI 指令浮层，配合 **👻 Shadow Graph** 预览新增/修改/移除节点。
+- **双向实时分屏 JSON (`{ } JSON`)**：点击左下角控制中心的 **`{ } JSON`** 展开双栏分屏编辑器，代码修改 300ms 防抖实时驱动画布重绘，画布编辑亦实时同步回 JSON。
+- **三级语义缩放 (`Semantic Zoom LOD`)**：缩放画布时自动在 **宏观色块 (`<0.55x`) / 标准卡片 (`0.55x~1.15x`) / 微距参数透视 (`>1.15x`)** 之间平滑切换。
+
+---
+
+## 🛠️ TypeScript 支持与编程式 API
+
+本库提供完整的 TypeScript 类型定义，并导出底层的 **W-LSP 语言服务** 与 **浏览器本地沙箱引擎** 供宿主应用直接调用：
 
 ```tsx
 import {
+  // 核心组件与类型
   WorkflowIDE,
   WorkflowIDERef,
   WorkflowIDEProps,
   WorkflowDef,
   TaskDef,
-  WorkflowInputParam,        // v0.4.0 新增：结构化入参类型
-  WorkflowInstance,          // v0.4.0 新增：执行实例类型（用于 onPollExecution）
+  WorkflowInputParam,
+  WorkflowInstance,
   AIServiceConfig,
   ExecutionActions,
   RestartOptions,
   ViewMode,
-  RunState,                  // v0.4.0 新增：执行触发状态机类型
-  parseWorkflowInputParams,  // v0.4.0 新增：解析入参声明工具函数
+  RunState,
+  WorkflowExecutionInput,
+  parseWorkflowInputParams,
+
+  // v1.0.0 新增：W-LSP 工作流语言服务与数据血缘 API
+  getCompletionItems,
+  buildDataFlowGraph,
+  refactorTaskReferenceName,
+  getUpstreamAncestors,
+  inferTaskOutputSchema,
+  WlspCompletionItem,
+  DataFlowGraph,
+  DataFlowEdge,
+  InferredField,
+  UpstreamTaskInfo,
+
+  // v1.0.0 新增：浏览器本地确定性沙箱引擎 API
+  executeLocalSandboxDryRun,
+  buildDefaultWorkflowMockInput,
+  generateDefaultTaskOutputPreview,
+  SandboxDryRunOptions,
+  TaskMockOverride,
 } from '@yiyi_zhang/reactflow-ui';
 ```
 
 ---
 
 ## 📋 版本历史
+
+### v1.0.0 (GA 正式版)
+
+**四大核心支柱架构**
+- **支柱一（W-LSP & 数据血缘）**：0ms 确定性 `${` 变量自动补全（五源 Schema 推断 + 实时值预览 + `document.body` Portal 自适应防遮挡）、画布级 `🔗 数据血缘` 动态虚线图谱、`taskReferenceName` 跨节点安全重构。
+- **支柱二（本地确定性沙箱 & 时间旅行调试）**：0ms 浏览器本地沙箱引擎 (`localSandboxEngine`)、`🧪 人工模拟数据与故障注入配置台` (`SandboxConfigModal`)、`📊 并发甘特瀑布流与时间旅行回放` (`ExecutionWaterfallPanel`)、`DO_WHILE` 循环迭代切片器 (`LoopIterationPill`)、支持搜索与一键复制 JSONPath 的 `StructuredJsonViewer`。
+- **支柱三（画布原生 AI Co-Pilot & Shadow Graph）**：`Cmd+K` 画布内联微调浮层 (`InlineCanvasCopilot`)、Shadow Graph 架构级 Diff 预览与部分采纳、零外部依赖的 Dagre 原生 SVG 流程图渲染器（移除 60MB+ `mermaid` 依赖）。
+- **支柱四（双向实时代码同步 & 语义级缩放 & 统一工具栏）**：300ms 防抖双向实时分屏 JSON 编辑器 (`JsonPreviewPanel`)、三级语义缩放 (`Semantic Zoom LOD`)、右上角统一毛玻璃胶囊工具栏 (`ActionBar` + `ModeSlider` + `✏️ 返回编辑`)。
+
+### v0.5.0-beta.0
+
+- 新增独立 `/ai` 子路径入口 (`@yiyi_zhang/reactflow-ui/ai`) 与 `<AiWorkflowIDE />` 双栏 AI 原生工作台
+- 支持多模型协议适配、生产级 `endpoint` / `custom` 传输层反转、子工作流分层复用库 (`L1/L2/L3`)、自定义工具注册表、规则引擎、Schema 注册表与本地草稿自动恢复 (`draftPersist`)
 
 ### v0.4.0
 
@@ -613,4 +671,5 @@ import {
 - DO_WHILE 循环体容器化渲染（ReactFlow sub-nodes）
 - AI 差异卡片（Diff Card）
 - 视图详情级别初版
+
 

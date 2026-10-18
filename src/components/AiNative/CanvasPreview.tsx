@@ -7,6 +7,9 @@
 
 import React from 'react';
 import WorkflowDesigner from '../WorkflowDesigner';
+import TaskDetailPanel from '../TaskDetailPanel';
+import ExecutionTaskPanel from '../ExecutionTaskPanel';
+import useWorkflowStore from '../../store/workflowStore';
 import type { ExecutionActions } from '../../types/workflow';
 import type { WorkflowDef } from '../../types/conductor';
 
@@ -21,13 +24,42 @@ const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     onRequestImport,
     executionActions,
 }) => {
+    const {
+        mode,
+        theme,
+        selectedTask,
+        isDetailPanelOpen,
+        setIsDetailPanelOpen,
+        selectTaskAction,
+        setSelectedTask,
+    } = useWorkflowStore();
+
+    const handleNodeClick = (task: any) => {
+        if (mode !== 'run') {
+            selectTaskAction(task, true);
+        } else {
+            setSelectedTask(task);
+        }
+    };
+
     return (
-        <div className="ai-canvas-area">
+        <div className="ai-canvas-area" style={{ position: 'relative' }}>
             <WorkflowDesigner
+                onNodeClick={handleNodeClick}
+                nodesLocked={mode === 'run'}
                 onSave={onSave}
                 onRequestImport={onRequestImport}
                 executionActions={executionActions}
             />
+            <TaskDetailPanel
+                task={selectedTask}
+                isOpen={isDetailPanelOpen && mode !== 'run'}
+                onClose={() => setIsDetailPanelOpen(false)}
+                theme={theme}
+            />
+            {mode === 'run' && (
+                <ExecutionTaskPanel executionActions={executionActions} />
+            )}
         </div>
     );
 };

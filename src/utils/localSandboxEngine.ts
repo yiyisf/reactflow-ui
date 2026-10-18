@@ -5,12 +5,26 @@ import type {
   TaskInstance as TaskExecution,
 } from '../types/conductor';
 
+export interface TaskMockOverride {
+  __isMockOverride?: boolean;
+  /** Override execution status (e.g. simulate FAILED or TIMED_OUT) */
+  status?: 'COMPLETED' | 'FAILED' | 'TIMED_OUT' | 'COMPLETED_WITH_ERRORS';
+  /** Override simulated execution duration in ms */
+  durationMs?: number;
+  /** For SWITCH / DECISION tasks: force routing to a specific case key (or '__default__') */
+  forceCase?: string;
+  /** Custom outputData JSON for this task */
+  outputData?: Record<string, any>;
+  /** Custom error message when status is FAILED / TIMED_OUT */
+  reasonForIncompletion?: string;
+}
+
 export interface SandboxDryRunOptions {
   /** Mock workflow input JSON */
   workflowInput?: Record<string, any>;
-  /** Custom task output overrides keyed by taskReferenceName */
-  taskMocks?: Record<string, Record<string, any>>;
-  /** Max iterations per DO_WHILE loop in dry-run (default: 3) */
+  /** Custom task output or behavior overrides keyed by taskReferenceName */
+  taskMocks?: Record<string, Record<string, any> | TaskMockOverride>;
+  /** Max iterations per DO_WHILE loop in dry-run (default: 2) */
   maxLoopIterations?: number;
 }
 
@@ -18,11 +32,37 @@ interface SandboxRuntimeContext {
   workflowInput: Record<string, any>;
   variables: Record<string, any>;
   taskOutputs: Record<string, Record<string, any>>;
-  taskMocks: Record<string, Record<string, any>>;
+  taskMocks: Record<string, Record<string, any> | TaskMockOverride>;
   tasks: TaskExecution[];
   currentTimeMs: number;
   maxLoopIterations: number;
   seqCounter: number;
+}
+
+function getNormalizedMock(
+  raw: Record<string, any> | TaskMockOverride | undefined
+): TaskMockOverride | null {
+  if (!raw || typeof raw !== 'object') return null;
+  if (
+    raw.__isMockOverride ||
+    'outputData' in raw ||
+    'forceCase' in raw ||
+    'durationMs' in raw ||
+    ('status' in raw &&
+      (raw.status === 'COMPLETED' ||
+        raw.status === 'FAILED' ||
+        raw.status === 'TIMED_OUT' ||
+        raw.status === 'COMPLETED_WITH_ERRORS') &&
+      Object.keys(raw).every((k) =>
+        ['__isMockOverride', 'status', 'durationMs', 'forceCase', 'outputData', 'reasonForIncompletion'].includes(k)
+      ))
+  ) {
+    return raw as TaskMockOverride;
+  }
+  return {
+    __isMockOverride: true,
+    outputData: raw as Record<string, any>,
+  };
 }
 
 /**
@@ -103,21 +143,16 @@ function evaluateSingleRef(ref: string, ctx: SandboxRuntimeContext): any {
 }
 
 /**
- * Synthesize realistic mock output for a task based on its type and resolved inputParameters
+ * Generate default synthetic output for a given task (used both at runtime and as UI template preview)
  */
-function synthesizeTaskOutput(
+export function generateDefaultTaskOutputPreview(
   task: WorkflowTask,
-  resolvedInput: Record<string, any>,
-  ctx: SandboxRuntimeContext,
+  resolvedInput: Record<string, any> = {},
   iteration?: number
 ): Record<string, any> {
-  if (ctx.taskMocks[task.taskReferenceName]) {
-    return structuredClone(ctx.taskMocks[task.taskReferenceName]);
-  }
-
   switch (task.type) {
     case 'HTTP': {
-      const httpReq = resolvedInput.http_request || resolvedInput;
+      const httpReq = resolvedInput.http_request || task.httpRequest || resolvedInput;
       return {
         response: {
           statusCode: 200,
@@ -139,14 +174,13 @@ function synthesizeTaskOutput(
     }
 
     case 'JSON_JQ_TRANSFORM': {
-      const expr = resolvedInput.queryExpression || '.';
-      // Lightweight JQ subset simulator for common expressions
+      const expr = resolvedInput.queryExpression || task.inputParameters?.queryExpression || '.';
       if (expr === '.' || !expr) {
         const copy = { ...resolvedInput };
         delete copy.queryExpression;
         return { result: copy, resultList: [copy] };
       }
-      if (expr.startsWith('.')) {
+      if (typeof expr === 'string' && expr.startsWith('.')) {
         const path = expr.slice(1).replace(/\[\]/g, '');
         const extracted = path ? getByPath(resolvedInput, path) : resolvedInput;
         return {
@@ -161,9 +195,8 @@ function synthesizeTaskOutput(
     }
 
     case 'SET_VARIABLE': {
-      Object.assign(ctx.variables, resolvedInput);
       return {
-        variables: { ...ctx.variables },
+        variables: { ...(Object.keys(resolvedInput).length ? resolvedInput : task.inputParameters || {}) },
       };
     }
 
@@ -171,7 +204,7 @@ function synthesizeTaskOutput(
       return {
         result: {
           evaluated: true,
-          evaluatorType: resolvedInput.evaluatorType || 'graaljs',
+          evaluatorType: resolvedInput.evaluatorType || task.evaluatorType || 'graaljs',
           summary: `Executed inline script for ${task.taskReferenceName}`,
           ...resolvedInput,
         },
@@ -198,12 +231,11 @@ function synthesizeTaskOutput(
       };
 
     default: {
-      // SIMPLE / Worker task or custom task
       return {
         code: 0,
         status: 'OK',
         result: `Simulated output from ${task.name}`,
-        processedAt: new Date(ctx.currentTimeMs).toISOString(),
+        processedAt: new Date().toISOString(),
         iteration: iteration ?? 1,
         inputEcho: resolvedInput,
         data: {
@@ -217,13 +249,45 @@ function synthesizeTaskOutput(
 }
 
 /**
+ * Synthesize realistic mock output for a task based on its type and resolved inputParameters
+ */
+function synthesizeTaskOutput(
+  task: WorkflowTask,
+  resolvedInput: Record<string, any>,
+  ctx: SandboxRuntimeContext,
+  iteration?: number
+): Record<string, any> {
+  const mock = getNormalizedMock(ctx.taskMocks[task.taskReferenceName]);
+  if (mock?.outputData) {
+    if (task.type === 'SET_VARIABLE') {
+      Object.assign(ctx.variables, mock.outputData);
+    }
+    return structuredClone(mock.outputData);
+  }
+
+  if (task.type === 'SET_VARIABLE') {
+    Object.assign(ctx.variables, resolvedInput);
+  }
+
+  const out = generateDefaultTaskOutputPreview(task, resolvedInput, iteration);
+  if (out.processedAt) {
+    out.processedAt = new Date(ctx.currentTimeMs).toISOString();
+  }
+  return out;
+}
+
+/**
  * Evaluate SWITCH / DECISION branch key in sandbox
  */
 function evaluateSwitchBranch(
   task: WorkflowTask,
   resolvedInput: Record<string, any>,
-  decisionCases: Record<string, WorkflowTask[]>
+  decisionCases: Record<string, WorkflowTask[]>,
+  forcedCase?: string
 ): string {
+  if (forcedCase) {
+    return forcedCase;
+  }
   const caseKeys = Object.keys(decisionCases);
   if (caseKeys.length === 0) return 'default';
 
@@ -271,14 +335,18 @@ function executeSingleTask(
   const startTime = scheduledTime + queueWaitMs;
   ctx.currentTimeMs = startTime;
 
+  const taskMock = getNormalizedMock(ctx.taskMocks[task.taskReferenceName]);
   const resolvedInput = resolveExpressionValue(task.inputParameters || {}, ctx);
   const execRefName =
     iteration && iteration > 1 ? `${task.taskReferenceName}__${iteration}` : task.taskReferenceName;
 
   if (task.type === 'SWITCH' || task.type === 'DECISION') {
     const cases = task.decisionCases || {};
-    const chosenCase = evaluateSwitchBranch(task, resolvedInput, cases);
-    const branchTasks = cases[chosenCase] || task.defaultCase || [];
+    const chosenCase = evaluateSwitchBranch(task, resolvedInput, cases, taskMock?.forceCase);
+    const branchTasks =
+      chosenCase === '__default__'
+        ? task.defaultCase || []
+        : cases[chosenCase] || task.defaultCase || [];
 
     const switchExec: TaskExecution = {
       taskId: `sandbox-task-${seq}`,
@@ -288,13 +356,16 @@ function executeSingleTask(
       status: 'COMPLETED',
       scheduledTime,
       startTime,
-      endTime: startTime + 12,
+      endTime: startTime + (taskMock?.durationMs ?? 12),
       seq,
       pollCount: 1,
       retryCount: 0,
       iteration,
       inputData: { ...resolvedInput, case_value_param: chosenCase },
-      outputData: { selectedCase: chosenCase, evaluatedExpression: task.expression || task.caseValueParam || 'default' },
+      outputData: taskMock?.outputData || {
+        selectedCase: chosenCase === '__default__' ? 'defaultCase' : chosenCase,
+        evaluatedExpression: task.expression || task.caseValueParam || 'default',
+      },
       workflowTask: task,
     };
     ctx.currentTimeMs = switchExec.endTime!;
@@ -378,7 +449,7 @@ function executeSingleTask(
 
   if (task.type === 'DO_WHILE') {
     const loopOver = task.loopOver || [];
-    const totalIterations = Math.min(ctx.maxLoopIterations, 2);
+    const totalIterations = Math.max(1, Math.min(ctx.maxLoopIterations, 10));
     const loopExec: TaskExecution = {
       taskId: `sandbox-task-${seq}`,
       taskType: 'DO_WHILE',
@@ -421,24 +492,36 @@ function executeSingleTask(
   }
 
   // Standard / System / Worker task
-  const durationMs =
+  const defaultDurationMs =
     task.type === 'HTTP'
       ? 145 + (seq % 4) * 35
       : task.type === 'SIMPLE'
       ? 85 + (seq % 5) * 30
       : 28 + (seq % 3) * 12;
+  const durationMs =
+    typeof taskMock?.durationMs === 'number' && taskMock.durationMs >= 0
+      ? taskMock.durationMs
+      : defaultDurationMs;
   const endTime = startTime + durationMs;
   const outputData = synthesizeTaskOutput(task, resolvedInput, ctx, iteration);
 
   const isFailedTerminate =
     task.type === 'TERMINATE' && resolvedInput.terminationStatus === 'FAILED';
 
+  const finalStatus: TaskExecution['status'] =
+    taskMock?.status || (isFailedTerminate ? 'FAILED_WITH_TERMINAL_ERROR' : 'COMPLETED');
+
+  const isMockFailure =
+    finalStatus === 'FAILED' ||
+    finalStatus === 'FAILED_WITH_TERMINAL_ERROR' ||
+    finalStatus === 'TIMED_OUT';
+
   const taskExec: TaskExecution = {
     taskId: `sandbox-task-${seq}`,
     taskType: task.type,
     taskDefName: task.name,
     referenceTaskName: execRefName,
-    status: isFailedTerminate ? 'FAILED_WITH_TERMINAL_ERROR' : 'COMPLETED',
+    status: finalStatus,
     scheduledTime,
     startTime,
     endTime,
@@ -449,12 +532,22 @@ function executeSingleTask(
     workerId: 'browser-local-sandbox-worker',
     inputData: resolvedInput,
     outputData,
+    reasonForIncompletion: isMockFailure
+      ? taskMock?.reasonForIncompletion ||
+        (isFailedTerminate
+          ? resolvedInput.terminationReason || 'Terminated with FAILED status'
+          : `沙箱人工模拟任务异常 (${finalStatus})`)
+      : undefined,
     workflowTask: task,
   };
 
   ctx.currentTimeMs = endTime;
   ctx.taskOutputs[task.taskReferenceName] = outputData;
   ctx.tasks.push(taskExec);
+
+  if (isMockFailure) {
+    return 'FAILED';
+  }
 
   if (task.type === 'TERMINATE') {
     return isFailedTerminate ? 'FAILED' : 'TERMINATED';
@@ -464,7 +557,7 @@ function executeSingleTask(
 }
 
 /**
- * Build default mock input from workflowDef.inputParameters
+ * Build default mock input from workflowDef.inputParameters and auto-discovered ${workflow.input.*} references
  */
 export function buildDefaultWorkflowMockInput(workflowDef: WorkflowDef): Record<string, any> {
   const input: Record<string, any> = {
@@ -486,6 +579,21 @@ export function buildDefaultWorkflowMockInput(workflowDef: WorkflowDef): Record<
         input[paramName] = defaultVal;
       }
     }
+  }
+
+  // Auto-discover ${workflow.input.<field>} expressions across all tasks in the workflow
+  try {
+    const rawJson = JSON.stringify(workflowDef.tasks || []);
+    const regex = /\$\{\s*workflow\.input\.([a-zA-Z0-9_]+)/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(rawJson)) !== null) {
+      const field = match[1];
+      if (field && !(field in input)) {
+        input[field] = `mock_${field}`;
+      }
+    }
+  } catch {
+    // ignore serialization errors
   }
 
   return input;

@@ -299,7 +299,11 @@ export interface WorkflowActions {
     /** AI 共驾：打开/关闭画布原位 Cmd+K 浮窗 */
     setInlineCopilotTaskRef: (taskRef: string | null) => void;
     /** 本地沙箱：在浏览器内执行零延迟确定性试运行并进入调试视图 */
-    runLocalSandboxDryRun: (mockInput?: Record<string, any>, taskMocks?: Record<string, any>) => void;
+    runLocalSandboxDryRun: (
+        mockInput?: Record<string, any>,
+        taskMocks?: Record<string, any>,
+        maxLoopIterations?: number
+    ) => void;
 }
 
 /**

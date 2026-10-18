@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import ControlButton from './ControlButton';
 import ModeSlider from './ModeSlider';
+import SandboxConfigModal from '../SandboxConfigModal';
 import { useStore } from 'zustand';
 import { ExecutionActions } from '../../types/workflow';
 
@@ -48,6 +49,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
     );
 
     const [showRestartMenu, setShowRestartMenu] = useState(false);
+    const [showSandboxModal, setShowSandboxModal] = useState(false);
     const restartMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -158,23 +160,46 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                 </>
             )}
 
-            {/* Group 4: 沙箱试运行与运行态瀑布流调试 */}
+            {/* Group 4: 沙箱试运行（支持一键极速运行 + 人工 Mock 数据配置台）与运行态瀑布流调试 */}
             {workflowDef && mode !== 'run' && (
                 <>
                     <Divider />
-                    <ControlButton
-                        icon="⚡"
-                        label="沙箱试运行"
-                        title="浏览器本地确定性沙箱试运行 (0ms Dry-Run)"
-                        onClick={() => runLocalSandboxDryRun()}
-                        variant="primary"
-                    />
+                    <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <ControlButton
+                            icon="⚡"
+                            label="沙箱试运行"
+                            title="一键启动浏览器本地确定性沙箱试运行 (0ms Dry-Run)"
+                            onClick={() => runLocalSandboxDryRun()}
+                            variant="primary"
+                            style={{
+                                borderRadius: '7px 0 0 7px',
+                                borderRight: '1px solid rgba(255, 255, 255, 0.25)',
+                            }}
+                        />
+                        <ControlButton
+                            icon="🧪"
+                            title="人工模拟数据配置台 (自定义 workflow.input / 节点 Mock 输出 / 故障注入 / 分支路由)"
+                            onClick={() => setShowSandboxModal(true)}
+                            variant="primary"
+                            style={{
+                                borderRadius: '0 7px 7px 0',
+                                padding: '4px 7px',
+                                minWidth: '26px',
+                            }}
+                        />
+                    </div>
                 </>
             )}
 
             {mode === 'run' && (
                 <>
                     <Divider />
+                    <ControlButton
+                        icon="🧪"
+                        label="模拟数据重跑"
+                        title="打开沙箱人工模拟数据配置台，调整入参、分支或注入节点故障后重跑"
+                        onClick={() => setShowSandboxModal(true)}
+                    />
                     <ControlButton
                         icon="📊"
                         label="瀑布流回放"
@@ -184,6 +209,11 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     />
                 </>
             )}
+
+            <SandboxConfigModal
+                isOpen={showSandboxModal}
+                onClose={() => setShowSandboxModal(false)}
+            />
 
             {mode === 'run' && workflowInstance && executionActions && (
                 <>

@@ -19,6 +19,47 @@ import {
 } from '../types/workflow';
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from '../types/conductor';
 import { buildExecutionWaves } from '../utils/simulateWorkflow';
+import { refactorTaskReferenceName } from '../services/wlsp/workflowLsp';
+import { executeLocalSandboxDryRun } from '../utils/localSandboxEngine';
+
+/**
+ * Recursively find all FORK_JOIN_DYNAMIC -> JOIN / EXCLUSIVE_JOIN pairs at any nesting level
+ */
+function collectForkJoinDynamicPairs(
+    taskList: any[],
+    pairs: Array<{ forkRef: string; joinRef: string }> = []
+): Array<{ forkRef: string; joinRef: string }> {
+    if (!Array.isArray(taskList)) return pairs;
+    taskList.forEach((t: any, i: number) => {
+        if (!t) return;
+        if (t.type === 'FORK_JOIN_DYNAMIC') {
+            for (let j = i + 1; j < taskList.length; j++) {
+                if (taskList[j]?.type === 'JOIN' || taskList[j]?.type === 'EXCLUSIVE_JOIN') {
+                    pairs.push({
+                        forkRef: t.taskReferenceName,
+                        joinRef: taskList[j].taskReferenceName,
+                    });
+                    break;
+                }
+            }
+        }
+        if (t.decisionCases) {
+            Object.values(t.decisionCases).forEach((branch: any) =>
+                collectForkJoinDynamicPairs(branch, pairs)
+            );
+        }
+        if (t.defaultCase) {
+            collectForkJoinDynamicPairs(t.defaultCase, pairs);
+        }
+        if (Array.isArray(t.forkTasks)) {
+            t.forkTasks.forEach((branch: any) => collectForkJoinDynamicPairs(branch, pairs));
+        }
+        if (Array.isArray(t.loopOver)) {
+            collectForkJoinDynamicPairs(t.loopOver, pairs);
+        }
+    });
+    return pairs;
+}
 
 const useWorkflowStore = create<WorkflowStore>()(
     persist(
@@ -64,6 +105,18 @@ const useWorkflowStore = create<WorkflowStore>()(
                 // P4.1 聚焦参数字段
                 focusedParamKey: null as string | null,
 
+                // Pillar 1: W-LSP 数据血缘与重构通知
+                showDataLineage: false,
+                lastRefactorNotice: null,
+
+                // Pillar 2: 瀑布流时间轴、时间旅行指针与循环迭代选择
+                showWaterfallPanel: false,
+                timeTravelTimestamp: null,
+                activeLoopIterations: {},
+
+                // Pillar 3: 画布级 Cmd+K 内联 Copilot
+                inlineCopilotTaskRef: null,
+
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
                     const dir = direction || get().layoutDirection;
@@ -89,7 +142,14 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const currentMode = get().mode;
                     // 如果从运行模式退出，清空执行数据
                     if (currentMode === 'run' && mode !== 'run') {
-                        set({ executionData: null, workflowInstance: null, dynamicRuntimeTasksByFork: {} });
+                        set({
+                            executionData: null,
+                            workflowInstance: null,
+                            dynamicRuntimeTasksByFork: {},
+                            timeTravelTimestamp: null,
+                            showWaterfallPanel: false,
+                            activeLoopIterations: {},
+                        });
                     }
                     set({ mode });
 
@@ -132,64 +192,76 @@ const useWorkflowStore = create<WorkflowStore>()(
                 importExecutionJSON: (json: any) => {
                     if (!json) return;
 
-                    // 处理两种情况：
-                    // 1. 直传 tasks 数组 (旧兼容模式)
-                    // 2. 传完整 Workflow 实例 (Conductor OSS 标准)
-
                     let tasks: any[] = [];
                     let workflowInstance: WorkflowInstance | null = null;
                     let workflowDef: WorkflowDef | null = get().workflowDef;
 
                     if (Array.isArray(json.tasks)) {
                         tasks = json.tasks;
-                        // 如果是完整实例，提取元数据
                         if (json.workflowId && json.status) {
                             workflowInstance = json as WorkflowInstance;
-                            // 如果 JSON 里带了定义，优先使用它渲染图表
                             if (json.workflowDefinition) {
                                 workflowDef = json.workflowDefinition;
                             }
                         }
                     } else if (Array.isArray(json)) {
-                        tasks = json; // 直接是任务数组
+                        tasks = json;
                     }
 
                     if (tasks.length === 0) return;
 
+                    // 如果探测到新的定义，先更新图表，确保 taskMap 是最新的
+                    if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(get().workflowDef)) {
+                        get().setWorkflow(workflowDef);
+                    }
+
+                    const finalTaskMap = get().taskMap;
                     const executionData: Record<string, TaskExecutionData> = {};
+
+                    const registerAttempt = (targetRef: string, task: any, inferredIteration?: number) => {
+                        const attemptObj: TaskInstance =
+                            inferredIteration !== undefined && task.iteration === undefined
+                                ? { ...task, iteration: inferredIteration }
+                                : (task as TaskInstance);
+                        if (!executionData[targetRef]) {
+                            executionData[targetRef] = {
+                                taskReferenceName: targetRef,
+                                status: attemptObj.status as ExecutionStatus,
+                                attempts: [],
+                                startTime: attemptObj.startTime,
+                                endTime: attemptObj.endTime,
+                                output: attemptObj.outputData,
+                                input: attemptObj.inputData,
+                                reasonForIncompletion: attemptObj.reasonForIncompletion,
+                                iteration: attemptObj.iteration,
+                            };
+                        }
+                        executionData[targetRef].attempts.push(attemptObj);
+                    };
+
                     tasks.forEach((task: any) => {
                         const ref = task.referenceTaskName;
-                        if (ref) {
-                            if (!executionData[ref]) {
-                                executionData[ref] = {
-                                    taskReferenceName: ref,
-                                    status: task.status as ExecutionStatus,
-                                    attempts: [],
-                                    startTime: task.startTime,
-                                    endTime: task.endTime,
-                                    output: task.outputData,
-                                    input: task.inputData,
-                                    reasonForIncompletion: task.reasonForIncompletion,
-                                    iteration: task.iteration
-                                };
-                            }
-                            executionData[ref].attempts.push(task as TaskInstance);
+                        if (!ref) return;
+                        // Match Conductor DO_WHILE suffix convention: e.g. "step_a__1", "step_a__2"
+                        const iterSuffixMatch = ref.match(/^(.+)__(\d+)$/);
+                        if (iterSuffixMatch && finalTaskMap[iterSuffixMatch[1]]) {
+                            const baseRef = iterSuffixMatch[1];
+                            const iterNum = parseInt(iterSuffixMatch[2], 10);
+                            registerAttempt(baseRef, task, iterNum);
                         }
+                        registerAttempt(ref, task);
                     });
 
                     // 后处理：对每个 ref 的 attempts 排序，并计算正确的状态和 totalIterations
                     Object.values(executionData).forEach(data => {
-                        // 按 iteration（循环次序）排序，无 iteration 时按 retryCount 排序
                         const hasIterations = data.attempts.some(a => a.iteration !== undefined && a.iteration > 0);
                         if (hasIterations) {
                             data.attempts.sort((a, b) => (a.iteration ?? 0) - (b.iteration ?? 0));
                             data.totalIterations = data.attempts.reduce((max, a) => Math.max(max, a.iteration ?? 0), 0);
-                            // 开始时间取第一次迭代，结束时间取最后一次迭代
                             data.startTime = data.attempts[0]?.startTime;
                         } else {
                             data.attempts.sort((a, b) => (a.retryCount ?? 0) - (b.retryCount ?? 0));
                         }
-                        // 状态/输出取最后一次尝试
                         const last = data.attempts[data.attempts.length - 1];
                         if (last) {
                             data.status = last.status as ExecutionStatus;
@@ -201,30 +273,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                         }
                     });
 
-                    // 如果探测到新的定义，先更新图表 (使用字符串化比较)
-                    if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(get().workflowDef)) {
-                        get().setWorkflow(workflowDef);
-                    }
-
-                    // 按 fork 节点归属提取动态子任务：必须在 setWorkflow 之后，taskMap 已更新后再过滤
-                    const finalTaskMap = get().taskMap;
+                    // 递归找所有层级（含分支/循环内部）的 FORK_JOIN_DYNAMIC → JOIN 配对
                     const currentDef = get().workflowDef;
                     const allDefTasks = currentDef?.tasks || [];
+                    const forkJoinPairs = collectForkJoinDynamicPairs(allDefTasks);
 
-                    // 找所有顶层 FORK_JOIN_DYNAMIC → JOIN 配对
-                    const forkJoinPairs: Array<{ forkRef: string; joinRef: string }> = [];
-                    allDefTasks.forEach((t: any, i: number) => {
-                        if (t.type === 'FORK_JOIN_DYNAMIC') {
-                            for (let j = i + 1; j < allDefTasks.length; j++) {
-                                if (allDefTasks[j].type === 'JOIN' || allDefTasks[j].type === 'EXCLUSIVE_JOIN') {
-                                    forkJoinPairs.push({ forkRef: t.taskReferenceName, joinRef: allDefTasks[j].taskReferenceName });
-                                    break;
-                                }
-                            }
-                        }
-                    });
-
-                    // 对每对，按执行顺序（数组索引）切片，过滤出动态任务并去重
                     const dynamicRuntimeTasksByFork: Record<string, TaskInstance[]> = {};
                     forkJoinPairs.forEach(({ forkRef, joinRef }) => {
                         const forkIdx = tasks.findIndex((t: any) => t.referenceTaskName === forkRef);
@@ -248,6 +301,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         executionData,
                         dynamicRuntimeTasksByFork,
                         workflowInstance,
+                        timeTravelTimestamp: null,
+                        activeLoopIterations: {},
                         mode: 'run'
                     });
                 },
@@ -309,14 +364,43 @@ const useWorkflowStore = create<WorkflowStore>()(
                 updateTask: (taskRef: string, field: string | Record<string, any>, value?: any) => {
                     const { workflowDef, layoutDirection } = get();
                     if (!workflowDef) return;
-                    const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
+                    let newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
+                    let refactorNotice = get().lastRefactorNotice;
 
-                    const task = findTaskByRef(newDef.tasks, taskRef);
+                    const changedKeys = typeof field === 'object' ? Object.keys(field) : [field];
+                    const nextRefCandidate =
+                        typeof field === 'object'
+                            ? field.taskReferenceName
+                            : field === 'taskReferenceName'
+                            ? value
+                            : undefined;
+
+                    let effectiveRef = taskRef;
+                    if (
+                        typeof nextRefCandidate === 'string' &&
+                        nextRefCandidate.trim() &&
+                        nextRefCandidate.trim() !== taskRef
+                    ) {
+                        const trimmedRef = nextRefCandidate.trim();
+                        const refactorRes = refactorTaskReferenceName(newDef, taskRef, trimmedRef);
+                        newDef = refactorRes.updatedDef;
+                        effectiveRef = trimmedRef;
+                        if (refactorRes.replacedCount > 0) {
+                            refactorNotice = {
+                                oldRef: taskRef,
+                                newRef: trimmedRef,
+                                replacedCount: refactorRes.replacedCount,
+                                affectedTasks: refactorRes.affectedTaskRefs,
+                                timestamp: Date.now(),
+                            };
+                        }
+                    }
+
+                    const task = findTaskByRef(newDef.tasks, effectiveRef);
                     if (task) {
-                        const changedKeys = typeof field === 'object' ? Object.keys(field) : [field];
                         if (typeof field === 'object') {
-                            Object.assign(task, field);
-                        } else {
+                            Object.assign(task, field, { taskReferenceName: effectiveRef });
+                        } else if (field !== 'taskReferenceName') {
                             (task as any)[field] = value;
                         }
 
@@ -345,7 +429,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                                 edges: layoutedEdges,
                                 taskMap,
                                 selectedTask: nextSelected,
-                                validationResults
+                                validationResults,
+                                lastRefactorNotice: refactorNotice,
                             });
                         } else {
                             // 非拓扑结构变更（如入参、描述、名称、超时、重试、表达式等）：原地更新节点数据，保留用户拖拽后的节点坐标
@@ -932,6 +1017,38 @@ const useWorkflowStore = create<WorkflowStore>()(
                         });
                     }
                 },
+
+                // Pillar 1: W-LSP 数据血缘开关与重构提示清除
+                setShowDataLineage: (show: boolean) => set({ showDataLineage: show }),
+                clearRefactorNotice: () => set({ lastRefactorNotice: null }),
+
+                // Pillar 2: 瀑布流面板、时间旅行指针、循环迭代切换与浏览器沙箱试运行
+                setShowWaterfallPanel: (show: boolean) => set({ showWaterfallPanel: show }),
+                setTimeTravelTimestamp: (ts: number | null) => set({ timeTravelTimestamp: ts }),
+                setLoopIteration: (loopTaskRef: string, iteration: number) =>
+                    set({
+                        activeLoopIterations: {
+                            ...get().activeLoopIterations,
+                            [loopTaskRef]: iteration,
+                        },
+                    }),
+                runLocalSandboxDryRun: (
+                    mockInput?: Record<string, any>,
+                    taskMocks?: Record<string, Record<string, any>>
+                ) => {
+                    const { workflowDef } = get();
+                    if (!workflowDef) return;
+                    const instance = executeLocalSandboxDryRun(workflowDef, {
+                        workflowInput: mockInput,
+                        taskMocks,
+                    });
+                    get().importExecutionJSON(instance);
+                    set({ showWaterfallPanel: true });
+                },
+
+                // Pillar 3: 画布级 Cmd+K 内联 Copilot
+                setInlineCopilotTaskRef: (taskRef: string | null) =>
+                    set({ inlineCopilotTaskRef: taskRef }),
             }),
             {
                 // 只记录业务定义相关的状态，过滤掉运行时的 UI 状态（如 selected, dragging）

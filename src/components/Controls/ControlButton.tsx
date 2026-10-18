@@ -55,20 +55,21 @@ const ControlButton: React.FC<ControlButtonProps> = ({
                 background: bg,
                 color: color,
                 border: border,
-                borderRadius: '6px',
-                padding: label ? '6px 12px' : '8px',
+                borderRadius: '7px',
+                padding: label ? '4px 10px' : '6px',
                 cursor: disabled ? 'not-allowed' : 'pointer',
-                opacity: disabled ? 0.5 : 1,
-                fontSize: '13px',
+                opacity: disabled ? 0.45 : 1,
+                fontSize: '12px',
                 fontWeight: 500,
-                transition: 'all 0.2s',
-                minWidth: label ? 'auto' : '32px',
-                height: '32px',
+                transition: 'all 0.18s',
+                minWidth: label ? 'auto' : '30px',
+                height: '30px',
+                whiteSpace: 'nowrap',
                 boxShadow: variant === 'default' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
                 ...style
             }}
         >
-            {icon && <span style={{ fontSize: '14px', display: 'flex' }}>{icon}</span>}
+            {icon && <span style={{ fontSize: '13px', display: 'flex', alignItems: 'center' }}>{icon}</span>}
             {label && <span>{label}</span>}
         </button>
     );

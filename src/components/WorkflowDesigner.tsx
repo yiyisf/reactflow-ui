@@ -24,7 +24,6 @@ import HealthCheckPanel from './HealthCheckPanel';
 import AddableEdge from './edges/AddableEdge';
 import ControlHub from './Controls/ControlHub';
 import ActionBar from './Controls/ActionBar';
-import ModeSlider from './Controls/ModeSlider';
 import WorkflowSettingsPanel from './WorkflowSettingsPanel';
 import EmptyStatePanel from './EmptyStatePanel';
 import ConfirmDialog from './ConfirmDialog';
@@ -37,6 +36,9 @@ import useAiStoreSingleton from '../store/aiStore';
 import { useIdeStoresOptional } from '../store/ideStoresContext';
 import { parseWorkflow } from '../parser/conductorParser';
 import { getLayoutedElements } from '../layout/autoLayout';
+import { buildDataFlowGraph } from '../services/wlsp/workflowLsp';
+import ExecutionWaterfallPanel from './ExecutionWaterfallPanel';
+import InlineCanvasCopilot from './AiNative/InlineCanvasCopilot';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -93,11 +95,13 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         isDetailPanelOpen,
         setIsDetailPanelOpen,
         workflowDef,
+        setWorkflow,
         dynamicRuntimeTasksByFork,
         layoutDirection,
         simState,
         isSimRunning,
         workflowLoadKey,
+        showDataLineage,
     } = useWorkflowStore();
 
     // ─── 视图模式过滤：计算可见节点 ID 集合 ─────────────────────────────
@@ -197,7 +201,12 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     // Rendered under <AiWorkflowIDE> (own aiStore instance via context) or standalone
     // under <WorkflowIDE> (no provider — falls back to the module singleton).
     const ideStores = useIdeStoresOptional();
-    const pendingProposal = (ideStores?.aiStore ?? useAiStoreSingleton)(s => s.pendingProposal);
+    const useActiveAiStore = ideStores?.aiStore ?? useAiStoreSingleton;
+    const pendingProposal = useActiveAiStore(s => s.pendingProposal);
+    const clearProposal = useActiveAiStore(s => s.clearProposal);
+    const recordAccept = useActiveAiStore(s => s.recordAccept);
+    const recordReject = useActiveAiStore(s => s.recordReject);
+    const pushUndo = useActiveAiStore(s => s.pushUndo);
 
     // ─── Ghost Preview: parse proposed workflow and build overlay nodes/edges ──
     // When a proposal is pending, show the proposed canvas with diff coloring
@@ -572,6 +581,59 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
         });
     }, [edges, edgeType, theme, mode, executionData, dynamicForkData, collapseEdgesOverHidden, isSimRunning, simState]);
 
+    // Pillar 1: W-LSP 数据流血缘图谱 (Data Flow Graph) 连线叠加层
+    const dataLineageEdges = useMemo<Edge[]>(() => {
+        if (!showDataLineage || !workflowDef) return [];
+        const dfg = buildDataFlowGraph(workflowDef as any);
+        const activeRef = selectedTask?.taskReferenceName;
+        const result: Edge[] = [];
+        const seenPair = new Set<string>();
+
+        dfg.edges.forEach((item, idx) => {
+            if (!visibleNodeIdSet.has(item.sourceRef) || !visibleNodeIdSet.has(item.targetRef)) return;
+            // If a node is selected, focus on its incoming & outgoing data lineage edges
+            if (
+                activeRef &&
+                item.sourceRef !== activeRef &&
+                item.targetRef !== activeRef
+            ) {
+                return;
+            }
+            const pairKey = `${item.sourceRef}->${item.targetRef}:${item.fieldPath}`;
+            if (seenPair.has(pairKey)) return;
+            seenPair.add(pairKey);
+
+            result.push({
+                id: `wlsp-dfg-${idx}-${pairKey}`,
+                source: item.sourceRef,
+                target: item.targetRef,
+                type: 'addableEdge',
+                animated: true,
+                label: `🔗 ${item.fieldPath}`,
+                data: {
+                    mode: 'view',
+                    isAddable: false,
+                    edgeType: 'default',
+                    label: `🔗 ${item.fieldPath}`,
+                },
+                markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                    width: 16,
+                    height: 16,
+                    color: '#38bdf8',
+                },
+                style: {
+                    stroke: '#38bdf8',
+                    strokeWidth: 2.4,
+                    strokeDasharray: '6,4',
+                    opacity: 0.95,
+                },
+            });
+        });
+
+        return result;
+    }, [showDataLineage, workflowDef, visibleNodeIdSet, selectedTask?.taskReferenceName]);
+
     // 背景颜色 - 使用 CSS变量
     const backgroundColor = 'var(--bg-secondary)';
     const realNodeCount = useMemo(() => nodes.filter(n => n.type !== 'plusNode').length, [nodes]);
@@ -614,7 +676,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                         };
                     });
                 }, [nodes, validationResults, searchQuery, selectedTask, dynamicForkData, visibleNodeIdSet, simState, mode, ghostOverlay])}
-                edges={ghostOverlay?.edges ?? processedEdges}
+                edges={ghostOverlay?.edges ?? [...processedEdges, ...dataLineageEdges]}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
@@ -709,13 +771,92 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     }}
                 />
 
-                {/* Mode Slider (Top Center) — view‑detail switcher */}
-                <Panel position="top-center" style={{ marginTop: '14px' }}>
-                    <ModeSlider />
-                </Panel>
+                {/* Shadow Graph Visual Diff Floating Review Banner */}
+                {pendingProposal && (
+                    <Panel position="top-left" style={{ marginTop: '14px', marginLeft: '16px', zIndex: 1500 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '8px 16px',
+                                borderRadius: '999px',
+                                background: 'rgba(15, 23, 42, 0.94)',
+                                backdropFilter: 'blur(16px)',
+                                border: '1px solid rgba(99, 102, 241, 0.45)',
+                                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.4)',
+                                color: '#f8fafc',
+                                fontSize: '12px',
+                            }}
+                        >
+                            <span style={{ fontWeight: 700, color: '#a5b4fc' }}>
+                                👻 Shadow Graph 架构变更预览
+                            </span>
+                            <div style={{ display: 'flex', gap: '8px', fontFamily: 'monospace', fontSize: '11px' }}>
+                                {pendingProposal.diff.added.length > 0 && (
+                                    <span style={{ color: '#34d399', fontWeight: 700 }}>
+                                        +{pendingProposal.diff.added.length} 新增
+                                    </span>
+                                )}
+                                {pendingProposal.diff.modified.length > 0 && (
+                                    <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+                                        ~{pendingProposal.diff.modified.length} 修改
+                                    </span>
+                                )}
+                                {pendingProposal.diff.removed.length > 0 && (
+                                    <span style={{ color: '#f87171', fontWeight: 700 }}>
+                                        -{pendingProposal.diff.removed.length} 移除
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (workflowDef) pushUndo(workflowDef);
+                                        setWorkflow(pendingProposal.proposedDef);
+                                        recordAccept();
+                                        clearProposal();
+                                    }}
+                                    style={{
+                                        padding: '4px 12px',
+                                        borderRadius: '999px',
+                                        border: 'none',
+                                        background: '#10b981',
+                                        color: '#fff',
+                                        fontSize: '11px',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    ✓ 采纳上屏
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        recordReject();
+                                        clearProposal();
+                                    }}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '999px',
+                                        border: '1px solid rgba(248, 113, 113, 0.4)',
+                                        background: 'rgba(239, 68, 68, 0.14)',
+                                        color: '#f87171',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    ✕ 拒绝
+                                </button>
+                            </div>
+                        </div>
+                    </Panel>
+                )}
 
-                {/* Action Bar (Top Right) */}
-                <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 1000 }}>
+                {/* Unified Top Toolbar Dock (Top Right) */}
+                <div style={{ position: 'absolute', top: 14, right: 16, zIndex: 1000 }}>
                     <ActionBar
                         onShowHealthCheck={() => setShowHealthCheck(!showHealthCheck)}
                         showHealthCheck={showHealthCheck}
@@ -725,7 +866,12 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 </div>
             </ReactFlow>
 
-            
+            {/* Pillar 2: Concurrent Gantt Waterfall & Time-Travel Scrubber */}
+            <ExecutionWaterfallPanel />
+
+            {/* Pillar 3: Spatially-Aware Inline Cmd+K Canvas Copilot */}
+            <InlineCanvasCopilot />
+
             {!workflowDef && !pendingProposal && <EmptyStatePanel onRequestImport={onRequestImport} />}
 
             {workflowDef && nodes.length === 0 && mode === 'edit' && (

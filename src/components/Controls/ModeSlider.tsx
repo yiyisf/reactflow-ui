@@ -13,7 +13,7 @@ export default function ModeSlider() {
     const viewMode = useWorkflowStore((s) => s.viewMode);
     const setViewMode = useWorkflowStore((s) => s.setViewMode);
     const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
-    const [knob, setKnob] = useState({ x: 3, w: 0 });
+    const [knob, setKnob] = useState({ x: 2, w: 0 });
 
     useEffect(() => {
         const i = MODES.findIndex((m) => m.id === viewMode);
@@ -25,7 +25,7 @@ export default function ModeSlider() {
         <div className="mode-slider" role="group" aria-label="视图模式">
             <div
                 className="mode-slider-knob"
-                style={{ width: knob.w, transform: `translateX(${knob.x - 3}px)` }}
+                style={{ width: knob.w, transform: `translateX(${knob.x - 2}px)` }}
             />
             {MODES.map((m, i) => (
                 <button

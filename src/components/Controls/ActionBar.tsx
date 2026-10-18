@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import ControlButton from './ControlButton';
+import ModeSlider from './ModeSlider';
 import { useStore } from 'zustand';
 import { ExecutionActions } from '../../types/workflow';
 
@@ -11,8 +12,34 @@ interface ActionBarProps {
     executionActions?: ExecutionActions;
 }
 
+const Divider: React.FC = () => (
+    <div
+        style={{
+            width: '1px',
+            height: '18px',
+            background: 'var(--border-primary)',
+            margin: '0 2px',
+            alignSelf: 'center',
+            flexShrink: 0,
+        }}
+    />
+);
+
 const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthCheck, onShowSettings, executionActions }) => {
-    const { mode, validationResults, workflowInstance, workflowDef } = useWorkflowStore();
+    const {
+        mode,
+        validationResults,
+        workflowInstance,
+        workflowDef,
+        showDataLineage,
+        setShowDataLineage,
+        showWaterfallPanel,
+        setShowWaterfallPanel,
+        runLocalSandboxDryRun,
+        inlineCopilotTaskRef,
+        setInlineCopilotTaskRef,
+        selectedTask,
+    } = useWorkflowStore();
 
     const temporalStore = (useWorkflowStore as any).temporal;
     const { undo, redo, pastStates, futureStates } = useStore(
@@ -49,22 +76,71 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
     const allowOperations = executionActions?.allowOperations !== false;
 
     return (
-        <div className="action-bar" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div
+            className="action-bar"
+            style={{
+                display: 'flex',
+                gap: '6px',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                padding: '5px 8px',
+                borderRadius: '10px',
+                background: 'var(--bg-secondary)',
+                backdropFilter: 'blur(14px)',
+                border: '1px solid var(--border-primary)',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.18)',
+            }}
+        >
+            {/* Group 1: 节点展示层级模式 (业务 / 标准 / 全开发) */}
+            <ModeSlider />
+
+            {/* Group 2: 智能洞察与 AI 原位助手 */}
+            {workflowDef && (
+                <>
+                    <Divider />
+                    <ControlButton
+                        icon="🔗"
+                        label="数据血缘"
+                        title="W-LSP 数据流血缘图谱 (Data Flow Graph)"
+                        onClick={() => setShowDataLineage(!showDataLineage)}
+                        active={showDataLineage}
+                    />
+                    {mode === 'edit' && (
+                        <ControlButton
+                            icon="⌘K"
+                            label="AI微调"
+                            title="画布内联 AI 指令栏 (Cmd+K)"
+                            onClick={() =>
+                                setInlineCopilotTaskRef(
+                                    inlineCopilotTaskRef
+                                        ? null
+                                        : selectedTask?.taskReferenceName || '__canvas_root__'
+                                )
+                            }
+                            active={Boolean(inlineCopilotTaskRef)}
+                        />
+                    )}
+                </>
+            )}
+
+            {/* Group 3: 编辑历史、健康诊断与全局配置 */}
             {mode === 'edit' && (
                 <>
-                    <ControlButton
-                        icon="↺"
-                        title="撤销 (Cmd+Z)"
-                        onClick={() => undo()}
-                        disabled={pastStates.length === 0}
-                    />
-                    <ControlButton
-                        icon="↻"
-                        title="重做 (Cmd+Shift+Z)"
-                        onClick={() => redo()}
-                        disabled={futureStates.length === 0}
-                    />
-                    <div style={{ width: '1px', height: '20px', background: 'var(--border-primary)', margin: '0 4px', alignSelf: 'center' }} />
+                    <Divider />
+                    <div style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}>
+                        <ControlButton
+                            icon="↺"
+                            title="撤销 (Cmd+Z)"
+                            onClick={() => undo()}
+                            disabled={pastStates.length === 0}
+                        />
+                        <ControlButton
+                            icon="↻"
+                            title="重做 (Cmd+Shift+Z)"
+                            onClick={() => redo()}
+                            disabled={futureStates.length === 0}
+                        />
+                    </div>
                     <ControlButton
                         icon="🩺"
                         label={hasErrors ? `错误 (${validationResults.errors.length})` : '诊断'}
@@ -78,6 +154,33 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         label="配置"
                         title="工作流全局配置"
                         onClick={() => onShowSettings?.()}
+                    />
+                </>
+            )}
+
+            {/* Group 4: 沙箱试运行与运行态瀑布流调试 */}
+            {workflowDef && mode !== 'run' && (
+                <>
+                    <Divider />
+                    <ControlButton
+                        icon="⚡"
+                        label="沙箱试运行"
+                        title="浏览器本地确定性沙箱试运行 (0ms Dry-Run)"
+                        onClick={() => runLocalSandboxDryRun()}
+                        variant="primary"
+                    />
+                </>
+            )}
+
+            {mode === 'run' && (
+                <>
+                    <Divider />
+                    <ControlButton
+                        icon="📊"
+                        label="瀑布流回放"
+                        title="并发甘特瀑布流与时间旅行调试器 (Time-Travel)"
+                        onClick={() => setShowWaterfallPanel(!showWaterfallPanel)}
+                        active={showWaterfallPanel}
                     />
                 </>
             )}

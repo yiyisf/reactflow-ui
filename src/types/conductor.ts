@@ -98,9 +98,11 @@ export interface TaskDef {
 
     // INLINE/LAMBDA 任务特有
     evaluatorType?: 'graaljs' | 'javascript' | 'value-param' | 'python';
+    expression?: string;
 
     // Decision 任务特有
     caseExpression?: string;
+    defaultExclusiveJoinTask?: string[];
 
     // DO_WHILE 任务特有
     keepLastN?: number;
@@ -237,7 +239,7 @@ export interface TaskInstance {
     executed?: boolean;
     callbackFromWorker?: boolean;
     responseTimeoutSeconds?: number;
-    workflowInstanceId: string;
+    workflowInstanceId?: string;
     workflowType?: string;
     taskId: string;
     reasonForIncompletion?: string;
@@ -245,6 +247,7 @@ export interface TaskInstance {
     workerId?: string;
     externalInputPayloadStoragePath?: string;
     externalOutputPayloadStoragePath?: string;
+    workflowTask?: TaskDef;
 }
 
 /**
@@ -254,6 +257,8 @@ export interface WorkflowInstance {
     status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'TIMED_OUT' | 'TERMINATED' | 'PAUSED';
     endTime?: number;
     workflowId: string;
+    workflowName?: string;
+    workflowVersion?: number;
     parentWorkflowId?: string;
     parentWorkflowTaskId?: string;
     tasks: TaskInstance[];

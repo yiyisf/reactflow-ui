@@ -216,6 +216,24 @@ export interface WorkflowState {
     showAnalysisPanel: boolean;
     /** P4.1 聚焦参数字段（"去修复"跳转时使用） */
     focusedParamKey: string | null;
+    /** W-LSP: 是否在画布叠加显示数据血缘飞线 (Data Lineage DFG) */
+    showDataLineage: boolean;
+    /** W-LSP: 最近一次引用名重构提示结构 */
+    lastRefactorNotice: {
+        oldRef: string;
+        newRef: string;
+        replacedCount: number;
+        affectedTasks: string[];
+        timestamp: number;
+    } | null;
+    /** 运行态：是否显示底部并发瀑布流与时空回放面板 */
+    showWaterfallPanel: boolean;
+    /** 运行态：时空旅行回放游标时间戳 (ms)，为 null 表示展示最终实时态 */
+    timeTravelTimestamp: number | null;
+    /** 运行态：每个 DO_WHILE 循环容器当前选中的迭代轮次 (loopRef -> iteration) */
+    activeLoopIterations: Record<string, number>;
+    /** AI 共驾：画布原位 Cmd+K 浮窗当前锚定的任务引用名 */
+    inlineCopilotTaskRef: string | null;
 }
 
 /**
@@ -268,6 +286,20 @@ export interface WorkflowActions {
     setRunState: (state: RunState, execId?: string | null, error?: string | null) => void;
     /** P4.3: 切回 edit 模式并聚焦到指定任务的指定参数字段 */
     switchToEditAndFocusParam: (taskRef: string, paramKey?: string) => void;
+    /** W-LSP: 切换数据血缘飞线叠加显示 */
+    setShowDataLineage: (show: boolean) => void;
+    /** W-LSP: 清除重构提示文案 */
+    clearRefactorNotice: () => void;
+    /** 运行态：切换底部并发瀑布流面板 */
+    setShowWaterfallPanel: (show: boolean) => void;
+    /** 运行态：设置时空旅行时间戳 */
+    setTimeTravelTimestamp: (ts: number | null) => void;
+    /** 运行态：切换指定 DO_WHILE 循环容器的展示迭代轮次 */
+    setLoopIteration: (loopRef: string, iteration: number) => void;
+    /** AI 共驾：打开/关闭画布原位 Cmd+K 浮窗 */
+    setInlineCopilotTaskRef: (taskRef: string | null) => void;
+    /** 本地沙箱：在浏览器内执行零延迟确定性试运行并进入调试视图 */
+    runLocalSandboxDryRun: (mockInput?: Record<string, any>, taskMocks?: Record<string, any>) => void;
 }
 
 /**

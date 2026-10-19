@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
   // - GitHub Pages：DEPLOY_BASE=/reactflow-ui/（见 .github/workflows/deploy-pages.yml）
   if (isDemo) {
     return {
-      base: process.env.DEPLOY_BASE || '/',
+      base: loadEnv(mode, __dirname, 'DEPLOY_').DEPLOY_BASE || '/',
       plugins: [react()],
       build: {
         outDir: 'dist',

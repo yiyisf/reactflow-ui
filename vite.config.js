@@ -13,9 +13,13 @@ export default defineConfig(({ mode }) => {
   const isDemo = mode === 'demo'
   const isAi = mode === 'ai'
 
-  // Demo SPA 模式（用于独立站点与 Vercel 等平台托管部署）
+  // Demo SPA 模式（用于独立站点与 Vercel / GitHub Pages 等平台托管部署）
+  // 部署子路径通过环境变量 DEPLOY_BASE 指定：
+  // - Vercel：不设置，默认 '/'
+  // - GitHub Pages：DEPLOY_BASE=/reactflow-ui/（见 .github/workflows/deploy-pages.yml）
   if (isDemo) {
     return {
+      base: process.env.DEPLOY_BASE || '/',
       plugins: [react()],
       build: {
         outDir: 'dist',

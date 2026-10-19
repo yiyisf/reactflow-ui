@@ -180,7 +180,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 loadSampleExecution: async () => {
                     try {
-                        const response = await fetch(`${import.meta.env.BASE_URL}sample-workflows/sample-execution.json`);
+                        const response = await fetch(`${(import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/'}sample-workflows/sample-execution.json`);
                         const data = await response.json();
                         get().importExecutionJSON(data);
                     } catch (err) {

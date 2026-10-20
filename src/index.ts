@@ -31,3 +31,29 @@ export type {
     SandboxDryRunOptions,
     TaskMockOverride,
 } from './utils/localSandboxEngine';
+
+// ── v1.1.0: Zero-Code Business Mode & Action Store ───────────────────────────
+export * from './actions/types';
+export { ActionRegistry, defaultActionRegistry } from './actions/registry';
+export { BUILTIN_ECS_ACTIONS } from './actions/builtin/ecs';
+export { BUILTIN_COMMON_ACTIONS } from './actions/builtin/common';
+export * from './stepmodel/types';
+export {
+    compileStepToTaskDef,
+    compileStepModelToWorkflowDef,
+} from './stepmodel/compile';
+export {
+    decompileTaskDefToStep,
+    decompileWorkflowDefToStepModel,
+} from './stepmodel/decompile';
+export { StepFlowEditor } from './components/business/StepFlowEditor';
+export { DataPillInput } from './components/business/DataPillInput';
+export { ActionForm } from './components/business/ActionForm';
+
+// ── v1.1.0: Scenario-Based Template Center & 3-Step Setup Wizard ─────────────
+export * from './template/types';
+export { TemplateStore, defaultTemplateStore } from './template/templateStore';
+export { applyTemplateVariables } from './template/applyTemplate';
+export { BUILTIN_WORKFLOW_TEMPLATES } from './template/builtin/templates';
+export { TemplateGallery } from './components/template/TemplateGallery';
+export { TemplateSetupWizard } from './components/template/TemplateSetupWizard';

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
+import { useCallback, useEffect, useImperativeHandle, forwardRef, useState, useMemo } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
@@ -10,6 +10,10 @@ import useWorkflowStore from './store/workflowStore';
 import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions, ViewMode, WorkflowExecutionInput } from './types/workflow';
 import { WorkflowDef, WorkflowInstance } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
+import { ActionDefinition } from './actions/types';
+import { ActionRegistry, defaultActionRegistry } from './actions/registry';
+import { StepFlowEditor } from './components/business/StepFlowEditor';
+import { TemplateGallery } from './components/template/TemplateGallery';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
 
@@ -117,6 +121,20 @@ export interface WorkflowIDEProps {
     aiConfig?: Partial<AIServiceConfig>;
 
     /**
+     * UI 体验模式：
+     * - `pro` (默认): 专业开发者模式，展示完整 DAG 画布、底层参数、Monaco JSON
+     * - `business`: 面向普通使用者的业务模式，提供卡片步骤流、业务动作与数据胶囊
+     * @default 'pro'
+     */
+    uiMode?: 'pro' | 'business';
+
+    /**
+     * 自定义扩展的业务动作定义列表。
+     * 宿主可传入自定义业务动作（如私有云/特定系统连接器）。
+     */
+    actions?: ActionDefinition[];
+
+    /**
      * 组件容器高度。
      * @default '100%'
      */
@@ -173,6 +191,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     executionActions,
     aiConfig,
     viewMode = 'developer',
+    uiMode = 'pro',
+    actions,
     onSave,
     onWorkflowChange,
     height = '100%',
@@ -180,6 +200,17 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     onPollExecution,
     executionPollInterval = 3000,
 }, ref) => {
+    // 业务模式下的视图切换：卡片流 (card) vs 全景拓扑 (canvas)
+    const [businessViewLayout, setBusinessViewLayout] = useState<'card' | 'canvas'>('card');
+    const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+
+    // 动作注册表
+    const actionRegistry = useMemo(() => {
+        if (!actions || actions.length === 0) return defaultActionRegistry;
+        const reg = new ActionRegistry(defaultActionRegistry.getAllActions());
+        reg.registerAll(actions);
+        return reg;
+    }, [actions]);
     const {
         setWorkflow,
         setTheme,
@@ -311,7 +342,62 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 flexShrink: 0,
                 flexWrap: 'wrap',
             }}>
+                {/* 业务模式下的视图切换器 */}
+                {uiMode === 'business' && mode !== 'run' && (
+                    <div style={{
+                        display: 'inline-flex',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        borderRadius: 6,
+                        padding: 2,
+                        border: '1px solid var(--border-secondary)',
+                    }}>
+                        <button
+                            onClick={() => setBusinessViewLayout('card')}
+                            style={{
+                                height: 24, padding: '0 8px', borderRadius: 4, border: 'none',
+                                background: businessViewLayout === 'card' ? 'var(--color-accent)' : 'transparent',
+                                color: businessViewLayout === 'card' ? '#fff' : 'var(--text-secondary)',
+                                cursor: 'pointer', fontSize: 11, fontWeight: 500,
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}
+                        >
+                            📋 业务卡片流
+                        </button>
+                        <button
+                            onClick={() => setBusinessViewLayout('canvas')}
+                            style={{
+                                height: 24, padding: '0 8px', borderRadius: 4, border: 'none',
+                                background: businessViewLayout === 'canvas' ? 'var(--color-accent)' : 'transparent',
+                                color: businessViewLayout === 'canvas' ? '#fff' : 'var(--text-secondary)',
+                                cursor: 'pointer', fontSize: 11, fontWeight: 500,
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}
+                        >
+                            🕸️ 全景画布
+                        </button>
+                    </div>
+                )}
+
                 <div style={{ flex: 1 }} />
+
+                {/* 模板中心按钮（编辑/查看态下可用） */}
+                {mode !== 'run' && (
+                    <button
+                        onClick={() => setShowTemplateGallery(true)}
+                        style={{
+                            height: 28, padding: '0 10px',
+                            background: 'color-mix(in srgb, var(--color-brand-blue) 15%, transparent)',
+                            color: 'var(--color-brand-blue)',
+                            border: '1px solid color-mix(in srgb, var(--color-brand-blue) 40%, transparent)',
+                            borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                            display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                        }}
+                        title="打开场景化工作流模板中心"
+                    >
+                        <span>📁</span>
+                        <span>模板中心</span>
+                    </button>
+                )}
 
                 {/* P4.2: 执行验证按钮（edit 模式） */}
                 {mode === 'edit' && storeWorkflowDef && (
@@ -433,20 +519,33 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 )}
             </div>
 
-            <div className="workflow-viewer" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <ReactFlowProvider>
-                    <WorkflowDesigner
-                        onNodeClick={handleNodeClick}
-                        edgeType={edgeType}
-                        theme={theme}
-                        nodesLocked={readOnly || mode === 'run' || !!workflowExecution}
-                        searchQuery={searchQuery}
-                        onSave={onSave}
-                        onRequestImport={onRequestImport}
-                        executionActions={executionActions}
+            {uiMode === 'business' && businessViewLayout === 'card' && mode !== 'run' ? (
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                    <StepFlowEditor
+                        workflowDef={storeWorkflowDef}
+                        registry={actionRegistry}
+                        readOnly={readOnly}
+                        onChange={(newDef) => {
+                            setWorkflow(newDef, layoutDirection);
+                        }}
                     />
-                </ReactFlowProvider>
-            </div>
+                </div>
+            ) : (
+                <div className="workflow-viewer" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                    <ReactFlowProvider>
+                        <WorkflowDesigner
+                            onNodeClick={handleNodeClick}
+                            edgeType={edgeType}
+                            theme={theme}
+                            nodesLocked={readOnly || mode === 'run' || !!workflowExecution}
+                            searchQuery={searchQuery}
+                            onSave={onSave}
+                            onRequestImport={onRequestImport}
+                            executionActions={executionActions}
+                        />
+                    </ReactFlowProvider>
+                </div>
+            )}
 
             <TaskDetailPanel
                 task={selectedTask}
@@ -473,6 +572,15 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
 
             {/* P4.3: 执行分析面板（run 模式下悬浮） */}
             {mode === 'run' && <ExecutionSummaryPanel />}
+
+            {/* 场景化工作流模板中心 */}
+            <TemplateGallery
+                isOpen={showTemplateGallery}
+                onClose={() => setShowTemplateGallery(false)}
+                onSelectTemplate={(configuredDef) => {
+                    setWorkflow(configuredDef, layoutDirection);
+                }}
+            />
         </div >
     );
 });

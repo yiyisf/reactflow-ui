@@ -1,0 +1,74 @@
+{
+  "name": "ecs_lifecycle_automation",
+  "description": "云主机全生命周期自动化：自动创建实例 -> 轮询查询详情 -> 远程下发初始化运维命令 -> 创建安全快照 -> 发送协同群通知",
+  "version": 1,
+  "schemaVersion": 2,
+  "tasks": [
+    {
+      "name": "ecs_create_instance",
+      "taskReferenceName": "create_app_node",
+      "type": "HTTP",
+      "description": "创建云主机: app-server-node",
+      "inputParameters": {
+        "_actionId": "ecs.create_instance",
+        "actionName": "创建云主机",
+        "regionId": "cn-hangzhou",
+        "instanceType": "ecs.c7.xlarge",
+        "imageId": "image-alilinux-3",
+        "instanceName": "app-server-node",
+        "systemDiskSize": 120
+      }
+    },
+    {
+      "name": "ecs_query_instance",
+      "taskReferenceName": "query_node_status",
+      "type": "HTTP",
+      "description": "查询云主机详情与IP地址",
+      "inputParameters": {
+        "_actionId": "ecs.query_instance",
+        "actionName": "查询云主机详情",
+        "instanceId": "${create_app_node.output.instanceId}"
+      }
+    },
+    {
+      "name": "ecs_run_command",
+      "taskReferenceName": "init_server_env",
+      "type": "HTTP",
+      "description": "主机下发命令: 初始化运行时环境",
+      "inputParameters": {
+        "_actionId": "ecs.run_command",
+        "actionName": "执行远程运维脚本",
+        "instanceId": "${create_app_node.output.instanceId}",
+        "commandType": "RunShellScript",
+        "commandContent": "yum update -y && systemctl start docker && docker ps",
+        "timeoutSeconds": 60
+      }
+    },
+    {
+      "name": "ecs_create_snapshot",
+      "taskReferenceName": "create_backup_snapshot",
+      "type": "HTTP",
+      "description": "创建安全回滚快照",
+      "inputParameters": {
+        "_actionId": "ecs.create_snapshot",
+        "actionName": "创建云盘快照",
+        "instanceId": "${create_app_node.output.instanceId}",
+        "snapshotName": "init-baseline-snapshot",
+        "retentionDays": 14
+      }
+    },
+    {
+      "name": "send_operation_notification",
+      "taskReferenceName": "notify_devops_team",
+      "type": "EVENT",
+      "description": "发送协同群通知",
+      "inputParameters": {
+        "_actionId": "notify.send_message",
+        "actionName": "发送运维通知",
+        "channel": "webhook_dingtalk",
+        "title": "【部署就绪】新云主机已初始化并完成快照",
+        "content": "主机 ${create_app_node.output.instanceId} 已完成环境配置并生成基线快照，内网IP: ${query_node_status.output.privateIp}。"
+      }
+    }
+  ]
+}

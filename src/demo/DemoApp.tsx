@@ -20,6 +20,7 @@ function DemoApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [useNewAiMode, setUseNewAiMode] = useState(false);
+  const [uiMode, setUiMode] = useState<'pro' | 'business'>('business');
   const [allowOperations, setAllowOperations] = useState(true);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
@@ -119,6 +120,11 @@ function DemoApp() {
 
   // 运行态执行示例
   const [workflowExecution, setWorkflowExecution] = useState<any>(null);
+
+  // 初始默认加载云主机全生命周期自动化示例
+  useEffect(() => {
+    loadSampleWorkflow('ecs-lifecycle-automation');
+  }, [loadSampleWorkflow]);
 
   const loadExecutionExample = useCallback(async (exampleName: string) => {
     if (!exampleName) {
@@ -246,6 +252,20 @@ function DemoApp() {
               {useNewAiMode ? '✨ AI 模式' : '💻 经典模式'}
             </button>
 
+            <button
+              className={`mode-btn ${uiMode === 'business' ? 'active' : ''}`}
+              onClick={() => setUiMode(uiMode === 'business' ? 'pro' : 'business')}
+              title={uiMode === 'business' ? "切换为专业开发者模式 (查看完整 DAG/JSON)" : "切换为普通使用者模式 (卡片流/数据胶囊/云平台动作)"}
+              style={{
+                background: uiMode === 'business' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.25))' : undefined,
+                borderColor: uiMode === 'business' ? '#10b981' : undefined,
+                color: uiMode === 'business' ? '#10b981' : undefined,
+                fontWeight: 600,
+              }}
+            >
+              {uiMode === 'business' ? '👔 业务模式' : '💻 开发者模式'}
+            </button>
+
             <a
               href="/"
               className="mode-btn"
@@ -278,6 +298,9 @@ function DemoApp() {
               title="载入官方示例工作流（包含编辑态与运行态案例）"
             >
               <option value="" disabled>📁 示例工作流...</option>
+              <optgroup label="── ☁️ 云平台业务流程 ──">
+                <option value="def:ecs-lifecycle-automation">☁️ 云主机全生命周期自动化 (业务模式)</option>
+              </optgroup>
               <optgroup label="── 编辑态流程 ──">
                 <option value="def:simple-workflow">简单流程 (Simple)</option>
                 <option value="def:decision-workflow">分支流程 (Decision)</option>
@@ -370,6 +393,7 @@ function DemoApp() {
             workflowDef={workflowJson}
             workflowExecution={workflowExecution}
             readOnly={isReadOnly}
+            uiMode={uiMode}
             theme={themeMode}
             themeColor={themeColor}
             layoutDirection="LR"

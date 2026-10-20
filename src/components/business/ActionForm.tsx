@@ -39,16 +39,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 20 }}>🔧</span>
           <div>
-            <div style={{ fontWeight: 600, color: 'var(--text-primary, #f8fafc)', fontSize: 14 }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
               {step.name || step.taskReferenceName} (底层技术步骤)
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               任务类型: {step.rawTaskDef?.type || 'CUSTOM'}
             </div>
           </div>
         </div>
 
-        <p style={{ fontSize: 12, color: 'var(--text-secondary, #b0bec5)', lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
           该步骤属于底层控制流或未映射的 Conductor 任务。在业务模式下已为您无损保留其参数与依赖关系。如需深度修改其底层 JQ 脚本或 JSON Schema，请切换至右上方「全景画布模式」。
         </p>
       </div>
@@ -72,15 +72,15 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           alignItems: 'flex-start',
           gap: 10,
           padding: '10px 12px',
-          background: 'var(--bg-primary, #0f172a)',
+          background: 'var(--bg-primary)',
           borderRadius: 8,
-          border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+          border: '1px solid var(--border-primary)',
         }}
       >
         <span style={{ fontSize: 24 }}>{action.icon}</span>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary, #f8fafc)' }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
               {action.name}
             </span>
             {action.riskLevel === 'sensitive' && (
@@ -89,9 +89,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: 'rgba(239, 68, 68, 0.18)',
-                  color: '#f87171',
-                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  background: 'color-mix(in srgb, var(--status-failed, #ef4444) 15%, transparent)',
+                  color: 'var(--status-failed, #ef4444)',
+                  border: '1px solid color-mix(in srgb, var(--status-failed, #ef4444) 30%, transparent)',
                   fontWeight: 600,
                 }}
               >
@@ -99,7 +99,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               </span>
             )}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
             {action.description}
           </div>
         </div>
@@ -111,10 +111,10 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           style={{
             padding: '8px 12px',
             borderRadius: 6,
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
+            background: 'color-mix(in srgb, var(--status-failed, #ef4444) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--status-failed, #ef4444) 25%, transparent)',
             fontSize: 12,
-            color: '#fca5a5',
+            color: 'var(--status-failed, #ef4444)',
             lineHeight: 1.5,
           }}
         >
@@ -134,7 +134,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   style={{
                     fontSize: 12,
                     fontWeight: 600,
-                    color: 'var(--text-primary, #f8fafc)',
+                    color: 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4,
@@ -144,7 +144,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   {field.required && <span style={{ color: '#ef4444' }}>*</span>}
                 </label>
                 {field.help && (
-                  <span style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                     {field.help}
                   </span>
                 )}
@@ -159,9 +159,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   style={{
                     padding: '7px 10px',
                     borderRadius: 6,
-                    background: 'var(--bg-primary, #0f172a)',
-                    border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                    color: 'var(--text-primary, #f8fafc)',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-secondary)',
+                    color: 'var(--text-primary)',
                     fontSize: 13,
                     outline: 'none',
                     cursor: 'pointer',
@@ -181,7 +181,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                     gap: 8,
                     cursor: 'pointer',
                     fontSize: 13,
-                    color: 'var(--text-secondary, #b0bec5)',
+                    color: 'var(--text-secondary)',
                   }}
                 >
                   <input
@@ -214,9 +214,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   style={{
                     padding: '6px 10px',
                     borderRadius: 6,
-                    background: 'var(--bg-primary, #0f172a)',
-                    border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                    color: 'var(--text-primary, #f8fafc)',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-secondary)',
+                    color: 'var(--text-primary)',
                     fontSize: 13,
                     outline: 'none',
                     fontFamily: 'inherit',
@@ -237,9 +237,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   style={{
                     padding: '6px 10px',
                     borderRadius: 6,
-                    background: 'var(--bg-primary, #0f172a)',
-                    border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                    color: 'var(--text-primary, #f8fafc)',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-secondary)',
+                    color: 'var(--text-primary)',
                     fontSize: 13,
                     outline: 'none',
                     fontFamily: 'inherit',
@@ -257,16 +257,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
           style={{
             marginTop: 8,
             padding: '10px 12px',
-            background: 'rgba(255,255,255,0.02)',
+            background: 'var(--bg-tertiary)',
             borderRadius: 6,
-            border: '1px solid var(--border-primary, rgba(255,255,255,0.08))',
+            border: '1px solid var(--border-primary)',
           }}
         >
           <div
             style={{
               fontSize: 11,
               fontWeight: 600,
-              color: 'var(--text-muted, #94a3b8)',
+              color: 'var(--text-muted)',
               marginBottom: 6,
             }}
           >
@@ -280,8 +280,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   fontSize: 11,
                   padding: '2px 8px',
                   borderRadius: 4,
-                  background: 'rgba(255,255,255,0.06)',
-                  color: 'var(--text-secondary, #b0bec5)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-primary)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 4,
@@ -289,7 +290,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               >
                 <span>🏷️</span>
                 <span>{out.label}</span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted, #94a3b8)', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                   ({out.key})
                 </span>
               </span>

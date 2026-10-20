@@ -105,8 +105,8 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
           display: 'flex',
           alignItems: multiline ? 'flex-start' : 'center',
           gap: 6,
-          background: 'var(--bg-primary, #0f172a)',
-          border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.2))',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-secondary)',
           borderRadius: 6,
           padding: '4px 8px',
           transition: 'border-color 0.15s ease',
@@ -126,7 +126,7 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: 'var(--text-primary, #f8fafc)',
+              color: 'var(--text-primary)',
               fontSize: 13,
               fontFamily: 'inherit',
               resize: 'vertical',
@@ -147,7 +147,7 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: 'var(--text-primary, #f8fafc)',
+              color: 'var(--text-primary)',
               fontSize: 13,
               fontFamily: 'inherit',
             }}
@@ -161,12 +161,12 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
           title="点击选择并插入上游数据胶囊 (@)"
           style={{
             background: showPicker
-              ? 'color-mix(in srgb, var(--color-accent, #3b82f6) 25%, transparent)'
-              : 'rgba(255, 255, 255, 0.06)',
-            color: showPicker ? 'var(--color-accent, #3b82f6)' : 'var(--text-secondary, #b0bec5)',
-            border: `1px solid ${showPicker ? 'var(--color-accent, #3b82f6)' : 'rgba(255, 255, 255, 0.15)'}`,
+              ? 'var(--color-accent-bg, rgba(59, 130, 246, 0.15))'
+              : 'var(--bg-tertiary)',
+            color: showPicker ? 'var(--color-accent, #3b82f6)' : 'var(--text-secondary)',
+            border: `1px solid ${showPicker ? 'var(--color-accent, #3b82f6)' : 'var(--border-primary)'}`,
             borderRadius: 4,
-            padding: '2px 6px',
+            padding: '2px 8px',
             fontSize: 11,
             cursor: 'pointer',
             display: 'inline-flex',
@@ -192,20 +192,21 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
             padding: '2px 2px',
           }}
         >
-          <span style={{ fontSize: 10, color: 'var(--text-muted, #94a3b8)' }}>已引用胶囊:</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>已引用胶囊:</span>
           {pillTokens.map((t, idx) => (
             <span
               key={`${t.ref}_${idx}`}
               style={{
                 fontSize: 11,
-                padding: '1px 6px',
+                padding: '2px 8px',
                 borderRadius: 12,
-                background: 'rgba(59, 130, 246, 0.18)',
-                color: '#93c5fd',
-                border: '1px solid rgba(59, 130, 246, 0.35)',
+                background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
+                color: 'var(--color-accent-text, #1e40af)',
+                border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 35%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
+                fontWeight: 500,
               }}
               title={`原始引用表达式: ${t.raw}`}
             >

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import ControlButton from './ControlButton';
-import ModeSlider from './ModeSlider';
 import SandboxConfigModal from '../SandboxConfigModal';
 import { useStore } from 'zustand';
 import { ExecutionActions } from '../../types/workflow';
@@ -94,13 +93,9 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                 boxShadow: '0 6px 24px rgba(0, 0, 0, 0.18)',
             }}
         >
-            {/* Group 1: 节点展示层级模式 (业务 / 标准 / 全开发) */}
-            <ModeSlider />
-
             {/* Group 2: 智能洞察与 AI 原位助手 */}
             {workflowDef && (
                 <>
-                    <Divider />
                     <ControlButton
                         icon="🔗"
                         label="数据血缘"

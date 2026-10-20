@@ -97,7 +97,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
         flexDirection: 'column',
         gap: 16,
         padding: '16px 20px',
-        background: 'var(--bg-primary, #0f172a)',
+        background: 'var(--bg-primary)',
         height: '100%',
         overflowY: 'auto',
         fontFamily: 'inherit',
@@ -122,12 +122,12 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               style={{
                 fontWeight: 700,
                 fontSize: 14,
-                color: isFailed ? '#f87171' : '#34d399',
+                color: isFailed ? 'var(--status-failed, #ef4444)' : 'var(--status-completed, #10b981)',
               }}
             >
               {isFailed ? '工作流执行中断' : '工作流全部步骤顺利执行完毕'}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
               执行 ID: {instance.workflowId} · 共执行 {tasks.length} 个步骤 · 总耗时约 {durationSec} 秒
             </div>
           </div>
@@ -139,8 +139,8 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
             padding: '2px 8px',
             borderRadius: 4,
             fontWeight: 600,
-            background: isFailed ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)',
-            color: isFailed ? '#fca5a5' : '#6ee7b7',
+            background: isFailed ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+            color: isFailed ? 'var(--status-failed, #ef4444)' : 'var(--status-completed, #10b981)',
           }}
         >
           {instance.status}
@@ -166,11 +166,11 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               key={task.taskId || task.referenceTaskName || idx}
               style={{
                 borderRadius: 10,
-                background: 'var(--bg-secondary, #1e293b)',
+                background: 'var(--bg-secondary)',
                 border: isTaskFailed
-                  ? '1px solid rgba(239, 68, 68, 0.4)'
-                  : '1px solid var(--border-primary, rgba(255, 255, 255, 0.1))',
-                boxShadow: isTaskFailed ? '0 4px 16px rgba(239, 68, 68, 0.15)' : 'none',
+                  ? '1px solid var(--status-failed, #ef4444)'
+                  : '1px solid var(--border-primary)',
+                boxShadow: isTaskFailed ? '0 4px 16px rgba(239, 68, 68, 0.12)' : 'none',
                 padding: '12px 16px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -183,7 +183,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                   <span style={{ fontSize: 18 }}>{isTaskFailed ? '❌' : taskIcon}</span>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary, #f8fafc)' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
                         步骤 #{idx + 1}: {action?.name || task.taskDefName || task.referenceTaskName}
                       </span>
                       <span
@@ -191,8 +191,8 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                           fontSize: 10,
                           padding: '1px 5px',
                           borderRadius: 3,
-                          background: isTaskFailed ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.15)',
-                          color: isTaskFailed ? '#f87171' : '#34d399',
+                          background: isTaskFailed ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                          color: isTaskFailed ? 'var(--status-failed, #ef4444)' : 'var(--status-completed, #10b981)',
                           fontWeight: 600,
                         }}
                       >
@@ -200,7 +200,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                       </span>
                     </div>
 
-                    <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                       {timeStr} {taskDuration && `· 耗时 ${taskDuration}`}
                     </div>
                   </div>
@@ -214,8 +214,8 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                         padding: '2px 8px',
                         borderRadius: 4,
                         background: 'transparent',
-                        border: '1px solid var(--border-secondary, rgba(255,255,255,0.15))',
-                        color: 'var(--text-secondary, #b0bec5)',
+                        border: '1px solid var(--border-secondary)',
+                        color: 'var(--text-secondary)',
                         fontSize: 11,
                         cursor: 'pointer',
                       }}
@@ -229,7 +229,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: 'var(--text-muted, #94a3b8)',
+                      color: 'var(--text-muted)',
                       fontSize: 11,
                       cursor: 'pointer',
                     }}
@@ -243,7 +243,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               <div
                 style={{
                   fontSize: 12,
-                  color: isTaskFailed ? '#fca5a5' : 'var(--text-secondary, #cbd5e1)',
+                  color: isTaskFailed ? 'var(--status-failed, #ef4444)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                   padding: '4px 0',
                 }}
@@ -265,11 +265,11 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               {isExpanded && task.outputData && (
                 <div
                   style={{
-                    marginTop: 6,
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    background: 'rgba(0, 0, 0, 0.25)',
-                    border: '1px solid var(--border-primary, rgba(255, 255, 255, 0.06))',
+                    marginTop: 8,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--border-primary)',
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: 8,
@@ -282,18 +282,18 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                         key={k}
                         style={{
                           fontSize: 11,
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          background: 'rgba(59, 130, 246, 0.15)',
-                          color: '#93c5fd',
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
+                          border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 30%, transparent)',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 4,
+                          gap: 6,
                           fontFamily: 'monospace',
                         }}
                       >
-                        <span style={{ color: 'var(--text-muted, #94a3b8)' }}>{k}:</span>
-                        <span>{String(v)}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{k}:</span>
+                        <span style={{ color: 'var(--color-accent-text, #1e40af)', fontWeight: 600 }}>{String(v)}</span>
                       </span>
                     );
                   })}

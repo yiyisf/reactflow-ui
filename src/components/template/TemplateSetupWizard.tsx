@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate } from '../../template/types';
 import { applyTemplateVariables } from '../../template/applyTemplate';
@@ -73,7 +74,9 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
     onClose();
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       style={{
         position: 'fixed',
@@ -578,6 +581,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { WorkflowInstance } from '../../types/conductor';
 import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { extractTemplateFromInstance } from '../../template/sanitizer/anonymize';
@@ -47,6 +48,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
   const [publishedSuccess, setPublishedSuccess] = useState(false);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
   const handleTogglePrune = (taskRef: string) => {
     setPrunedMap((prev) => ({
@@ -91,7 +93,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
 
   const findings = initialResult.findings;
 
-  return (
+  return createPortal(
     <div
       style={{
         position: 'fixed',
@@ -99,13 +101,13 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.76)',
-        backdropFilter: 'blur(5px)',
-        zIndex: 1350,
+        background: 'rgba(0, 0, 0, 0.72)',
+        backdropFilter: 'blur(6px)',
+        zIndex: 2000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: 24,
         fontFamily: 'inherit',
       }}
       onClick={onClose}
@@ -113,13 +115,14 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 960,
-          maxWidth: '92vw',
-          maxHeight: '88vh',
-          background: 'var(--bg-secondary, #1e293b)',
-          border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.2))',
+          width: 980,
+          maxWidth: 'calc(100vw - 48px)',
+          height: 720,
+          maxHeight: 'calc(100vh - 48px)',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-secondary)',
           borderRadius: 14,
-          boxShadow: '0 28px 72px rgba(0, 0, 0, 0.65)',
+          boxShadow: '0 28px 72px rgba(0, 0, 0, 0.5)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -521,6 +524,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

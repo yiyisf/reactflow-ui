@@ -177,42 +177,7 @@ function DemoApp() {
           </div>
 
           <div className="header-actions">
-            {/* 视图模式切换（运行态自动锁定为开发模式） */}
-            {!workflowExecution && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-tertiary)', borderRadius: 7, padding: 3, border: '1px solid var(--border-primary)', height: 32, boxSizing: 'border-box' }}>
-                {(['business', 'standard', 'developer'] as ViewMode[]).map((m) => {
-                  const labels: Record<ViewMode, string> = { business: '业务', standard: '标准', developer: '开发' };
-                  const titles: Record<ViewMode, string> = { business: '仅展示核心业务节点', standard: '业务 + 控制流节点', developer: '展示所有节点（含数据转换）' };
-                  return (
-                    <button
-                      key={m}
-                      onClick={() => setViewMode(m)}
-                      title={titles[m]}
-                      style={{
-                        padding: '3px 9px',
-                        borderRadius: 5,
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        fontFamily: 'inherit',
-                        background: viewMode === m ? 'var(--color-accent)' : 'transparent',
-                        color: viewMode === m ? '#fff' : 'var(--text-secondary)',
-                        transition: 'all 0.15s',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {labels[m]}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {workflowExecution && (
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '5px 10px', background: 'var(--bg-tertiary)', borderRadius: 7, border: '1px solid var(--border-primary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                运行态 · 开发模式
-              </span>
-            )}
+
 
             {workflowExecution && !useNewAiMode && (
               <>

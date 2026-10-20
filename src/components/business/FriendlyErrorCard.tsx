@@ -44,7 +44,7 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
               ? '💳'
               : '❌'}
           </span>
-          <span style={{ fontWeight: 600, fontSize: 14, color: '#f87171' }}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--status-failed, #ef4444)' }}>
             {diagnosis.title}
           </span>
         </div>
@@ -55,9 +55,9 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
             style={{
               padding: '4px 10px',
               borderRadius: 6,
-              background: 'rgba(239, 68, 68, 0.2)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#fca5a5',
+              background: 'color-mix(in srgb, var(--status-failed, #ef4444) 15%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--status-failed, #ef4444) 30%, transparent)',
+              color: 'var(--status-failed, #ef4444)',
               fontSize: 11,
               fontWeight: 600,
               cursor: 'pointer',
@@ -73,7 +73,7 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
       </div>
 
       {/* 大白话业务原因解释 */}
-      <div style={{ fontSize: 12, color: 'var(--text-secondary, #b0bec5)', lineHeight: 1.6 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
         {diagnosis.explanation}
       </div>
 
@@ -82,9 +82,10 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
         style={{
           padding: '8px 12px',
           borderRadius: 6,
-          background: 'rgba(0, 0, 0, 0.15)',
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--border-primary)',
           fontSize: 11,
-          color: '#fbbf24',
+          color: 'var(--color-warning, #d97706)',
           lineHeight: 1.5,
         }}
       >

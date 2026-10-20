@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { TemplateStore, defaultTemplateStore } from '../../template/templateStore';
@@ -30,6 +31,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   }, [templateStore, searchQuery, selectedCategory]);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
   // 点击【试跑演示】直接在本地沙盒执行并展示结果
   const handleQuickPreviewRun = (template: WorkflowTemplate) => {
@@ -48,7 +50,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       style={{
         position: 'fixed',
@@ -376,6 +378,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           }}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 };

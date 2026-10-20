@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
 import type { BusinessWorkflowModel, BusinessStep } from '../../stepmodel/types';
 import { compileStepModelToWorkflowDef } from '../../stepmodel/compile';
@@ -547,8 +548,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                   <div
                     style={{
                       padding: '14px 16px',
-                      borderTop: '1px solid var(--border-primary, rgba(255,255,255,0.08))',
-                      background: 'rgba(0,0,0,0.12)',
+                      borderTop: '1px solid var(--border-primary)',
+                      background: 'var(--bg-primary)',
                     }}
                   >
                     <ActionForm
@@ -570,9 +571,9 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                     style={{
                       padding: '4px 12px',
                       borderRadius: 16,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px dashed var(--border-secondary, rgba(255,255,255,0.18))',
-                      color: 'var(--text-muted, #94a3b8)',
+                      background: 'var(--bg-tertiary)',
+                      border: '1px dashed var(--border-secondary)',
+                      color: 'var(--text-muted)',
                       fontSize: 11,
                       cursor: 'pointer',
                       display: 'inline-flex',
@@ -585,8 +586,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                       e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)';
-                      e.currentTarget.style.color = 'var(--text-muted, #94a3b8)';
+                      e.currentTarget.style.borderColor = 'var(--border-secondary)';
+                      e.currentTarget.style.color = 'var(--text-muted)';
                     }}
                   >
                     <span>+</span>
@@ -601,7 +602,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       )}
 
       {/* Action Picker Modal */}
-      {insertModalIndex !== null && (
+      {insertModalIndex !== null && typeof document !== 'undefined' && createPortal(
         <div
           style={{
             position: 'fixed',
@@ -609,25 +610,27 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0,0,0,0.65)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 1200,
+            background: 'rgba(0,0,0,0.68)',
+            backdropFilter: 'blur(5px)',
+            zIndex: 2000,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 20,
+            padding: 24,
+            fontFamily: 'inherit',
           }}
           onClick={() => setInsertModalIndex(null)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: 640,
-              maxHeight: '80vh',
-              background: 'var(--bg-secondary, #1e293b)',
-              border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-              borderRadius: 12,
-              boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+              width: 680,
+              maxWidth: 'calc(100vw - 48px)',
+              maxHeight: '82vh',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-secondary)',
+              borderRadius: 14,
+              boxShadow: '0 24px 64px rgba(0,0,0,0.45)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
@@ -636,14 +639,15 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             {/* Modal Header */}
             <div
               style={{
-                padding: '14px 18px',
-                borderBottom: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+                padding: '14px 20px',
+                borderBottom: '1px solid var(--border-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                background: 'var(--bg-primary)',
               }}
             >
-              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>
                 选择要插入的业务动作 (第 {insertModalIndex + 1} 步)
               </div>
               <button
@@ -651,9 +655,10 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-muted, #94a3b8)',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   fontSize: 16,
+                  padding: 4,
                 }}
               >
                 ✕
@@ -664,11 +669,11 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             <div
               style={{
                 padding: '10px 18px',
-                borderBottom: '1px solid var(--border-primary, rgba(255,255,255,0.08))',
+                borderBottom: '1px solid var(--border-primary)',
                 display: 'flex',
                 gap: 10,
                 alignItems: 'center',
-                background: 'var(--bg-primary, #0f172a)',
+                background: 'var(--bg-tertiary)',
               }}
             >
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
@@ -690,7 +695,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                       padding: '4px 10px',
                       borderRadius: 6,
                       background: selectedCategory === tab.id ? 'var(--color-accent, #3b82f6)' : 'transparent',
-                      color: selectedCategory === tab.id ? '#fff' : 'var(--text-secondary, #b0bec5)',
+                      color: selectedCategory === tab.id ? '#fff' : 'var(--text-secondary)',
                       border: 'none',
                       fontSize: 12,
                       cursor: 'pointer',
@@ -709,11 +714,11 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 onChange={(e) => setActionSearch(e.target.value)}
                 style={{
                   width: 150,
-                  padding: '4px 8px',
+                  padding: '5px 10px',
                   borderRadius: 6,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid var(--border-secondary, rgba(255,255,255,0.15))',
-                  color: 'var(--text-primary, #f8fafc)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-secondary)',
+                  color: 'var(--text-primary)',
                   fontSize: 12,
                   outline: 'none',
                 }}
@@ -738,8 +743,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                   style={{
                     padding: '12px 14px',
                     borderRadius: 8,
-                    background: 'var(--bg-primary, #0f172a)',
-                    border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border-primary)',
                     cursor: 'pointer',
                     display: 'flex',
                     flexDirection: 'column',
@@ -751,14 +756,14 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                     e.currentTarget.style.transform = 'translateY(-2px)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                    e.currentTarget.style.borderColor = 'var(--border-primary)';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 20 }}>{action.icon}</span>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary, #f8fafc)' }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
                         {action.name}
                       </span>
                     </div>
@@ -768,8 +773,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           fontSize: 10,
                           padding: '1px 5px',
                           borderRadius: 4,
-                          background: 'rgba(239, 68, 68, 0.15)',
-                          color: '#f87171',
+                          background: 'color-mix(in srgb, var(--status-failed, #ef4444) 15%, transparent)',
+                          color: 'var(--status-failed, #ef4444)',
                           fontWeight: 600,
                         }}
                       >
@@ -780,7 +785,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                   <div
                     style={{
                       fontSize: 11,
-                      color: 'var(--text-muted, #94a3b8)',
+                      color: 'var(--text-muted)',
                       lineHeight: 1.4,
                     }}
                   >
@@ -790,7 +795,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

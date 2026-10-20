@@ -124,10 +124,10 @@ export const PillPicker: React.FC<PillPickerProps> = ({
         zIndex: 1100,
         width: 340,
         maxHeight: 380,
-        background: 'var(--bg-secondary, #1e293b)',
-        border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-secondary)',
         borderRadius: 8,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -139,11 +139,11 @@ export const PillPicker: React.FC<PillPickerProps> = ({
       <div
         style={{
           padding: '8px 10px',
-          borderBottom: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+          borderBottom: '1px solid var(--border-primary)',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          background: 'var(--bg-primary, #0f172a)',
+          background: 'var(--bg-tertiary)',
         }}
       >
         <span style={{ fontSize: 13 }}>🏷️</span>
@@ -158,7 +158,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            color: 'var(--text-primary, #f8fafc)',
+            color: 'var(--text-primary)',
             fontSize: 12,
           }}
         />
@@ -167,7 +167,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
           style={{
             background: 'none',
             border: 'none',
-            color: 'var(--text-muted, #94a3b8)',
+            color: 'var(--text-muted)',
             cursor: 'pointer',
             fontSize: 14,
             padding: '2px 4px',
@@ -239,7 +239,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                       fontSize: 12,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--bg-highlight, rgba(255,255,255,0.08))';
+                      e.currentTarget.style.background = 'var(--bg-highlight)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
@@ -249,7 +249,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                       <span
                         style={{
                           fontWeight: 500,
-                          color: 'var(--text-primary, #f8fafc)',
+                          color: 'var(--text-primary)',
                           whiteSpace: 'nowrap',
                         }}
                       >
@@ -258,7 +258,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                       <span
                         style={{
                           fontSize: 10,
-                          color: 'var(--text-muted, #94a3b8)',
+                          color: 'var(--text-muted)',
                           fontFamily: 'monospace',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -276,8 +276,8 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                             fontSize: 10,
                             padding: '1px 5px',
                             borderRadius: 4,
-                            background: 'rgba(59, 130, 246, 0.15)',
-                            color: '#60a5fa',
+                            background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
+                            color: 'var(--color-accent-text, #1e40af)',
                             fontFamily: 'monospace',
                             maxWidth: 90,
                             overflow: 'hidden',
@@ -294,8 +294,8 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                           fontSize: 10,
                           padding: '1px 4px',
                           borderRadius: 3,
-                          background: 'rgba(255,255,255,0.1)',
-                          color: 'var(--text-muted, #94a3b8)',
+                          background: 'var(--bg-tertiary)',
+                          color: 'var(--text-muted)',
                         }}
                       >
                         {item.type}
@@ -312,10 +312,10 @@ export const PillPicker: React.FC<PillPickerProps> = ({
       <div
         style={{
           padding: '4px 8px',
-          background: 'var(--bg-primary, #0f172a)',
-          borderTop: '1px solid var(--border-primary, rgba(255,255,255,0.08))',
+          background: 'var(--bg-tertiary)',
+          borderTop: '1px solid var(--border-primary)',
           fontSize: 10,
-          color: 'var(--text-muted, #94a3b8)',
+          color: 'var(--text-muted)',
           textAlign: 'right',
         }}
       >

@@ -450,7 +450,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               <React.Fragment key={step.id}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'color-mix(in srgb, #8b5cf6 75%, var(--text-primary))' }}>
                       #{idx + 1} 控制流分支
                     </span>
                     {!readOnly && (
@@ -660,7 +660,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               <React.Fragment key={step.id}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#d97706' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent, #3b82f6)' }}>
                       #{idx + 1} 循环迭代体
                     </span>
                     {!readOnly && (

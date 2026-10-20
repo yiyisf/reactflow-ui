@@ -136,7 +136,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
               height: 32,
               borderRadius: 8,
               background: 'rgba(139, 92, 246, 0.15)',
-              color: '#8b5cf6',
+              color: 'color-mix(in srgb, #8b5cf6 85%, var(--text-primary))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -157,7 +157,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                   padding: '1px 6px',
                   borderRadius: 4,
                   background: 'rgba(139, 92, 246, 0.12)',
-                  color: '#8b5cf6',
+                  color: 'color-mix(in srgb, #8b5cf6 85%, var(--text-primary))',
                   fontWeight: 600,
                   border: '1px solid rgba(139, 92, 246, 0.3)',
                 }}

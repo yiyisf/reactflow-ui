@@ -76,8 +76,8 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
               width: 32,
               height: 32,
               borderRadius: 8,
-              background: 'rgba(245, 158, 11, 0.15)',
-              color: '#d97706',
+              background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.15))',
+              color: 'var(--color-accent, #3b82f6)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -97,10 +97,10 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: 'rgba(245, 158, 11, 0.12)',
-                  color: '#d97706',
+                  background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
+                  color: 'var(--color-accent-text, #1e40af)',
                   fontWeight: 600,
-                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 30%, transparent)',
                 }}
               >
                 🔁 循环迭代 (Do-While Loop)
@@ -146,7 +146,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
         <div
           style={{
             borderRadius: 8,
-            border: '2px dashed rgba(245, 158, 11, 0.35)',
+            border: '2px dashed color-mix(in srgb, var(--color-accent, #3b82f6) 45%, var(--border-secondary))',
             background: 'var(--bg-secondary)',
             padding: 12,
           }}
@@ -174,9 +174,9 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                 style={{
                   padding: '3px 8px',
                   borderRadius: 4,
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.4)',
-                  color: '#d97706',
+                  background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.1))',
+                  border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 40%, transparent)',
+                  color: 'var(--color-accent-text, #1e40af)',
                   fontSize: 11,
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -238,8 +238,8 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                             fontWeight: 700,
                             padding: '1px 5px',
                             borderRadius: 4,
-                            background: 'var(--bg-tertiary)',
-                            color: '#d97706',
+                            background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
+                            color: 'var(--color-accent-text, #1e40af)',
                           }}
                         >
                           轮内 #{cIdx + 1}

@@ -57,3 +57,10 @@ export { applyTemplateVariables } from './template/applyTemplate';
 export { BUILTIN_WORKFLOW_TEMPLATES } from './template/builtin/templates';
 export { TemplateGallery } from './components/template/TemplateGallery';
 export { TemplateSetupWizard } from './components/template/TemplateSetupWizard';
+
+// ── v1.1.0: Production-to-Template Sanitizer & Extractor ─────────────────────
+export * from './template/sanitizer/types';
+export { scanWorkflowDef, scanObjectForSensitiveFindings } from './template/sanitizer/rules';
+export { analyzeTasksForPruning, applyTaskPruning } from './template/sanitizer/prune';
+export { extractTemplateFromInstance } from './template/sanitizer/anonymize';
+export { TemplateExtractor } from './components/template/TemplateExtractor';

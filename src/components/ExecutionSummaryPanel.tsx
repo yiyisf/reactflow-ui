@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { analyzeExecution, formatDuration, getCategoryIcon, getCategoryColor, ExecutionSummary } from '../utils/executionAnalyzer';
 import { ExecutionStatus } from '../types/workflow';
+import { TemplateExtractor } from './template/TemplateExtractor';
 import './ExecutionSummaryPanel.css';
 
 const STATUS_LABELS: Record<ExecutionStatus, string> = {
@@ -29,6 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const ExecutionSummaryPanel: React.FC = () => {
+    const [showExtractor, setShowExtractor] = useState(false);
     const {
         executionData,
         workflowInstance,
@@ -67,6 +69,30 @@ const ExecutionSummaryPanel: React.FC = () => {
                     <span className="esp-wf-status" style={{ color: statusColor }}>
                         {STATUS_LABELS[wfStatus as ExecutionStatus] ?? wfStatus}
                     </span>
+                )}
+                {workflowInstance && (
+                    <button
+                        onClick={() => setShowExtractor(true)}
+                        style={{
+                            padding: '3px 8px',
+                            borderRadius: 5,
+                            background: 'color-mix(in srgb, var(--color-brand-blue) 18%, transparent)',
+                            border: '1px solid color-mix(in srgb, var(--color-brand-blue) 40%, transparent)',
+                            color: 'var(--color-brand-blue)',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            marginLeft: 'auto',
+                            marginRight: 6,
+                        }}
+                        title="将本次执行实例脱敏并提炼为公共标准化模板"
+                    >
+                        <span>🛠️</span>
+                        <span>提取为模板</span>
+                    </button>
                 )}
                 <button className="esp-close" onClick={() => setShowAnalysisPanel(false)}>✕</button>
             </div>
@@ -167,6 +193,18 @@ const ExecutionSummaryPanel: React.FC = () => {
                     })}
                 </div>
             </div>
+
+            {/* 管理员模板提炼工作台弹窗 */}
+            {showExtractor && workflowInstance && (
+                <TemplateExtractor
+                    isOpen={showExtractor}
+                    instance={workflowInstance}
+                    onClose={() => setShowExtractor(false)}
+                    onPublished={() => {
+                        console.log('[ExecutionSummaryPanel] 模板已成功发布到场景中心');
+                    }}
+                />
+            )}
         </div>
     );
 };

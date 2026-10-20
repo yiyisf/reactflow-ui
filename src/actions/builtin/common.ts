@@ -208,8 +208,132 @@ export const controlWaitAction: ActionDefinition = {
   }),
 };
 
+export const controlDecisionAction: ActionDefinition = {
+  id: 'control.decision',
+  name: '条件分支',
+  category: 'logic',
+  icon: '🔀',
+  description: '根据输入参数或上下文表达式，精准分流执行不同业务分支',
+  riskLevel: 'safe',
+  fields: [
+    {
+      key: 'caseParam',
+      label: '分支判断参数',
+      type: 'text',
+      required: true,
+      defaultValue: 'status',
+      placeholder: '例如 status 或 userType',
+      acceptsPills: true,
+    },
+  ],
+  outputs: [
+    { key: 'selectedCase', label: '命中的分支名称', type: 'string', example: 'premium' },
+  ],
+  compile: (values, ctx) => ({
+    name: 'decision_router',
+    taskReferenceName: ctx.taskReferenceName,
+    type: 'DECISION',
+    caseValueParam: values.caseParam || 'status',
+    decisionCases: {},
+    defaultCase: [],
+    inputParameters: {
+      _actionId: 'control.decision',
+      actionName: '条件分支',
+      [values.caseParam || 'status']: values[values.caseParam || 'status'] ?? '${workflow.input.status}',
+    },
+  }),
+  decompile: (task) => {
+    if (task.type === 'DECISION' || task.type === 'SWITCH') {
+      return { caseParam: task.caseValueParam || 'status' };
+    }
+    return null;
+  },
+  mockOutput: () => ({
+    selectedCase: 'SUCCESS',
+  }),
+};
+
+export const controlForkAction: ActionDefinition = {
+  id: 'control.fork',
+  name: '并行并发组',
+  category: 'logic',
+  icon: '⚡',
+  description: '同时并发执行多条独立业务泳道，并在全部完成后汇聚向下流转',
+  riskLevel: 'safe',
+  fields: [],
+  outputs: [
+    { key: 'lanesCompleted', label: '已完成泳道数', type: 'number', example: 2 },
+  ],
+  compile: (_values, ctx) => ({
+    name: 'fork_parallel',
+    taskReferenceName: ctx.taskReferenceName,
+    type: 'FORK_JOIN',
+    forkTasks: [],
+    inputParameters: {
+      _actionId: 'control.fork',
+      actionName: '并行并发组',
+    },
+  }),
+  decompile: (task) => {
+    if (task.type === 'FORK_JOIN' || task.type === 'FORK_JOIN_DYNAMIC') {
+      return {};
+    }
+    return null;
+  },
+  mockOutput: () => ({
+    lanesCompleted: 2,
+  }),
+};
+
+export const controlLoopAction: ActionDefinition = {
+  id: 'control.loop',
+  name: '循环迭代',
+  category: 'logic',
+  icon: '🔁',
+  description: '重复循环执行内部步骤，直到满足退出条件或达到最大轮次',
+  riskLevel: 'safe',
+  fields: [
+    {
+      key: 'loopCondition',
+      label: '循环继续条件表达式',
+      type: 'text',
+      required: true,
+      defaultValue: '$.status == "PENDING"',
+      placeholder: '例如 $.status == "PENDING"',
+      acceptsPills: true,
+    },
+  ],
+  outputs: [
+    { key: 'iterationCount', label: '实际迭代轮次', type: 'number', example: 3 },
+  ],
+  compile: (values, ctx) => ({
+    name: 'do_while_loop',
+    taskReferenceName: ctx.taskReferenceName,
+    type: 'DO_WHILE',
+    loopCondition: values.loopCondition || 'false',
+    loopOver: [],
+    inputParameters: {
+      _actionId: 'control.loop',
+      actionName: '循环迭代',
+      loopCondition: values.loopCondition || 'false',
+    },
+  }),
+  decompile: (task) => {
+    if (task.type === 'DO_WHILE') {
+      return { loopCondition: task.loopCondition || '' };
+    }
+    return null;
+  },
+  mockOutput: () => ({
+    iterationCount: 3,
+  }),
+};
+
 export const BUILTIN_COMMON_ACTIONS: ActionDefinition[] = [
   notifySendMessageAction,
   humanApprovalAction,
   controlWaitAction,
+  controlDecisionAction,
+  controlForkAction,
+  controlLoopAction,
 ];

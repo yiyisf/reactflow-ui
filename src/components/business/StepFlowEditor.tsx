@@ -7,6 +7,9 @@ import { decompileWorkflowDefToStepModel } from '../../stepmodel/decompile';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition, ActionCategory } from '../../actions/types';
 import { ActionForm } from './ActionForm';
+import { DecisionBranchCard } from './DecisionBranchCard';
+import { ForkJoinCard } from './ForkJoinCard';
+import { LoopDoWhileCard } from './LoopDoWhileCard';
 import { RunStoryTimeline } from './RunStoryTimeline';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
 
@@ -32,6 +35,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
 
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [insertModalIndex, setInsertModalIndex] = useState<number | null>(null);
+  const [insertCallback, setInsertCallback] = useState<((action: ActionDefinition) => void) | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ActionCategory | 'all'>('all');
   const [actionSearch, setActionSearch] = useState('');
 
@@ -82,24 +86,84 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
     updateModelAndEmit(next);
   };
 
+  const handleOpenInsertModalForCallback = (cb: (action: ActionDefinition) => void) => {
+    setInsertCallback(() => cb);
+    setInsertModalIndex(0);
+  };
+
   const handleAddAction = (action: ActionDefinition, atIndex: number) => {
-    const newStepRef = `${action.id.replace(/\./g, '_')}_${Date.now().toString(36).slice(-4)}`;
-    const initialValues: Record<string, any> = {};
-    for (const f of action.fields) {
-      if (f.defaultValue !== undefined) {
-        initialValues[f.key] = f.defaultValue;
-      }
+    if (insertCallback) {
+      insertCallback(action);
+      setInsertCallback(null);
+      setInsertModalIndex(null);
+      return;
     }
 
-    const newStep: BusinessStep = {
-      id: `step_${newStepRef}`,
-      actionId: action.id,
-      taskReferenceName: newStepRef,
-      name: action.name,
-      description: action.description,
-      values: initialValues,
-      isProFallback: false,
-    };
+    const newStepRef = `${action.id.replace(/\./g, '_')}_${Date.now().toString(36).slice(-4)}`;
+    let newStep: BusinessStep;
+
+    if (action.id === 'control.decision') {
+      newStep = {
+        id: `step_${newStepRef}`,
+        actionId: 'control_decision',
+        taskReferenceName: newStepRef,
+        name: '条件分支路由',
+        description: '根据输入参数或上下文表达式分流执行',
+        values: { caseParam: 'status' },
+        controlType: 'decision',
+        caseParam: 'status',
+        branches: [
+          { caseKey: 'SUCCESS', caseLabel: '分支: SUCCESS', steps: [] },
+          { caseKey: '__default__', caseLabel: '默认分支 (Default)', steps: [] },
+        ],
+        isProFallback: false,
+      };
+    } else if (action.id === 'control.fork') {
+      newStep = {
+        id: `step_${newStepRef}`,
+        actionId: 'control_fork',
+        taskReferenceName: newStepRef,
+        name: '并行并发组',
+        description: '同时并发执行多条独立业务泳道',
+        values: {},
+        controlType: 'fork',
+        forkLanes: [
+          { laneId: 'lane_0', laneLabel: '并发泳道 #1', steps: [] },
+          { laneId: 'lane_1', laneLabel: '并发泳道 #2', steps: [] },
+        ],
+        isProFallback: false,
+      };
+    } else if (action.id === 'control.loop') {
+      newStep = {
+        id: `step_${newStepRef}`,
+        actionId: 'control_loop',
+        taskReferenceName: newStepRef,
+        name: '循环迭代处理',
+        description: '重复循环执行内部步骤，直到满足退出条件',
+        values: { loopCondition: '$.status == "PENDING"' },
+        controlType: 'loop',
+        loopCondition: '$.status == "PENDING"',
+        loopSteps: [],
+        isProFallback: false,
+      };
+    } else {
+      const initialValues: Record<string, any> = {};
+      for (const f of action.fields) {
+        if (f.defaultValue !== undefined) {
+          initialValues[f.key] = f.defaultValue;
+        }
+      }
+
+      newStep = {
+        id: `step_${newStepRef}`,
+        actionId: action.id,
+        taskReferenceName: newStepRef,
+        name: action.name,
+        description: action.description,
+        values: initialValues,
+        isProFallback: false,
+      };
+    }
 
     const next = [...steps];
     next.splice(atIndex, 0, newStep);
@@ -380,6 +444,322 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           const upstream = steps.slice(0, idx);
           const simResult = simResults?.[step.taskReferenceName];
 
+          // 1. 分支路由卡片流 (DECISION / SWITCH)
+          if (step.controlType === 'decision') {
+            return (
+              <React.Fragment key={step.id}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6' }}>
+                      #{idx + 1} 控制流分支
+                    </span>
+                    {!readOnly && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => handleMoveStep(idx, idx - 1)}
+                          title="上移"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            cursor: idx === 0 ? 'default' : 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          disabled={idx === steps.length - 1}
+                          onClick={() => handleMoveStep(idx, idx + 1)}
+                          title="下移"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: idx === steps.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            cursor: idx === steps.length - 1 ? 'default' : 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStep(idx)}
+                          title="删除步骤"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <DecisionBranchCard
+                    step={step}
+                    upstreamSteps={upstream}
+                    registry={registry}
+                    disabled={readOnly}
+                    onChange={(updated) => handleUpdateStep(idx, updated)}
+                    onOpenInsertModal={handleOpenInsertModalForCallback}
+                  />
+                </div>
+
+                {/* In-between Add Step Button */}
+                {!readOnly && (
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '-4px 0' }}>
+                    <button
+                      onClick={() => setInsertModalIndex(idx + 1)}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: 16,
+                        background: 'var(--bg-tertiary)',
+                        border: '1px dashed var(--border-secondary)',
+                        color: 'var(--text-muted)',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
+                        e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-secondary)';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }}
+                    >
+                      <span>+</span>
+                      <span>插入业务动作</span>
+                    </button>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          }
+
+          // 2. 并行任务组卡片流 (FORK_JOIN)
+          if (step.controlType === 'fork') {
+            return (
+              <React.Fragment key={step.id}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent, #3b82f6)' }}>
+                      #{idx + 1} 并发泳道组
+                    </span>
+                    {!readOnly && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => handleMoveStep(idx, idx - 1)}
+                          title="上移"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            cursor: idx === 0 ? 'default' : 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          disabled={idx === steps.length - 1}
+                          onClick={() => handleMoveStep(idx, idx + 1)}
+                          title="下移"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: idx === steps.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            cursor: idx === steps.length - 1 ? 'default' : 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStep(idx)}
+                          title="删除步骤"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <ForkJoinCard
+                    step={step}
+                    upstreamSteps={upstream}
+                    registry={registry}
+                    disabled={readOnly}
+                    onChange={(updated) => handleUpdateStep(idx, updated)}
+                    onOpenInsertModal={handleOpenInsertModalForCallback}
+                  />
+                </div>
+
+                {/* In-between Add Step Button */}
+                {!readOnly && (
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '-4px 0' }}>
+                    <button
+                      onClick={() => setInsertModalIndex(idx + 1)}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: 16,
+                        background: 'var(--bg-tertiary)',
+                        border: '1px dashed var(--border-secondary)',
+                        color: 'var(--text-muted)',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
+                        e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-secondary)';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }}
+                    >
+                      <span>+</span>
+                      <span>插入业务动作</span>
+                    </button>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          }
+
+          // 3. 循环迭代卡片流 (DO_WHILE)
+          if (step.controlType === 'loop') {
+            return (
+              <React.Fragment key={step.id}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#d97706' }}>
+                      #{idx + 1} 循环迭代体
+                    </span>
+                    {!readOnly && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button
+                          disabled={idx === 0}
+                          onClick={() => handleMoveStep(idx, idx - 1)}
+                          title="上移"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            cursor: idx === 0 ? 'default' : 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          disabled={idx === steps.length - 1}
+                          onClick={() => handleMoveStep(idx, idx + 1)}
+                          title="下移"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: idx === steps.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            cursor: idx === steps.length - 1 ? 'default' : 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStep(idx)}
+                          title="删除步骤"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            padding: '2px 4px',
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <LoopDoWhileCard
+                    step={step}
+                    upstreamSteps={upstream}
+                    registry={registry}
+                    disabled={readOnly}
+                    onChange={(updated) => handleUpdateStep(idx, updated)}
+                    onOpenInsertModal={handleOpenInsertModalForCallback}
+                  />
+                </div>
+
+                {/* In-between Add Step Button */}
+                {!readOnly && (
+                  <div style={{ display: 'flex', justifyContent: 'center', margin: '-4px 0' }}>
+                    <button
+                      onClick={() => setInsertModalIndex(idx + 1)}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: 16,
+                        background: 'var(--bg-tertiary)',
+                        border: '1px dashed var(--border-secondary)',
+                        color: 'var(--text-muted)',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
+                        e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-secondary)';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }}
+                    >
+                      <span>+</span>
+                      <span>插入业务动作</span>
+                    </button>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          }
+
+          // 4. 普通串行业务卡片
           return (
             <React.Fragment key={step.id}>
               <div

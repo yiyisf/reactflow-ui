@@ -47,6 +47,9 @@ export {
     decompileWorkflowDefToStepModel,
 } from './stepmodel/decompile';
 export { StepFlowEditor } from './components/business/StepFlowEditor';
+export { DecisionBranchCard } from './components/business/DecisionBranchCard';
+export { ForkJoinCard } from './components/business/ForkJoinCard';
+export { LoopDoWhileCard } from './components/business/LoopDoWhileCard';
 export { DataPillInput } from './components/business/DataPillInput';
 export { ActionForm } from './components/business/ActionForm';
 

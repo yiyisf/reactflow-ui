@@ -120,4 +120,163 @@ describe('stepmodel & actions compile/decompile round-trip', () => {
       '.items[] | {id: .id, active: true}'
     );
   });
+
+  it('decompiles and compiles control flow structures (DECISION, FORK_JOIN, DO_WHILE) with nested step fidelity', () => {
+    const rawDef = {
+      name: 'control_flow_showcase',
+      tasks: [
+        {
+          name: 'route_by_env',
+          taskReferenceName: 'switch_env',
+          type: 'DECISION' as const,
+          caseValueParam: 'env',
+          inputParameters: { env: '${workflow.input.env}' },
+          decisionCases: {
+            prod: [
+              {
+                name: 'ecs_create_prod',
+                taskReferenceName: 'create_prod_ecs',
+                type: 'HTTP' as const,
+                inputParameters: {
+                  _actionId: 'ecs.create_instance',
+                  instanceName: 'prod-server',
+                  instanceType: 'ecs.g7.2xlarge',
+                },
+              },
+            ],
+            test: [
+              {
+                name: 'ecs_create_test',
+                taskReferenceName: 'create_test_ecs',
+                type: 'HTTP' as const,
+                inputParameters: {
+                  _actionId: 'ecs.create_instance',
+                  instanceName: 'test-server',
+                  instanceType: 'ecs.e-c1m1.large',
+                },
+              },
+            ],
+          },
+          defaultCase: [
+            {
+              name: 'notify_invalid_env',
+              taskReferenceName: 'notify_invalid',
+              type: 'HTTP' as const,
+              inputParameters: {
+                _actionId: 'notify.send_message',
+                title: '未知环境报警',
+              },
+            },
+          ],
+        },
+        {
+          name: 'parallel_ops',
+          taskReferenceName: 'fork_ops',
+          type: 'FORK_JOIN' as const,
+          forkTasks: [
+            [
+              {
+                name: 'ecs_snapshot',
+                taskReferenceName: 'take_snap',
+                type: 'HTTP' as const,
+                inputParameters: {
+                  _actionId: 'ecs.create_snapshot',
+                  snapshotName: 'auto-snap',
+                },
+              },
+            ],
+            [
+              {
+                name: 'send_notice',
+                taskReferenceName: 'send_chat',
+                type: 'HTTP' as const,
+                inputParameters: {
+                  _actionId: 'notify.send_message',
+                  title: '并行通知',
+                },
+              },
+            ],
+          ],
+        },
+        {
+          name: 'join_ops',
+          taskReferenceName: 'join_ops_ref',
+          type: 'JOIN' as const,
+          joinOn: ['take_snap', 'send_chat'],
+        },
+        {
+          name: 'wait_ready_loop',
+          taskReferenceName: 'loop_check',
+          type: 'DO_WHILE' as const,
+          loopCondition: '$.check_status.output.status == "PENDING"',
+          loopOver: [
+            {
+              name: 'ecs_query_instance',
+              taskReferenceName: 'check_status',
+              type: 'HTTP' as const,
+              inputParameters: {
+                _actionId: 'ecs.query_instance',
+                instanceId: 'i-test123',
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    // 1. Decompile
+    const model = decompileWorkflowDefToStepModel(rawDef);
+
+    // Expect 3 business steps (FORK_JOIN + JOIN are merged into 1 logical step)
+    expect(model.steps.length).toBe(3);
+
+    // Check DECISION step
+    const decisionStep = model.steps[0];
+    expect(decisionStep.controlType).toBe('decision');
+    expect(decisionStep.caseParam).toBe('env');
+    expect(decisionStep.branches?.length).toBe(3); // prod, test, __default__
+    expect(decisionStep.branches?.[0].steps[0].actionId).toBe('ecs.create_instance');
+    expect(decisionStep.branches?.[2].caseKey).toBe('__default__');
+
+    // Check FORK_JOIN step
+    const forkStep = model.steps[1];
+    expect(forkStep.controlType).toBe('fork');
+    expect(forkStep.forkLanes?.length).toBe(2);
+    expect(forkStep.forkLanes?.[0].steps[0].actionId).toBe('ecs.create_snapshot');
+    expect(forkStep.pairedJoinTaskRef).toBe('join_ops_ref');
+
+    // Check DO_WHILE step
+    const loopStep = model.steps[2];
+    expect(loopStep.controlType).toBe('loop');
+    expect(loopStep.loopCondition).toBe('$.check_status.output.status == "PENDING"');
+    expect(loopStep.loopSteps?.length).toBe(1);
+    expect(loopStep.loopSteps?.[0].actionId).toBe('ecs.query_instance');
+
+    // 2. Recompile
+    const recompiled = compileStepModelToWorkflowDef(model);
+    expect(recompiled.tasks.length).toBe(4); // DECISION, FORK_JOIN, JOIN, DO_WHILE
+
+    // Validate DECISION recompiled structure
+    const recDecision = recompiled.tasks[0];
+    expect(recDecision.type).toBe('DECISION');
+    expect(recDecision.decisionCases?.prod?.length).toBe(1);
+    expect(recDecision.decisionCases?.test?.length).toBe(1);
+    expect(recDecision.defaultCase?.length).toBe(1);
+
+    // Validate FORK_JOIN & JOIN recompiled structure
+    const recFork = recompiled.tasks[1];
+    expect(recFork.type).toBe('FORK_JOIN');
+    expect(recFork.forkTasks?.length).toBe(2);
+    const recJoin = recompiled.tasks[2];
+    expect(recJoin.type).toBe('JOIN');
+    expect(recJoin.taskReferenceName).toBe('join_ops_ref');
+    expect(recJoin.joinOn).toEqual(['take_snap', 'send_chat']);
+
+    // Validate DO_WHILE recompiled structure
+    const recLoop = recompiled.tasks[3];
+    expect(recLoop.type).toBe('DO_WHILE');
+    expect(recLoop.loopCondition).toBe('$.check_status.output.status == "PENDING"');
+    expect(recLoop.loopOver?.length).toBe(1);
+    expect(recLoop.loopOver?.[0].taskReferenceName).toBe('check_status');
+  });
 });

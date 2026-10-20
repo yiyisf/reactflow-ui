@@ -67,6 +67,24 @@ function generateStorySentence(task: TaskInstance, registry: ActionRegistry): st
     return `责任人 (${out.reviewer || 'devops_lead'}) 已完成审核批准。`;
   }
 
+  if (task.taskType === 'DECISION' || task.taskType === 'SWITCH') {
+    const caseHit = out.selectedCase || out.case || out.output || '';
+    return `条件分支路由完成：评估参数命中分支 [${caseHit || '主干分支'}]，正向下分流执行。`;
+  }
+
+  if (task.taskType === 'FORK_JOIN' || task.taskType === 'FORK_JOIN_DYNAMIC') {
+    return `并行并发已触发：多条独立业务泳道同时展开并发执行。`;
+  }
+
+  if (task.taskType === 'JOIN') {
+    return `并行汇聚同步完成：所有并发泳道已全部成功执行完毕，工作流汇合向下推进。`;
+  }
+
+  if (task.taskType === 'DO_WHILE') {
+    const iter = task.iteration || out.iteration || 1;
+    return `循环迭代处理完成：已执行 ${iter} 轮循环，评估跳出条件已满足。`;
+  }
+
   return `${action?.name || task.taskDefName || task.referenceTaskName} 执行完毕。`;
 }
 
@@ -152,7 +170,21 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
         {tasks.map((task, idx) => {
           const actionId = task.workflowTask?.inputParameters?._actionId;
           const action = actionId ? registry.getAction(actionId) : undefined;
-          const taskIcon = action?.icon || (task.taskType === 'WAIT' ? '⏳' : task.taskType === 'HUMAN' ? '👤' : '⚙️');
+          const taskIcon =
+            action?.icon ||
+            (task.taskType === 'DECISION' || task.taskType === 'SWITCH'
+              ? '🔀'
+              : task.taskType === 'FORK_JOIN' || task.taskType === 'FORK_JOIN_DYNAMIC'
+              ? '⚡'
+              : task.taskType === 'JOIN'
+              ? '🔗'
+              : task.taskType === 'DO_WHILE'
+              ? '🔁'
+              : task.taskType === 'WAIT'
+              ? '⏳'
+              : task.taskType === 'HUMAN'
+              ? '👤'
+              : '⚙️');
           const isTaskFailed = task.status === 'FAILED' || task.status === 'FAILED_WITH_TERMINAL_ERROR';
           const isExpanded = Boolean(expandedDetailsMap[task.referenceTaskName]);
 

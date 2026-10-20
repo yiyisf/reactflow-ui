@@ -11,6 +11,29 @@ export interface PillToken {
   format?: string;
 }
 
+/**
+ * 控制流节点类型
+ */
+export type StepControlType = 'decision' | 'fork' | 'loop';
+
+/**
+ * 分支定义 (针对 DECISION / SWITCH)
+ */
+export interface BranchCase {
+  caseKey: string;           // 分支命中值，如 "premium", "standard", 或 "__default__"
+  caseLabel?: string;        // 业务展示标签，如 "VIP 优质客户" 或 "默认分支"
+  steps: BusinessStep[];     // 该分支下执行的业务步骤列表
+}
+
+/**
+ * 并行泳道 (针对 FORK_JOIN)
+ */
+export interface ForkLane {
+  laneId: string;            // 泳道标识，如 "lane_0", "lane_1"
+  laneLabel?: string;        // 泳道标签，如 "并发泳道 1: 云盘快照备份"
+  steps: BusinessStep[];     // 泳道内并发执行的业务步骤列表
+}
+
 export interface BusinessStep {
   id: string;
   actionId: string;
@@ -24,6 +47,22 @@ export interface BusinessStep {
    */
   isProFallback?: boolean;
   rawTaskDef?: TaskDef;
+
+  // 控制流拓展字段
+  controlType?: StepControlType;
+
+  // 1. 分支 (DECISION / SWITCH)
+  caseParam?: string;                  // 分支判断参数，如 "userType"
+  caseExpression?: string;             // 分支求值表达式，如 "${workflow.input.env}"
+  branches?: BranchCase[];             // 各分支列表（含默认分支）
+
+  // 2. 并行 (FORK_JOIN)
+  forkLanes?: ForkLane[];              // 各条并发泳道
+  pairedJoinTaskRef?: string;          // 关联的汇聚 JOIN 任务引用名
+
+  // 3. 循环 (DO_WHILE)
+  loopCondition?: string;              // 循环继续条件表达式
+  loopSteps?: BusinessStep[];          // 循环体内执行的步骤序列
 }
 
 export interface BusinessWorkflowModel {

@@ -8,6 +8,81 @@ export function compileStepToTaskDef(
   workflowName: string,
   registry: ActionRegistry = defaultActionRegistry
 ): TaskDef {
+  // 1. 分支控制流 (DECISION / SWITCH)
+  if (step.controlType === 'decision') {
+    const baseTask: Partial<TaskDef> = step.rawTaskDef ? structuredClone(step.rawTaskDef) : {};
+    const decisionCases: Record<string, TaskDef[]> = {};
+    let defaultCase: TaskDef[] | undefined = undefined;
+
+    for (const b of step.branches || []) {
+      if (b.caseKey === '__default__') {
+        defaultCase = b.steps.map((s, idx) => compileStepToTaskDef(s, idx, workflowName, registry));
+      } else {
+        decisionCases[b.caseKey] = b.steps.map((s, idx) => compileStepToTaskDef(s, idx, workflowName, registry));
+      }
+    }
+
+    return {
+      ...baseTask,
+      name: step.name || baseTask.name || step.taskReferenceName,
+      taskReferenceName: step.taskReferenceName,
+      type: baseTask.type === 'SWITCH' ? 'SWITCH' : 'DECISION',
+      description: step.description ?? baseTask.description,
+      caseValueParam: step.caseParam || baseTask.caseValueParam,
+      caseExpression: step.caseExpression || baseTask.caseExpression,
+      decisionCases,
+      defaultCase: defaultCase || baseTask.defaultCase || [],
+      inputParameters: {
+        ...(baseTask.inputParameters || {}),
+        ...(step.values || {}),
+      },
+    };
+  }
+
+  // 2. 并行控制流 (FORK_JOIN / FORK_JOIN_DYNAMIC)
+  if (step.controlType === 'fork') {
+    const baseTask: Partial<TaskDef> = step.rawTaskDef ? structuredClone(step.rawTaskDef) : {};
+    const forkTasks: TaskDef[][] = (step.forkLanes || []).map((lane) =>
+      lane.steps.map((s, idx) => compileStepToTaskDef(s, idx, workflowName, registry))
+    );
+
+    return {
+      ...baseTask,
+      name: step.name || baseTask.name || step.taskReferenceName,
+      taskReferenceName: step.taskReferenceName,
+      type: baseTask.type === 'FORK_JOIN_DYNAMIC' ? 'FORK_JOIN_DYNAMIC' : 'FORK_JOIN',
+      description: step.description ?? baseTask.description,
+      forkTasks,
+      inputParameters: {
+        ...(baseTask.inputParameters || {}),
+        ...(step.values || {}),
+      },
+    };
+  }
+
+  // 3. 循环控制流 (DO_WHILE)
+  if (step.controlType === 'loop') {
+    const baseTask: Partial<TaskDef> = step.rawTaskDef ? structuredClone(step.rawTaskDef) : {};
+    const loopOver: TaskDef[] = (step.loopSteps || []).map((s, idx) =>
+      compileStepToTaskDef(s, idx, workflowName, registry)
+    );
+
+    return {
+      ...baseTask,
+      name: step.name || baseTask.name || step.taskReferenceName,
+      taskReferenceName: step.taskReferenceName,
+      type: 'DO_WHILE',
+      description: step.description ?? baseTask.description,
+      loopCondition: step.loopCondition || baseTask.loopCondition || 'false',
+      loopOver,
+      inputParameters: {
+        ...(baseTask.inputParameters || {}),
+        ...(step.values || {}),
+      },
+    };
+  }
+
+  // 4. 底层技术步骤回退
   if (step.isProFallback && step.rawTaskDef) {
     return {
       ...step.rawTaskDef,
@@ -17,6 +92,7 @@ export function compileStepToTaskDef(
     };
   }
 
+  // 5. 普通动作编译
   const action = registry.getAction(step.actionId);
   if (!action) {
     // Fallback simple task if action not found
@@ -47,9 +123,35 @@ export function compileStepModelToWorkflowDef(
     ? structuredClone(model.rawWorkflowDef)
     : {};
 
-  const tasks: TaskDef[] = model.steps.map((step, idx) =>
-    compileStepToTaskDef(step, idx, model.name, registry)
-  );
+  const tasks: TaskDef[] = [];
+
+  for (let i = 0; i < model.steps.length; i++) {
+    const step = model.steps[i];
+    const taskDef = compileStepToTaskDef(step, i, model.name, registry);
+    tasks.push(taskDef);
+
+    // 如果是 FORK_JOIN 节点，在后面自动生成/补全配对的 JOIN 节点
+    if (step.controlType === 'fork') {
+      const joinRef = step.pairedJoinTaskRef || `join_${step.taskReferenceName}`;
+      // 计算 joinOn：取每条泳道最后一个任务节点的 taskReferenceName
+      const joinOn: string[] = [];
+      if (taskDef.forkTasks) {
+        for (const lane of taskDef.forkTasks) {
+          if (lane && lane.length > 0) {
+            joinOn.push(lane[lane.length - 1].taskReferenceName);
+          }
+        }
+      }
+
+      tasks.push({
+        name: `${step.taskReferenceName}_join`,
+        taskReferenceName: joinRef,
+        type: 'JOIN',
+        description: `Join task for ${step.taskReferenceName}`,
+        joinOn: joinOn.length > 0 ? joinOn : undefined,
+      });
+    }
+  }
 
   return {
     ...baseDef,

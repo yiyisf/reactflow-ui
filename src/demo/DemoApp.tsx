@@ -107,7 +107,7 @@ function DemoApp() {
   const loadSampleWorkflow = useCallback(async (sampleName: string) => {
     if (!sampleName) return;
     try {
-      const response = await fetch(`/sample-workflows/${sampleName}.json`);
+      const response = await fetch(`${import.meta.env.BASE_URL}sample-workflows/${sampleName}.json`);
       if (!response.ok) throw new Error(`加载示例失败: ${response.statusText}`);
       const json = await response.json();
       setWorkflowJson(json);
@@ -132,7 +132,7 @@ function DemoApp() {
       return;
     }
     try {
-      const response = await fetch(`/sample-executions/${exampleName}.json`);
+      const response = await fetch(`${import.meta.env.BASE_URL}sample-executions/${exampleName}.json`);
       if (!response.ok) throw new Error(`加载示例失败: ${response.statusText}`);
       const json = await response.json();
       setWorkflowExecution(json);
@@ -232,7 +232,7 @@ function DemoApp() {
             </button>
 
             <a
-              href="/"
+              href={import.meta.env.BASE_URL}
               className="mode-btn"
               title="查看 Conductor Workflow IDE v1.1.0 业务全融合发布宣传页"
               style={{
@@ -247,7 +247,7 @@ function DemoApp() {
             </a>
 
             <a
-              href="/v1-0.html"
+              href={`${import.meta.env.BASE_URL}v1-0.html`}
               className="mode-btn"
               title="查看 Conductor Workflow IDE v1.0.0 首发历史宣传页"
               style={{

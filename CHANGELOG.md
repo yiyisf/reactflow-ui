@@ -4,6 +4,57 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ---
 
+## [1.1.0] - 2026-10-21
+
+`v1.1.0` 是 `@yiyi_zhang/reactflow-ui` 的重大里程碑发布，全面实现了**“业务与技术双模全融合”**，彻底打破资深研发工程师与业务/运维专家之间的使用鸿沟。
+
+### 🌟 Major Features (五大核心新特性)
+
+#### 1. 业务卡片流设计器 (Business StepFlow) 与双模同屏无损热切换
+- **双模毫秒级热切换 (`uiMode: 'business' | 'pro'`)**：
+  - 工具栏一键切换 `👔 业务模式` 与 `💻 开发者模式`，状态零丢失。
+  - **业务模式**：摒弃复杂的微服务连线拓扑与原生 JSON，以面向交付的业务卡片流（Step Cards）展示流程，支持步骤自由拖拽插入、上下移动与内联配置。
+  - **无损编译与反编译系统 (`compile.ts` & `decompile.ts`)**：
+    - 研发 StepModel 架构，实现业务步骤模型与 Conductor 原生 DAG 拓扑之间的双向递归无损转换。
+    - 针对非标微服务任务提供透明的 `isProFallback` 保护，确保任意高阶特性在切换回专业模式时毫秒保真。
+
+#### 2. 云平台业务动作库与动态参数胶囊体系
+- **首发生态对接类阿里云云主机 (ECS) 全生命周期动作库**：
+  - 内置 8 大高频云平台原生动作：云主机创建 (`ecs.create`)、启停与重启 (`ecs.start`/`stop`/`reboot`)、平滑升降配 (`ecs.modify_spec`)、容灾磁盘快照 (`ecs.create_snapshot`)、重装系统与释放实例等。
+  - 提供模块化 `ActionRegistry` 与 `defaultActionRegistry`，支持接入方 0 门槛通过前端 SDK 注册内部私有云动作与自定义表单渲染器。
+- **动态参数胶囊 (`ParamCapsule`) 与上游数据智能绑定**：
+  - 输入参数支持结构化标签与高亮胶囊预览，智能联想并绑定上游输出引用（如 `${create_vm.output.instanceId}`），告别繁琐手写变量语法。
+
+#### 3. 业务容器化高级控制流卡片 (Advanced Control Flow Containers)
+- **条件分支路由卡片 (`DecisionBranchCard`)**：
+  - 基于 `DECISION` / `SWITCH` 任务，提供交互式多分支 Tab 切换栏、一键追加/删除分支以及分支内嵌套卡片序列。
+- **并行任务组泳道卡片 (`ForkJoinCard`)**：
+  - 基于 `FORK_JOIN` 与 `JOIN` 任务配对，提供多泳道水平切换、泳道动态增删与泳道内步骤串行编排。
+- **循环迭代容器卡片 (`LoopDoWhileCard`)**：
+  - 基于 `DO_WHILE` 任务，支持循环跳出条件可视化配置、循环体步骤嵌套编排，内置死循环熔断保护。
+- **全面主题响应**：所有控制流卡片深度适配 `科技蓝` / `熔核橙` 双品牌色与 `明暗` 双模式。
+
+#### 4. 生产实例一键脱敏提炼为模板工具链 (Template Extractor)
+- **线上实例一键提炼资产 (`TemplateExtractor.tsx` & `anonymize.ts`)**：
+  - 支持将生产环境或演练场中调试完成的复杂工作流实例一键提炼为企业级规范模板。
+  - **智能隐私脱敏引擎**：自动识别内网 IP、公网 IP、云凭证 AccessKey、密码与机密 ID，转换为模板参数占位符（如 `${workflow.input.targetIp}`）。
+- **场景化业务模板中心 (`TemplateGallery.tsx`)**：
+  - 内置 8 大经典生产场景模板：云主机全生命周期自动化、业务高峰自动扩容与健康打标、生产发布前安全快照与容灾备份、非工作时间定时关机省电、数据库平滑变更与冷备恢复等。
+  - 支持一键调起参数配置向导 (`TemplateSetupWizard.tsx`) 与确定性浏览器沙箱全流程试跑验证。
+
+#### 5. 运行故事线时间轴与生活化诊断自愈建议 (Run Story Timeline)
+- **流水账故事线展开 (`RunStoryTimeline.tsx`)**：
+  - 运行态告别晦涩难懂的堆栈报错与任务状态码，以人类自然语言的流水账形式叙述工作流生命周期。
+- **生活化故障诊断与自愈行动指南**：
+  - 遇到任务超时或执行失败时，智能分析故障根因并提供白话自愈建议与一键重试动作。
+
+### 🎨 Design & Polish
+- 统一重构主题色彩系统，实现 WCAG AA 级高对比度适配，杜绝浅色模式下文字模糊或泛白。
+- 模态弹窗系统全面升级采用 React Portal (`createPortal(..., document.body)`)，彻底杜绝包含块定位漂移与变形。
+- 启动页与宣传页重构：新增 v1.1.0 GA 宣传发布页，并完整保留并归档 v1.0.0 历史首发宣传专页 (`/v1-0.html`)。
+
+---
+
 ## [1.0.0] - 2026-10-18
 
 `v1.0.0` 是 `@yiyi_zhang/reactflow-ui` 的首个正式生产级大版本（GA Release），完成了从“可视化流程图编辑器”向**“AI 原生 + 确定性工程闭环的下一代工作流 IDE”**的全面跃迁。

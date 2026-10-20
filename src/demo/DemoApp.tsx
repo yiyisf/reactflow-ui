@@ -155,7 +155,7 @@ function DemoApp() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
             <h1 className="app-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '9px' }}>
               <BrandLogo size={26} />
-              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>v1.0</span>
+              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>v1.1</span>
             </h1>
 
             {/* 搜索框 */}
@@ -234,16 +234,31 @@ function DemoApp() {
             <a
               href="/"
               className="mode-btn"
-              title="查看 Conductor Workflow IDE v1.0.0 产品发布与 ROI 测算宣传首页"
+              title="查看 Conductor Workflow IDE v1.1.0 业务全融合发布宣传页"
               style={{
                 textDecoration: 'none',
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2))',
-                borderColor: 'rgba(99, 102, 241, 0.45)',
+                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
+                borderColor: 'rgba(16, 185, 129, 0.5)',
                 color: 'var(--text-primary)',
                 fontWeight: 600,
               }}
             >
-              🚀 v1.0 宣传页
+              ⚡ v1.1 宣传页
+            </a>
+
+            <a
+              href="/v1-0.html"
+              className="mode-btn"
+              title="查看 Conductor Workflow IDE v1.0.0 首发历史宣传页"
+              style={{
+                textDecoration: 'none',
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderColor: 'var(--border-secondary)',
+                color: 'var(--text-secondary)',
+                fontSize: 11,
+              }}
+            >
+              📜 v1.0 回顾
             </a>
 
             <div className="divider"></div>

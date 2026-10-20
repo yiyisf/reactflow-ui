@@ -14,13 +14,15 @@ export default defineConfig(({ mode }) => {
   const isAi = mode === 'ai'
   const isDev = mode === 'development'
 
-  // 开发服务器重写插件：将 /app 请求自动重定向到 /app.html
+  // 开发服务器重写插件：将 /app 请求自动重定向到 /app.html，/v1-0 重定向到 /v1-0.html
   const devAppRewritePlugin = {
     name: 'dev-app-rewrite',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         if (req.url === '/app' || req.url === '/app/') {
           req.url = '/app.html'
+        } else if (req.url === '/v1-0' || req.url === '/v1-0/') {
+          req.url = '/v1-0.html'
         }
         next()
       })
@@ -41,6 +43,7 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           input: {
             main: path.resolve(__dirname, 'index.html'),
+            v10: path.resolve(__dirname, 'v1-0.html'),
             app: path.resolve(__dirname, 'app.html'),
           },
         },

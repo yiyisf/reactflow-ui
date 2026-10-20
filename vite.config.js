@@ -12,11 +12,29 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig(({ mode }) => {
   const isDemo = mode === 'demo'
   const isAi = mode === 'ai'
+  const isDev = mode === 'development'
 
-  // Demo SPA 模式（用于独立站点与 Vercel 等平台托管部署）
-  if (isDemo) {
+  // 开发服务器重写插件：将 /app 请求自动重定向到 /app.html
+  const devAppRewritePlugin = {
+    name: 'dev-app-rewrite',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url === '/app' || req.url === '/app/') {
+          req.url = '/app.html'
+        }
+        next()
+      })
+    },
+  }
+
+  // Demo SPA 模式（用于独立站点与 Vercel 等平台托管部署）或本地开发模式
+  if (isDemo || isDev) {
     return {
-      plugins: [react()],
+      plugins: [react(), devAppRewritePlugin],
+      server: {
+        host: '0.0.0.0',
+        port: 5173,
+      },
       build: {
         outDir: 'dist',
         emptyOutDir: true,

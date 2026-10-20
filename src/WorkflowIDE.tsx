@@ -235,6 +235,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         showAnalysisPanel,
         setShowAnalysisPanel,
         executionData,
+        workflowInstance,
     } = useWorkflowStore();
 
     // 导出 JSON
@@ -519,12 +520,13 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 )}
             </div>
 
-            {uiMode === 'business' && businessViewLayout === 'card' && mode !== 'run' ? (
+            {uiMode === 'business' && businessViewLayout === 'card' ? (
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
                     <StepFlowEditor
                         workflowDef={storeWorkflowDef}
+                        workflowExecution={workflowInstance ?? undefined}
                         registry={actionRegistry}
-                        readOnly={readOnly}
+                        readOnly={readOnly || mode === 'run'}
                         onChange={(newDef) => {
                             setWorkflow(newDef, layoutDirection);
                         }}

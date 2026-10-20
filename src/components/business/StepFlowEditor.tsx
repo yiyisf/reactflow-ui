@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import type { WorkflowDef } from '../../types/conductor';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
 import type { BusinessWorkflowModel, BusinessStep } from '../../stepmodel/types';
 import { compileStepModelToWorkflowDef } from '../../stepmodel/compile';
 import { decompileWorkflowDefToStepModel } from '../../stepmodel/decompile';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition, ActionCategory } from '../../actions/types';
 import { ActionForm } from './ActionForm';
+import { RunStoryTimeline } from './RunStoryTimeline';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
 
 export interface StepFlowEditorProps {
@@ -13,6 +14,7 @@ export interface StepFlowEditorProps {
   onChange: (def: WorkflowDef) => void;
   registry?: ActionRegistry;
   readOnly?: boolean;
+  workflowExecution?: WorkflowInstance;
 }
 
 export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
@@ -20,6 +22,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   onChange,
   registry = defaultActionRegistry,
   readOnly = false,
+  workflowExecution,
 }) => {
   // Synchronize internal BusinessWorkflowModel from WorkflowDef
   const model: BusinessWorkflowModel = useMemo(() => {
@@ -31,9 +34,18 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<ActionCategory | 'all'>('all');
   const [actionSearch, setActionSearch] = useState('');
 
-  // Simulation state
+  // Simulation & Story state
   const [isSimulating, setIsSimulating] = useState(false);
   const [simResults, setSimResults] = useState<Record<string, { status: string; output: any }> | null>(null);
+  const [lastSimInstance, setLastSimInstance] = useState<WorkflowInstance | null>(workflowExecution || null);
+  const [activeTab, setActiveTab] = useState<'steps' | 'story'>(workflowExecution ? 'story' : 'steps');
+
+  useEffect(() => {
+    if (workflowExecution) {
+      setLastSimInstance(workflowExecution);
+      setActiveTab('story');
+    }
+  }, [workflowExecution]);
 
   const steps = model.steps;
 
@@ -110,8 +122,10 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       }
 
       const instance = executeLocalSandboxDryRun(workflowDef, { taskMocks });
-      const results: Record<string, { status: string; output: any }> = {};
+      setLastSimInstance(instance);
+      setActiveTab('story');
 
+      const results: Record<string, { status: string; output: any }> = {};
       for (const task of instance.tasks) {
         results[task.referenceTaskName] = {
           status: task.status,
@@ -175,6 +189,50 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           </div>
         </div>
 
+        {/* 步骤配置 vs 故事线 视图切换 */}
+        {lastSimInstance && (
+          <div
+            style={{
+              display: 'inline-flex',
+              background: 'rgba(255, 255, 255, 0.06)',
+              borderRadius: 6,
+              padding: 2,
+              border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.15))',
+            }}
+          >
+            <button
+              onClick={() => setActiveTab('steps')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 4,
+                border: 'none',
+                background: activeTab === 'steps' ? 'var(--color-accent, #3b82f6)' : 'transparent',
+                color: activeTab === 'steps' ? '#fff' : 'var(--text-secondary, #b0bec5)',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              📋 步骤配置
+            </button>
+            <button
+              onClick={() => setActiveTab('story')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: 4,
+                border: 'none',
+                background: activeTab === 'story' ? 'var(--color-accent, #3b82f6)' : 'transparent',
+                color: activeTab === 'story' ? '#fff' : 'var(--text-secondary, #b0bec5)',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              📖 运行故事线 ({lastSimInstance.tasks.length}步)
+            </button>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {simResults && (
             <button
@@ -217,18 +275,33 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       </div>
 
       {/* Main Container */}
-      <div
-        style={{
-          flex: 1,
-          maxWidth: 820,
-          width: '100%',
-          margin: '0 auto',
-          padding: '24px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-        }}
-      >
+      {activeTab === 'story' && lastSimInstance ? (
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <RunStoryTimeline
+            instance={lastSimInstance}
+            registry={registry}
+            onInspectStep={(ref) => {
+              setActiveTab('steps');
+              const found = steps.find((s) => s.taskReferenceName === ref);
+              if (found) {
+                setActiveStepId(found.id);
+              }
+            }}
+          />
+        </div>
+      ) : (
+        <div
+          style={{
+            flex: 1,
+            maxWidth: 820,
+            width: '100%',
+            margin: '0 auto',
+            padding: '24px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+          }}
+        >
         {/* Empty State */}
         {steps.length === 0 && (
           <div
@@ -525,6 +598,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* Action Picker Modal */}
       {insertModalIndex !== null && (

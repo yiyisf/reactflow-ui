@@ -64,3 +64,10 @@ export { scanWorkflowDef, scanObjectForSensitiveFindings } from './template/sani
 export { analyzeTasksForPruning, applyTaskPruning } from './template/sanitizer/prune';
 export { extractTemplateFromInstance } from './template/sanitizer/anonymize';
 export { TemplateExtractor } from './components/template/TemplateExtractor';
+
+// ── v1.1.0: Storyline Run Timeline & Friendly Conversational Diagnosis ───────
+export * from './utils/friendlyErrorTranslator';
+export { FriendlyErrorCard } from './components/business/FriendlyErrorCard';
+export type { FriendlyErrorCardProps } from './components/business/FriendlyErrorCard';
+export { RunStoryTimeline } from './components/business/RunStoryTimeline';
+export type { RunStoryTimelineProps } from './components/business/RunStoryTimeline';

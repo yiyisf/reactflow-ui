@@ -24,7 +24,7 @@ function DemoApp() {
   const [allowOperations, setAllowOperations] = useState(true);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
-  const [viewMode, setViewMode] = useState<ViewMode>('developer');
+  const [viewMode] = useState<ViewMode>('developer');
 
   // AI config from localStorage (editable in demo header)
   const [aiConfig, setAiConfig] = useState(() => ({
@@ -34,7 +34,6 @@ function DemoApp() {
   }));
   const [showAiConfig, setShowAiConfig] = useState(false);
   const [aiDraft, setAiDraft] = useState(aiConfig);
-  const aiConfigRef = useRef<HTMLDivElement>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {

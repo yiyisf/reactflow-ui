@@ -23,7 +23,7 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 ### Maintenance
 - 抽出 `StepListEditor` / `ActionPickerModal`，合并三张控制流卡片中重复的子步骤列表代码。
 - 控制流卡片的原生 `alert` / `confirm` 改用项目自带对话框。
-- 覆盖率统计补充 stepmodel / actions / 沙箱 / W-LSP / 脱敏器 / store；CI 新增非阻塞的全量类型检查；ESLint 预置 TS 规则（安装 `typescript-eslint` 后自动启用）。
+- 覆盖率统计补充 stepmodel / actions / 沙箱 / W-LSP / 脱敏器 / store；CI 新增阻塞式全量类型检查（并修复测试与演示代码中原有的类型错误）；ESLint 预置 TS 规则（安装 `typescript-eslint` 后自动启用）。
 
 ---
 

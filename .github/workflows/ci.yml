@@ -24,11 +24,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # 全量类型检查（含测试与演示代码；构建只检查入口可达的文件）。
-      # 先以非阻塞方式上线，存量问题清理后去掉 continue-on-error。
+      # 全量类型检查（含测试与演示代码；构建只检查入口可达的文件，覆盖不到它们）。
       - name: Typecheck (all sources)
         run: npx tsc --noEmit -p tsconfig.json
-        continue-on-error: true
 
       - name: Test
         run: npm test

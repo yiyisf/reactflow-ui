@@ -61,6 +61,22 @@ function collectForkJoinDynamicPairs(
     return pairs;
 }
 
+/**
+ * 撤销历史快照里的节点需要去掉 selected 状态。
+ * partialize 在每次 set（含拖拽）时都会被调用，这里按输入引用缓存结果，避免无谓的 O(n) 分配。
+ */
+let lastNodesIn: WorkflowStore['nodes'] | null = null;
+let lastNodesOut: WorkflowStore['nodes'] = [];
+function stripSelected(nodes: WorkflowStore['nodes']): WorkflowStore['nodes'] {
+    if (nodes === lastNodesIn) return lastNodesOut;
+    lastNodesIn = nodes;
+    lastNodesOut = nodes.map(n => Object.assign({}, n, { selected: false }) as typeof n);
+    return lastNodesOut;
+}
+
+/** 撤销历史最大条数（zundo 默认不限制，长时间编辑会持续占用内存） */
+const MAX_UNDO_HISTORY = 100;
+
 const useWorkflowStore = create<WorkflowStore>()(
     persist(
         temporal(
@@ -94,6 +110,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 // 工作流加载版本号：每次调用 setWorkflow 时递增，
                 // WorkflowDesigner 监听此值以触发 fitView，与 updateTask 等增量操作区分
                 workflowLoadKey: 0,
+                graphStale: false,
 
                 // P4.2 执行触发状态
                 runState: 'idle' as RunState,
@@ -135,7 +152,26 @@ const useWorkflowStore = create<WorkflowStore>()(
                         validationResults,
                         layoutDirection: dir,
                         workflowLoadKey: get().workflowLoadKey + 1,
+                        graphStale: false,
                     });
+                },
+
+                setWorkflowDefOnly: (workflowJson: any) => {
+                    const workflowWithSync = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
+                    syncForkJoinOn(workflowWithSync.tasks);
+                    set({
+                        workflowDef: workflowWithSync,
+                        validationResults: validateWorkflow(workflowWithSync),
+                        graphStale: true,
+                    });
+                },
+
+                refreshGraph: () => {
+                    const { graphStale, workflowDef, layoutDirection, mode } = get();
+                    if (!graphStale || !workflowDef) return;
+                    const { nodes, edges, taskMap } = parseWorkflow(workflowDef, layoutDirection, { hideEmptyBranches: mode !== 'edit' });
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode });
+                    set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap, graphStale: false });
                 },
 
                 setMode: (mode: EditorMode) => {
@@ -158,7 +194,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     if (workflowDef) {
                         const { nodes, edges, taskMap } = parseWorkflow(workflowDef, layoutDirection, { hideEmptyBranches: mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode });
-                        set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap });
+                        set({ nodes: layoutedNodes, edges: layoutedEdges, taskMap, graphStale: false });
                     }
                 },
 
@@ -1061,7 +1097,9 @@ const useWorkflowStore = create<WorkflowStore>()(
                     layoutDirection: state.layoutDirection,
                     // Strip `selected` so flash-selection is never captured in undo history.
                     // Explicit cast avoids TypeScript exposing ReactFlow's internal symbol type.
-                    nodes: state.nodes.map(n => Object.assign({}, n, { selected: false }) as typeof n),
+                    nodes: stripSelected(state.nodes),
+                    // 与 nodes 一起快照：撤销到"画布数据过期"的历史点时，仍会在回到画布前被刷新
+                    graphStale: state.graphStale,
                     edges: state.edges,
                     taskMap: state.taskMap,
                     theme: state.theme,
@@ -1074,8 +1112,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                 // 等值检查：只有当核心业务逻辑 (workflowDef) 发生变化时才记录 Undo
                 // 这样可以忽略 节点拖拽(仅坐标变化)、缩放、主题切换等非业务操作
                 equality: (a, b) => {
+                    // 引用相同必然相等（拖拽、缩放、选中等不改定义的操作走这条快速路径，免去序列化）
+                    if (a.workflowDef === b.workflowDef) return true;
                     return JSON.stringify(a.workflowDef) === JSON.stringify(b.workflowDef);
-                }
+                },
+                limit: MAX_UNDO_HISTORY,
             }
         ),
         {

@@ -20,6 +20,10 @@ export class ActionRegistry {
     }
   }
 
+  unregister(id: string): void {
+    this.actions.delete(id);
+  }
+
   getAction(id: string): ActionDefinition | undefined {
     return this.actions.get(id);
   }

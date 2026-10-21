@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import ControlButton from './ControlButton';
 import SandboxConfigModal from '../SandboxConfigModal';
 import { useStore } from 'zustand';
@@ -26,21 +27,21 @@ const Divider: React.FC = () => (
 );
 
 const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthCheck, onShowSettings, executionActions }) => {
-    const {
-        mode,
-        setMode,
-        validationResults,
-        workflowInstance,
-        workflowDef,
-        showDataLineage,
-        setShowDataLineage,
-        showWaterfallPanel,
-        setShowWaterfallPanel,
-        runLocalSandboxDryRun,
-        inlineCopilotTaskRef,
-        setInlineCopilotTaskRef,
-        selectedTask,
-    } = useWorkflowStore();
+    const { mode, setMode, validationResults, workflowInstance, workflowDef, showDataLineage, setShowDataLineage, showWaterfallPanel, setShowWaterfallPanel, runLocalSandboxDryRun, inlineCopilotTaskRef, setInlineCopilotTaskRef, selectedTask } = useWorkflowStore(useShallow((s) => ({
+            mode: s.mode,
+            setMode: s.setMode,
+            validationResults: s.validationResults,
+            workflowInstance: s.workflowInstance,
+            workflowDef: s.workflowDef,
+            showDataLineage: s.showDataLineage,
+            setShowDataLineage: s.setShowDataLineage,
+            showWaterfallPanel: s.showWaterfallPanel,
+            setShowWaterfallPanel: s.setShowWaterfallPanel,
+            runLocalSandboxDryRun: s.runLocalSandboxDryRun,
+            inlineCopilotTaskRef: s.inlineCopilotTaskRef,
+            setInlineCopilotTaskRef: s.setInlineCopilotTaskRef,
+            selectedTask: s.selectedTask,
+        })));
 
     const temporalStore = (useWorkflowStore as any).temporal;
     const { undo, redo, pastStates, futureStates } = useStore(

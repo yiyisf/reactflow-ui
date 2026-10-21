@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface JsonPreviewPanelProps {
     isOpen: boolean;
@@ -14,14 +15,14 @@ interface JsonPreviewPanelProps {
  * - 支持直接修改 JSON 代码并实时热更新至画布拓扑
  */
 const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelProps) => {
-    const {
-        workflowDef,
-        setWorkflow,
-        selectedTask,
-        setSelectedTask,
-        taskMap,
-        mode,
-    } = useWorkflowStore();
+    const { workflowDef, setWorkflow, selectedTask, setSelectedTask, taskMap, mode } = useWorkflowStore(useShallow((s) => ({
+            workflowDef: s.workflowDef,
+            setWorkflow: s.setWorkflow,
+            selectedTask: s.selectedTask,
+            setSelectedTask: s.setSelectedTask,
+            taskMap: s.taskMap,
+            mode: s.mode,
+        })));
 
     const [draftJson, setDraftJson] = useState('');
     const [parseError, setParseError] = useState<string | null>(null);

@@ -10,6 +10,7 @@ import WorkflowDesigner from '../WorkflowDesigner';
 import TaskDetailPanel from '../TaskDetailPanel';
 import ExecutionTaskPanel from '../ExecutionTaskPanel';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { ExecutionActions } from '../../types/workflow';
 import type { WorkflowDef } from '../../types/conductor';
 
@@ -24,15 +25,15 @@ const CanvasPreview: React.FC<CanvasPreviewProps> = ({
     onRequestImport,
     executionActions,
 }) => {
-    const {
-        mode,
-        theme,
-        selectedTask,
-        isDetailPanelOpen,
-        setIsDetailPanelOpen,
-        selectTaskAction,
-        setSelectedTask,
-    } = useWorkflowStore();
+    const { mode, theme, selectedTask, isDetailPanelOpen, setIsDetailPanelOpen, selectTaskAction, setSelectedTask } = useWorkflowStore(useShallow((s) => ({
+            mode: s.mode,
+            theme: s.theme,
+            selectedTask: s.selectedTask,
+            isDetailPanelOpen: s.isDetailPanelOpen,
+            setIsDetailPanelOpen: s.setIsDetailPanelOpen,
+            selectTaskAction: s.selectTaskAction,
+            setSelectedTask: s.setSelectedTask,
+        })));
 
     const handleNodeClick = (task: any) => {
         if (mode !== 'run') {

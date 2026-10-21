@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { parseWorkflowInputParams, WorkflowInputParam } from '../types/conductor';
 import { WorkflowInstance } from '../types/conductor';
 import './WorkflowRunPanel.css';
@@ -21,7 +22,14 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
     onPollExecution,
     executionPollInterval = 3000,
 }) => {
-    const { workflowDef, showRunPanel, setShowRunPanel, setRunState, importExecutionJSON, setMode } = useWorkflowStore();
+    const { workflowDef, showRunPanel, setShowRunPanel, setRunState, importExecutionJSON, setMode } = useWorkflowStore(useShallow((s) => ({
+            workflowDef: s.workflowDef,
+            showRunPanel: s.showRunPanel,
+            setShowRunPanel: s.setShowRunPanel,
+            setRunState: s.setRunState,
+            importExecutionJSON: s.importExecutionJSON,
+            setMode: s.setMode,
+        })));
 
     const [inputMode, setInputMode] = useState<'form' | 'json'>('form');
     const [formValues, setFormValues] = useState<Record<string, string>>({});

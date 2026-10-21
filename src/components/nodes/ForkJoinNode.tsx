@@ -3,6 +3,7 @@ import { Handle, Position, NodeProps, useUpdateNodeInternals } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import NodeLayout from './NodeLayout';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { WorkflowNodeData } from '../../types/workflow';
 import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
@@ -21,7 +22,7 @@ const FORK_JOIN_COLOR = 'var(--color-accent)';
 export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
     const { layoutDirection, sourcePosition, targetPosition } = useNodeLayout(data);
     const { mode, execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
-    const { addForkBranch } = useWorkflowStore();
+    const { addForkBranch } = useWorkflowStore(useShallow((s) => ({ addForkBranch: s.addForkBranch })));
     const updateNodeInternals = useUpdateNodeInternals();
 
     // 监听分支数量变化，更新 Handle

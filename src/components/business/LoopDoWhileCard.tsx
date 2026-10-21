@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { BusinessStep } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
-import { ActionForm } from './ActionForm';
-import { NestedControlStep } from './NestedControlStep';
+import { StepListEditor } from './StepListEditor';
 import { createStepFromAction } from '../../stepmodel/factory';
 
 export interface LoopDoWhileCardProps {
@@ -27,7 +26,6 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
   depth = 0,
 }) => {
   const loopSteps: BusinessStep[] = step.loopSteps || [];
-  const [expandedChildId, setExpandedChildId] = useState<string | null>(null);
 
   // 更新循环体内步骤
   const handleUpdateLoopSteps = (newSteps: BusinessStep[]) => {
@@ -201,142 +199,18 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
               循环体内暂无任务，请点击右上角「+ 追加循环步骤」添加轮询或重复执行动作
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {loopSteps.map((childStep, cIdx) => {
-                if (childStep.controlType) {
-                  return (
-                    <NestedControlStep
-                      key={childStep.id}
-                      step={childStep}
-                      index={cIdx}
-                      depth={depth + 1}
-                      upstreamSteps={[...upstreamSteps, ...loopSteps.slice(0, cIdx)]}
-                      registry={registry}
-                      disabled={disabled}
-                      onChange={(updatedChild) => {
-                        const nextSteps = [...loopSteps];
-                        nextSteps[cIdx] = updatedChild;
-                        handleUpdateLoopSteps(nextSteps);
-                      }}
-                      onDelete={() => {
-                        const nextSteps = loopSteps.filter((_, idx) => idx !== cIdx);
-                        handleUpdateLoopSteps(nextSteps);
-                      }}
-                      onOpenInsertModal={onOpenInsertModal}
-                    />
-                  );
-                }
-
-                const childAction = registry.getAction(childStep.actionId);
-                const isExpanded = expandedChildId === childStep.id;
-
-                return (
-                  <div
-                    key={childStep.id}
-                    style={{
-                      borderRadius: 6,
-                      background: 'var(--bg-primary)',
-                      border: isExpanded
-                        ? '1px solid var(--color-accent, #3b82f6)'
-                        : '1px solid var(--border-primary)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      onClick={() => setExpandedChildId(isExpanded ? null : childStep.id)}
-                      style={{
-                        padding: '8px 12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            padding: '1px 5px',
-                            borderRadius: 4,
-                            background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-                            color: 'var(--color-accent-text, #1e40af)',
-                          }}
-                        >
-                          轮内 #{cIdx + 1}
-                        </span>
-                        <span style={{ fontSize: 16 }}>{childAction?.icon || '⚙️'}</span>
-                        <div>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {childStep.name || childAction?.name || childStep.taskReferenceName}
-                          </span>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                            {childStep.taskReferenceName}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(e) => e.stopPropagation()}>
-                        {!disabled && (
-                          <button
-                            onClick={() => {
-                              const nextSteps = loopSteps.filter((_, idx) => idx !== cIdx);
-                              handleUpdateLoopSteps(nextSteps);
-                            }}
-                            title="删除此步骤"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#ef4444',
-                              cursor: 'pointer',
-                              fontSize: 12,
-                              padding: '2px 4px',
-                            }}
-                          >
-                            🗑️
-                          </button>
-                        )}
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: 'var(--text-muted)',
-                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.15s ease',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => setExpandedChildId(isExpanded ? null : childStep.id)}
-                        >
-                          ▼
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 展开的表单配置 */}
-                    {isExpanded && (
-                      <div
-                        style={{
-                          padding: '12px 14px',
-                          borderTop: '1px solid var(--border-primary)',
-                          background: 'var(--bg-secondary)',
-                        }}
-                      >
-                        <ActionForm
-                          step={childStep}
-                          upstreamSteps={[...upstreamSteps, ...loopSteps.slice(0, cIdx)]}
-                          registry={registry}
-                          disabled={disabled}
-                          onChange={(updatedChild) => {
-                            const nextSteps = [...loopSteps];
-                            nextSteps[cIdx] = updatedChild;
-                            handleUpdateLoopSteps(nextSteps);
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <StepListEditor
+              steps={loopSteps}
+              onStepsChange={handleUpdateLoopSteps}
+              upstreamSteps={upstreamSteps}
+              registry={registry}
+              disabled={disabled}
+              depth={depth}
+              onOpenInsertModal={onOpenInsertModal}
+              rowTone="primary"
+              indexPrefix="轮内 "
+              accentIndexBadge
+            />
           )}
         </div>
       </div>

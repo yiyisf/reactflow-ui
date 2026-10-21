@@ -1,21 +1,22 @@
 import React, { useMemo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { TaskInstance } from '../types/conductor';
 
 export const ExecutionWaterfallPanel: React.FC = () => {
-  const {
-    mode,
-    showWaterfallPanel,
-    setShowWaterfallPanel,
-    workflowInstance,
-    executionData,
-    taskMap,
-    selectedTask,
-    setSelectedTask,
-    setSelectedTaskInstance,
-    timeTravelTimestamp,
-    setTimeTravelTimestamp,
-  } = useWorkflowStore();
+  const { mode, showWaterfallPanel, setShowWaterfallPanel, workflowInstance, executionData, taskMap, selectedTask, setSelectedTask, setSelectedTaskInstance, timeTravelTimestamp, setTimeTravelTimestamp } = useWorkflowStore(useShallow((s) => ({
+          mode: s.mode,
+          showWaterfallPanel: s.showWaterfallPanel,
+          setShowWaterfallPanel: s.setShowWaterfallPanel,
+          workflowInstance: s.workflowInstance,
+          executionData: s.executionData,
+          taskMap: s.taskMap,
+          selectedTask: s.selectedTask,
+          setSelectedTask: s.setSelectedTask,
+          setSelectedTaskInstance: s.setSelectedTaskInstance,
+          timeTravelTimestamp: s.timeTravelTimestamp,
+          setTimeTravelTimestamp: s.setTimeTravelTimestamp,
+      })));
 
   const timelineInfo = useMemo(() => {
     const rawTasks: TaskInstance[] = workflowInstance?.tasks?.length

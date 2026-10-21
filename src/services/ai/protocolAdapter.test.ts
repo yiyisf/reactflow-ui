@@ -43,7 +43,7 @@ describe('protocolAdapter / streamChat', () => {
 
             const events = await collect(streamChat(USER_MSG, [], { apiKey: 'sk-test', provider: 'openai' }));
             expect(events).toContainEqual({ type: 'text', content: 'hello' });
-            expect(events.at(-1)).toEqual({ type: 'done' });
+            expect(events[events.length - 1]).toEqual({ type: 'done' });
         });
 
         it('reconstructs a tool_call whose name/arguments arrive across multiple deltas', async () => {

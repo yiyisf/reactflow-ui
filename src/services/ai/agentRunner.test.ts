@@ -8,6 +8,9 @@ import { toolRegistry } from './toolRegistry';
 import type { StreamEvent } from './protocolAdapter';
 import type { AgentRequest } from './transport';
 
+/** 项目 lib 为 ES2020，没有 Array.prototype.at；测试里用小工具取倒数第 n 个元素 */
+const fromEnd = <T>(arr: T[], n = 1): T | undefined => arr[arr.length - n];
+
 // Tests exercise AgentRunner against the module singletons — one store instance is
 // as good as another for verifying orchestration logic, and it keeps test setup simple.
 const testStores: AgentRunnerStores = { aiStore: useAiStore, libraryStore: useLibraryStore, toolRegistry };
@@ -49,8 +52,8 @@ describe('AgentRunner', () => {
 
         const { messages, isStreaming } = useAiStore.getState();
         expect(isStreaming).toBe(false);
-        expect(messages.at(-2)).toMatchObject({ role: 'user', content: '你好' });
-        expect(messages.at(-1)).toMatchObject({ role: 'assistant', content: '你好，我可以帮你设计工作流。' });
+        expect(fromEnd(messages, 2)).toMatchObject({ role: 'user', content: '你好' });
+        expect(fromEnd(messages)).toMatchObject({ role: 'assistant', content: '你好，我可以帮你设计工作流。' });
     });
 
     it('does nothing when apiKey is empty and no transport is configured', async () => {
@@ -59,7 +62,7 @@ describe('AgentRunner', () => {
         await runner.send('hi');
 
         const { messages } = useAiStore.getState();
-        expect(messages.at(-1)?.content).toContain('API Key');
+        expect(fromEnd(messages)?.content).toContain('API Key');
     });
 
     it('is a no-op while already streaming', async () => {
@@ -231,7 +234,7 @@ describe('AgentRunner', () => {
         const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('查询服务器数量');
 
-        expect(useAiStore.getState().messages.at(-1)?.content).toBe('找到了 3 台服务器');
+        expect(fromEnd(useAiStore.getState().messages)?.content).toBe('找到了 3 台服务器');
         // second call's history must include the custom tool's result
         const secondCallMessages = seenRequests[1].messages;
         expect(secondCallMessages.some(m => m.role === 'tool' && m.content.includes('3 servers found'))).toBe(true);
@@ -292,7 +295,7 @@ describe('AgentRunner', () => {
         const runner = new AgentRunner(() => ({}), testStores);
         await runner.send('hi');
 
-        const last = useAiStore.getState().messages.at(-1);
+        const last = fromEnd(useAiStore.getState().messages);
         expect(last?.content).toContain('暂时不可用');
         expect(useAiStore.getState().retryInput).toBe('hi');
         expect(useAiStore.getState().isStreaming).toBe(false);
@@ -315,7 +318,7 @@ describe('AgentRunner', () => {
         runner.abort();
         await promise;
 
-        expect(useAiStore.getState().messages.at(-1)?.content).toBe('（已中止）');
+        expect(fromEnd(useAiStore.getState().messages)?.content).toBe('（已中止）');
         expect(useAiStore.getState().isStreaming).toBe(false);
     });
 

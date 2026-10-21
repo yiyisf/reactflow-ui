@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { WorkflowInstance } from '../../types/conductor';
 import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { extractTemplateFromInstance } from '../../template/sanitizer/anonymize';
@@ -19,7 +20,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
   onClose,
   onPublished,
 }) => {
-  const { theme, themeColor } = useWorkflowStore();
+  const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
   // 提取初始结果
   const initialResult = useMemo(() => {
     return extractTemplateFromInstance({

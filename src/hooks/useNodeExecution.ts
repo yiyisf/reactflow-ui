@@ -1,4 +1,5 @@
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { TaskExecutionData, ExecutionStatus } from '../types/workflow';
 
 /**
@@ -6,13 +7,13 @@ import type { TaskExecutionData, ExecutionStatus } from '../types/workflow';
  * 支持 DO_WHILE 循环迭代轮次切换与 Time-Travel 时间旅行状态投影。
  */
 export const useNodeExecution = (taskReferenceName: string) => {
-    const {
-        mode,
-        executionData,
-        workflowDef,
-        activeLoopIterations,
-        timeTravelTimestamp,
-    } = useWorkflowStore();
+    const { mode, executionData, workflowDef, activeLoopIterations, timeTravelTimestamp } = useWorkflowStore(useShallow((s) => ({
+            mode: s.mode,
+            executionData: s.executionData,
+            workflowDef: s.workflowDef,
+            activeLoopIterations: s.activeLoopIterations,
+            timeTravelTimestamp: s.timeTravelTimestamp,
+        })));
     const rawExecution = mode === 'run' ? executionData?.[taskReferenceName] : null;
     const isRunning = mode === 'run';
 

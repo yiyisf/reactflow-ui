@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import ConfirmDialog from '../ConfirmDialog';
 import { ExecutionStatus } from '../../types/workflow';
 
@@ -32,7 +33,7 @@ const NodeWrapper = ({
     simDone = false,
     proposalStatus,
 }: NodeWrapperProps) => {
-    const { mode, removeNode } = useWorkflowStore();
+    const { mode, removeNode } = useWorkflowStore(useShallow((s) => ({ mode: s.mode, removeNode: s.removeNode })));
     const [showConfirm, setShowConfirm] = useState(false);
 
     const onDelete = (e: React.MouseEvent) => {

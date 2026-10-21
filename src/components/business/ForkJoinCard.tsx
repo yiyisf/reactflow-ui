@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import type { BusinessStep, ForkLane } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
-import { ActionForm } from './ActionForm';
-import { NestedControlStep } from './NestedControlStep';
+import { StepListEditor } from './StepListEditor';
+import ConfirmDialog from '../ConfirmDialog';
+import { useConfirm } from '../../hooks/useConfirm';
 import { createStepFromAction } from '../../stepmodel/factory';
 
 export interface ForkJoinCardProps {
@@ -27,8 +28,8 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
   depth = 0,
 }) => {
   const lanes: ForkLane[] = step.forkLanes || [];
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const [activeLaneId, setActiveLaneId] = useState<string>(lanes[0]?.laneId || 'lane_0');
-  const [expandedChildId, setExpandedChildId] = useState<string | null>(null);
 
   // 更新泳道内步骤
   const handleUpdateLaneSteps = (laneId: string, newSteps: BusinessStep[]) => {
@@ -61,13 +62,11 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
   };
 
   // 删除并行泳道
-  const handleDeleteLane = (laneId: string, e: React.MouseEvent) => {
+  const handleDeleteLane = async (laneId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (lanes.length <= 1) {
-      alert('至少需要保留一条并行泳道');
-      return;
-    }
-    if (!confirm('确定要删除此条并行泳道及其内部步骤吗？')) return;
+    // 至少保留一条泳道（界面上只有多于一条时才显示删除按钮）
+    if (lanes.length <= 1) return;
+    if (!(await confirm('确定要删除此条并行泳道及其内部步骤吗？'))) return;
     const nextLanes = lanes.filter((l) => l.laneId !== laneId);
     onChange({
       ...step,
@@ -272,132 +271,17 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
                   此泳道暂无步骤
                 </div>
               ) : (
-                lane.steps.map((childStep, cIdx) => {
-                  if (childStep.controlType) {
-                    return (
-                      <NestedControlStep
-                        key={childStep.id}
-                        step={childStep}
-                        index={cIdx}
-                        depth={depth + 1}
-                        upstreamSteps={[...upstreamSteps, ...lane.steps.slice(0, cIdx)]}
-                        registry={registry}
-                        disabled={disabled}
-                        onChange={(updatedChild) => {
-                          const nextSteps = [...lane.steps];
-                          nextSteps[cIdx] = updatedChild;
-                          handleUpdateLaneSteps(lane.laneId, nextSteps);
-                        }}
-                        onDelete={() => {
-                          const nextSteps = lane.steps.filter((_, idx) => idx !== cIdx);
-                          handleUpdateLaneSteps(lane.laneId, nextSteps);
-                        }}
-                        onOpenInsertModal={onOpenInsertModal}
-                      />
-                    );
-                  }
-
-                  const childAction = registry.getAction(childStep.actionId);
-                  const isExpanded = expandedChildId === childStep.id;
-
-                  return (
-                    <div
-                      key={childStep.id}
-                      style={{
-                        borderRadius: 6,
-                        background: 'var(--bg-primary)',
-                        border: isExpanded
-                          ? '1px solid var(--color-accent, #3b82f6)'
-                          : '1px solid var(--border-primary)',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        onClick={() => setExpandedChildId(isExpanded ? null : childStep.id)}
-                        style={{
-                          padding: '6px 8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                          <span style={{ fontSize: 14 }}>{childAction?.icon || '⚙️'}</span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 600,
-                              color: 'var(--text-primary)',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {childStep.name || childAction?.name}
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={(e) => e.stopPropagation()}>
-                          {!disabled && (
-                            <button
-                              onClick={() => {
-                                const nextSteps = lane.steps.filter((_, idx) => idx !== cIdx);
-                                handleUpdateLaneSteps(lane.laneId, nextSteps);
-                              }}
-                              title="删除此步骤"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#ef4444',
-                                cursor: 'pointer',
-                                fontSize: 11,
-                                padding: '1px 3px',
-                              }}
-                            >
-                              🗑️
-                            </button>
-                          )}
-                          <span
-                            style={{
-                              fontSize: 10,
-                              color: 'var(--text-muted)',
-                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                              transition: 'transform 0.15s ease',
-                              cursor: 'pointer',
-                            }}
-                            onClick={() => setExpandedChildId(isExpanded ? null : childStep.id)}
-                          >
-                            ▼
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 展开的表单配置 */}
-                      {isExpanded && (
-                        <div
-                          style={{
-                            padding: '10px 10px',
-                            borderTop: '1px solid var(--border-primary)',
-                            background: 'var(--bg-secondary)',
-                          }}
-                        >
-                          <ActionForm
-                            step={childStep}
-                            upstreamSteps={[...upstreamSteps, ...lane.steps.slice(0, cIdx)]}
-                            registry={registry}
-                            disabled={disabled}
-                            onChange={(updatedChild) => {
-                              const nextSteps = [...lane.steps];
-                              nextSteps[cIdx] = updatedChild;
-                              handleUpdateLaneSteps(lane.laneId, nextSteps);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+                <StepListEditor
+                  steps={lane.steps}
+                  onStepsChange={(next) => handleUpdateLaneSteps(lane.laneId, next)}
+                  upstreamSteps={upstreamSteps}
+                  registry={registry}
+                  disabled={disabled}
+                  depth={depth}
+                  onOpenInsertModal={onOpenInsertModal}
+                  variant="compact"
+                  rowTone="primary"
+                />
               )}
 
               {/* 泳道底部追加按钮 */}
@@ -456,6 +340,9 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
           </code>
         )}
       </div>
+      {confirmState && (
+        <ConfirmDialog message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
+      )}
     </div>
   );
 };

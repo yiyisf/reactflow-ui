@@ -7,7 +7,10 @@ export function decompileTaskDefToStep(
   index: number,
   registry: ActionRegistry = defaultActionRegistry
 ): BusinessStep {
-  const stepId = `step_${task.taskReferenceName || index}_${Date.now().toString(36)}`;
+  // 步骤 ID 必须是确定性的：编辑器每次修改都会重新反编译，若 ID 随时间变化，
+  // React key 与"展开/选中"状态都会失效（卡片被重建、输入焦点丢失）。
+  // taskReferenceName 在工作流内唯一，且与新建步骤时的 ID（step_<ref>）一致。
+  const stepId = `step_${task.taskReferenceName || `idx${index}`}`;
 
   // 1. 分支路由控制流 (DECISION / SWITCH)
   if (task.type === 'DECISION' || task.type === 'SWITCH') {
@@ -97,6 +100,15 @@ export function decompileTaskDefToStep(
       description: task.description,
       values: matched.values,
       isProFallback: false,
+      // 流程库能力：记录任务里已有的名称与版本；未显式指定版本则保持不固定，避免改变原有语义
+      ...(task.type === 'SUB_WORKFLOW' && task.subWorkflowParam?.name
+        ? {
+            libraryRef: {
+              name: task.subWorkflowParam.name,
+              version: task.subWorkflowParam.version,
+            },
+          }
+        : {}),
     };
   }
 

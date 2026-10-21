@@ -2,6 +2,7 @@ import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import NodeWrapper from './NodeWrapper';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { WorkflowNodeData } from '../../types/workflow';
 import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
@@ -26,7 +27,12 @@ type DialogState =
 const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
     const { layoutDirection } = useNodeLayout(data);
     const { mode, execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
-    const { addDecisionBranch, removeDecisionBranch, renameDecisionBranch, viewMode } = useWorkflowStore();
+    const { addDecisionBranch, removeDecisionBranch, renameDecisionBranch, viewMode } = useWorkflowStore(useShallow((s) => ({
+            addDecisionBranch: s.addDecisionBranch,
+            removeDecisionBranch: s.removeDecisionBranch,
+            renameDecisionBranch: s.renameDecisionBranch,
+            viewMode: s.viewMode,
+        })));
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [dialog, setDialog] = useState<DialogState>({ type: 'none' });
 

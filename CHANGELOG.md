@@ -4,6 +4,29 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **流程库能力动作**：由 Conductor 标准 `WorkflowDef` / 已注册 `TaskDef` 生成业务动作（`buildActionFromWorkflowDef` 等），入参取自 `inputSchema`，出参取自 `outputSchema` / `outputParameters`；流程库能力编译为 `SUB_WORKFLOW`，步骤记录 `libraryRef`，**首次引用时固定版本，库升级后不自动跟随**，由用户确认后手动升级。
+- 分支 / 并行泳道 / 循环体内支持任意层级嵌套控制流。
+
+### Fixed
+- 业务模式：宣传页版本入口收进下拉；ROI 估算现在包含团队人数；模板中心弹窗跟随系统主题。
+- 业务卡片：步骤 ID 不再随时间变化（此前每次编辑都会重建卡片、收起展开项、丢失输入焦点）。
+
+### Performance
+- 业务卡片视图下编辑只更新定义，不再每次按键都做整图布局；切回画布时再补建。
+- Store 订阅改为按需（`useShallow`），逐节点组件不再因无关状态变化而重渲染。
+- 撤销历史上限 100 条；历史比较先做引用相等判断，避免每次状态变化都序列化整份定义。
+- 动作选择弹窗的筛选只在弹窗打开时计算。
+
+### Maintenance
+- 抽出 `StepListEditor` / `ActionPickerModal`，合并三张控制流卡片中重复的子步骤列表代码。
+- 控制流卡片的原生 `alert` / `confirm` 改用项目自带对话框。
+- 覆盖率统计补充 stepmodel / actions / 沙箱 / W-LSP / 脱敏器 / store；CI 新增阻塞式全量类型检查（并修复测试与演示代码中原有的类型错误）；ESLint 预置 TS 规则（安装 `typescript-eslint` 后自动启用）。
+
+---
+
 ## [1.1.0] - 2026-10-21
 
 `v1.1.0` 是 `@yiyi_zhang/reactflow-ui` 的重大里程碑发布，全面实现了**“业务与技术双模全融合”**，彻底打破资深研发工程师与业务/运维专家之间的使用鸿沟。

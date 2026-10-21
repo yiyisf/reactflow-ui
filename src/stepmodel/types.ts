@@ -1,4 +1,5 @@
 import type { TaskDef, WorkflowDef } from '../types/conductor';
+import type { LibraryRef } from '../actions/types';
 
 export interface PillToken {
   /** The Conductor reference path, e.g. "ecs_create_0.output.instanceId" or "workflow.input.userId" */
@@ -47,6 +48,8 @@ export interface BusinessStep {
    */
   isProFallback?: boolean;
   rawTaskDef?: TaskDef;
+  /** 引用流程库能力时记录的名称与版本（首次引用时固定，不随库升级自动变化） */
+  libraryRef?: LibraryRef;
 
   // 控制流拓展字段
   controlType?: StepControlType;

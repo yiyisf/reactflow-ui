@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { WorkflowDef, WorkflowInputParam, parseWorkflowInputParams } from '../types/conductor';
 
 interface WorkflowSettingsPanelProps {
@@ -21,7 +22,11 @@ const TABS: { id: TabId; label: string }[] = [
  * 工作流设置面板 - Tab 分组形式，编辑工作流级全部配置字段
  */
 const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) => {
-    const { workflowDef, updateWorkflowProperties, mode } = useWorkflowStore();
+    const { workflowDef, updateWorkflowProperties, mode } = useWorkflowStore(useShallow((s) => ({
+            workflowDef: s.workflowDef,
+            updateWorkflowProperties: s.updateWorkflowProperties,
+            mode: s.mode,
+        })));
     const [localDef, setLocalDef] = useState<(WorkflowDef & Record<string, any>) | null>(workflowDef as any);
     const [activeTab, setActiveTab] = useState<TabId>('basic');
 

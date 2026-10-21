@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { executeLocalSandboxDryRun } from './localSandboxEngine';
-import type { WorkflowDef } from '../types/workflow';
+import type { WorkflowDef } from '../types/conductor';
 
 describe('In-Browser Deterministic Dry-Run Sandbox Engine', () => {
   it('evaluates expressions, SET_VARIABLE, SWITCH branches, and DO_WHILE iterations in-browser', () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import useAiStoreSingleton from '../../store/aiStore';
 import { useIdeStoresOptional } from '../../store/ideStoresContext';
 import { computeDiff } from '../../services/ai/toolExecutor';
@@ -19,16 +20,16 @@ const QUICK_ACTIONS = [
 ];
 
 export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConfig }) => {
-  const {
-    inlineCopilotTaskRef,
-    setInlineCopilotTaskRef,
-    selectedTask,
-    workflowDef,
-    taskMap,
-    addNode,
-    updateTask,
-    selectTaskAction,
-  } = useWorkflowStore();
+  const { inlineCopilotTaskRef, setInlineCopilotTaskRef, selectedTask, workflowDef, taskMap, addNode, updateTask, selectTaskAction } = useWorkflowStore(useShallow((s) => ({
+          inlineCopilotTaskRef: s.inlineCopilotTaskRef,
+          setInlineCopilotTaskRef: s.setInlineCopilotTaskRef,
+          selectedTask: s.selectedTask,
+          workflowDef: s.workflowDef,
+          taskMap: s.taskMap,
+          addNode: s.addNode,
+          updateTask: s.updateTask,
+          selectTaskAction: s.selectTaskAction,
+      })));
 
   const ideStores = useIdeStoresOptional();
   const setProposal = (ideStores?.aiStore ?? useAiStoreSingleton)((s) => s.setProposal);

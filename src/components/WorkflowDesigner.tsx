@@ -10,6 +10,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { TASK_TYPES, CATEGORY_VISIBILITY } from '../config/taskTypes';
 import TaskNode from './nodes/TaskNode';
 import DecisionNode from './nodes/DecisionNode';
@@ -75,34 +76,34 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     onRequestImport,
     executionActions,
 }) => {
-    const {
-        nodes,
-        edges,
-        onNodesChange,
-        onEdgesChange,
-        onConnect,
-        mode,
-        viewMode,
-        selectedTask,
-        setSelectedTask,
-        selectTaskAction,
-        theme,
-        edgeType,
-        addNode,
-        nodesLocked,
-        executionData,
-        validationResults,
-        isDetailPanelOpen,
-        setIsDetailPanelOpen,
-        workflowDef,
-        setWorkflow,
-        dynamicRuntimeTasksByFork,
-        layoutDirection,
-        simState,
-        isSimRunning,
-        workflowLoadKey,
-        showDataLineage,
-    } = useWorkflowStore();
+    const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mode, viewMode, selectedTask, setSelectedTask, selectTaskAction, theme, edgeType, addNode, nodesLocked, executionData, validationResults, isDetailPanelOpen, setIsDetailPanelOpen, workflowDef, setWorkflow, dynamicRuntimeTasksByFork, layoutDirection, simState, isSimRunning, workflowLoadKey, showDataLineage } = useWorkflowStore(useShallow((s) => ({
+            nodes: s.nodes,
+            edges: s.edges,
+            onNodesChange: s.onNodesChange,
+            onEdgesChange: s.onEdgesChange,
+            onConnect: s.onConnect,
+            mode: s.mode,
+            viewMode: s.viewMode,
+            selectedTask: s.selectedTask,
+            setSelectedTask: s.setSelectedTask,
+            selectTaskAction: s.selectTaskAction,
+            theme: s.theme,
+            edgeType: s.edgeType,
+            addNode: s.addNode,
+            nodesLocked: s.nodesLocked,
+            executionData: s.executionData,
+            validationResults: s.validationResults,
+            isDetailPanelOpen: s.isDetailPanelOpen,
+            setIsDetailPanelOpen: s.setIsDetailPanelOpen,
+            workflowDef: s.workflowDef,
+            setWorkflow: s.setWorkflow,
+            dynamicRuntimeTasksByFork: s.dynamicRuntimeTasksByFork,
+            layoutDirection: s.layoutDirection,
+            simState: s.simState,
+            isSimRunning: s.isSimRunning,
+            workflowLoadKey: s.workflowLoadKey,
+            showDataLineage: s.showDataLineage,
+        })));
 
     // ─── 视图模式过滤：计算可见节点 ID 集合 ─────────────────────────────
     const visibleNodeIdSet = useMemo(() => {

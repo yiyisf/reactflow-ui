@@ -1,6 +1,7 @@
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useStore } from 'zustand';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getLayoutedElements } from '../layout/autoLayout';
 
 interface ShortcutCallbacks {
@@ -14,7 +15,12 @@ interface ShortcutCallbacks {
  * 管理流程图编辑器的全局键盘快捷键
  */
 export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
-    const { mode, removeNode, selectedTask, pasteTask } = useWorkflowStore();
+    const { mode, removeNode, selectedTask, pasteTask } = useWorkflowStore(useShallow((s) => ({
+            mode: s.mode,
+            removeNode: s.removeNode,
+            selectedTask: s.selectedTask,
+            pasteTask: s.pasteTask,
+        })));
 
     // 使用 zundo 提供的 temporal store
     const temporalStore = (useWorkflowStore as any).temporal;

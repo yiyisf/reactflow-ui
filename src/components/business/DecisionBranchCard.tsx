@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import type { BusinessStep, BranchCase } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
-import { ActionForm } from './ActionForm';
-import { NestedControlStep } from './NestedControlStep';
+import { StepListEditor } from './StepListEditor';
+import ConfirmDialog from '../ConfirmDialog';
+import { useConfirm } from '../../hooks/useConfirm';
 import { createStepFromAction } from '../../stepmodel/factory';
 
 export interface DecisionBranchCardProps {
@@ -30,9 +31,10 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
   const [activeBranchKey, setActiveBranchKey] = useState<string>(
     branches[0]?.caseKey || '__default__'
   );
-  const [expandedChildId, setExpandedChildId] = useState<string | null>(null);
   const [newCaseInput, setNewCaseInput] = useState('');
   const [showAddCase, setShowAddCase] = useState(false);
+  const [caseError, setCaseError] = useState('');
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
   const activeBranch = branches.find((b) => b.caseKey === activeBranchKey) || branches[0];
 
@@ -55,7 +57,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
     const trimmed = newCaseInput.trim();
     if (!trimmed) return;
     if (branches.some((b) => b.caseKey === trimmed)) {
-      alert(`分支 "${trimmed}" 已存在`);
+      setCaseError(`分支 "${trimmed}" 已存在`);
       return;
     }
     const nextBranches = [
@@ -72,17 +74,18 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
     });
     setActiveBranchKey(trimmed);
     setNewCaseInput('');
+    setCaseError('');
     setShowAddCase(false);
   };
 
   // 删除分支
-  const handleDeleteBranch = (caseKey: string, e: React.MouseEvent) => {
+  const handleDeleteBranch = async (caseKey: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (caseKey === '__default__') {
-      if (!confirm('确定要删除默认分支吗？')) return;
-    } else {
-      if (!confirm(`确定要删除分支 "${caseKey}" 及其内部所有步骤吗？`)) return;
-    }
+    const message =
+      caseKey === '__default__'
+        ? '确定要删除默认分支吗？'
+        : `确定要删除分支 "${caseKey}" 及其内部所有步骤吗？`;
+    if (!(await confirm(message))) return;
     const nextBranches = branches.filter((b) => b.caseKey !== caseKey);
     onChange({
       ...step,
@@ -302,7 +305,10 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                 type="text"
                 value={newCaseInput}
                 placeholder="分支标识，如 VIP"
-                onChange={(e) => setNewCaseInput(e.target.value)}
+                onChange={(e) => {
+                  setNewCaseInput(e.target.value);
+                  if (caseError) setCaseError('');
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddBranch()}
                 style={{
                   padding: '3px 6px',
@@ -314,6 +320,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                   width: 110,
                 }}
               />
+              {caseError && <span style={{ fontSize: 11, color: '#ef4444' }}>{caseError}</span>}
               <button
                 onClick={handleAddBranch}
                 style={{
@@ -332,6 +339,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                 onClick={() => {
                   setShowAddCase(false);
                   setNewCaseInput('');
+                  setCaseError('');
                 }}
                 style={{
                   padding: '3px 6px',
@@ -405,143 +413,16 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                 当前分支暂无步骤，点击右上方「+ 追加分支步骤」配置分支业务逻辑
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {activeBranch.steps.map((childStep, cIdx) => {
-                  if (childStep.controlType) {
-                    return (
-                      <NestedControlStep
-                        key={childStep.id}
-                        step={childStep}
-                        index={cIdx}
-                        depth={depth + 1}
-                        upstreamSteps={[...upstreamSteps, ...activeBranch.steps.slice(0, cIdx)]}
-                        registry={registry}
-                        disabled={disabled}
-                        onChange={(updatedChild) => {
-                          const nextSteps = [...activeBranch.steps];
-                          nextSteps[cIdx] = updatedChild;
-                          handleUpdateBranchSteps(activeBranch.caseKey, nextSteps);
-                        }}
-                        onDelete={() => {
-                          const nextSteps = activeBranch.steps.filter((_, idx) => idx !== cIdx);
-                          handleUpdateBranchSteps(activeBranch.caseKey, nextSteps);
-                        }}
-                        onOpenInsertModal={onOpenInsertModal}
-                      />
-                    );
-                  }
-
-                  const childAction = registry.getAction(childStep.actionId);
-                  const isExpanded = expandedChildId === childStep.id;
-
-                  return (
-                    <div
-                      key={childStep.id}
-                      style={{
-                        borderRadius: 8,
-                        background: 'var(--bg-secondary)',
-                        border: isExpanded
-                          ? '1px solid var(--color-accent, #3b82f6)'
-                          : '1px solid var(--border-primary)',
-                        overflow: 'hidden',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <div
-                        onClick={() => setExpandedChildId(isExpanded ? null : childStep.id)}
-                        style={{
-                          padding: '8px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              padding: '1px 5px',
-                              borderRadius: 4,
-                              background: 'var(--bg-tertiary)',
-                              color: 'var(--color-accent-text, #1e40af)',
-                            }}
-                          >
-                            #{cIdx + 1}
-                          </span>
-                          <span style={{ fontSize: 16 }}>{childAction?.icon || '⚙️'}</span>
-                          <div>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                              {childStep.name || childAction?.name || childStep.taskReferenceName}
-                            </span>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                              {childStep.taskReferenceName}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={(e) => e.stopPropagation()}>
-                          {!disabled && (
-                            <button
-                              onClick={() => {
-                                const nextSteps = activeBranch.steps.filter((_, idx) => idx !== cIdx);
-                                handleUpdateBranchSteps(activeBranch.caseKey, nextSteps);
-                              }}
-                              title="删除此步骤"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#ef4444',
-                                cursor: 'pointer',
-                                fontSize: 12,
-                                padding: '2px 4px',
-                              }}
-                            >
-                              🗑️
-                            </button>
-                          )}
-                          <span
-                            style={{
-                              fontSize: 10,
-                              color: 'var(--text-muted)',
-                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                              transition: 'transform 0.15s ease',
-                              cursor: 'pointer',
-                            }}
-                            onClick={() => setExpandedChildId(isExpanded ? null : childStep.id)}
-                          >
-                            ▼
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 展开的表单配置 */}
-                      {isExpanded && (
-                        <div
-                          style={{
-                            padding: '12px 14px',
-                            borderTop: '1px solid var(--border-primary)',
-                            background: 'var(--bg-primary)',
-                          }}
-                        >
-                          <ActionForm
-                            step={childStep}
-                            upstreamSteps={[...upstreamSteps, ...activeBranch.steps.slice(0, cIdx)]}
-                            registry={registry}
-                            disabled={disabled}
-                            onChange={(updatedChild) => {
-                              const nextSteps = [...activeBranch.steps];
-                              nextSteps[cIdx] = updatedChild;
-                              handleUpdateBranchSteps(activeBranch.caseKey, nextSteps);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <StepListEditor
+                steps={activeBranch.steps}
+                onStepsChange={(next) => handleUpdateBranchSteps(activeBranch.caseKey, next)}
+                upstreamSteps={upstreamSteps}
+                registry={registry}
+                disabled={disabled}
+                depth={depth}
+                onOpenInsertModal={onOpenInsertModal}
+                rowTone="secondary"
+              />
             )}
           </div>
         ) : (
@@ -567,6 +448,9 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
         <span>💡</span>
         <span>分支执行逻辑：运行时仅会精准执行匹配的分支路径，未命中的分支步骤将安全跳过。</span>
       </div>
+      {confirmState && (
+        <ConfirmDialog message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
+      )}
     </div>
   );
 };

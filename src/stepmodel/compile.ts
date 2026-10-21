@@ -110,6 +110,7 @@ export function compileStepToTaskDef(
     taskReferenceName: step.taskReferenceName,
     stepIndex: index,
     workflowName,
+    libraryRef: step.libraryRef,
   });
 }
 

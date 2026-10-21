@@ -8,6 +8,7 @@ import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition, ActionCategory } from '../../actions/types';
 import { ActionForm } from './ActionForm';
 import { createStepFromAction } from '../../stepmodel/factory';
+import { LibraryVersionBadge } from './LibraryVersionBadge';
 import { DecisionBranchCard } from './DecisionBranchCard';
 import { ForkJoinCard } from './ForkJoinCard';
 import { LoopDoWhileCard } from './LoopDoWhileCard';
@@ -773,6 +774,17 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                             ⚠️ 敏感
                           </span>
                         )}
+                        <LibraryVersionBadge
+                          step={step}
+                          action={action}
+                          disabled={readOnly}
+                          onUpgrade={(v) =>
+                            handleUpdateStep(idx, {
+                              ...step,
+                              libraryRef: { name: step.libraryRef!.name, version: v },
+                            })
+                          }
+                        />
                         {simResult && (
                           <span
                             style={{

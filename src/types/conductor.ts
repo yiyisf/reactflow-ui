@@ -132,6 +132,18 @@ export interface TaskDef {
 }
 
 /**
+ * Conductor 标准 Schema 定义（WorkflowDef / TaskDef 的 inputSchema / outputSchema）。
+ * 仅 JSON 类型会被服务端真正校验；data 为 JSON Schema 文档本身。
+ */
+export interface SchemaDef {
+    name?: string;
+    version?: number;
+    type?: 'JSON' | 'AVRO' | 'PROTOBUF' | string;
+    data?: Record<string, any>;
+    externalRef?: string;
+}
+
+/**
  * 工作流入参定义（结构化，向后兼容 string[] 旧格式）
  */
 export interface WorkflowInputParam {
@@ -198,9 +210,9 @@ export interface WorkflowDef {
         concurrentExecLimit?: number;
     };
     /** 输入 Schema 定义 */
-    inputSchema?: { name?: string; type?: string };
+    inputSchema?: SchemaDef;
     /** 输出 Schema 定义 */
-    outputSchema?: { name?: string; type?: string };
+    outputSchema?: SchemaDef;
     /** 是否强制 Schema 校验 */
     enforceSchema?: boolean;
 }

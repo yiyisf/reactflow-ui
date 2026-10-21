@@ -1,6 +1,6 @@
 export { WorkflowIDE } from './WorkflowIDE';
 export type { WorkflowIDEProps, WorkflowIDERef } from './WorkflowIDE';
-export type { WorkflowDef, TaskDef, WorkflowInputParam, WorkflowInstance } from './types/conductor';
+export type { WorkflowDef, TaskDef, WorkflowInputParam, WorkflowInstance, SchemaDef } from './types/conductor';
 export { parseWorkflowInputParams } from './types/conductor';
 export type { AIServiceConfig } from './services/aiService';
 export type { ExecutionActions, RestartOptions, ViewMode, RunState, WorkflowExecutionInput } from './types/workflow';
@@ -37,6 +37,19 @@ export * from './actions/types';
 export { ActionRegistry, defaultActionRegistry } from './actions/registry';
 export { BUILTIN_ECS_ACTIONS } from './actions/builtin/ecs';
 export { BUILTIN_COMMON_ACTIONS } from './actions/builtin/common';
+export {
+    buildActionFromWorkflowDef,
+    buildActionFromTaskDef,
+    buildActionsFromLibrary,
+    buildActionsFromTaskDefs,
+} from './actions/fromDefinitions';
+export type {
+    ActionExtension,
+    RegisteredTaskDef,
+    LibraryWorkflowEntry,
+    RegisteredTaskEntry,
+} from './actions/fromDefinitions';
+export { createStepFromAction } from './stepmodel/factory';
 export * from './stepmodel/types';
 export {
     compileStepToTaskDef,

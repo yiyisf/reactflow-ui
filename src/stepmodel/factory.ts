@@ -75,5 +75,9 @@ export function createStepFromAction(action: ActionDefinition): BusinessStep {
     description: action.description,
     values: initialValues,
     isProFallback: false,
+    // 流程库能力：首次引用时固定为当前发布版本，之后不随库升级自动变化
+    ...(action.kind === 'workflow' && action.workflowRef
+      ? { libraryRef: { name: action.workflowRef.name, version: action.workflowRef.version } }
+      : {}),
   };
 }

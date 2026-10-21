@@ -97,6 +97,15 @@ export function decompileTaskDefToStep(
       description: task.description,
       values: matched.values,
       isProFallback: false,
+      // 流程库能力：记录任务里已有的名称与版本；未显式指定版本则保持不固定，避免改变原有语义
+      ...(task.type === 'SUB_WORKFLOW' && task.subWorkflowParam?.name
+        ? {
+            libraryRef: {
+              name: task.subWorkflowParam.name,
+              version: task.subWorkflowParam.version,
+            },
+          }
+        : {}),
     };
   }
 

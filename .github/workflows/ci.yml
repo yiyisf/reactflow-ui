@@ -26,7 +26,17 @@ jobs:
 
       # 全量类型检查（含测试与演示代码；构建只检查入口可达的文件，覆盖不到它们）。
       - name: Typecheck (all sources)
-        run: npx tsc --noEmit -p tsconfig.json
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.json > tsc.out 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            # TEMP-DIAG: GitHub 每步最多显示 10 条错误注解，这里把完整输出放进一条 notice 注解
+            MSG=$(head -c 40000 tsc.out | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::notice title=tsc-full-output::$MSG"
+          fi
+          cat tsc.out
+          exit $code
 
       - name: Test
         run: npm test

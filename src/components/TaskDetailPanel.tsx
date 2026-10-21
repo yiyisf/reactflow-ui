@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { TaskDef } from '../types/conductor';
 import { AIServiceConfig, callAICopilot, generateTaskParameters } from '../services/aiService';
 import { generateParameterHintPrompt } from '../services/promptTemplates';
@@ -26,16 +27,16 @@ const QUICK_SNIPPETS = [
 ];
 
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
-    const {
-        mode,
-        updateTask,
-        checkTaskRefUniqueness,
-        workflowDef,
-        executionData,
-        workflowInstance,
-        lastRefactorNotice,
-        clearRefactorNotice,
-    } = useWorkflowStore();
+    const { mode, updateTask, checkTaskRefUniqueness, workflowDef, executionData, workflowInstance, lastRefactorNotice, clearRefactorNotice } = useWorkflowStore(useShallow((s) => ({
+            mode: s.mode,
+            updateTask: s.updateTask,
+            checkTaskRefUniqueness: s.checkTaskRefUniqueness,
+            workflowDef: s.workflowDef,
+            executionData: s.executionData,
+            workflowInstance: s.workflowInstance,
+            lastRefactorNotice: s.lastRefactorNotice,
+            clearRefactorNotice: s.clearRefactorNotice,
+        })));
     const [localTask, setLocalTask] = useState<TaskDef | null>(task);
     // syncedRef: the taskReferenceName at the time localTask was last synced from `task`.
     // Used to identify the "same task" even while the user is editing the ref name field.

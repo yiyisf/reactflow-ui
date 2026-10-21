@@ -208,6 +208,11 @@ export interface WorkflowState {
     isSimRunning: boolean;
     /** 每次 setWorkflow() 调用时递增，用于触发 WorkflowDesigner 的 fitView */
     workflowLoadKey: number;
+    /**
+     * 画布数据（nodes/edges/taskMap）是否落后于 workflowDef。
+     * 业务卡片视图下画布未挂载，编辑只更新定义（setWorkflowDefOnly），切回画布前再 refreshGraph()。
+     */
+    graphStale: boolean;
     /** P4.2 执行触发状态 */
     runState: RunState;
     pendingExecutionId: string | null;
@@ -241,6 +246,10 @@ export interface WorkflowState {
  */
 export interface WorkflowActions {
     setWorkflow: (workflowJson: any, direction?: LayoutDirection) => void;
+    /** 仅更新定义与校验结果，不重建画布（业务卡片视图下的高频编辑使用）；画布数据标记为过期 */
+    setWorkflowDefOnly: (workflowJson: any) => void;
+    /** 画布数据过期时，按当前定义重新解析并布局；未过期则什么都不做 */
+    refreshGraph: () => void;
     setMode: (mode: EditorMode) => void;
     setExecutionData: (data: Record<string, TaskExecutionData> | null) => void;
     updateTaskStatus: (taskRef: string, status: ExecutionStatus) => void;

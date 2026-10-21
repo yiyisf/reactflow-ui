@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate } from '../../template/types';
 import { applyTemplateVariables } from '../../template/applyTemplate';
@@ -17,7 +18,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
   onApply,
   onClose,
 }) => {
-  const { theme, themeColor } = useWorkflowStore();
+  const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
   // 当前步骤：1=方案了解, 2=参数填空, 3=试跑验证与激活
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 

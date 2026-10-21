@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface FullscreenEditorProps {
     /** 标题，显示在顶部工具栏 */
@@ -32,7 +33,7 @@ const FullscreenEditor = ({
     onSave,
     onClose,
 }: FullscreenEditorProps) => {
-    const { theme, themeColor } = useWorkflowStore();
+    const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
     const [draft, setDraft] = useState(value);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 

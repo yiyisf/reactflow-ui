@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { BrandLogo } from './BrandLogo';
 import './EmptyStatePanel.css';
 
@@ -8,7 +9,9 @@ interface EmptyStatePanelProps {
 }
 
 const EmptyStatePanel: React.FC<EmptyStatePanelProps> = ({ onRequestImport }) => {
-    const { createBlankWorkflow } = useWorkflowStore();
+    const { createBlankWorkflow } = useWorkflowStore(useShallow((s) => ({
+            createBlankWorkflow: s.createBlankWorkflow,
+        })));
     const [name, setName] = useState('');
 
     const handleBlank = () => {

@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Handle, NodeProps } from 'reactflow';
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { WorkflowNodeData } from '../../types/workflow';
 import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
@@ -15,15 +16,15 @@ type LoopNodeProps = NodeProps<WorkflowNodeData>;
 const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
     const { sourcePosition, targetPosition } = useNodeLayout(data);
     const { execution, isRunning, durationText } = useNodeExecution(data.taskReferenceName);
-    const {
-        executionData,
-        selectTaskAction,
-        mode,
-        viewMode,
-        removeNode,
-        activeLoopIterations,
-        setLoopIteration,
-    } = useWorkflowStore();
+    const { executionData, selectTaskAction, mode, viewMode, removeNode, activeLoopIterations, setLoopIteration } = useWorkflowStore(useShallow((s) => ({
+            executionData: s.executionData,
+            selectTaskAction: s.selectTaskAction,
+            mode: s.mode,
+            viewMode: s.viewMode,
+            removeNode: s.removeNode,
+            activeLoopIterations: s.activeLoopIterations,
+            setLoopIteration: s.setLoopIteration,
+        })));
     const [showConfirm, setShowConfirm] = useState(false);
 
     const task = data.task;

@@ -1,4 +1,5 @@
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { TaskDef } from '../types/conductor';
 
 interface HealthCheckPanelProps {
@@ -12,7 +13,11 @@ interface HealthCheckPanelProps {
  * 工作流健康检查面板 - 展示错误和警告列表
  */
 const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: HealthCheckPanelProps) => {
-    const { validationResults, setSelectedTask, taskMap } = useWorkflowStore();
+    const { validationResults, setSelectedTask, taskMap } = useWorkflowStore(useShallow((s) => ({
+            validationResults: s.validationResults,
+            setSelectedTask: s.setSelectedTask,
+            taskMap: s.taskMap,
+        })));
     const { errors, warnings } = validationResults || { isValid: true, errors: [], warnings: [] };
 
     const handleTaskClick = (ref: string) => {

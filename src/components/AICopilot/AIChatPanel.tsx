@@ -3,6 +3,7 @@ import './AIChatPanel.css';
 import DiffCard from './DiffCard';
 
 import useWorkflowStore from '../../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage, AIServiceConfig } from '../../services/aiService';
 import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates';
 import { AIChatMessage } from '../../types/workflow';
@@ -65,7 +66,11 @@ const renderInline = (text: string): React.ReactNode => {
 };
 
 const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
-    const { workflowDef, setWorkflow, mode } = useWorkflowStore();
+    const { workflowDef, setWorkflow, mode } = useWorkflowStore(useShallow((s) => ({
+            workflowDef: s.workflowDef,
+            setWorkflow: s.setWorkflow,
+            mode: s.mode,
+        })));
     const [isOpen, setIsOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);

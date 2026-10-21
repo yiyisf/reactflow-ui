@@ -7,6 +7,7 @@ import AIChatPanel from './components/AICopilot/AIChatPanel';
 import WorkflowRunPanel from './components/WorkflowRunPanel';
 import ExecutionSummaryPanel from './components/ExecutionSummaryPanel';
 import useWorkflowStore from './store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { ThemeMode, ThemeColor, LayoutDirection, ValidationResults, ExecutionActions, ViewMode, WorkflowExecutionInput } from './types/workflow';
 import { WorkflowDef, WorkflowInstance } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
@@ -211,32 +212,35 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         reg.registerAll(actions);
         return reg;
     }, [actions]);
-    const {
-        setWorkflow,
-        setTheme,
-        setThemeColor,
-        setLayoutDirection,
-        setNodesLocked,
-        selectedTask,
-        setSelectedTask,
-        edgeType,
-        importExecutionJSON,
-        setMode,
-        setViewMode,
-        isDetailPanelOpen,
-        setIsDetailPanelOpen,
-        selectTaskAction,
-        workflowDef: storeWorkflowDef,
-        isSimRunning,
-        startSimulation,
-        stopSimulation,
-        mode,
-        setShowRunPanel,
-        showAnalysisPanel,
-        setShowAnalysisPanel,
-        executionData,
-        workflowInstance,
-    } = useWorkflowStore();
+    const { setWorkflow, setWorkflowDefOnly, refreshGraph, graphStale, setTheme, setThemeColor, setLayoutDirection, setNodesLocked, selectedTask, setSelectedTask, edgeType, importExecutionJSON, setMode, setViewMode, isDetailPanelOpen, setIsDetailPanelOpen, selectTaskAction, workflowDef: storeWorkflowDef, isSimRunning, startSimulation, stopSimulation, mode, setShowRunPanel, showAnalysisPanel, setShowAnalysisPanel, executionData, workflowInstance } = useWorkflowStore(useShallow((s) => ({
+            setWorkflow: s.setWorkflow,
+            setWorkflowDefOnly: s.setWorkflowDefOnly,
+            refreshGraph: s.refreshGraph,
+            graphStale: s.graphStale,
+            setTheme: s.setTheme,
+            setThemeColor: s.setThemeColor,
+            setLayoutDirection: s.setLayoutDirection,
+            setNodesLocked: s.setNodesLocked,
+            selectedTask: s.selectedTask,
+            setSelectedTask: s.setSelectedTask,
+            edgeType: s.edgeType,
+            importExecutionJSON: s.importExecutionJSON,
+            setMode: s.setMode,
+            setViewMode: s.setViewMode,
+            isDetailPanelOpen: s.isDetailPanelOpen,
+            setIsDetailPanelOpen: s.setIsDetailPanelOpen,
+            selectTaskAction: s.selectTaskAction,
+            workflowDef: s.workflowDef,
+            isSimRunning: s.isSimRunning,
+            startSimulation: s.startSimulation,
+            stopSimulation: s.stopSimulation,
+            mode: s.mode,
+            setShowRunPanel: s.setShowRunPanel,
+            showAnalysisPanel: s.showAnalysisPanel,
+            setShowAnalysisPanel: s.setShowAnalysisPanel,
+            executionData: s.executionData,
+            workflowInstance: s.workflowInstance,
+        })));
 
     // 导出 JSON
     const handleExportJson = useCallback(() => {
@@ -315,6 +319,12 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         });
         return unsub;
     }, [onWorkflowChange]);
+
+    // 离开卡片视图（切到画布/专业模式）前，补建过期的画布数据
+    const isCardView = uiMode === 'business' && businessViewLayout === 'card';
+    useEffect(() => {
+        if (!isCardView && graphStale) refreshGraph();
+    }, [isCardView, graphStale, refreshGraph]);
 
     // Handle node click
     const handleNodeClick = (task: any) => {
@@ -528,7 +538,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         registry={actionRegistry}
                         readOnly={readOnly || mode === 'run'}
                         onChange={(newDef) => {
-                            setWorkflow(newDef, layoutDirection);
+                            // 卡片视图下画布未挂载：只更新定义，避免每次按键都做整图布局
+                            setWorkflowDefOnly(newDef);
                         }}
                     />
                 </div>

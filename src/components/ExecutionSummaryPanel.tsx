@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { analyzeExecution, formatDuration, getCategoryIcon, getCategoryColor, ExecutionSummary } from '../utils/executionAnalyzer';
 import { ExecutionStatus } from '../types/workflow';
 import { TemplateExtractor } from './template/TemplateExtractor';
@@ -31,15 +32,15 @@ const STATUS_COLORS: Record<string, string> = {
 
 const ExecutionSummaryPanel: React.FC = () => {
     const [showExtractor, setShowExtractor] = useState(false);
-    const {
-        executionData,
-        workflowInstance,
-        showAnalysisPanel,
-        setShowAnalysisPanel,
-        switchToEditAndFocusParam,
-        selectTaskAction,
-        taskMap,
-    } = useWorkflowStore();
+    const { executionData, workflowInstance, showAnalysisPanel, setShowAnalysisPanel, switchToEditAndFocusParam, selectTaskAction, taskMap } = useWorkflowStore(useShallow((s) => ({
+            executionData: s.executionData,
+            workflowInstance: s.workflowInstance,
+            showAnalysisPanel: s.showAnalysisPanel,
+            setShowAnalysisPanel: s.setShowAnalysisPanel,
+            switchToEditAndFocusParam: s.switchToEditAndFocusParam,
+            selectTaskAction: s.selectTaskAction,
+            taskMap: s.taskMap,
+        })));
 
     const summary: ExecutionSummary | null = useMemo(() => {
         if (!executionData) return null;

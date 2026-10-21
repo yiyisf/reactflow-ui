@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getAllTasksFlat } from '../services/wlsp/workflowLsp';
 import {
     buildDefaultWorkflowMockInput,
@@ -33,7 +34,11 @@ const DEFAULT_DRAFT: TaskDraftMock = {
 };
 
 export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, onClose }) => {
-    const { workflowDef, theme, runLocalSandboxDryRun } = useWorkflowStore();
+    const { workflowDef, theme, runLocalSandboxDryRun } = useWorkflowStore(useShallow((s) => ({
+            workflowDef: s.workflowDef,
+            theme: s.theme,
+            runLocalSandboxDryRun: s.runLocalSandboxDryRun,
+        })));
     const isLight = theme === 'light';
 
     const [activeTab, setActiveTab] = useState<'input' | 'tasks' | 'engine'>('input');

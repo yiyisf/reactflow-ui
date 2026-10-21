@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 import { ExecutionActions } from '../types/workflow';
 
 interface ExecutionTaskPanelProps {
@@ -34,14 +35,14 @@ const formatTime = (ts?: number) =>
  * 运行态任务详情面板 — 与定义态 TaskDetailPanel 样式对齐，全高侧边布局
  */
 const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionActions }) => {
-    const {
-        selectedTask,
-        selectedTaskInstance,
-        setSelectedTask,
-        setSelectedTaskInstance,
-        executionData,
-        workflowInstance,
-    } = useWorkflowStore();
+    const { selectedTask, selectedTaskInstance, setSelectedTask, setSelectedTaskInstance, executionData, workflowInstance } = useWorkflowStore(useShallow((s) => ({
+            selectedTask: s.selectedTask,
+            selectedTaskInstance: s.selectedTaskInstance,
+            setSelectedTask: s.setSelectedTask,
+            setSelectedTaskInstance: s.setSelectedTaskInstance,
+            executionData: s.executionData,
+            workflowInstance: s.workflowInstance,
+        })));
 
     const [activeTab, setActiveTab] = useState<'summary' | 'input' | 'output'>('summary');
     const contentRef = useRef<HTMLDivElement>(null);

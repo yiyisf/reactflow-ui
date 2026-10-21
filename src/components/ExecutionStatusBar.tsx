@@ -1,19 +1,20 @@
 import React, { useCallback } from 'react';
 import { useReactFlow } from 'reactflow';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * 运行态状态栏组件
  */
 const ExecutionStatusBar = () => {
-    const {
-        executionData,
-        loadSampleExecution,
-        importExecutionJSON,
-        workflowInstance,
-        setSelectedTask,
-        nodes
-    } = useWorkflowStore();
+    const { executionData, loadSampleExecution, importExecutionJSON, workflowInstance, setSelectedTask, nodes } = useWorkflowStore(useShallow((s) => ({
+            executionData: s.executionData,
+            loadSampleExecution: s.loadSampleExecution,
+            importExecutionJSON: s.importExecutionJSON,
+            workflowInstance: s.workflowInstance,
+            setSelectedTask: s.setSelectedTask,
+            nodes: s.nodes,
+        })));
     const { fitView } = useReactFlow();
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

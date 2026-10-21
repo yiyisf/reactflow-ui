@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface PromptDialogProps {
     title: string;
@@ -28,7 +29,7 @@ const PromptDialog = ({
     onConfirm,
     onCancel,
 }: PromptDialogProps) => {
-    const { theme, themeColor } = useWorkflowStore();
+    const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
     const [value, setValue] = useState(defaultValue);
     const inputRef = useRef<HTMLInputElement>(null);
 

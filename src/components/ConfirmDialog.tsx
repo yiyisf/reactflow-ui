@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../store/workflowStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface ConfirmDialogProps {
     message: string;
@@ -10,7 +11,7 @@ interface ConfirmDialogProps {
 
 const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => {
     const cancelRef = useRef<HTMLButtonElement>(null);
-    const { theme, themeColor } = useWorkflowStore();
+    const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
 
     useEffect(() => {
         // preventScroll 避免 focus 触发浏览器滚动导致 ReactFlow 视图偏移

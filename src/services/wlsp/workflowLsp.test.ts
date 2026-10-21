@@ -6,7 +6,7 @@ import {
   buildDataFlowGraph,
   refactorTaskReferenceName,
 } from './workflowLsp';
-import type { WorkflowDef } from '../../types/workflow';
+import type { WorkflowDef } from '../../types/conductor';
 
 const sampleWorkflow: WorkflowDef = {
   name: 'order_fulfillment_wf',

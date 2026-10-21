@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { workflowToMermaid } from './workflowToMermaid';
-import type { WorkflowDef, TaskDef } from '../types/conductor';
+import type { TaskDef } from '../types/conductor';
 
 function task(ref: string, overrides: Partial<TaskDef> = {}): TaskDef {
     return { name: ref, taskReferenceName: ref, type: 'SIMPLE', ...overrides } as TaskDef;

@@ -31,5 +31,10 @@
     },
     "include": [
         "src"
+    ],
+    // transport.test.ts 使用 node:http，需要 @types/node（当前未安装，且无法在不更新 package-lock.json 的情况下加入）。
+    // 执行 `npm i -D @types/node` 并提交锁文件后，删除下面这行排除项，让它也纳入类型检查。
+    "exclude": [
+        "src/services/ai/transport.test.ts"
     ]
 }

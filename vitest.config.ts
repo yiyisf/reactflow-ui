@@ -22,7 +22,15 @@ export default defineConfig({
                 'src/parser/conductorParser.ts',
                 'src/store/aiStore.ts',
                 'src/store/libraryStore.ts',
+                // v1.0 / v1.1 核心能力
+                'src/stepmodel/**/*.ts',
+                'src/actions/**/*.ts',
+                'src/utils/localSandboxEngine.ts',
+                'src/services/wlsp/workflowLsp.ts',
+                'src/template/**/*.ts',
+                'src/store/workflowStore.ts',
             ],
+            exclude: ['**/*.test.ts', 'src/actions/builtin/**', 'src/template/builtin/**'],
         },
     },
 });

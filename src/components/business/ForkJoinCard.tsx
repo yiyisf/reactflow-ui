@@ -3,6 +3,8 @@ import type { BusinessStep, ForkLane } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
 import { ActionForm } from './ActionForm';
+import { NestedControlStep } from './NestedControlStep';
+import { createStepFromAction } from '../../stepmodel/factory';
 
 export interface ForkJoinCardProps {
   step: BusinessStep;
@@ -11,6 +13,8 @@ export interface ForkJoinCardProps {
   disabled?: boolean;
   onChange: (updated: BusinessStep) => void;
   onOpenInsertModal: (callback: (action: ActionDefinition) => void) => void;
+  /** 嵌套深度：顶层卡片为 0，其内部子控制流依次 +1 */
+  depth?: number;
 }
 
 export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
@@ -20,6 +24,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
   disabled = false,
   onChange,
   onOpenInsertModal,
+  depth = 0,
 }) => {
   const lanes: ForkLane[] = step.forkLanes || [];
   const [activeLaneId, setActiveLaneId] = useState<string>(lanes[0]?.laneId || 'lane_0');
@@ -79,15 +84,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
     if (!targetLane) return;
 
     onOpenInsertModal((action) => {
-      const newChildStep: BusinessStep = {
-        id: `step_${action.id}_${Date.now().toString(36)}`,
-        actionId: action.id,
-        taskReferenceName: `${action.id.replace(/\./g, '_')}_${Date.now().toString(36).slice(-4)}`,
-        name: action.name,
-        description: action.description,
-        values: {},
-        isProFallback: false,
-      };
+      const newChildStep: BusinessStep = createStepFromAction(action);
       handleUpdateLaneSteps(laneId, [...targetLane.steps, newChildStep]);
     });
   };
@@ -276,6 +273,30 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
                 </div>
               ) : (
                 lane.steps.map((childStep, cIdx) => {
+                  if (childStep.controlType) {
+                    return (
+                      <NestedControlStep
+                        key={childStep.id}
+                        step={childStep}
+                        index={cIdx}
+                        depth={depth + 1}
+                        upstreamSteps={[...upstreamSteps, ...lane.steps.slice(0, cIdx)]}
+                        registry={registry}
+                        disabled={disabled}
+                        onChange={(updatedChild) => {
+                          const nextSteps = [...lane.steps];
+                          nextSteps[cIdx] = updatedChild;
+                          handleUpdateLaneSteps(lane.laneId, nextSteps);
+                        }}
+                        onDelete={() => {
+                          const nextSteps = lane.steps.filter((_, idx) => idx !== cIdx);
+                          handleUpdateLaneSteps(lane.laneId, nextSteps);
+                        }}
+                        onOpenInsertModal={onOpenInsertModal}
+                      />
+                    );
+                  }
+
                   const childAction = registry.getAction(childStep.actionId);
                   const isExpanded = expandedChildId === childStep.id;
 

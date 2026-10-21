@@ -3,6 +3,8 @@ import type { BusinessStep } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
 import { ActionForm } from './ActionForm';
+import { NestedControlStep } from './NestedControlStep';
+import { createStepFromAction } from '../../stepmodel/factory';
 
 export interface LoopDoWhileCardProps {
   step: BusinessStep;
@@ -11,6 +13,8 @@ export interface LoopDoWhileCardProps {
   disabled?: boolean;
   onChange: (updated: BusinessStep) => void;
   onOpenInsertModal: (callback: (action: ActionDefinition) => void) => void;
+  /** 嵌套深度：顶层卡片为 0，其内部子控制流依次 +1 */
+  depth?: number;
 }
 
 export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
@@ -20,6 +24,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
   disabled = false,
   onChange,
   onOpenInsertModal,
+  depth = 0,
 }) => {
   const loopSteps: BusinessStep[] = step.loopSteps || [];
   const [expandedChildId, setExpandedChildId] = useState<string | null>(null);
@@ -35,15 +40,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
   // 在循环体内追加步骤
   const handleAddStepToLoop = () => {
     onOpenInsertModal((action) => {
-      const newChildStep: BusinessStep = {
-        id: `step_${action.id}_${Date.now().toString(36)}`,
-        actionId: action.id,
-        taskReferenceName: `${action.id.replace(/\./g, '_')}_${Date.now().toString(36).slice(-4)}`,
-        name: action.name,
-        description: action.description,
-        values: {},
-        isProFallback: false,
-      };
+      const newChildStep: BusinessStep = createStepFromAction(action);
       handleUpdateLoopSteps([...loopSteps, newChildStep]);
     });
   };
@@ -206,6 +203,30 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {loopSteps.map((childStep, cIdx) => {
+                if (childStep.controlType) {
+                  return (
+                    <NestedControlStep
+                      key={childStep.id}
+                      step={childStep}
+                      index={cIdx}
+                      depth={depth + 1}
+                      upstreamSteps={[...upstreamSteps, ...loopSteps.slice(0, cIdx)]}
+                      registry={registry}
+                      disabled={disabled}
+                      onChange={(updatedChild) => {
+                        const nextSteps = [...loopSteps];
+                        nextSteps[cIdx] = updatedChild;
+                        handleUpdateLoopSteps(nextSteps);
+                      }}
+                      onDelete={() => {
+                        const nextSteps = loopSteps.filter((_, idx) => idx !== cIdx);
+                        handleUpdateLoopSteps(nextSteps);
+                      }}
+                      onOpenInsertModal={onOpenInsertModal}
+                    />
+                  );
+                }
+
                 const childAction = registry.getAction(childStep.actionId);
                 const isExpanded = expandedChildId === childStep.id;
 

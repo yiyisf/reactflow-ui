@@ -16,9 +16,9 @@ export function compileStepToTaskDef(
 
     for (const b of step.branches || []) {
       if (b.caseKey === '__default__') {
-        defaultCase = b.steps.map((s, idx) => compileStepToTaskDef(s, idx, workflowName, registry));
+        defaultCase = compileStepList(b.steps, workflowName, registry);
       } else {
-        decisionCases[b.caseKey] = b.steps.map((s, idx) => compileStepToTaskDef(s, idx, workflowName, registry));
+        decisionCases[b.caseKey] = compileStepList(b.steps, workflowName, registry);
       }
     }
 
@@ -43,7 +43,7 @@ export function compileStepToTaskDef(
   if (step.controlType === 'fork') {
     const baseTask: Partial<TaskDef> = step.rawTaskDef ? structuredClone(step.rawTaskDef) : {};
     const forkTasks: TaskDef[][] = (step.forkLanes || []).map((lane) =>
-      lane.steps.map((s, idx) => compileStepToTaskDef(s, idx, workflowName, registry))
+      compileStepList(lane.steps, workflowName, registry)
     );
 
     return {
@@ -63,9 +63,7 @@ export function compileStepToTaskDef(
   // 3. 循环控制流 (DO_WHILE)
   if (step.controlType === 'loop') {
     const baseTask: Partial<TaskDef> = step.rawTaskDef ? structuredClone(step.rawTaskDef) : {};
-    const loopOver: TaskDef[] = (step.loopSteps || []).map((s, idx) =>
-      compileStepToTaskDef(s, idx, workflowName, registry)
-    );
+    const loopOver: TaskDef[] = compileStepList(step.loopSteps || [], workflowName, registry);
 
     return {
       ...baseTask,
@@ -115,25 +113,25 @@ export function compileStepToTaskDef(
   });
 }
 
-export function compileStepModelToWorkflowDef(
-  model: BusinessWorkflowModel,
+/**
+ * 编译一组顺序步骤（顶层、分支内、泳道内、循环体内通用，可任意层级嵌套）。
+ * 遇到 FORK_JOIN 时，会在其后自动补全配对的 JOIN 节点，
+ * joinOn 取各泳道编译后的最后一个任务（若泳道末尾是嵌套并行，则为其 JOIN）。
+ */
+export function compileStepList(
+  steps: BusinessStep[],
+  workflowName: string,
   registry: ActionRegistry = defaultActionRegistry
-): WorkflowDef {
-  const baseDef: Partial<WorkflowDef> = model.rawWorkflowDef
-    ? structuredClone(model.rawWorkflowDef)
-    : {};
-
+): TaskDef[] {
   const tasks: TaskDef[] = [];
 
-  for (let i = 0; i < model.steps.length; i++) {
-    const step = model.steps[i];
-    const taskDef = compileStepToTaskDef(step, i, model.name, registry);
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const taskDef = compileStepToTaskDef(step, i, workflowName, registry);
     tasks.push(taskDef);
 
-    // 如果是 FORK_JOIN 节点，在后面自动生成/补全配对的 JOIN 节点
     if (step.controlType === 'fork') {
       const joinRef = step.pairedJoinTaskRef || `join_${step.taskReferenceName}`;
-      // 计算 joinOn：取每条泳道最后一个任务节点的 taskReferenceName
       const joinOn: string[] = [];
       if (taskDef.forkTasks) {
         for (const lane of taskDef.forkTasks) {
@@ -152,6 +150,19 @@ export function compileStepModelToWorkflowDef(
       });
     }
   }
+
+  return tasks;
+}
+
+export function compileStepModelToWorkflowDef(
+  model: BusinessWorkflowModel,
+  registry: ActionRegistry = defaultActionRegistry
+): WorkflowDef {
+  const baseDef: Partial<WorkflowDef> = model.rawWorkflowDef
+    ? structuredClone(model.rawWorkflowDef)
+    : {};
+
+  const tasks: TaskDef[] = compileStepList(model.steps, model.name, registry);
 
   return {
     ...baseDef,

@@ -246,21 +246,6 @@ function DemoApp() {
               ⚡ v1.1 宣传页
             </a>
 
-            <a
-              href={`${import.meta.env.BASE_URL}v1-0.html`}
-              className="mode-btn"
-              title="查看 Conductor Workflow IDE v1.0.0 首发历史宣传页"
-              style={{
-                textDecoration: 'none',
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderColor: 'var(--border-secondary)',
-                color: 'var(--text-secondary)',
-                fontSize: 11,
-              }}
-            >
-              📜 v1.0 回顾
-            </a>
-
             <div className="divider"></div>
 
             {/* 合并工作流示例下拉选择器 */}

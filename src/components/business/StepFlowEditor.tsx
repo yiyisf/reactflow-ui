@@ -7,6 +7,7 @@ import { decompileWorkflowDefToStepModel } from '../../stepmodel/decompile';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition, ActionCategory } from '../../actions/types';
 import { ActionForm } from './ActionForm';
+import { createStepFromAction } from '../../stepmodel/factory';
 import { DecisionBranchCard } from './DecisionBranchCard';
 import { ForkJoinCard } from './ForkJoinCard';
 import { LoopDoWhileCard } from './LoopDoWhileCard';
@@ -99,71 +100,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       return;
     }
 
-    const newStepRef = `${action.id.replace(/\./g, '_')}_${Date.now().toString(36).slice(-4)}`;
-    let newStep: BusinessStep;
-
-    if (action.id === 'control.decision') {
-      newStep = {
-        id: `step_${newStepRef}`,
-        actionId: 'control_decision',
-        taskReferenceName: newStepRef,
-        name: '条件分支路由',
-        description: '根据输入参数或上下文表达式分流执行',
-        values: { caseParam: 'status' },
-        controlType: 'decision',
-        caseParam: 'status',
-        branches: [
-          { caseKey: 'SUCCESS', caseLabel: '分支: SUCCESS', steps: [] },
-          { caseKey: '__default__', caseLabel: '默认分支 (Default)', steps: [] },
-        ],
-        isProFallback: false,
-      };
-    } else if (action.id === 'control.fork') {
-      newStep = {
-        id: `step_${newStepRef}`,
-        actionId: 'control_fork',
-        taskReferenceName: newStepRef,
-        name: '并行并发组',
-        description: '同时并发执行多条独立业务泳道',
-        values: {},
-        controlType: 'fork',
-        forkLanes: [
-          { laneId: 'lane_0', laneLabel: '并发泳道 #1', steps: [] },
-          { laneId: 'lane_1', laneLabel: '并发泳道 #2', steps: [] },
-        ],
-        isProFallback: false,
-      };
-    } else if (action.id === 'control.loop') {
-      newStep = {
-        id: `step_${newStepRef}`,
-        actionId: 'control_loop',
-        taskReferenceName: newStepRef,
-        name: '循环迭代处理',
-        description: '重复循环执行内部步骤，直到满足退出条件',
-        values: { loopCondition: '$.status == "PENDING"' },
-        controlType: 'loop',
-        loopCondition: '$.status == "PENDING"',
-        loopSteps: [],
-        isProFallback: false,
-      };
-    } else {
-      const initialValues: Record<string, any> = {};
-      for (const f of action.fields) {
-        if (f.defaultValue !== undefined) {
-          initialValues[f.key] = f.defaultValue;
-        }
-      }
-
-      newStep = {
-        id: `step_${newStepRef}`,
-        actionId: action.id,
-        taskReferenceName: newStepRef,
-        name: action.name,
-        description: action.description,
-        values: initialValues,
-        isProFallback: false,
-      };
-    }
+    const newStep: BusinessStep = createStepFromAction(action);
 
     const next = [...steps];
     next.splice(atIndex, 0, newStep);
@@ -179,12 +116,19 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
 
     try {
       const taskMocks: Record<string, any> = {};
-      for (const step of steps) {
-        const action = registry.getAction(step.actionId);
-        if (action && action.mockOutput) {
-          taskMocks[step.taskReferenceName] = action.mockOutput(step.values);
+      // 递归收集所有层级（含分支 / 泳道 / 循环体内的嵌套步骤）的 Mock 输出
+      const collectMocks = (list: BusinessStep[]) => {
+        for (const step of list) {
+          const action = registry.getAction(step.actionId);
+          if (action && action.mockOutput) {
+            taskMocks[step.taskReferenceName] = action.mockOutput(step.values);
+          }
+          for (const b of step.branches || []) collectMocks(b.steps);
+          for (const l of step.forkLanes || []) collectMocks(l.steps);
+          collectMocks(step.loopSteps || []);
         }
-      }
+      };
+      collectMocks(steps);
 
       const instance = executeLocalSandboxDryRun(workflowDef, { taskMocks });
       setLastSimInstance(instance);

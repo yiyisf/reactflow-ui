@@ -3,6 +3,8 @@ import type { BusinessStep, BranchCase } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
 import { ActionForm } from './ActionForm';
+import { NestedControlStep } from './NestedControlStep';
+import { createStepFromAction } from '../../stepmodel/factory';
 
 export interface DecisionBranchCardProps {
   step: BusinessStep;
@@ -11,6 +13,8 @@ export interface DecisionBranchCardProps {
   disabled?: boolean;
   onChange: (updated: BusinessStep) => void;
   onOpenInsertModal: (callback: (action: ActionDefinition) => void) => void;
+  /** 嵌套深度：顶层卡片为 0，其内部子控制流依次 +1 */
+  depth?: number;
 }
 
 export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
@@ -20,6 +24,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
   disabled = false,
   onChange,
   onOpenInsertModal,
+  depth = 0,
 }) => {
   const branches: BranchCase[] = step.branches || [];
   const [activeBranchKey, setActiveBranchKey] = useState<string>(
@@ -92,15 +97,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
   const handleAddStepToCurrentBranch = () => {
     if (!activeBranch) return;
     onOpenInsertModal((action) => {
-      const newChildStep: BusinessStep = {
-        id: `step_${action.id}_${Date.now().toString(36)}`,
-        actionId: action.id,
-        taskReferenceName: `${action.id.replace(/\./g, '_')}_${Date.now().toString(36).slice(-4)}`,
-        name: action.name,
-        description: action.description,
-        values: {},
-        isProFallback: false,
-      };
+      const newChildStep: BusinessStep = createStepFromAction(action);
       handleUpdateBranchSteps(activeBranch.caseKey, [...activeBranch.steps, newChildStep]);
     });
   };
@@ -410,6 +407,30 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {activeBranch.steps.map((childStep, cIdx) => {
+                  if (childStep.controlType) {
+                    return (
+                      <NestedControlStep
+                        key={childStep.id}
+                        step={childStep}
+                        index={cIdx}
+                        depth={depth + 1}
+                        upstreamSteps={[...upstreamSteps, ...activeBranch.steps.slice(0, cIdx)]}
+                        registry={registry}
+                        disabled={disabled}
+                        onChange={(updatedChild) => {
+                          const nextSteps = [...activeBranch.steps];
+                          nextSteps[cIdx] = updatedChild;
+                          handleUpdateBranchSteps(activeBranch.caseKey, nextSteps);
+                        }}
+                        onDelete={() => {
+                          const nextSteps = activeBranch.steps.filter((_, idx) => idx !== cIdx);
+                          handleUpdateBranchSteps(activeBranch.caseKey, nextSteps);
+                        }}
+                        onOpenInsertModal={onOpenInsertModal}
+                      />
+                    );
+                  }
+
                   const childAction = registry.getAction(childStep.actionId);
                   const isExpanded = expandedChildId === childStep.id;
 

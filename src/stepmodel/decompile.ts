@@ -17,7 +17,7 @@ export function decompileTaskDefToStep(
         branches.push({
           caseKey,
           caseLabel: `分支: ${caseKey}`,
-          steps: (branchTasks || []).map((t, i) => decompileTaskDefToStep(t, i, registry)),
+          steps: decompileTaskList(branchTasks || [], registry),
         });
       }
     }
@@ -25,7 +25,7 @@ export function decompileTaskDefToStep(
       branches.push({
         caseKey: '__default__',
         caseLabel: '默认分支 (Default)',
-        steps: task.defaultCase.map((t, i) => decompileTaskDefToStep(t, i, registry)),
+        steps: decompileTaskList(task.defaultCase, registry),
       });
     }
 
@@ -50,7 +50,7 @@ export function decompileTaskDefToStep(
     const forkLanes: ForkLane[] = (task.forkTasks || []).map((laneTasks, laneIdx) => ({
       laneId: `lane_${laneIdx}`,
       laneLabel: `并发泳道 #${laneIdx + 1}`,
-      steps: (laneTasks || []).map((t, i) => decompileTaskDefToStep(t, i, registry)),
+      steps: decompileTaskList(laneTasks || [], registry),
     }));
 
     return {
@@ -69,7 +69,7 @@ export function decompileTaskDefToStep(
 
   // 3. 循环迭代控制流 (DO_WHILE)
   if (task.type === 'DO_WHILE') {
-    const loopSteps = (task.loopOver || []).map((t, i) => decompileTaskDefToStep(t, i, registry));
+    const loopSteps = decompileTaskList(task.loopOver || [], registry);
 
     return {
       id: stepId,
@@ -113,6 +113,49 @@ export function decompileTaskDefToStep(
   };
 }
 
+/**
+ * 反编译一组顺序任务（顶层、分支内、泳道内、循环体内通用，可任意层级嵌套）。
+ * FORK_JOIN 后配对的 JOIN 节点会被折叠进并行组（记录在 pairedJoinTaskRef），不单独成步。
+ */
+export function decompileTaskList(
+  tasks: TaskDef[],
+  registry: ActionRegistry = defaultActionRegistry
+): BusinessStep[] {
+  const pairedJoinRefs = new Set<string>();
+
+  for (let i = 0; i < tasks.length; i++) {
+    if (tasks[i].type === 'FORK_JOIN') {
+      for (let j = i + 1; j < tasks.length; j++) {
+        if (tasks[j].type === 'JOIN') {
+          pairedJoinRefs.add(tasks[j].taskReferenceName);
+          break;
+        }
+      }
+    }
+  }
+
+  const steps: BusinessStep[] = [];
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i];
+    if (task.type === 'JOIN' && pairedJoinRefs.has(task.taskReferenceName)) {
+      continue;
+    }
+
+    const step = decompileTaskDefToStep(task, i, registry);
+    if (step.controlType === 'fork') {
+      for (let j = i + 1; j < tasks.length; j++) {
+        if (tasks[j].type === 'JOIN') {
+          step.pairedJoinTaskRef = tasks[j].taskReferenceName;
+          break;
+        }
+      }
+    }
+    steps.push(step);
+  }
+
+  return steps;
+}
+
 export function decompileWorkflowDefToStepModel(
   def: WorkflowDef | null | undefined,
   registry: ActionRegistry = defaultActionRegistry
@@ -126,43 +169,7 @@ export function decompileWorkflowDefToStepModel(
     };
   }
 
-  const tasks = def.tasks || [];
-  const pairedJoinRefs = new Set<string>();
-
-  // 先预扫描找寻 FORK_JOIN 对应的 JOIN 节点
-  for (let i = 0; i < tasks.length; i++) {
-    const t = tasks[i];
-    if (t.type === 'FORK_JOIN') {
-      // 寻找下一个或后续配对的 JOIN
-      for (let j = i + 1; j < tasks.length; j++) {
-        if (tasks[j].type === 'JOIN') {
-          pairedJoinRefs.add(tasks[j].taskReferenceName);
-          break;
-        }
-      }
-    }
-  }
-
-  const steps: BusinessStep[] = [];
-  for (let i = 0; i < tasks.length; i++) {
-    const task = tasks[i];
-    // 跳过已与 FORK_JOIN 配对的 JOIN，因为它已经作为并行组的收口点内嵌处理
-    if (task.type === 'JOIN' && pairedJoinRefs.has(task.taskReferenceName)) {
-      continue;
-    }
-
-    const step = decompileTaskDefToStep(task, i, registry);
-    if (step.controlType === 'fork') {
-      // 记录关联的 JOIN 引用名
-      for (let j = i + 1; j < tasks.length; j++) {
-        if (tasks[j].type === 'JOIN') {
-          step.pairedJoinTaskRef = tasks[j].taskReferenceName;
-          break;
-        }
-      }
-    }
-    steps.push(step);
-  }
+  const steps = decompileTaskList(def.tasks || [], registry);
 
   return {
     name: def.name || 'unnamed_workflow',

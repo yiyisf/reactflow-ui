@@ -280,3 +280,73 @@ describe('stepmodel & actions compile/decompile round-trip', () => {
     expect(recLoop.loopOver?.[0].taskReferenceName).toBe('check_status');
   });
 });
+
+describe('多层嵌套控制流 compile/decompile', () => {
+  const simple = (ref: string) => ({ name: ref, taskReferenceName: ref, type: 'SIMPLE' as const, inputParameters: {} });
+
+  const nestedDef = {
+    name: 'nested_wf',
+    version: 1,
+    schemaVersion: 2,
+    tasks: [
+      {
+        name: 'outer_switch',
+        taskReferenceName: 'outer_switch',
+        type: 'DECISION' as const,
+        caseValueParam: 'kind',
+        decisionCases: {
+          A: [
+            {
+              name: 'inner_switch',
+              taskReferenceName: 'inner_switch',
+              type: 'DECISION' as const,
+              caseValueParam: 'level',
+              decisionCases: { HIGH: [simple('deep_task')] },
+              defaultCase: [],
+            },
+          ],
+          B: [
+            {
+              name: 'inner_fork',
+              taskReferenceName: 'inner_fork',
+              type: 'FORK_JOIN' as const,
+              forkTasks: [[simple('lane_a')], [simple('lane_b')]],
+            },
+            {
+              name: 'inner_fork_join',
+              taskReferenceName: 'inner_fork_join',
+              type: 'JOIN' as const,
+              joinOn: ['lane_a', 'lane_b'],
+            },
+          ],
+        },
+        defaultCase: [],
+      },
+    ],
+  } as any;
+
+  it('分支内再嵌套分支 / 并行时可无损往返，且嵌套并行的 JOIN 被保留', () => {
+    const model = decompileWorkflowDefToStepModel(nestedDef);
+    const outer = model.steps[0];
+    expect(outer.controlType).toBe('decision');
+
+    const branchA = outer.branches!.find((b) => b.caseKey === 'A')!;
+    expect(branchA.steps[0].controlType).toBe('decision');
+    expect(branchA.steps[0].branches![0].steps[0].taskReferenceName).toBe('deep_task');
+
+    const branchB = outer.branches!.find((b) => b.caseKey === 'B')!;
+    // JOIN 被折叠进并行组，不应变成独立的"专业步骤"
+    expect(branchB.steps).toHaveLength(1);
+    expect(branchB.steps[0].controlType).toBe('fork');
+    expect(branchB.steps[0].pairedJoinTaskRef).toBe('inner_fork_join');
+
+    const compiled = compileStepModelToWorkflowDef(model);
+    const outTask = compiled.tasks[0];
+    expect(outTask.decisionCases!.A[0].type).toBe('DECISION');
+    expect(outTask.decisionCases!.A[0].decisionCases!.HIGH[0].taskReferenceName).toBe('deep_task');
+
+    const bTasks = outTask.decisionCases!.B;
+    expect(bTasks.map((t: any) => t.type)).toEqual(['FORK_JOIN', 'JOIN']);
+    expect(bTasks[1].joinOn).toEqual(['lane_a', 'lane_b']);
+  });
+});

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import useWorkflowStore from '../../store/workflowStore';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { TemplateStore, defaultTemplateStore } from '../../template/templateStore';
@@ -19,6 +20,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   onSelectTemplate,
   templateStore = defaultTemplateStore,
 }) => {
+  const { theme, themeColor } = useWorkflowStore();
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeWizardTemplate, setActiveWizardTemplate] = useState<WorkflowTemplate | null>(null);
@@ -52,6 +54,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
 
   return createPortal(
     <div
+      data-mode={theme}
+      data-brand={themeColor}
       style={{
         position: 'fixed',
         top: 0,

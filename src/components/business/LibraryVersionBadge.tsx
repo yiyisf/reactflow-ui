@@ -1,6 +1,8 @@
 import React from 'react';
 import type { BusinessStep } from '../../stepmodel/types';
 import type { ActionDefinition } from '../../actions/types';
+import ConfirmDialog from '../ConfirmDialog';
+import { useConfirm } from '../../hooks/useConfirm';
 
 export interface LibraryVersionBadgeProps {
   step: BusinessStep;
@@ -16,12 +18,21 @@ export interface LibraryVersionBadgeProps {
  * - 库中有更新版本时，提示并允许用户手动升级（升级后入参可能变化，需确认）
  */
 export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({ step, action, disabled, onUpgrade }) => {
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
   const ref = step.libraryRef;
   if (!ref) return null;
 
   const pinned = ref.version;
   const latest = action?.workflowRef?.version;
   const hasNewer = pinned !== undefined && latest !== undefined && latest > pinned;
+
+  const handleUpgradeClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const ok = await confirm(
+      `流程库「${ref.name}」已有新版本 v${latest}（当前引用 v${pinned}）。升级后入参、出参可能发生变化，请升级后检查本步骤配置。确定升级吗？`
+    );
+    if (ok) onUpgrade(latest as number);
+  };
 
   return (
     <>
@@ -44,16 +55,7 @@ export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({ step, 
       </span>
       {hasNewer && !disabled && (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (
-              confirm(
-                `流程库「${ref.name}」已有新版本 v${latest}（当前引用 v${pinned}）。\n升级后入参、出参可能发生变化，请升级后检查本步骤配置。\n确定升级吗？`
-              )
-            ) {
-              onUpgrade(latest as number);
-            }
-          }}
+          onClick={handleUpgradeClick}
           title="升级到库中最新版本"
           style={{
             fontSize: 10,
@@ -68,6 +70,12 @@ export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({ step, 
         >
           ⬆ 有新版本 v{latest}
         </button>
+      )}
+      {/* 弹窗经 Portal 渲染，但 React 事件仍会冒泡到步骤头部（会误触发展开/收起），这里拦截 */}
+      {confirmState && (
+        <span onClick={(e) => e.stopPropagation()}>
+          <ConfirmDialog message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
+        </span>
       )}
     </>
   );

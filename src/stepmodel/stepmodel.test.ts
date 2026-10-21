@@ -3,6 +3,7 @@ import { defaultActionRegistry } from '../actions/registry';
 import { compileStepModelToWorkflowDef } from './compile';
 import { decompileWorkflowDefToStepModel } from './decompile';
 import type { BusinessWorkflowModel } from './types';
+import { createStepFromAction } from './factory';
 
 describe('stepmodel & actions compile/decompile round-trip', () => {
   it('correctly registers built-in cloud host and common actions', () => {
@@ -348,5 +349,39 @@ describe('多层嵌套控制流 compile/decompile', () => {
     const bTasks = outTask.decisionCases!.B;
     expect(bTasks.map((t: any) => t.type)).toEqual(['FORK_JOIN', 'JOIN']);
     expect(bTasks[1].joinOn).toEqual(['lane_a', 'lane_b']);
+  });
+});
+
+describe('步骤 ID 稳定性', () => {
+  it('同一份定义多次反编译（跨毫秒）得到相同的步骤 ID，包括嵌套步骤', async () => {
+    const def = {
+      name: 'wf',
+      tasks: [
+        { name: 'a', taskReferenceName: 'a_ref', type: 'SIMPLE', inputParameters: {} },
+        {
+          name: 'sw',
+          taskReferenceName: 'sw_ref',
+          type: 'DECISION',
+          caseValueParam: 'k',
+          decisionCases: { X: [{ name: 'b', taskReferenceName: 'b_ref', type: 'SIMPLE', inputParameters: {} }] },
+          defaultCase: [],
+        },
+      ],
+    } as any;
+    const first = decompileWorkflowDefToStepModel(def);
+    await new Promise((r) => setTimeout(r, 5));
+    const second = decompileWorkflowDefToStepModel(def);
+
+    expect(second.steps.map((s) => s.id)).toEqual(first.steps.map((s) => s.id));
+    expect(second.steps[1].branches![0].steps[0].id).toBe(first.steps[1].branches![0].steps[0].id);
+    expect(first.steps[0].id).toBe('step_a_ref');
+  });
+
+  it('新建步骤的 ID 与其编译再反编译后的 ID 一致（保证新增后能自动展开）', () => {
+    const action = defaultActionRegistry.getAllActions().find((a) => a.id === 'notify.send_message')!;
+    const step = createStepFromAction(action);
+    const def = compileStepModelToWorkflowDef({ name: 'wf', steps: [step] });
+    const back = decompileWorkflowDefToStepModel(def);
+    expect(back.steps[0].id).toBe(step.id);
   });
 });

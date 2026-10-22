@@ -27,6 +27,8 @@ export interface ActionExtension {
   riskLevel?: 'safe' | 'sensitive';
   connector?: string;
   level?: WorkflowLevel;
+  /** 业务域展示名 */
+  domain?: string;
   tags?: string[];
   /** 为 true 时不进入动作库（例如用户无权限、已下线） */
   hidden?: boolean;
@@ -278,6 +280,7 @@ export function buildActionFromWorkflowDef(def: WorkflowDef, ext: ActionExtensio
     kind: 'workflow',
     workflowRef: { name: def.name, version: latestVersion },
     level: ext.level,
+    ...(ext.domain ? { domain: ext.domain } : {}),
     tags: ext.tags,
     ownerEmail: def.ownerEmail,
     riskLevel: ext.riskLevel || 'safe',
@@ -327,6 +330,7 @@ export function buildActionFromTaskDef(def: RegisteredTaskDef, ext: ActionExtens
     connector: ext.connector,
     kind: 'task',
     level: ext.level,
+    ...(ext.domain ? { domain: ext.domain } : {}),
     tags: ext.tags,
     ownerEmail: def.ownerEmail,
     riskLevel: ext.riskLevel || 'safe',

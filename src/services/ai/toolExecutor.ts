@@ -700,20 +700,22 @@ export function executeToolCall(
             const library = ctx.libraryItems;
             const query = (args.query as string || '').toLowerCase();
             const levelFilter = args.level as WorkflowLevel | undefined;
+            const domainFilter = typeof args.domain === 'string' && args.domain.trim() ? args.domain.trim() : undefined;
 
             // 服务端检索命中（预取）优先；否则在本地目录内匹配
             const serverHits = ctx.librarySearchResults;
             if (!serverHits && library.length === 0) {
                 return { type: 'info', text: '当前没有配置工作流库，无法搜索。' };
             }
-            const matched = serverHits ?? library.filter(item => {
+            const matched = (serverHits ?? library.filter(item => {
                 if (levelFilter && item.workflowLevel !== levelFilter) return false;
+                if (domainFilter && item.domain !== domainFilter) return false;
                 return (
                     item.workflowName.toLowerCase().includes(query) ||
                     (item.description ?? '').toLowerCase().includes(query) ||
                     (item.tags ?? []).some(t => t.toLowerCase().includes(query))
                 );
-            });
+            })).filter(item => !domainFilter || item.domain === domainFilter);
 
             if (matched.length === 0) {
                 return { type: 'info', text: `未找到与「${args.query}」相关的子工作流。` };
@@ -728,7 +730,7 @@ export function executeToolCall(
                 if (byLevel[lvl].length === 0) return;
                 lines.push(`\n**${lvl}**`);
                 byLevel[lvl].forEach(item => {
-                    lines.push(`- \`${item.workflowName}\` (v${item.version}): ${item.description ?? ''} [${(item.tags ?? []).join(', ')}]`);
+                    lines.push(`- \`${item.workflowName}\` (v${item.version}): ${item.description ?? ''} [${(item.tags ?? []).join(', ')}]${item.domain ? ` [业务域: ${item.domain}]` : ''}`);
                 });
             });
             if (matched.length > shown.length) {

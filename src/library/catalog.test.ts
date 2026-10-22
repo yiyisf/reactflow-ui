@@ -274,3 +274,30 @@ describe('LibraryCatalog 检索', () => {
     expect(res![0].version).toBe(4);
   });
 });
+
+describe('LibraryCatalog 业务域与命名兜底', () => {
+  it('extension.domain / level 显式给出时直接使用', async () => {
+    const c = new LibraryCatalog(fakeProvider({ workflows: [wf('std-L1-云资源-ECS-创建', 1, { extension: { domain: '监控运维', level: 'L2' } })] }));
+    await c.load();
+    const e = c.latest('std-L1-云资源-ECS-创建')!;
+    expect(e.domain).toBe('监控运维');
+    expect(e.level).toBe('L2');
+  });
+
+  it('缺省时从名称解析 domain 与 level', async () => {
+    const c = new LibraryCatalog(fakeProvider({ workflows: [wf('proxy-L3-数据服务-MySQL-备份-全量', 1)] }));
+    await c.load();
+    const e = c.latest('proxy-L3-数据服务-MySQL-备份-全量')!;
+    expect(e.domain).toBe('数据服务');
+    expect(e.level).toBe('L3');
+  });
+
+  it('不符合规范的名称无 domain；条目上不带 domain 键', async () => {
+    const c = new LibraryCatalog(fakeProvider({ workflows: [wf('create_vm', 1)] }));
+    await c.load();
+    const e = c.latest('create_vm')!;
+    expect(e.domain).toBeUndefined();
+    expect('domain' in e).toBe(false);
+    expect(e.level).toBeUndefined();
+  });
+});

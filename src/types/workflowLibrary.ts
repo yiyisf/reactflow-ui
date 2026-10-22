@@ -19,6 +19,8 @@ export type WorkflowLevel = 'L1' | 'L2' | 'L3';
 export interface WorkflowLibraryItem {
     workflowName: string;
     workflowLevel: WorkflowLevel;
+    /** 业务域展示名（可选，如「通知协助」） */
+    domain?: string;
     version: string;
     description: string;
     tags: string[];

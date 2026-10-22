@@ -450,6 +450,10 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
                         enum: ['L1', 'L2', 'L3'],
                         description: '按层级过滤（不传则搜索全部层级）',
                     },
+                    domain: {
+                        type: 'string',
+                        description: '按业务域过滤（如「通知协助」，需与目录中显示的业务域完全一致；不传则不限业务域）',
+                    },
                 },
                 required: ['query'],
             },

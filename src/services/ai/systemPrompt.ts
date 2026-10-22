@@ -211,6 +211,7 @@ export function buildLibraryCatalog(
 
     const formatItem = (item: WorkflowLibraryItem) =>
         `- \`${item.workflowName}\` (v${item.version}): ${item.description}` +
+        (item.domain ? ` [业务域: ${item.domain}]` : '') +
         (item.tags.length > 0 ? ` [${item.tags.join(', ')}]` : '');
 
     const sections: string[] = [];

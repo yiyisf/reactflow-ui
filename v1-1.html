@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <title>[Product Launch] Conductor Workflow IDE v1.1.0 GA · 双模全融合 · 让每个人都能驾驭云平台工作流</title>
+  <style>
+    /* ==========================================================================
+       STYLE: Bento Launchpad v1.1.0 (现代暗黑流光发布风 · 业务与技术全融合)
+       SCENARIO: Conductor Workflow IDE (@yiyi_zhang/reactflow-ui) v1.1.0 GA 正式发布页
+       ========================================================================== */
+    :root {
+      --bg-dark: #06080F;
+      --bg-card: #0E1322;
+      --bg-card-hover: #141C32;
+      --bg-panel: #090D18;
+      --bg-glass: rgba(14, 19, 34, 0.85);
+
+      --border-dim: #1E2942;
+      --border-glow: #6366F1;
+      --border-accent: #10B981;
+
+      --text-white: #F8FAFC;
+      --text-body: #94A3B8;
+      --text-muted: #64748B;
+
+      --brand-primary: #6366F1;
+      --brand-cyan: #06B6D4;
+      --brand-emerald: #10B981;
+      --brand-amber: #F59E0B;
+      --brand-rose: #F43F5E;
+      --brand-blue: #3B82F6;
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+      --radius-md: 12px;
+      --radius-lg: 18px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse 85% 55% at 50% -10%, rgba(16, 185, 129, 0.22), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 85% 25%, rgba(6, 182, 212, 0.16), transparent 65%),
+        radial-gradient(ellipse 50% 35% at 15% 45%, rgba(99, 102, 241, 0.14), transparent 60%),
+        var(--bg-dark);
+      color: var(--text-white);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Sticky Top Nav */
+    .launch-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(6, 8, 15, 0.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-dim);
+      padding: 0.75rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-size: 0.85rem;
+    }
+
+    .brand-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 800;
+      color: var(--text-white);
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+
+    .version-pill {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #6EE7B7;
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(16, 185, 129, 0.42);
+      padding: 0.2rem 0.7rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .version-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-dim);
+      padding: 0.15rem 0.4rem;
+      border-radius: 8px;
+    }
+
+    .version-switch a {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      text-decoration: none;
+      padding: 0.18rem 0.55rem;
+      border-radius: 5px;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+
+    .version-switch a.active {
+      background: rgba(16, 185, 129, 0.25);
+      color: #A7F3D0;
+      font-weight: 700;
+    }
+
+    .version-switch a:hover:not(.active) {
+      color: var(--text-white);
+    }
+
+    /* 版本下拉：历史版本收进菜单，不再单独占位 */
+    .version-dropdown {
+      position: relative;
+    }
+
+    .version-dropdown summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #A7F3D0;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.42);
+      padding: 0.25rem 0.7rem;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .version-dropdown summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .version-dropdown[open] .vd-caret {
+      transform: rotate(180deg);
+    }
+
+    .vd-caret {
+      display: inline-block;
+      transition: transform 0.15s;
+    }
+
+    .vd-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 100%;
+      white-space: nowrap;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 0.3rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      z-index: 300;
+    }
+
+    .vd-menu a {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      text-decoration: none;
+      padding: 0.35rem 0.6rem;
+      border-radius: 5px;
+      color: var(--text-muted);
+    }
+
+    .vd-menu a.active {
+      background: rgba(16, 185, 129, 0.25);
+      color: #A7F3D0;
+      font-weight: 700;
+    }
+
+    .vd-menu a:hover:not(.active) {
+      color: var(--text-white);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .ghost-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-body);
+      border: 1px solid var(--border-dim);
+      padding: 0.44rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .ghost-btn:hover {
+      color: var(--text-white);
+      border-color: var(--brand-emerald);
+    }
+
+    .cta-btn {
+      background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan));
+      color: #061816;
+      border: none;
+      padding: 0.46rem 1.15rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .cta-btn:hover { opacity: 0.94; transform: translateY(-1px); }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem 5rem;
+    }
+
+    /* ==========================================================================
+       L1 首屏决策层：核心价值主张 + 一行命令体验 + Before vs After + ROI 算力
+       ========================================================================== */
+    .hero-section {
+      text-align: center;
+      max-width: 960px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--brand-emerald);
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      padding: 0.32rem 1rem;
+      border-radius: 999px;
+      margin-bottom: 1.1rem;
+      font-weight: 600;
+    }
+
+    .hero-title {
+      font-size: 3.1rem;
+      line-height: 1.18;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin-bottom: 1.1rem;
+      background: linear-gradient(180deg, #FFFFFF 0%, #A7F3D0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.12rem;
+      color: var(--text-body);
+      margin-bottom: 1.6rem;
+      max-width: 820px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.7;
+    }
+
+    .hero-subtitle strong {
+      color: #F8FAFC;
+    }
+
+    /* Quick Install Command Box */
+    .install-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .pm-tabs {
+      display: inline-flex;
+      gap: 0.35rem;
+      background: rgba(14, 19, 34, 0.9);
+      padding: 0.22rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-dim);
+    }
+
+    .pm-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      font-weight: 600;
+      padding: 0.22rem 0.65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .pm-tab.active {
+      background: rgba(16, 185, 129, 0.25);
+      color: #A7F3D0;
+    }
+
+    .install-shell {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.9rem;
+      background: var(--bg-panel);
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      box-shadow: 0 0 32px rgba(16, 185, 129, 0.2);
+      padding: 0.62rem 0.8rem 0.62rem 1.2rem;
+      border-radius: 10px;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: #E2E8F0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .install-shell .prompt-char { color: var(--brand-emerald); user-select: none; font-weight: 700; }
+
+    .copy-cli-btn {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.3));
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      color: #FFF;
+      padding: 0.36rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      font-weight: 700;
+      transition: all 0.15s;
+    }
+
+    .copy-cli-btn:hover { background: rgba(16, 185, 129, 0.5); }
+
+    /* L1 Dual Grid: Before/After vs Interactive Dual-Mode Showcase */
+    .first-screen-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .fs-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fs-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.2rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-dim);
+    }
+
+    .fs-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-white);
+    }
+
+    .badge-diff {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+    }
+
+    .badge-diff.before { background: rgba(244, 63, 94, 0.15); color: #FB7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+    .badge-diff.after { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); }
+
+    /* Interactive Dual Mode Live Preview in Hero */
+    .interactive-mode-box {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .mode-tab-bar {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--bg-panel);
+      padding: 0.3rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-dim);
+    }
+
+    .mode-tab-btn {
+      flex: 1;
+      padding: 0.5rem 0.8rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.82rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .mode-tab-btn.active {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25));
+      color: #A7F3D0;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      font-weight: 700;
+    }
+
+    .preview-card-viewport {
+      background: #090D18;
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 1.1rem;
+      min-height: 250px;
+      font-size: 0.82rem;
+      position: relative;
+    }
+
+    /* Business Step Card Mock */
+    .mock-step-card {
+      background: #131A2B;
+      border: 1px solid #1E293B;
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .mock-step-card:hover {
+      border-color: rgba(16, 185, 129, 0.5);
+      transform: translateX(2px);
+    }
+
+    .mock-capsule {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      background: rgba(59, 130, 246, 0.15);
+      color: #93C5FD;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* ROI Calculator */
+    .roi-calc {
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+
+    .roi-slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .roi-slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-body);
+    }
+
+    .roi-slider-header strong {
+      color: var(--brand-emerald);
+      font-family: var(--font-mono);
+    }
+
+    .roi-slider {
+      width: 100%;
+      accent-color: var(--brand-emerald);
+      cursor: pointer;
+    }
+
+    .roi-results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      background: var(--bg-panel);
+      padding: 0.9rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-dim);
+      margin-top: 0.5rem;
+    }
+
+    .roi-stat-item {
+      text-align: center;
+    }
+
+    .roi-stat-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--brand-emerald);
+    }
+
+    .roi-stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.1rem;
+    }
+
+    /* Impact Strip */
+    .impact-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.2rem;
+      margin-bottom: 4rem;
+    }
+
+    .impact-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-md);
+      padding: 1.3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .impact-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--brand-emerald), var(--brand-cyan));
+    }
+
+    .impact-num {
+      font-size: 2.3rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      background: linear-gradient(180deg, #FFFFFF, #A7F3D0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.3rem;
+    }
+
+    .impact-sub {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-white);
+      margin-bottom: 0.2rem;
+    }
+
+    .impact-desc {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Section Headers */
+    .section-head {
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .section-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: var(--brand-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: var(--text-white);
+      margin-bottom: 0.8rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section-desc {
+      font-size: 0.95rem;
+      color: var(--text-body);
+      line-height: 1.7;
+    }
+
+    /* Bento Grid Showcase */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .bento-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      padding: 1.6rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .bento-card:hover {
+      border-color: rgba(16, 185, 129, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .bento-card.span-2 {
+      grid-column: span 2;
+    }
+
+    .bento-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+      margin-bottom: 0.9rem;
+      width: fit-content;
+    }
+
+    .bento-badge.green { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .bento-badge.cyan { background: rgba(6, 182, 212, 0.15); color: #22D3EE; border: 1px solid rgba(6, 182, 212, 0.35); }
+    .bento-badge.purple { background: rgba(139, 92, 246, 0.15); color: #A78BFA; border: 1px solid rgba(139, 92, 246, 0.35); }
+    .bento-badge.orange { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.35); }
+
+    .bento-card h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-white);
+      margin-bottom: 0.6rem;
+    }
+
+    .bento-card p {
+      font-size: 0.85rem;
+      color: var(--text-body);
+      line-height: 1.6;
+      margin-bottom: 1.2rem;
+    }
+
+    .bento-inner-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: 0.8rem;
+      margin-top: auto;
+    }
+
+    /* Comparison Table */
+    .compare-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      margin-bottom: 4rem;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      margin-top: 1.5rem;
+    }
+
+    .compare-table th {
+      text-align: left;
+      padding: 0.85rem 1rem;
+      background: var(--bg-panel);
+      color: var(--text-white);
+      border-bottom: 2px solid var(--border-dim);
+      font-weight: 700;
+    }
+
+    .compare-table td {
+      padding: 0.95rem 1rem;
+      border-bottom: 1px solid var(--border-dim);
+      color: var(--text-body);
+    }
+
+    .compare-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .compare-table strong { color: var(--text-white); }
+
+    /* Quickstart Box */
+    .quickstart-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      margin-bottom: 4rem;
+    }
+
+    .qs-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .qs-tab {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      color: var(--text-muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .qs-tab.active {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #A7F3D0;
+    }
+
+    .code-container {
+      position: relative;
+    }
+
+    .code-body {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 1.2rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #E2E8F0;
+      line-height: 1.6;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .copy-code-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-dim);
+      color: var(--text-body);
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .copy-code-btn:hover { color: #FFF; border-color: var(--brand-emerald); }
+
+    /* Historical Banner Link */
+    .history-card-box {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
+      border: 1px solid var(--border-dim);
+      border-radius: var(--radius-lg);
+      padding: 1.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 4rem;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-dim);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+    }
+
+    footer a {
+      color: var(--text-body);
+      text-decoration: none;
+      margin: 0 0.5rem;
+    }
+
+    footer a:hover { color: var(--brand-emerald); }
+
+    @media (max-width: 960px) {
+      .first-screen-grid { grid-template-columns: 1fr; }
+      .impact-strip { grid-template-columns: repeat(2, 1fr); }
+      .bento-grid { grid-template-columns: 1fr; }
+      .bento-card.span-2 { grid-column: span 1; }
+      .hero-title { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Top Nav -->
+  <header class="launch-nav">
+    <div class="nav-left">
+      <a href="./" class="brand-logo">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="nav11-bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#064E3B" />
+              <stop offset="100%" stop-color="#090D18" />
+            </linearGradient>
+            <linearGradient id="nav11-bd" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#10B981" stop-opacity="0.8" />
+              <stop offset="100%" stop-color="#06B6D4" stop-opacity="0.5" />
+            </linearGradient>
+            <linearGradient id="nav11-top" x1="9" y1="16" x2="23" y2="10" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#34D399" />
+              <stop offset="100%" stop-color="#22D3EE" />
+            </linearGradient>
+            <linearGradient id="nav11-bot" x1="9" y1="16" x2="23" y2="22" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#10B981" />
+              <stop offset="100%" stop-color="#60A5FA" />
+            </linearGradient>
+          </defs>
+          <rect x="1.25" y="1.25" width="29.5" height="29.5" rx="8" fill="url(#nav11-bg)" stroke="url(#nav11-bd)" stroke-width="1.5" />
+          <path d="M 9.5 16 C 15 16, 15.5 10, 22.5 10" stroke="url(#nav11-top)" stroke-width="2.4" stroke-linecap="round" />
+          <path d="M 9.5 16 C 15 16, 15.5 22, 22.5 22" stroke="url(#nav11-bot)" stroke-width="2.4" stroke-linecap="round" />
+          <circle cx="9.5" cy="16" r="3.4" fill="#10B981" />
+          <circle cx="9.5" cy="16" r="1.4" fill="#F8FAFC" />
+          <circle cx="22.5" cy="10" r="2.7" fill="#22D3EE" />
+          <circle cx="22.5" cy="22" r="2.7" fill="#60A5FA" />
+        </svg>
+        <span>Conductor Workflow IDE</span>
+      </a>
+
+      <!-- 版本切换胶囊 -->
+      <details class="version-dropdown" id="version-dropdown">
+        <summary title="切换版本宣传页">📜 v1.1.0 历史回顾 <span class="vd-caret">▾</span></summary>
+        <div class="vd-menu">
+          <a href="./" title="查看 v1.2.0 流程库就绪最新宣传页">⚡ v1.2.0 最新发布</a>
+          <a href="./v1-1.html" class="active" aria-current="page" title="当前页面：v1.1.0 GA 业务全融合">📜 v1.1.0 历史回顾</a>
+          <a href="./v1-0.html" title="点击查阅 v1.0.0 确定性IDE历史首发页">📜 v1.0.0 历史回顾</a>
+        </div>
+      </details>
+
+      <span style="color:var(--text-muted); font-size: 0.8rem;">双模全融合 · 云平台业务动作库 · 生产脱敏提炼 · 故事线自愈</span>
+    </div>
+
+    <div class="nav-right">
+      <a href="./app" class="cta-btn">🎮 立即进入工作台演练 (/app)</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- ========================================================================
+         L1 首屏决策层：打破鸿沟的价值主张 + 极速体验 + 交互式双模预览
+         ======================================================================== -->
+    <section class="hero-section">
+      <div class="hero-eyebrow">
+        <span>⚡ Conductor Workflow IDE v1.1.0 GA 全新发布</span>
+        <span style="opacity: 0.4;">|</span>
+        <span>生产级双模全融合已就绪</span>
+      </div>
+
+      <h1 class="hero-title">打破技术与业务鸿沟<br/>让每个人都能编排云平台工作流</h1>
+
+      <p class="hero-subtitle">
+        告别晦涩难懂的代码级微服务 DAG！v1.1.0 带来全新的 <strong>👔 业务卡片流设计器</strong> 与 <strong>☁️ 云平台全生命周期动作库</strong>。<br/>
+        双模同屏无损热切换，内置 <strong>8 大高频云场景模板</strong>，支持 <strong>生产实例一键脱敏提炼</strong> 与 <strong>运行故事线白话自愈诊断</strong>。
+      </p>
+
+      <!-- 安装命令行切换器 -->
+      <div class="install-wrap">
+        <div class="pm-tabs">
+          <button class="pm-tab active" onclick="switchPM('npm', this)">npm</button>
+          <button class="pm-tab" onclick="switchPM('pnpm', this)">pnpm</button>
+          <button class="pm-tab" onclick="switchPM('yarn', this)">yarn</button>
+          <button class="pm-tab" onclick="switchPM('import', this)">React 引入</button>
+        </div>
+
+        <div class="install-shell">
+          <span class="prompt-char">$</span>
+          <span id="cli-cmd">npm install @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom</span>
+          <button class="copy-cli-btn" onclick="copyInstall(this)">复制命令</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 首屏双栏：痛点蜕变对比 + 交互式双模小部件 -->
+    <section class="first-screen-grid">
+      <!-- 左栏：交互式双模视口小部件 -->
+      <div class="fs-panel">
+        <div class="fs-panel-header">
+          <div class="fs-title">
+            <span>✨ 核心交互：同屏毫秒级双模热切换</span>
+          </div>
+          <span class="badge-diff after">v1.1.0 状态零丢失无损转换</span>
+        </div>
+
+        <div class="interactive-mode-box">
+          <div class="mode-tab-bar">
+            <button class="mode-tab-btn active" id="tab-business" onclick="switchLiveMode('business')">
+              <span>👔 业务模式 (面向运维与业务)</span>
+            </button>
+            <button class="mode-tab-btn" id="tab-pro" onclick="switchLiveMode('pro')">
+              <span>💻 开发者模式 (面向架构与代码)</span>
+            </button>
+          </div>
+
+          <div class="preview-card-viewport" id="viewport-content">
+            <!-- 默认展示业务卡片流 -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="mock-step-card">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.2rem;">🖥️</span>
+                  <div>
+                    <div style="font-weight: 700; color: #F8FAFC;">1. 创建高可用云主机 ECS</div>
+                    <div style="font-size: 0.72rem; color: #94A3B8;">按需配置规格 · 自动绑定安全组</div>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                  <span class="mock-capsule">ecs.c7.xlarge</span>
+                  <span class="mock-capsule" style="color: #6EE7B7; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1);">vpc-cn-hangzhou</span>
+                </div>
+              </div>
+
+              <div class="mock-step-card" style="border-left: 3px solid #10B981;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.2rem;">📸</span>
+                  <div>
+                    <div style="font-weight: 700; color: #F8FAFC;">2. 生产发布前安全快照</div>
+                    <div style="font-size: 0.72rem; color: #94A3B8;">关联第 1 步实例 ID · 容灾秒级备份</div>
+                  </div>
+                </div>
+                <div>
+                  <span class="mock-capsule">🔗 ${step_1.output.instanceId}</span>
+                </div>
+              </div>
+
+              <div class="mock-step-card" style="border: 1px dashed rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.05);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 1.2rem;">🔀</span>
+                  <div>
+                    <div style="font-weight: 700; color: #C4B5FD;">3. 自动化条件分支判定 (DECISION)</div>
+                    <div style="font-size: 0.72rem; color: #94A3B8;">环境标识: 生产 (PROD) 审批 ⇄ 研发 (DEV) 直通</div>
+                  </div>
+                </div>
+                <span class="mock-capsule" style="color: #C4B5FD; border-color: rgba(139,92,246,0.3);">2 个执行分支</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;">
+            <span>💡 提示：点击上方按钮，观察同一流程在“业务卡片”与“技术 DAG”之间的零延迟形态切换。</span>
+            <a href="./app" style="color: var(--brand-emerald); text-decoration: none; font-weight: 600;">去演练场试试真实流程 →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右栏：业务与研发协同 ROI 计算器 -->
+      <div class="fs-panel">
+        <div class="fs-panel-header">
+          <div class="fs-title">
+            <span>📈 团队协作降本增效 ROI 估算</span>
+          </div>
+          <span class="badge-diff after">业务自服务</span>
+        </div>
+
+        <div class="roi-calc">
+          <div class="roi-slider-group">
+            <div class="roi-slider-header">
+              <span>每月需交付的云运维/业务编排需求:</span>
+              <strong id="wf-count-label">25 条 / 月</strong>
+            </div>
+            <input type="range" class="roi-slider" id="wf-slider" min="5" max="100" value="25" step="5" oninput="recalcROI11()" />
+          </div>
+
+          <div class="roi-slider-group">
+            <div class="roi-slider-header">
+              <span>涉及的业务/运维团队人数:</span>
+              <strong id="user-count-label">8 人</strong>
+            </div>
+            <input type="range" class="roi-slider" id="user-slider" min="2" max="50" value="8" step="1" oninput="recalcROI11()" />
+          </div>
+
+          <div class="roi-results-grid">
+            <div class="roi-stat-item">
+              <div class="roi-stat-val" id="roi-hours">128 h</div>
+              <div class="roi-stat-label">每月节省研发联调</div>
+            </div>
+            <div class="roi-stat-item">
+              <div class="roi-stat-val" id="roi-days">85 %</div>
+              <div class="roi-stat-label">交付周期缩短</div>
+            </div>
+            <div class="roi-stat-item">
+              <div class="roi-stat-val" id="roi-money">¥6.4 万</div>
+              <div class="roi-stat-label">每月净降本人力</div>
+            </div>
+          </div>
+
+          <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 6px;">
+            ✦ 计算口径：传统模式下业务提单沟通与研发排期平均需 3.5 天，引入 1.1.0 业务卡片与内置云模板后，业务专家可直接自助拼装，研发仅需负责 API 注册，效率提升超 85%。节省工时 = 需求数 × 4.3h（研发联调）+ 团队人数 × 2.5h（沟通与排期等待）；折算按 500 元/小时。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 核心成效数据横幅 -->
+    <section class="impact-strip">
+      <div class="impact-card">
+        <div class="impact-num">8 大</div>
+        <div class="impact-sub">内置开箱即用场景模板</div>
+        <div class="impact-desc">云主机生命周期、自动扩容、灾备快照、定时关机省电等全预置</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">100%</div>
+        <div class="impact-sub">双向无损状态保真转换</div>
+        <div class="impact-desc">StepModel 与 Conductor 原生 DAG 毫秒互转，结构零丢失</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">0 泄漏</div>
+        <div class="impact-sub">生产级敏感脱敏提炼</div>
+        <div class="impact-desc">智能识别 IP、Token、密码、机密 ID，一键提炼共享模板</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">3 秒</div>
+        <div class="impact-sub">生活化故事线自愈定位</div>
+        <div class="impact-desc">告别 502/Timeout 堆栈报错，清晰流水账白话诊断与修复建议</div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         L2 Bento 核心架构与功能突破拆解
+         ======================================================================== -->
+    <section>
+      <div class="section-head">
+        <div class="section-eyebrow">FEATURE SHOWCASE</div>
+        <h2 class="section-title">v1.1.0 五大核心产品支柱</h2>
+        <p class="section-desc">让复杂的分布式微服务工作流变成人人可用的乐高积木，同时保持专业工程师所需的工业级控制精度。</p>
+      </div>
+
+      <div class="bento-grid">
+        <!-- 支柱 1：业务卡片流与双模无损同屏热切换 -->
+        <div class="bento-card span-2">
+          <span class="bento-badge green">🌟 业务模式与卡片流 (StepFlow)</span>
+          <h3>从拓扑连线到直观业务步骤，双模无缝互通</h3>
+          <p>针对传统流程图“节点密集如蜘蛛网、参数深埋在 JSON 里”的痛点，创新推出 StepModel 架构。将复杂微服务流程解构为清晰的业务卡片流，支持步骤自由拖拽重排、条件分支折叠、并行泳道与循环容器。在页面右上角一键切换，开发者与业务人员使用同一份数据源协同。</p>
+
+          <div class="bento-inner-box" style="display: flex; gap: 1rem; align-items: center; justify-content: space-around; flex-wrap: wrap;">
+            <div style="text-align: center;">
+              <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">👔</div>
+              <div style="font-weight: 700; color: #A7F3D0;">普通使用者模式</div>
+              <div style="font-size: 0.72rem; color: #94A3B8;">卡片流 / 数据胶囊 / 业务语言</div>
+            </div>
+            <div style="font-size: 1.2rem; color: var(--brand-emerald);">⇄ 无损互通 ⇄</div>
+            <div style="text-align: center;">
+              <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">💻</div>
+              <div style="font-weight: 700; color: #93C5FD;">专业开发者模式</div>
+              <div style="font-size: 0.72rem; color: #94A3B8;">完整 DAG / JSON / 表达式 / 算力编排</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 支柱 2：云平台业务动作库与参数胶囊 -->
+        <div class="bento-card">
+          <span class="bento-badge cyan">☁️ 云平台开箱即用</span>
+          <h3>内置常见云运维动作库与参数胶囊</h3>
+          <p>首发完整对接类阿里云云主机 ECS 全生命周期动作：创建实例、启停机、规格升降级、打快照备份、重装系统、释放资源等。参数支持数据胶囊一键引用上游输出，杜绝手敲失误。</p>
+          <div class="bento-inner-box">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between;"><span>🖥️ ecs.create</span><span style="color:#6EE7B7;">创建云主机</span></div>
+              <div style="display: flex; justify-content: space-between;"><span>📸 ecs.create_snapshot</span><span style="color:#6EE7B7;">创建磁盘快照</span></div>
+              <div style="display: flex; justify-content: space-between;"><span>⚙️ ecs.modify_spec</span><span style="color:#6EE7B7;">平滑升降规格</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 支柱 3：高级控制流容器化卡片 -->
+        <div class="bento-card">
+          <span class="bento-badge purple">🔀 高级控制流容器</span>
+          <h3>分支路由、并行泳道与循环迭代</h3>
+          <p>彻底解决传统卡片流无法表达分支与循环的难题。分支 Tab 切换、并行泳道多路并发、Do-While 循环体内嵌任务序列，全部具备内置防死循环保护与自适应主题配色。</p>
+          <div class="bento-inner-box" style="font-family: var(--font-mono); font-size: 0.75rem;">
+            <div style="color: #C4B5FD;">🔀 DECISION: 条件多分支 Tabs 切换</div>
+            <div style="color: #6EE7B7; margin-top: 4px;">⚡ FORK_JOIN: 多泳道同时并发</div>
+            <div style="color: #FBBF24; margin-top: 4px;">🔁 DO_WHILE: 循环迭代体 + 熔断保护</div>
+          </div>
+        </div>
+
+        <!-- 支柱 4：生产实例一键脱敏提炼工具链 -->
+        <div class="bento-card">
+          <span class="bento-badge green">🪄 生产模板提炼</span>
+          <h3>一键脱敏线上实例，沉淀业务资产</h3>
+          <p>通过强大的 TemplateExtractor，只需一键即可把生产环境或演练场中运行过的复杂流程提炼为规范模板。智能识别内网 IP、API 密钥、用户密码并自动生成占位符与安全指引。</p>
+          <div class="bento-inner-box" style="font-size: 0.75rem;">
+            <div style="color: #FB7185;">- "privateIp": "10.120.44.12"</div>
+            <div style="color: #34D399;">+ "privateIp": "${workflow.input.targetIp}"</div>
+            <div style="margin-top: 4px; color: #94A3B8;">✓ 自动生成入参声明与场景价值主张</div>
+          </div>
+        </div>
+
+        <!-- 支柱 5：运行故事线时间轴与生活化诊断 -->
+        <div class="bento-card">
+          <span class="bento-badge orange">📖 运行故事线</span>
+          <h3>告别冷冰冰报错，生活化白话诊断</h3>
+          <p>运行态新增“业务故事线”视图。用生活化的流水账展示“xx点xx分创建了云主机并打好快照”。当节点失败时，AI 诊断引擎给出生活化故障原因与可落地的自愈修复建议。</p>
+          <div class="bento-inner-box" style="font-size: 0.75rem; border-left: 3px solid #F59E0B;">
+            <div style="color: #FBBF24; font-weight: 700;">⚠️ 快照打标失败 (生活化诊断)</div>
+            <div style="color: #E2E8F0; margin-top: 2px;">磁盘处于只读锁定状态，建议在释放前检查挂载点进程占用并重试。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         历史版本功能保留与承前启后
+         ======================================================================== -->
+    <section class="history-card-box">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem;">
+          <span style="font-size: 1.2rem;">📜</span>
+          <h3 style="font-size: 1.15rem; color: #FFF;">v1.0.0 确定性工程核心支柱全面传承</h3>
+        </div>
+        <p style="font-size: 0.85rem; color: #94A3B8; max-width: 750px; line-height: 1.6;">
+          v1.1.0 完美继承了 v1.0.0 建立的工业级底座：<strong>W-LSP 确定性语言补全</strong>、<strong>浏览器端 0ms 本地沙箱推演与故障注入</strong>、<strong>并发甘特图时间旅行调试器</strong>、<strong>画布 Cmd+K 原生 AI 微调与 Shadow Graph 视觉 Diff</strong>。您可以随时按需在经典开发者模式中使用。
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <a href="./v1-0.html" class="ghost-btn" style="white-space: nowrap;">
+          📖 查阅 v1.0 历史首发宣传专页 →
+        </a>
+      </div>
+    </section>
+
+    <!-- ========================================================================
+         版本演进功能矩阵：传统 vs 1.0 vs 1.1
+         ======================================================================== -->
+    <section class="compare-section">
+      <div class="section-head" style="margin-bottom: 1.5rem;">
+        <div class="section-eyebrow">EVOLUTION MATRIX</div>
+        <h2 class="section-title">产品进化全景对照</h2>
+      </div>
+
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>传统工作流编排工具</th>
+            <th>v1.0.0 (确定性工程 IDE)</th>
+            <th>v1.1.0 (双模全融合新标杆)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>用户受众群体</strong></td>
+            <td>仅限熟悉后端 JSON 的资深工程师</td>
+            <td>面向前后端研发工程师与架构师</td>
+            <td style="color:#6EE7B7;"><strong>业务专家、运维人员、测试与开发全员协同</strong></td>
+          </tr>
+          <tr>
+            <td><strong>编排视觉形态</strong></td>
+            <td>扁平节点连线，大图乱如蜘蛛网</td>
+            <td>三级语义缩放 DAG + 分屏实时 JSON</td>
+            <td style="color:#6EE7B7;"><strong>👔 业务卡片流 + 💻 开发者 DAG 同屏热切换</strong></td>
+          </tr>
+          <tr>
+            <td><strong>云平台动作支持</strong></td>
+            <td>无内置，需逐个手写 HTTP/Shell 节点</td>
+            <td>支持 TaskSchema 校验与通用定义</td>
+            <td style="color:#6EE7B7;"><strong>内置类阿里云云主机、快照、升降配全生命周期动作库</strong></td>
+          </tr>
+          <tr>
+            <td><strong>高级控制流交互</strong></td>
+            <td>多路连线交织，循环体排布混乱</td>
+            <td>SWITCH 弹窗、DO_WHILE 头部胶囊</td>
+            <td style="color:#6EE7B7;"><strong>分支 Tabs 快速导航、并行泳道、循环体内嵌卡片容器</strong></td>
+          </tr>
+          <tr>
+            <td><strong>模板沉淀与共享</strong></td>
+            <td>手动导出 JSON，极易泄漏线上密钥/IP</td>
+            <td>无内置模板库，需手动导入</td>
+            <td style="color:#6EE7B7;"><strong>8 大场景模板开箱即用 + 生产实例一键脱敏提炼工具链</strong></td>
+          </tr>
+          <tr>
+            <td><strong>运行态排障诊断</strong></td>
+            <td>仅返回 502/Timeout 堆栈字符串</td>
+            <td>并发甘特瀑布流 + 毫秒级时间旅行回放</td>
+            <td style="color:#6EE7B7;"><strong>白话运行故事线 + 生活化诊断与自愈行动指南</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ========================================================================
+         快速接入代码区 (Quickstart SDK)
+         ======================================================================== -->
+    <section class="quickstart-box" id="quickstart">
+      <div class="section-head" style="margin-bottom: 1.5rem;">
+        <div class="section-eyebrow">DEVELOPER QUICKSTART</div>
+        <h2 class="section-title">30 秒集成至现有 React 项目</h2>
+        <p class="section-desc">一行导入即可获得开箱即用的业务卡片流与双模工作台。</p>
+      </div>
+
+      <div class="qs-tabs">
+        <button class="qs-tab active" onclick="switchQS11('business', this)">双模工作台 (WorkflowIDE)</button>
+        <button class="qs-tab" onclick="switchQS11('cloud', this)">注册自定义云动作 (Registry)</button>
+        <button class="qs-tab" onclick="switchQS11('extractor', this)">脱敏提炼工具 (Extractor)</button>
+      </div>
+
+      <div class="code-container">
+        <pre class="code-body" id="qs-code-body">import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';
+import '@yiyi_zhang/reactflow-ui/style.css';
+
+export function CloudOpsStudio() {
+  return (
+    &lt;div style={{ height: '100vh', width: '100vw' }}&gt;
+      &lt;WorkflowIDE
+        theme="dark"
+        themeColor="blue"
+        defaultUiMode="business" // 默认开启业务卡片流模式
+        onSave={(workflowDef) =&gt; {
+          // 保存为标准 Conductor 工作流定义
+          console.log('保存工作流:', workflowDef);
+        }}
+      /&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+        <button class="copy-code-btn" onclick="copyCode(this)">复制集成代码</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div style="margin-bottom: 1rem;">
+      <a href="./">⚡ v1.2.0 最新宣传页</a>
+      <a href="./v1-1.html">📜 v1.1.0 宣传页</a>
+      <a href="./v1-0.html">📜 v1.0.0 历史首发页</a>
+      <a href="./app">🎮 在线演练场</a>
+      <a href="https://github.com/yiyisf/reactflow-ui" target="_blank" rel="noreferrer">GitHub 仓库</a>
+      <a href="https://www.npmjs.com/package/@yiyi_zhang/reactflow-ui" target="_blank" rel="noreferrer">npm 包主页</a>
+    </div>
+    <div>
+      © 2026 Conductor Workflow IDE (@yiyi_zhang/reactflow-ui). All rights reserved.
+    </div>
+  </footer>
+
+  <script>
+    // 命令行切换
+    const pmCmds = {
+      npm: 'npm install @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom',
+      pnpm: 'pnpm add @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom',
+      yarn: 'yarn add @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom',
+      import: "import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';\nimport '@yiyi_zhang/reactflow-ui/style.css';"
+    };
+
+    function switchPM(key, btn) {
+      document.querySelectorAll('.pm-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('cli-cmd').textContent = pmCmds[key];
+    }
+
+    function copyInstall(btn) {
+      const cmd = document.getElementById('cli-cmd').textContent;
+      navigator.clipboard.writeText(cmd);
+      const orig = btn.textContent;
+      btn.textContent = "✓ 已复制";
+      setTimeout(() => btn.textContent = orig, 1500);
+    }
+
+    // 交互式小部件切换预览
+    function switchLiveMode(mode) {
+      const bTab = document.getElementById('tab-business');
+      const pTab = document.getElementById('tab-pro');
+      const vp = document.getElementById('viewport-content');
+
+      if (mode === 'business') {
+        bTab.classList.add('active');
+        pTab.classList.remove('active');
+        vp.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="mock-step-card">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.2rem;">🖥️</span>
+                <div>
+                  <div style="font-weight: 700; color: #F8FAFC;">1. 创建高可用云主机 ECS</div>
+                  <div style="font-size: 0.72rem; color: #94A3B8;">按需配置规格 · 自动绑定安全组</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <span class="mock-capsule">ecs.c7.xlarge</span>
+                <span class="mock-capsule" style="color: #6EE7B7; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1);">vpc-cn-hangzhou</span>
+              </div>
+            </div>
+
+            <div class="mock-step-card" style="border-left: 3px solid #10B981;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.2rem;">📸</span>
+                <div>
+                  <div style="font-weight: 700; color: #F8FAFC;">2. 生产发布前安全快照</div>
+                  <div style="font-size: 0.72rem; color: #94A3B8;">关联第 1 步实例 ID · 容灾秒级备份</div>
+                </div>
+              </div>
+              <div>
+                <span class="mock-capsule">🔗 \${step_1.output.instanceId}</span>
+              </div>
+            </div>
+
+            <div class="mock-step-card" style="border: 1px dashed rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.05);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.2rem;">🔀</span>
+                <div>
+                  <div style="font-weight: 700; color: #C4B5FD;">3. 自动化条件分支判定 (DECISION)</div>
+                  <div style="font-size: 0.72rem; color: #94A3B8;">环境标识: 生产 (PROD) 审批 ⇄ 研发 (DEV) 直通</div>
+                </div>
+              </div>
+              <span class="mock-capsule" style="color: #C4B5FD; border-color: rgba(139,92,246,0.3);">2 个执行分支</span>
+            </div>
+          </div>
+        `;
+      } else {
+        pTab.classList.add('active');
+        bTab.classList.remove('active');
+        vp.innerHTML = `
+          <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 0.74rem;">
+            <div style="color: #64748B;">// Conductor Native Workflow Definition (JSON 严格对齐)</div>
+            <div style="background: #06080F; padding: 0.75rem; border-radius: 6px; border: 1px solid #1E293B; line-height: 1.5;">
+              <span style="color: #F43F5E;">"tasks"</span>: [<br/>
+              &nbsp;&nbsp;{ <span style="color: #38BDF8;">"taskReferenceName"</span>: <span style="color: #A7F3D0;">"create_ecs_instance"</span>, <span style="color: #38BDF8;">"type"</span>: <span style="color: #FBBF24;">"SIMPLE"</span> },<br/>
+              &nbsp;&nbsp;{ <span style="color: #38BDF8;">"taskReferenceName"</span>: <span style="color: #A7F3D0;">"disk_snapshot_backup"</span>, <span style="color: #38BDF8;">"type"</span>: <span style="color: #FBBF24;">"SIMPLE"</span>,<br/>
+              &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #38BDF8;">"inputParameters"</span>: { <span style="color: #38BDF8;">"instanceId"</span>: <span style="color: #34D399;">"\${create_ecs_instance.output.instanceId}"</span> } },<br/>
+              &nbsp;&nbsp;{ <span style="color: #38BDF8;">"taskReferenceName"</span>: <span style="color: #A78BFA;">"env_route_decision"</span>, <span style="color: #38BDF8;">"type"</span>: <span style="color: #FBBF24;">"DECISION"</span>,<br/>
+              &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #38BDF8;">"caseExpression"</span>: <span style="color: #34D399;">"true ? 'PROD' : 'DEV'"</span> }<br/>
+              ]
+            </div>
+            <div style="color: #38BDF8; font-size: 0.72rem; margin-top: 4px;">✓ DAG 拓扑、数据血缘与 LSP 语法校验实时就绪</div>
+          </div>
+        `;
+      }
+    }
+
+    // ROI 动态估算
+    function recalcROI11() {
+      const wfs = parseInt(document.getElementById('wf-slider').value, 10);
+      const users = parseInt(document.getElementById('user-slider').value, 10);
+      document.getElementById('wf-count-label').textContent = wfs + ' 条 / 月';
+      document.getElementById('user-count-label').textContent = users + ' 人';
+
+      // 口径：每条需求节省研发联调 4.3h；每位业务/运维人员每月另省需求沟通与排期等待约 2.5h
+      const savedHours = Math.round(wfs * 4.3 + users * 2.5);
+      const savedMoney = (savedHours * 0.05).toFixed(1);
+
+      document.getElementById('roi-hours').textContent = savedHours + ' h';
+      document.getElementById('roi-money').textContent = '¥' + savedMoney + ' 万';
+    }
+
+    // 代码标签切换
+    const codeSnippets = {
+      business: `import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';
+import '@yiyi_zhang/reactflow-ui/style.css';
+
+export function CloudOpsStudio() {
+  return (
+    <div style={{ height: '100vh', width: '100vw' }}>
+      <WorkflowIDE
+        theme="dark"
+        themeColor="blue"
+        defaultUiMode="business" // 默认开启业务卡片流模式
+        onSave={(workflowDef) => {
+          // 保存为标准 Conductor 工作流定义
+          console.log('保存工作流:', workflowDef);
+        }}
+      />
+    </div>
+  );
+}`,
+      cloud: `import { defaultActionRegistry } from '@yiyi_zhang/reactflow-ui';
+
+// 注册团队内部自定义云动作（如内部私有云主机、负载均衡等）
+defaultActionRegistry.registerAction({
+  id: 'corp.cloud.create_node',
+  name: '创建私有算力节点',
+  category: 'cloud_ecs',
+  icon: '⚡',
+  description: '调用内网管控平面分配独享裸金属算力服务器',
+  params: [
+    { key: 'nodeType', label: '节点规格', type: 'select', options: ['G8.4x', 'A100.8x'] },
+    { key: 'clusterId', label: '目标机房集群', type: 'string', required: true }
+  ]
+});`,
+      extractor: `import { extractTemplateFromWorkflow } from '@yiyi_zhang/reactflow-ui';
+
+// 将线上真实运行实例一键脱敏提炼为团队公共模板
+const sanitizedTemplate = extractTemplateFromWorkflow(productionWorkflowDef, {
+  name: '企业云主机生命周期自动化模板',
+  category: 'cloud_ecs',
+  anonymizeIps: true,      // 自动脱敏内网与公网 IP
+  anonymizeTokens: true,   // 自动脱敏密钥与密码
+});
+
+console.log('已提取安全脱敏模板:', sanitizedTemplate);`
+    };
+
+    function switchQS11(key, btn) {
+      document.querySelectorAll('.qs-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('qs-code-body').textContent = codeSnippets[key];
+    }
+
+    function copyCode(btn) {
+      const code = document.getElementById('qs-code-body').textContent;
+      navigator.clipboard.writeText(code);
+      const orig = btn.textContent;
+      btn.textContent = "✓ 已复制代码";
+      setTimeout(() => btn.textContent = orig, 1500);
+    }
+  </script>
+</body>
+</html>

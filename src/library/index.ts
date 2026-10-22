@@ -14,3 +14,5 @@ export {
   schemaToTypeStrings,
 } from './projections';
 export { useLibraryCatalogSnapshot, useLibraryCatalogLoader } from './useLibraryCatalog';
+export { createConductorLibraryProvider } from './conductorProvider';
+export type { ConductorLibraryProviderOptions } from './conductorProvider';

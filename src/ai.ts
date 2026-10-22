@@ -46,6 +46,10 @@ export type {
 export { LibraryCatalog } from './library/catalog';
 export type { LibraryEntry, LibraryCatalogSnapshot, LibraryCatalogOptions } from './library/catalog';
 export { toActions, toTaskSchemas, toLibraryItems } from './library/projections';
+export { parseWorkflowName, validateWorkflowName } from './library/naming';
+export type { ParsedWorkflowName, WorkflowNameType } from './library/naming';
+export { createConductorLibraryProvider } from './library/conductorProvider';
+export type { ConductorLibraryProviderOptions } from './library/conductorProvider';
 export { DEFAULT_PROMPT_CATALOG_LIMIT } from './services/ai/systemPrompt';
 
 // ── 审计事件 ────────────────────────────────────────────────────────────────

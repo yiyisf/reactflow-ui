@@ -34,9 +34,10 @@ const DEFAULT_DRAFT: TaskDraftMock = {
 };
 
 export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, onClose }) => {
-    const { workflowDef, theme, runLocalSandboxDryRun } = useWorkflowStore(useShallow((s) => ({
+    const { workflowDef, theme, themeColor, runLocalSandboxDryRun } = useWorkflowStore(useShallow((s) => ({
             workflowDef: s.workflowDef,
             theme: s.theme,
+            themeColor: s.themeColor,
             runLocalSandboxDryRun: s.runLocalSandboxDryRun,
         })));
     const isLight = theme === 'light';
@@ -238,6 +239,8 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
 
     return createPortal(
         <div
+            data-mode={theme}
+            data-brand={themeColor}
             style={{
                 position: 'fixed',
                 inset: 0,

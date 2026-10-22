@@ -46,6 +46,7 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
     aiLoading = false,
 }) => {
     const theme = useWorkflowStore((s) => s.theme);
+    const themeColor = useWorkflowStore((s) => s.themeColor);
     const [activeCategory, setActiveCategory] = useState<'all' | 'upstream' | 'workflow_input' | 'variable' | 'system'>('all');
     const [query, setQuery] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
@@ -166,6 +167,8 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
             <div className="suggester-overlay" onClick={onClose} />
             <div
                 className={`parameter-suggester-popover glass-panel ${isLight ? 'theme-light' : 'theme-dark'}`}
+                data-mode={theme}
+                data-brand={themeColor}
                 style={style}
                 onKeyDown={handleKeyDown}
             >

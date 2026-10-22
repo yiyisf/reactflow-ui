@@ -22,11 +22,14 @@ import type { UseBoundStore, StoreApi } from 'zustand';
 import type { AiStore } from './aiStore';
 import type { LibraryStore } from './libraryStore';
 import type { ToolRegistry } from '../services/ai/toolRegistry';
+import type { LibraryCatalog } from '../library/catalog';
 
 export interface IdeStores {
     aiStore: UseBoundStore<StoreApi<AiStore>>;
     libraryStore: UseBoundStore<StoreApi<LibraryStore>>;
     toolRegistry: ToolRegistry;
+    /** 本实例的流程库目录（LibraryProvider 规范化后的单一数据源）；每个实例独立，不是全局单例 */
+    libraryCatalog?: LibraryCatalog;
 }
 
 const IdeStoresContext = createContext<IdeStores | null>(null);

@@ -33,6 +33,21 @@ export type { TaskSchema } from './services/ai/schemaRegistry';
 // ── 工作流库 ────────────────────────────────────────────────────────────────
 export type { WorkflowLevel, WorkflowLibraryItem, WorkflowLibraryDetail } from './types/workflowLibrary';
 
+// ── 流程库数据源（LibraryProvider）：与主入口同源，供仅引入 /ai 的集成方使用 ──
+export type {
+    LibraryProvider,
+    LibraryExtension,
+    LibraryWorkflowRecord,
+    LibraryTaskRecord,
+    LibraryListResult,
+    LibrarySearchOptions,
+    LibraryLoadStatus,
+} from './library/types';
+export { LibraryCatalog } from './library/catalog';
+export type { LibraryEntry, LibraryCatalogSnapshot, LibraryCatalogOptions } from './library/catalog';
+export { toActions, toTaskSchemas, toLibraryItems } from './library/projections';
+export { DEFAULT_PROMPT_CATALOG_LIMIT } from './services/ai/systemPrompt';
+
 // ── 审计事件 ────────────────────────────────────────────────────────────────
 export type { AiEvent, AiEventType } from './types/aiEvents';
 

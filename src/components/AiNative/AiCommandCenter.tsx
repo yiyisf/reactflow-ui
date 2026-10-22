@@ -24,10 +24,15 @@ import WorkflowRunCard from './WorkflowRunCard';
 import type { ExecutionActions } from '../../types/workflow';
 import type { AiEvent } from '../../types/aiEvents';
 import LibraryPanel from './LibraryPanel';
+import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
 
 interface AiCommandCenterProps {
     systemPrompt?: string;
     systemPromptExtra?: string;
+    /** 流程库目录注入提示词的条数上限（缺省 50） */
+    promptCatalogLimit?: number;
+    /** 任务 Schema 注入提示词的条数上限（缺省不限制） */
+    promptSchemaLimit?: number;
     showConfigButton?: boolean;
     onShowConfig: () => void;
     executionActions?: ExecutionActions;
@@ -238,6 +243,8 @@ function buildNodeChips(
 const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     systemPrompt,
     systemPromptExtra,
+    promptCatalogLimit,
+    promptSchemaLimit,
     showConfigButton = true,
     onShowConfig,
     executionActions,
@@ -251,7 +258,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     onAccept,
     onReject,
 }) => {
-    const { aiStore, libraryStore, toolRegistry } = useIdeStores();
+    const { aiStore, libraryStore, toolRegistry, libraryCatalog } = useIdeStores();
+    // 订阅目录状态：配置了 Provider 时，即使目录尚未加载完成 / 加载失败也显示「工作流库」标签页
+    useLibraryCatalogSnapshot(libraryCatalog);
     const {
         messages,
         isStreaming,
@@ -304,9 +313,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     // AgentRunner owns the agentic loop; options can change every render (props),
     // so a "latest" ref feeds them to the runner without recreating the instance.
-    const optionsRef = useRef<AgentRunnerOptions>({ systemPrompt, systemPromptExtra, aiPermissions, onAiEvent });
-    optionsRef.current = { systemPrompt, systemPromptExtra, aiPermissions, onAiEvent };
-    const [runner] = useState(() => new AgentRunner(() => optionsRef.current, { aiStore, libraryStore, toolRegistry }));
+    const optionsRef = useRef<AgentRunnerOptions>({ systemPrompt, systemPromptExtra, aiPermissions, onAiEvent, promptCatalogLimit, promptSchemaLimit });
+    optionsRef.current = { systemPrompt, systemPromptExtra, aiPermissions, onAiEvent, promptCatalogLimit, promptSchemaLimit };
+    const [runner] = useState(() => new AgentRunner(() => optionsRef.current, { aiStore, libraryStore, toolRegistry, libraryCatalog }));
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -440,7 +449,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     }, [popUndo, onAiEvent]);
 
     const welcomeChips = buildWelcomeChips(!!workflowDef, libraryItems);
-    const hasLibrary = libraryItems.length > 0;
+    const hasLibrary = libraryItems.length > 0 || !!libraryCatalog?.hasProvider();
     const noApiKey = !config.apiKey && !config.transport && showConfigButton;
     // D3: show template gallery when canvas is empty and only welcome msg exists
     const showTemplates = !workflowDef && messages.length === 1 && messages[0].id === 'welcome' && libraryItems.length === 0;

@@ -63,15 +63,22 @@ class SchemaRegistry {
         return this.schemas.size > 0;
     }
 
-    buildPromptSection(): string | null {
+    /**
+     * @param options.limit 最多注入的 Schema 条数（缺省不限制）。目录很大时用来控制提示词体积，
+     *                      超出部分提示改用 search_workflow_library 检索。
+     */
+    buildPromptSection(options?: { limit?: number }): string | null {
         if (!this.hasSchemas()) return null;
+        const all = this.getAll();
+        const limit = options?.limit;
+        const shown = limit !== undefined && all.length > limit ? all.slice(0, Math.max(0, Math.floor(limit))) : all;
 
         const lines: string[] = [
             '## 任务 Schema 注册表（数据流参考）',
             '以下任务的输入/输出字段已注册。生成 inputParameters 时请引用正确的上游输出字段（格式：`${taskRef.output.fieldName}`）。',
         ];
 
-        for (const schema of this.getAll()) {
+        for (const schema of shown) {
             const typeLabel = schema.taskType ? `(${schema.taskType})` : '';
             const desc = schema.description ? ` — ${schema.description}` : '';
             lines.push(`\n**${schema.taskName}** ${typeLabel}${desc}`);
@@ -88,6 +95,10 @@ class SchemaRegistry {
                     .join(', ');
                 lines.push(`- 输出: ${fields}`);
             }
+        }
+
+        if (shown.length < all.length) {
+            lines.push(`\n（另有 ${all.length - shown.length} 个任务的 Schema 未在此列出，引用前可调用 search_workflow_library 查询）`);
         }
 
         return lines.join('\n');

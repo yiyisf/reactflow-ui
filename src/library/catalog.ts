@@ -102,6 +102,7 @@ export class LibraryCatalog {
   private listeners = new Set<() => void>();
   /** 每次 load / setProvider 递增，用于丢弃过期的异步结果 */
   private generation = 0;
+  private controller: AbortController | null = null;
   private snapshot: LibraryCatalogSnapshot = { status: 'idle', revision: 0 };
 
   constructor(provider?: LibraryProvider, options: LibraryCatalogOptions = {}) {
@@ -118,6 +119,8 @@ export class LibraryCatalog {
     if (provider === this.provider) return;
     this.provider = provider;
     this.generation++;
+    this.controller?.abort();
+    this.controller = null;
     this.providerEntries = [];
     this.providerTasks = [];
     this.versionCache.clear();
@@ -146,17 +149,27 @@ export class LibraryCatalog {
 
   /**
    * 拉取目录：同名多版本去重取最大 version。
-   * 过期（被新的 load / setProvider 取代）或已 abort 的结果会被丢弃；网络错误记为 error 状态，不抛出。
+   * 同一时刻只保留最新一次加载：新的 load / reload / setProvider / abort 会取消上一次（abort 其请求并丢弃其结果）；
+   * 传入的 signal 被 abort 时同样取消。网络错误记为 error 状态，不抛出。
    */
   async load(signal?: AbortSignal): Promise<void> {
     const provider = this.provider;
     if (!provider) return;
     const gen = ++this.generation;
+    this.controller?.abort();
+    const ctl = new AbortController();
+    this.controller = ctl;
+    const onOuterAbort = () => ctl.abort();
+    if (signal) {
+      if (signal.aborted) ctl.abort();
+      else signal.addEventListener('abort', onOuterAbort, { once: true });
+    }
     this.setState({ status: 'loading', error: undefined });
     try {
-      const result = await provider.list(signal);
-      if (gen !== this.generation || signal?.aborted) {
-        if (gen === this.generation) this.setState({ status: 'idle' });
+      const result = await provider.list(ctl.signal);
+      if (gen !== this.generation) return;
+      if (ctl.signal.aborted) {
+        this.setState({ status: 'idle' });
         return;
       }
       this.providerEntries = pickLatest(result.workflows.map((r) => entryFromRecord(r, 'provider', this.warnLossy)));
@@ -165,12 +178,29 @@ export class LibraryCatalog {
       this.setState({ status: 'ready', error: undefined });
     } catch (e) {
       if (gen !== this.generation) return;
-      if (signal?.aborted) {
+      if (ctl.signal.aborted) {
         this.setState({ status: 'idle' });
         return;
       }
       this.setState({ status: 'error', error: e instanceof Error ? e : new Error(String(e)) });
+    } finally {
+      signal?.removeEventListener('abort', onOuterAbort);
+      if (this.controller === ctl) this.controller = null;
     }
+  }
+
+  /** 重新加载（供 UI「点击重试」使用） */
+  reload(): Promise<void> {
+    return this.load();
+  }
+
+  /** 取消进行中的加载（组件卸载时调用）；已加载的数据保留 */
+  abort(): void {
+    if (!this.controller) return;
+    this.generation++;
+    this.controller.abort();
+    this.controller = null;
+    if (this.snapshot.status === 'loading') this.setState({ status: 'idle' });
   }
 
   // ── 读取 ────────────────────────────────────────────────────────────────

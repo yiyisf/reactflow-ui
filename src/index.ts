@@ -87,3 +87,8 @@ export { FriendlyErrorCard } from './components/business/FriendlyErrorCard';
 export type { FriendlyErrorCardProps } from './components/business/FriendlyErrorCard';
 export { RunStoryTimeline } from './components/business/RunStoryTimeline';
 export type { RunStoryTimelineProps } from './components/business/RunStoryTimeline';
+
+// ── 流程库数据源（LibraryProvider）：Provider 接口 / 目录 / 投影 ─────────────
+export * from './library';
+export type { WorkflowLevel, WorkflowLibraryItem } from './types/workflowLibrary';
+export type { TaskSchema } from './services/ai/schemaRegistry';

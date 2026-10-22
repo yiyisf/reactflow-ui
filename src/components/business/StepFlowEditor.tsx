@@ -14,6 +14,8 @@ import { ForkJoinCard } from './ForkJoinCard';
 import { LoopDoWhileCard } from './LoopDoWhileCard';
 import { RunStoryTimeline } from './RunStoryTimeline';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import type { LibraryCatalog } from '../../library/catalog';
+import type { WorkflowLevel } from '../../types/workflowLibrary';
 
 export interface StepFlowEditorProps {
   workflowDef: WorkflowDef | null;
@@ -21,6 +23,10 @@ export interface StepFlowEditorProps {
   registry?: ActionRegistry;
   readOnly?: boolean;
   workflowExecution?: WorkflowInstance;
+  /** 流程库目录（由 WorkflowIDE 按 libraryProvider 创建）：用于动作选择器状态与版本徽标 */
+  libraryCatalog?: LibraryCatalog;
+  /** 当前正在编辑的工作流层级：提供时选择器隐藏违反分层调用规则的流程库动作 */
+  currentWorkflowLevel?: WorkflowLevel;
 }
 
 export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
@@ -29,6 +35,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   registry = defaultActionRegistry,
   readOnly = false,
   workflowExecution,
+  libraryCatalog,
+  currentWorkflowLevel,
 }) => {
   // Synchronize internal BusinessWorkflowModel from WorkflowDef
   const model: BusinessWorkflowModel = useMemo(() => {
@@ -930,6 +938,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           stepNumber={insertModalIndex + 1}
           onClose={() => setInsertModalIndex(null)}
           onSelect={(action) => handleAddAction(action, insertModalIndex)}
+          currentWorkflowLevel={currentWorkflowLevel}
+          libraryCatalog={libraryCatalog}
         />
       )}
     </div>

@@ -9,6 +9,8 @@ export {
   toActionExtension,
   toTaskSchemas,
   toLibraryItems,
+  entriesToLibraryItems,
   filterPickableActions,
   schemaToTypeStrings,
 } from './projections';
+export { useLibraryCatalogSnapshot, useLibraryCatalogLoader } from './useLibraryCatalog';

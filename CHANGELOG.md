@@ -9,8 +9,14 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 ### Added
 - **流程库能力动作**：由 Conductor 标准 `WorkflowDef` / 已注册 `TaskDef` 生成业务动作（`buildActionFromWorkflowDef` 等），入参取自 `inputSchema`，出参取自 `outputSchema` / `outputParameters`；流程库能力编译为 `SUB_WORKFLOW`，步骤记录 `libraryRef`，**首次引用时固定版本，库升级后不自动跟随**，由用户确认后手动升级。
 - 分支 / 并行泳道 / 循环体内支持任意层级嵌套控制流。
+- **流程库数据源 `LibraryProvider`**（设计见 `docs/design/流程库数据源-LibraryProvider设计.md`）：新增公共层 `src/library`，同一份规范化目录（`LibraryCatalog`）投影为业务动作（`toActions`）、AI 任务 Schema（`toTaskSchemas`）与 AI 流程库目录（`toLibraryItems`），不再需要宿主把同一批能力分别喂给 `actions` / `workflowLibrary` / `taskSchemas` 三处。版本统一规范化为整数；同名多版本取最大版本；历史版本按需获取并缓存。
+- **两个 IDE 新增 `libraryProvider` prop**：`WorkflowIDE` 将库内流程注册为业务动作；`AiWorkflowIDE` 合并进 AI 目录 / Schema / 检索工具。同名条目 Provider 优先于静态 prop；不传该 prop 时 `actions` / `workflowLibrary` / `taskSchemas` 行为不变。目录按 IDE 实例独立，`libraryProvider` 变化时重新加载，卸载时中止进行中的请求。
+- **`WorkflowIDE` 新增 `currentWorkflowLevel`**：提供后动作选择器隐藏违反分层调用规则的流程库动作（L1 不显示 L2/L3，L2 不显示 L3）；已下线条目不出现在选择器中，已引用的步骤照常显示与编译。动作选择器与 `LibraryPanel` 显示「加载中 / 加载失败，点击重试」，失败不阻塞编辑。
+- **`AiWorkflowIDE` 新增 `promptCatalogLimit`**（默认 50）：流程库目录注入系统提示词按层级 L3 → L1 截断，超出部分提示 AI 改用 `search_workflow_library`；Provider 实现了 `search` 时检索走服务端，否则在本地目录内匹配（结果最多展示 50 条）。
 
 ### Fixed
+- **AI 生成的子工作流不再随意填版本**：此前 `workflowSynthesizer` 对缺少版本的 `SUB_WORKFLOW` 一律填 `t.version ?? 1`；现在新建引用固定为流程库目录的当前最新版本（目录没有该流程时保持原行为并提示）。已有版本号以及画布上已存在的步骤一律不会被自动改变。
+- `LibraryPanel` 插入子工作流时不再把 `"1.2.0"` 这类版本串错误解析成 `120`。
 - 业务模式：宣传页版本入口收进下拉；ROI 估算现在包含团队人数；模板中心弹窗跟随系统主题。
 - 业务卡片：步骤 ID 不再随时间变化（此前每次编辑都会重建卡片、收起展开项、丢失输入焦点）。
 

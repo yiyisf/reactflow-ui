@@ -8,7 +8,7 @@ import type { SchemaDef, WorkflowDef } from '../types/conductor';
 import { parseWorkflowInputParams } from '../types/conductor';
 import type { WorkflowLevel, WorkflowLibraryItem } from '../types/workflowLibrary';
 import type { TaskSchema } from '../services/ai/schemaRegistry';
-import type { LibraryCatalog } from './catalog';
+import type { LibraryCatalog, LibraryEntry } from './catalog';
 import type { LibraryExtension } from './types';
 import { canCallLevel } from './level';
 
@@ -128,8 +128,12 @@ export function toTaskSchemas(catalog: LibraryCatalog): TaskSchema[] {
  * - 已下线条目不输出
  */
 export function toLibraryItems(catalog: LibraryCatalog): WorkflowLibraryItem[] {
-  return catalog
-    .entries()
+  return entriesToLibraryItems(catalog.entries());
+}
+
+/** 目录条目 → 旧版 WorkflowLibraryItem（规则同 toLibraryItems；也用于服务端检索命中的转换） */
+export function entriesToLibraryItems(entries: LibraryEntry[]): WorkflowLibraryItem[] {
+  return entries
     .filter((e) => !e.deprecated)
     .map((e) => ({
       workflowName: e.name,

@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-  <title>[Product Launch] Conductor Workflow IDE v1.1.0 GA · 双模全融合 · 让每个人都能驾驭云平台工作流</title>
+  <meta name="description" content="Conductor Workflow IDE v1.2.0：流程库就绪。标准能力一次沉淀，处处安全复用——LibraryProvider、版本固定与升级差异、业务域与分层、一个数据源两个 IDE。" />
+  <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+  <title>Conductor Workflow IDE v1.2.0 · 流程库就绪 · 标准能力一次沉淀，处处安全复用</title>
   <style>
-    /* ==========================================================================
-       STYLE: Bento Launchpad v1.1.0 (现代暗黑流光发布风 · 业务与技术全融合)
-       SCENARIO: Conductor Workflow IDE (@yiyi_zhang/reactflow-ui) v1.1.0 GA 正式发布页
-       ========================================================================== */
+    /* STYLE: Bento Launchpad（沿用 v1.1.0 视觉语言与令牌，v1.2.0 叙事：流程库就绪） */
     :root {
       --bg-dark: #06080F;
       --bg-card: #0E1322;
@@ -843,625 +841,822 @@
       .bento-card.span-2 { grid-column: span 1; }
       .hero-title { font-size: 2.2rem; }
     }
+
+    /* ==========================================================================
+       v1.2.0 新增：无障碍与新组件（沿用 1.1 的 Bento Launchpad 令牌与组件）
+       ========================================================================== */
+    :root { --text-muted: #8493AA; } /* 提亮次要文字，保证小字号对比度 >= 4.5:1 */
+
+    html { scroll-behavior: smooth; }
+    img, svg { max-width: 100%; }
+    h1, h2, h3, h4, p, li { overflow-wrap: anywhere; }
+
+    .skip-link {
+      position: absolute; left: 1rem; top: -4rem; z-index: 400;
+      background: var(--brand-emerald); color: #04130F; font-weight: 800;
+      padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none;
+    }
+    .skip-link:focus { top: 0.75rem; }
+
+    :focus-visible { outline: 2px solid #34D399; outline-offset: 2px; border-radius: 4px; }
+
+    .nav-tagline { color: var(--text-muted); font-size: 0.8rem; }
+    .section { margin-bottom: 4.5rem; scroll-margin-top: 5rem; }
+    .hero-section { margin-bottom: 3rem; }
+    .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.6rem; }
+    .cta-btn.lg { padding: 0.7rem 1.5rem; font-size: 0.92rem; display: inline-block; }
+    .ghost-btn.lg { padding: 0.68rem 1.3rem; font-size: 0.9rem; display: inline-block; }
+    .hero-adds {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; list-style: none; margin: 0 auto 1.6rem; max-width: 900px;
+    }
+    .hero-adds li {
+      font-size: 0.8rem; color: #CBD5E1; background: rgba(14, 19, 34, 0.9); border: 1px solid var(--border-dim);
+      padding: 0.3rem 0.8rem; border-radius: 999px;
+    }
+    .hero-adds li b { color: #6EE7B7; font-weight: 700; margin-right: 0.25rem; }
+    .hero-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.9rem; }
+    .install-shell #cli-cmd { word-break: break-all; text-align: left; }
+
+    .impact-strip { margin-bottom: 4.5rem; }
+    .impact-num { line-height: 1.2; }
+
+    .bento-grid { margin-bottom: 0; }
+    .bento-card p:last-child { margin-bottom: 0; }
+    .bento-card ul.tick { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-body); }
+    .bento-card ul.tick li { padding-left: 1.3rem; position: relative; line-height: 1.6; }
+    .bento-card ul.tick li::before { content: '✓'; position: absolute; left: 0; color: var(--brand-emerald); font-weight: 800; }
+    code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+    p code, li code, td code, dd code {
+      background: rgba(99, 102, 241, 0.14); color: #C7D2FE; padding: 0.05rem 0.38rem; border-radius: 4px; word-break: break-all;
+    }
+
+    /* 流水线：定义 → 动作 → SUB_WORKFLOW */
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 0.6rem; align-items: stretch; }
+    .pipe-box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.85rem; font-size: 0.78rem; color: var(--text-body); }
+    .pipe-box h4 { font-size: 0.82rem; color: var(--text-white); margin-bottom: 0.4rem; }
+    .pipe-box pre { font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
+    .pipe-arrow { align-self: center; color: var(--brand-emerald); font-size: 1.3rem; font-weight: 800; }
+    .form-line { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px dashed #1E293B; padding: 0.22rem 0; }
+    .form-line span:last-child { color: #A7F3D0; font-family: var(--font-mono); font-size: 0.72rem; }
+
+    /* 版本固定演示 */
+    .pin-demo { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 1.5rem; align-items: start; }
+    .pin-controls { display: flex; flex-direction: column; gap: 0.5rem; }
+    .pin-controls h3 { font-size: 1.15rem; margin-bottom: 0.2rem; }
+    .state-btn {
+      text-align: left; background: var(--bg-panel); border: 1px solid var(--border-dim); color: var(--text-body);
+      padding: 0.75rem 0.9rem; border-radius: 10px; cursor: pointer; font-size: 0.84rem; font-family: inherit;
+    }
+    .state-btn strong { display: block; color: var(--text-white); margin-bottom: 0.15rem; }
+    .state-btn[aria-pressed="true"] { border-color: rgba(16, 185, 129, 0.7); background: rgba(16, 185, 129, 0.1); }
+    .state-btn:hover { border-color: rgba(16, 185, 129, 0.45); }
+
+    .mock-app { background: #090D18; border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.1rem; position: relative; min-height: 22rem; }
+    .mock-app-bar { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.9rem; font-size: 0.72rem; color: var(--text-muted); }
+    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: #1E293B; display: inline-block; }
+    .mock-step { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.9rem; }
+    .mock-step-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .mock-step-title { font-weight: 700; color: var(--text-white); font-size: 0.95rem; }
+    .mock-step-name { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); width: 100%; word-break: break-all; }
+    .badge-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0; align-items: center; }
+    .lib-badge { font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; background: rgba(59, 130, 246, 0.14); color: #93C5FD; border: 1px solid rgba(59, 130, 246, 0.3); font-family: inherit; }
+    .lib-badge.up { border: 1px solid #F59E0B; background: rgba(245, 158, 11, 0.12); color: #FBBF24; cursor: pointer; }
+    .lib-badge.up:hover { background: rgba(245, 158, 11, 0.25); }
+    .lib-badge.bad { border: 1px solid #F43F5E; background: rgba(244, 63, 94, 0.12); color: #FB7185; }
+    .lib-badge.ok { border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.12); color: #6EE7B7; }
+    .mock-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.75rem; margin-bottom: 0.7rem; }
+    .mock-field { background: #0B1020; border: 1px solid #1E293B; border-radius: 6px; padding: 0.35rem 0.55rem; color: var(--text-body); }
+    .mock-field small { display: block; color: var(--text-muted); font-size: 0.66rem; }
+    .compile-box { background: #05070D; border: 1px solid #1E293B; border-radius: 8px; padding: 0.65rem 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
+    .compile-box .hl { color: #FBBF24; font-weight: 700; }
+    .pin-note { font-size: 0.78rem; color: var(--text-body); margin-top: 0.7rem; min-height: 2.6em; }
+
+    .mock-dialog {
+      position: absolute; inset: 1rem; z-index: 5; background: #0F172A; border: 1px solid #334155; border-radius: 12px;
+      padding: 1rem; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6); overflow: auto; display: none;
+    }
+    .mock-dialog.open { display: block; }
+    .mock-dialog h4 { font-size: 0.92rem; color: var(--text-white); margin-bottom: 0.5rem; line-height: 1.5; }
+    .diff-group { font-size: 0.78rem; font-weight: 700; margin: 0.7rem 0 0.3rem; }
+    .diff-group.impact { color: #FBBF24; }
+    .diff-group.plain { color: #93C5FD; }
+    .mock-dialog ul { list-style: none; font-size: 0.78rem; color: #CBD5E1; display: flex; flex-direction: column; gap: 0.3rem; }
+    .mock-dialog li { padding-left: 0.9rem; position: relative; line-height: 1.55; }
+    .mock-dialog li::before { content: '·'; position: absolute; left: 0.2rem; }
+    .tag-demo { font-size: 0.64rem; border: 1px solid #475569; color: #94A3B8; padding: 0 4px; border-radius: 3px; margin-left: 4px; white-space: nowrap; }
+    .dialog-foot { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.8rem; line-height: 1.55; }
+    .dialog-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.9rem; }
+    .mini-btn { font-family: inherit; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-dim); background: rgba(255, 255, 255, 0.06); color: var(--text-white); }
+    .mini-btn.primary { background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan)); color: #061816; border: none; }
+
+    /* 命名规范 + 分层选择器 */
+    .name-parse { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: stretch; list-style: none; margin: 0.6rem 0 1rem; }
+    .name-seg { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 8px; padding: 0.4rem 0.7rem; text-align: center; min-width: 4.2rem; }
+    .name-seg b { display: block; font-family: var(--font-mono); font-size: 0.9rem; color: #E2E8F0; font-weight: 700; }
+    .name-seg span { font-size: 0.68rem; color: var(--text-muted); }
+    .name-seg.c1 b { color: #A5B4FC; } .name-seg.c2 b { color: #FBBF24; } .name-seg.c3 b { color: #6EE7B7; } .name-seg.c4 b { color: #22D3EE; } .name-seg.c5 b { color: #F9A8D4; }
+    .name-sep { align-self: center; color: var(--text-muted); font-family: var(--font-mono); }
+    .domain-demo { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1.5rem; }
+    .level-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.6rem 0 0.9rem; font-size: 0.8rem; color: var(--text-body); }
+    .seg-btn { font-family: var(--font-mono); font-size: 0.76rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 7px; border: 1px solid var(--border-dim); background: var(--bg-panel); color: var(--text-body); cursor: pointer; }
+    .seg-btn[aria-pressed="true"] { background: rgba(16, 185, 129, 0.22); border-color: rgba(16, 185, 129, 0.6); color: #A7F3D0; }
+    .picker-groups { display: flex; flex-direction: column; gap: 0.7rem; }
+    .picker-group h4 { font-size: 0.74rem; color: var(--brand-cyan); letter-spacing: 0.04em; margin-bottom: 0.3rem; }
+    .picker-items { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; }
+    .picker-item { display: inline-flex; align-items: center; gap: 0.4rem; background: #131A2B; border: 1px solid #1E293B; border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--text-white); }
+    .lv { font-family: var(--font-mono); font-size: 0.65rem; padding: 0 5px; border-radius: 3px; font-weight: 700; }
+    .lv.L1 { background: rgba(16, 185, 129, 0.18); color: #6EE7B7; }
+    .lv.L2 { background: rgba(245, 158, 11, 0.18); color: #FBBF24; }
+    .lv.L3 { background: rgba(244, 63, 94, 0.18); color: #FB7185; }
+    .picker-status { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.8rem; min-height: 1.5em; }
+    .rule-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+    .rule-table th, .rule-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); }
+    .rule-table th { color: var(--text-white); }
+
+    /* 一个数据源，两个 IDE */
+    .fanout { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; }
+    .fan-center { background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(6, 182, 212, 0.16)); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 14px; padding: 1.1rem; text-align: center; }
+    .fan-center code { background: none; color: #A7F3D0; font-size: 1rem; font-weight: 700; padding: 0; }
+    .fan-center p { margin: 0.4rem 0 0; font-size: 0.78rem; }
+    .fan-col { display: flex; flex-direction: column; gap: 0.7rem; }
+    .fan-box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.8rem; font-size: 0.8rem; color: var(--text-body); }
+    .fan-box h4 { color: var(--text-white); font-size: 0.88rem; margin-bottom: 0.25rem; }
+    .fan-arrow { color: var(--brand-emerald); font-size: 1.4rem; font-weight: 800; text-align: center; }
+
+    /* 接入 */
+    .qs-tab { color: var(--text-body); }
+    .qs-note { font-size: 0.82rem; color: var(--text-body); margin-top: 1rem; line-height: 1.7; }
+    .qs-note a, .link-inline { color: #6EE7B7; }
+    .code-body { max-height: 30rem; overflow: auto; }
+    .two-col { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 1.5rem; }
+
+    /* 体验与质量 */
+    .quality-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; list-style: none; }
+    .q-item { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: var(--radius-md); padding: 1rem 1.1rem; }
+    .q-item h3 { font-size: 0.95rem; color: var(--text-white); margin-bottom: 0.3rem; display: flex; gap: 0.45rem; align-items: baseline; }
+    .q-item p { font-size: 0.8rem; color: var(--text-body); line-height: 1.6; }
+    .q-tag { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-muted); margin-top: 0.4rem; display: block; }
+
+    /* 接下来 */
+    .roadmap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; list-style: none; }
+    .rm-card { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: var(--radius-md); padding: 1.1rem; }
+    .rm-card .ver { font-family: var(--font-mono); font-weight: 800; color: #6EE7B7; font-size: 1rem; }
+    .rm-card h3 { font-size: 1.05rem; color: var(--text-white); margin: 0.2rem 0; }
+    .rm-card .when { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 0.5rem; }
+    .rm-card p { font-size: 0.8rem; color: var(--text-body); line-height: 1.6; }
+    .rm-card.labs { border-style: dashed; border-color: rgba(139, 92, 246, 0.5); }
+    .rm-card.labs .ver { color: #C4B5FD; }
+
+    /* 上手 */
+    .try-steps { counter-reset: s; list-style: none; display: flex; flex-direction: column; gap: 0.8rem; }
+    .try-steps li { counter-increment: s; position: relative; padding-left: 2.6rem; font-size: 0.88rem; color: var(--text-body); line-height: 1.7; }
+    .try-steps li::before {
+      content: counter(s); position: absolute; left: 0; top: 0.1rem; width: 1.8rem; height: 1.8rem; border-radius: 50%;
+      background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #A7F3D0; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
+    }
+    .try-steps strong { color: var(--text-white); }
+    .link-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+    .link-list a { display: block; background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 10px; padding: 0.7rem 0.9rem; color: var(--text-white); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+    .link-list a small { display: block; color: var(--text-muted); font-weight: 400; font-size: 0.74rem; margin-top: 0.1rem; }
+    .link-list a:hover { border-color: var(--brand-emerald); }
+
+    footer { padding: 2.5rem 1.5rem; }
+    footer a { display: inline-block; margin: 0.25rem 0.6rem; }
+    footer a { color: #A9B6CA; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .bento-card, .state-btn, .lib-badge { transition: border-color 0.2s, transform 0.2s, background 0.2s; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+      .bento-card:hover, .cta-btn:hover, .mock-step-card:hover { transform: none; }
+    }
+
+    @media (max-width: 960px) {
+      .pin-demo, .domain-demo, .two-col { grid-template-columns: 1fr; }
+      .quality-grid { grid-template-columns: repeat(2, 1fr); }
+      .roadmap-grid { grid-template-columns: repeat(2, 1fr); }
+      .pipeline { grid-template-columns: 1fr; }
+      .pipe-arrow { transform: rotate(90deg); justify-self: center; }
+      .fanout { grid-template-columns: 1fr; }
+      .fan-arrow { transform: rotate(90deg); }
+    }
+    @media (max-width: 640px) {
+      .launch-nav { padding: 0.6rem 1rem; }
+      .nav-tagline { display: none; }
+      .nav-left { flex-wrap: wrap; gap: 0.5rem; }
+      .container { padding: 1.5rem 1rem 3rem; }
+      .hero-title { font-size: 1.85rem; }
+      .hero-subtitle { font-size: 1rem; }
+      .section-title { font-size: 1.55rem; }
+      .impact-strip, .quality-grid, .roadmap-grid { grid-template-columns: 1fr; }
+      .impact-num { font-size: 1.9rem; }
+      .bento-card, .fs-panel, .quickstart-box { padding: 1.1rem; }
+      .mock-fields { grid-template-columns: 1fr; }
+      .install-shell { padding: 0.6rem; font-size: 0.78rem; }
+      .nav-right .cta-btn { padding: 0.4rem 0.8rem; font-size: 0.76rem; }
+      .mock-dialog { inset: 0.4rem; padding: 0.8rem; }
+    }
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
 
-  <!-- Sticky Top Nav -->
   <header class="launch-nav">
     <div class="nav-left">
-      <a href="./" class="brand-logo">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <a href="./" class="brand-logo" aria-label="Conductor Workflow IDE 首页">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
           <defs>
-            <linearGradient id="nav11-bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#064E3B" />
-              <stop offset="100%" stop-color="#090D18" />
-            </linearGradient>
-            <linearGradient id="nav11-bd" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#10B981" stop-opacity="0.8" />
-              <stop offset="100%" stop-color="#06B6D4" stop-opacity="0.5" />
-            </linearGradient>
-            <linearGradient id="nav11-top" x1="9" y1="16" x2="23" y2="10" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#34D399" />
-              <stop offset="100%" stop-color="#22D3EE" />
-            </linearGradient>
-            <linearGradient id="nav11-bot" x1="9" y1="16" x2="23" y2="22" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#10B981" />
-              <stop offset="100%" stop-color="#60A5FA" />
-            </linearGradient>
+            <linearGradient id="nav12-bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#064E3B" /><stop offset="100%" stop-color="#090D18" /></linearGradient>
+            <linearGradient id="nav12-bd" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10B981" stop-opacity="0.8" /><stop offset="100%" stop-color="#06B6D4" stop-opacity="0.5" /></linearGradient>
+            <linearGradient id="nav12-top" x1="9" y1="16" x2="23" y2="10" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399" /><stop offset="100%" stop-color="#22D3EE" /></linearGradient>
+            <linearGradient id="nav12-bot" x1="9" y1="16" x2="23" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10B981" /><stop offset="100%" stop-color="#60A5FA" /></linearGradient>
           </defs>
-          <rect x="1.25" y="1.25" width="29.5" height="29.5" rx="8" fill="url(#nav11-bg)" stroke="url(#nav11-bd)" stroke-width="1.5" />
-          <path d="M 9.5 16 C 15 16, 15.5 10, 22.5 10" stroke="url(#nav11-top)" stroke-width="2.4" stroke-linecap="round" />
-          <path d="M 9.5 16 C 15 16, 15.5 22, 22.5 22" stroke="url(#nav11-bot)" stroke-width="2.4" stroke-linecap="round" />
-          <circle cx="9.5" cy="16" r="3.4" fill="#10B981" />
-          <circle cx="9.5" cy="16" r="1.4" fill="#F8FAFC" />
-          <circle cx="22.5" cy="10" r="2.7" fill="#22D3EE" />
-          <circle cx="22.5" cy="22" r="2.7" fill="#60A5FA" />
+          <rect x="1.25" y="1.25" width="29.5" height="29.5" rx="8" fill="url(#nav12-bg)" stroke="url(#nav12-bd)" stroke-width="1.5" />
+          <path d="M 9.5 16 C 15 16, 15.5 10, 22.5 10" stroke="url(#nav12-top)" stroke-width="2.4" stroke-linecap="round" />
+          <path d="M 9.5 16 C 15 16, 15.5 22, 22.5 22" stroke="url(#nav12-bot)" stroke-width="2.4" stroke-linecap="round" />
+          <circle cx="9.5" cy="16" r="3.4" fill="#10B981" /><circle cx="9.5" cy="16" r="1.4" fill="#F8FAFC" />
+          <circle cx="22.5" cy="10" r="2.7" fill="#22D3EE" /><circle cx="22.5" cy="22" r="2.7" fill="#60A5FA" />
         </svg>
         <span>Conductor Workflow IDE</span>
       </a>
 
-      <!-- 版本切换胶囊 -->
       <details class="version-dropdown" id="version-dropdown">
-        <summary title="切换版本宣传页">⚡ v1.1.0 最新发布 <span class="vd-caret">▾</span></summary>
+        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.2.0">⚡ v1.2.0 最新发布 <span class="vd-caret" aria-hidden="true">▾</span></summary>
         <div class="vd-menu">
-          <a href="./" class="active" title="当前版本：v1.1.0 GA 业务全融合">⚡ v1.1.0 最新发布</a>
-          <a href="./v1-0.html" title="点击查阅 v1.0.0 确定性IDE历史首发页">📜 v1.0.0 历史回顾</a>
+          <a href="./" class="active" aria-current="page" title="当前版本：v1.2.0 流程库就绪">⚡ v1.2.0 最新发布</a>
+          <a href="./v1-1.html" title="查阅 v1.1.0 业务全融合宣传页">📜 v1.1.0 历史回顾</a>
+          <a href="./v1-0.html" title="查阅 v1.0.0 确定性 IDE 历史首发页">📜 v1.0.0 历史回顾</a>
         </div>
       </details>
 
-      <span style="color:var(--text-muted); font-size: 0.8rem;">双模全融合 · 云平台业务动作库 · 生产脱敏提炼 · 故事线自愈</span>
+      <span class="nav-tagline">流程库就绪 · 版本固定 · 业务域与分层 · 一个数据源两个 IDE</span>
     </div>
 
     <div class="nav-right">
-      <a href="./app" class="cta-btn">🎮 立即进入工作台演练 (/app)</a>
+      <a href="./app" class="cta-btn">🎮 进入工作台 (/app)</a>
     </div>
   </header>
 
-  <div class="container">
-    <!-- ========================================================================
-         L1 首屏决策层：打破鸿沟的价值主张 + 极速体验 + 交互式双模预览
-         ======================================================================== -->
-    <section class="hero-section">
+  <main id="main" class="container">
+
+    <!-- ===================== Hero ===================== -->
+    <section class="hero-section" aria-labelledby="hero-title">
       <div class="hero-eyebrow">
-        <span>⚡ Conductor Workflow IDE v1.1.0 GA 全新发布</span>
-        <span style="opacity: 0.4;">|</span>
-        <span>生产级双模全融合已就绪</span>
+        <span>⚡ Conductor Workflow IDE v1.2.0</span>
+        <span style="opacity: 0.4;" aria-hidden="true">|</span>
+        <span>流程库就绪</span>
       </div>
 
-      <h1 class="hero-title">打破技术与业务鸿沟<br/>让每个人都能编排云平台工作流</h1>
+      <h1 class="hero-title" id="hero-title">流程库就绪<br/>标准能力一次沉淀，处处安全复用</h1>
 
       <p class="hero-subtitle">
-        告别晦涩难懂的代码级微服务 DAG！v1.1.0 带来全新的 <strong>👔 业务卡片流设计器</strong> 与 <strong>☁️ 云平台全生命周期动作库</strong>。<br/>
-        双模同屏无损热切换，内置 <strong>8 大高频云场景模板</strong>，支持 <strong>生产实例一键脱敏提炼</strong> 与 <strong>运行故事线白话自愈诊断</strong>。
+        <strong>@yiyi_zhang/reactflow-ui</strong> 是供内部项目嵌入的<strong>工作流 IDE SDK</strong>：不直连后端，数据与能力经 Provider / 回调等扩展点接入。<br/>
+        v1.2.0 新增 <strong>流程库数据源 <code>LibraryProvider</code></strong>，让治理服务里的标准能力同时成为业务模式里的“积木”和 AI IDE 里可检索的目录。
       </p>
 
-      <!-- 安装命令行切换器 -->
+      <ul class="hero-adds" aria-label="v1.2.0 新增内容">
+        <li><b>＋</b>流程库数据源</li>
+        <li><b>＋</b>版本固定与升级差异</li>
+        <li><b>＋</b>业务域与分层调用</li>
+        <li><b>＋</b>Demo 演示后端</li>
+        <li><b>＋</b>宿主接入指南</li>
+      </ul>
+
       <div class="install-wrap">
-        <div class="pm-tabs">
-          <button class="pm-tab active" onclick="switchPM('npm', this)">npm</button>
-          <button class="pm-tab" onclick="switchPM('pnpm', this)">pnpm</button>
-          <button class="pm-tab" onclick="switchPM('yarn', this)">yarn</button>
-          <button class="pm-tab" onclick="switchPM('import', this)">React 引入</button>
+        <div class="pm-tabs" role="group" aria-label="选择安装方式">
+          <button type="button" class="pm-tab active" data-pm="npm" aria-pressed="true">npm</button>
+          <button type="button" class="pm-tab" data-pm="pnpm" aria-pressed="false">pnpm</button>
+          <button type="button" class="pm-tab" data-pm="yarn" aria-pressed="false">yarn</button>
+          <button type="button" class="pm-tab" data-pm="import" aria-pressed="false">React 引入</button>
         </div>
-
         <div class="install-shell">
-          <span class="prompt-char">$</span>
-          <span id="cli-cmd">npm install @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom</span>
-          <button class="copy-cli-btn" onclick="copyInstall(this)">复制命令</button>
+          <span class="prompt-char" aria-hidden="true">$</span>
+          <span id="cli-cmd">npm install @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom</span>
+          <button type="button" class="copy-cli-btn" id="copy-install">复制命令</button>
         </div>
+      </div>
+
+      <div class="hero-actions">
+        <a href="./app" class="cta-btn lg">🎮 在工作台里体验流程库</a>
+        <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" class="ghost-btn lg" target="_blank" rel="noreferrer">📘 宿主接入指南</a>
+      </div>
+      <p class="hero-note">演示站运行在<strong>模拟治理服务</strong>上，没有接真实后端；内部项目引入后通过 <code>libraryProvider</code> 对接各自的治理服务。</p>
+    </section>
+
+    <section class="impact-strip" aria-label="演示流程库概览">
+      <div class="impact-card">
+        <div class="impact-num">1 个</div>
+        <div class="impact-sub"><code>libraryProvider</code></div>
+        <div class="impact-desc">同时喂给 <code>WorkflowIDE</code> 与 <code>AiWorkflowIDE</code>，不再分别维护三份数据</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">12 个</div>
+        <div class="impact-sub">演示库能力</div>
+        <div class="impact-desc">Demo 内置，覆盖 9 个业务域与 L1 / L2 / L3，含完整中文 schema</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">5 段</div>
+        <div class="impact-sub">命名规范</div>
+        <div class="impact-desc"><code>类型-层级-业务域-产品-功能</code>，业务域由服务端提供、可调整</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-num">v1 → v2</div>
+        <div class="impact-sub">升级前先看差异</div>
+        <div class="impact-desc">首次引用即固定版本，库升级后不自动跟随，由你确认再升级</div>
       </div>
     </section>
 
-    <!-- 首屏双栏：痛点蜕变对比 + 交互式双模小部件 -->
-    <section class="first-screen-grid">
-      <!-- 左栏：交互式双模视口小部件 -->
-      <div class="fs-panel">
-        <div class="fs-panel-header">
-          <div class="fs-title">
-            <span>✨ 核心交互：同屏毫秒级双模热切换</span>
-          </div>
-          <span class="badge-diff after">v1.1.0 状态零丢失无损转换</span>
-        </div>
-
-        <div class="interactive-mode-box">
-          <div class="mode-tab-bar">
-            <button class="mode-tab-btn active" id="tab-business" onclick="switchLiveMode('business')">
-              <span>👔 业务模式 (面向运维与业务)</span>
-            </button>
-            <button class="mode-tab-btn" id="tab-pro" onclick="switchLiveMode('pro')">
-              <span>💻 开发者模式 (面向架构与代码)</span>
-            </button>
-          </div>
-
-          <div class="preview-card-viewport" id="viewport-content">
-            <!-- 默认展示业务卡片流 -->
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <div class="mock-step-card">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span style="font-size: 1.2rem;">🖥️</span>
-                  <div>
-                    <div style="font-weight: 700; color: #F8FAFC;">1. 创建高可用云主机 ECS</div>
-                    <div style="font-size: 0.72rem; color: #94A3B8;">按需配置规格 · 自动绑定安全组</div>
-                  </div>
-                </div>
-                <div style="display: flex; gap: 6px;">
-                  <span class="mock-capsule">ecs.c7.xlarge</span>
-                  <span class="mock-capsule" style="color: #6EE7B7; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1);">vpc-cn-hangzhou</span>
-                </div>
-              </div>
-
-              <div class="mock-step-card" style="border-left: 3px solid #10B981;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span style="font-size: 1.2rem;">📸</span>
-                  <div>
-                    <div style="font-weight: 700; color: #F8FAFC;">2. 生产发布前安全快照</div>
-                    <div style="font-size: 0.72rem; color: #94A3B8;">关联第 1 步实例 ID · 容灾秒级备份</div>
-                  </div>
-                </div>
-                <div>
-                  <span class="mock-capsule">🔗 ${step_1.output.instanceId}</span>
-                </div>
-              </div>
-
-              <div class="mock-step-card" style="border: 1px dashed rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.05);">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <span style="font-size: 1.2rem;">🔀</span>
-                  <div>
-                    <div style="font-weight: 700; color: #C4B5FD;">3. 自动化条件分支判定 (DECISION)</div>
-                    <div style="font-size: 0.72rem; color: #94A3B8;">环境标识: 生产 (PROD) 审批 ⇄ 研发 (DEV) 直通</div>
-                  </div>
-                </div>
-                <span class="mock-capsule" style="color: #C4B5FD; border-color: rgba(139,92,246,0.3);">2 个执行分支</span>
-              </div>
-            </div>
-          </div>
-
-          <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;">
-            <span>💡 提示：点击上方按钮，观察同一流程在“业务卡片”与“技术 DAG”之间的零延迟形态切换。</span>
-            <a href="/app" style="color: var(--brand-emerald); text-decoration: none; font-weight: 600;">去演练场试试真实流程 →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- 右栏：业务与研发协同 ROI 计算器 -->
-      <div class="fs-panel">
-        <div class="fs-panel-header">
-          <div class="fs-title">
-            <span>📈 团队协作降本增效 ROI 估算</span>
-          </div>
-          <span class="badge-diff after">业务自服务</span>
-        </div>
-
-        <div class="roi-calc">
-          <div class="roi-slider-group">
-            <div class="roi-slider-header">
-              <span>每月需交付的云运维/业务编排需求:</span>
-              <strong id="wf-count-label">25 条 / 月</strong>
-            </div>
-            <input type="range" class="roi-slider" id="wf-slider" min="5" max="100" value="25" step="5" oninput="recalcROI11()" />
-          </div>
-
-          <div class="roi-slider-group">
-            <div class="roi-slider-header">
-              <span>涉及的业务/运维团队人数:</span>
-              <strong id="user-count-label">8 人</strong>
-            </div>
-            <input type="range" class="roi-slider" id="user-slider" min="2" max="50" value="8" step="1" oninput="recalcROI11()" />
-          </div>
-
-          <div class="roi-results-grid">
-            <div class="roi-stat-item">
-              <div class="roi-stat-val" id="roi-hours">128 h</div>
-              <div class="roi-stat-label">每月节省研发联调</div>
-            </div>
-            <div class="roi-stat-item">
-              <div class="roi-stat-val" id="roi-days">85 %</div>
-              <div class="roi-stat-label">交付周期缩短</div>
-            </div>
-            <div class="roi-stat-item">
-              <div class="roi-stat-val" id="roi-money">¥6.4 万</div>
-              <div class="roi-stat-label">每月净降本人力</div>
-            </div>
-          </div>
-
-          <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 6px;">
-            ✦ 计算口径：传统模式下业务提单沟通与研发排期平均需 3.5 天，引入 1.1.0 业务卡片与内置云模板后，业务专家可直接自助拼装，研发仅需负责 API 注册，效率提升超 85%。节省工时 = 需求数 × 4.3h（研发联调）+ 团队人数 × 2.5h（沟通与排期等待）；折算按 500 元/小时。
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 核心成效数据横幅 -->
-    <section class="impact-strip">
-      <div class="impact-card">
-        <div class="impact-num">8 大</div>
-        <div class="impact-sub">内置开箱即用场景模板</div>
-        <div class="impact-desc">云主机生命周期、自动扩容、灾备快照、定时关机省电等全预置</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-num">100%</div>
-        <div class="impact-sub">双向无损状态保真转换</div>
-        <div class="impact-desc">StepModel 与 Conductor 原生 DAG 毫秒互转，结构零丢失</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-num">0 泄漏</div>
-        <div class="impact-sub">生产级敏感脱敏提炼</div>
-        <div class="impact-desc">智能识别 IP、Token、密码、机密 ID，一键提炼共享模板</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-num">3 秒</div>
-        <div class="impact-sub">生活化故事线自愈定位</div>
-        <div class="impact-desc">告别 502/Timeout 堆栈报错，清晰流水账白话诊断与修复建议</div>
-      </div>
-    </section>
-
-    <!-- ========================================================================
-         L2 Bento 核心架构与功能突破拆解
-         ======================================================================== -->
-    <section>
+    <!-- ===================== 流程库 ===================== -->
+    <section class="section" id="library" aria-labelledby="library-title">
       <div class="section-head">
-        <div class="section-eyebrow">FEATURE SHOWCASE</div>
-        <h2 class="section-title">v1.1.0 五大核心产品支柱</h2>
-        <p class="section-desc">让复杂的分布式微服务工作流变成人人可用的乐高积木，同时保持专业工程师所需的工业级控制精度。</p>
+        <div class="section-eyebrow">LIBRARY</div>
+        <h2 class="section-title" id="library-title">流程库：像积木一样复用标准能力</h2>
+        <p class="section-desc">业务用户在动作选择器里挑选已治理的能力，而不是自己拼装 TaskDef。能力定义直接来自 Conductor 标准的 <code>WorkflowDef</code> / <code>TaskDef</code>，不需要额外的私有格式。</p>
       </div>
 
       <div class="bento-grid">
-        <!-- 支柱 1：业务卡片流与双模无损同屏热切换 -->
         <div class="bento-card span-2">
-          <span class="bento-badge green">🌟 业务模式与卡片流 (StepFlow)</span>
-          <h3>从拓扑连线到直观业务步骤，双模无缝互通</h3>
-          <p>针对传统流程图“节点密集如蜘蛛网、参数深埋在 JSON 里”的痛点，创新推出 StepModel 架构。将复杂微服务流程解构为清晰的业务卡片流，支持步骤自由拖拽重排、条件分支折叠、并行泳道与循环容器。在页面右上角一键切换，开发者与业务人员使用同一份数据源协同。</p>
-
-          <div class="bento-inner-box" style="display: flex; gap: 1rem; align-items: center; justify-content: space-around; flex-wrap: wrap;">
-            <div style="text-align: center;">
-              <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">👔</div>
-              <div style="font-weight: 700; color: #A7F3D0;">普通使用者模式</div>
-              <div style="font-size: 0.72rem; color: #94A3B8;">卡片流 / 数据胶囊 / 业务语言</div>
-            </div>
-            <div style="font-size: 1.2rem; color: var(--brand-emerald);">⇄ 无损互通 ⇄</div>
-            <div style="text-align: center;">
-              <div style="font-size: 1.5rem; margin-bottom: 0.2rem;">💻</div>
-              <div style="font-weight: 700; color: #93C5FD;">专业开发者模式</div>
-              <div style="font-size: 0.72rem; color: #94A3B8;">完整 DAG / JSON / 表达式 / 算力编排</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 支柱 2：云平台业务动作库与参数胶囊 -->
-        <div class="bento-card">
-          <span class="bento-badge cyan">☁️ 云平台开箱即用</span>
-          <h3>内置常见云运维动作库与参数胶囊</h3>
-          <p>首发完整对接类阿里云云主机 ECS 全生命周期动作：创建实例、启停机、规格升降级、打快照备份、重装系统、释放资源等。参数支持数据胶囊一键引用上游输出，杜绝手敲失误。</p>
+          <span class="bento-badge green">📚 从定义到积木</span>
+          <h3>一份标准定义，自动长成业务动作</h3>
+          <p>入参取自 <code>inputSchema</code>，出参取自 <code>outputSchema</code> / <code>outputParameters</code>；中文字段名与表单由 schema 的标题、描述、枚举、默认值自动生成，业务同学看到的是“配置项类型”而不是 <code>ciType</code>。</p>
           <div class="bento-inner-box">
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; justify-content: space-between;"><span>🖥️ ecs.create</span><span style="color:#6EE7B7;">创建云主机</span></div>
-              <div style="display: flex; justify-content: space-between;"><span>📸 ecs.create_snapshot</span><span style="color:#6EE7B7;">创建磁盘快照</span></div>
-              <div style="display: flex; justify-content: space-between;"><span>⚙️ ecs.modify_spec</span><span style="color:#6EE7B7;">平滑升降规格</span></div>
+            <div class="pipeline" role="group" aria-label="流程库能力的生成与编译过程">
+              <div class="pipe-box">
+                <h4>① Conductor 标准定义</h4>
+                <pre>WorkflowDef {
+  name: "std-L1-配置管理-cmdb-query_ci"
+  inputSchema:  { ciType, keyword … }
+  outputSchema: { ciList, total }
+}</pre>
+              </div>
+              <div class="pipe-arrow" aria-hidden="true">→</div>
+              <div class="pipe-box">
+                <h4>② 业务动作（表单自动生成）</h4>
+                <div class="form-line"><span>配置项类型 *</span><span>下拉 · 服务器…</span></div>
+                <div class="form-line"><span>关键字</span><span>文本</span></div>
+                <div class="form-line"><span>返回条数</span><span>数字 · 默认 20</span></div>
+              </div>
+              <div class="pipe-arrow" aria-hidden="true">→</div>
+              <div class="pipe-box">
+                <h4>③ 编译为 SUB_WORKFLOW</h4>
+                <pre>{ "type": "SUB_WORKFLOW",
+  "subWorkflowParam": {
+    "name": "…query_ci",
+    "version": 1 } }</pre>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 支柱 3：高级控制流容器化卡片 -->
         <div class="bento-card">
-          <span class="bento-badge purple">🔀 高级控制流容器</span>
-          <h3>分支路由、并行泳道与循环迭代</h3>
-          <p>彻底解决传统卡片流无法表达分支与循环的难题。分支 Tab 切换、并行泳道多路并发、Do-While 循环体内嵌任务序列，全部具备内置防死循环保护与自适应主题配色。</p>
-          <div class="bento-inner-box" style="font-family: var(--font-mono); font-size: 0.75rem;">
-            <div style="color: #C4B5FD;">🔀 DECISION: 条件多分支 Tabs 切换</div>
-            <div style="color: #6EE7B7; margin-top: 4px;">⚡ FORK_JOIN: 多泳道同时并发</div>
-            <div style="color: #FBBF24; margin-top: 4px;">🔁 DO_WHILE: 循环迭代体 + 熔断保护</div>
+          <span class="bento-badge cyan">🧩 复用，而不是复制</span>
+          <h3>业务模式里直接挑</h3>
+          <ul class="tick">
+            <li>动作选择器按业务域分组，搜索跨全部能力</li>
+            <li>步骤记录 <code>libraryRef</code>，知道引用的是哪个能力的哪个版本</li>
+            <li>目录加载中 / 失败时显示“加载失败，点击重试”，<strong>失败不阻塞编辑</strong></li>
+            <li>不传 <code>libraryProvider</code> 时，<code>actions</code> / <code>workflowLibrary</code> / <code>taskSchemas</code> 行为不变</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 版本固定 ===================== -->
+    <section class="section" id="pinning" aria-labelledby="pinning-title">
+      <div class="section-head">
+        <div class="section-eyebrow">VERSION PINNING</div>
+        <h2 class="section-title" id="pinning-title">版本固定，升级看得见</h2>
+        <p class="section-desc">首次引用时固定版本，库升级后<strong>不会</strong>自动跟随。有新版本只给出提示，看清差异、你确认之后才升级；固定版本不可用时，流程照常编译。</p>
+      </div>
+
+      <div class="fs-panel">
+        <div class="pin-demo">
+          <div class="pin-controls">
+            <h3>点选三种状态，亲手试一试</h3>
+            <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.4rem;">右侧是业务模式步骤卡片的静态示意（HTML/CSS 模拟，不是真实应用）；数据取自 Demo 演示库。</p>
+            <div role="group" aria-label="选择步骤状态" style="display:flex; flex-direction:column; gap:0.5rem;">
+              <button type="button" class="state-btn" data-state="pinned" aria-pressed="true"><strong>已固定 v1</strong>引用后版本不再变化，库里发布 v2 也不受影响</button>
+              <button type="button" class="state-btn" data-state="upgrade" aria-pressed="false"><strong>⬆ 有新版本</strong>点徽标查看升级差异，确认后才升级</button>
+              <button type="button" class="state-btn" data-state="unavailable" aria-pressed="false"><strong>⚠ 版本不可用</strong>固定版本被撤回或能力已下线，编译结果不变</button>
+            </div>
+          </div>
+
+          <div class="mock-app" id="mock-app">
+            <div class="mock-app-bar" aria-hidden="true"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span><span style="margin-left:6px;">业务模式 · 步骤卡片（示意）</span></div>
+            <div class="mock-step">
+              <div class="mock-step-head">
+                <span id="ms-icon" aria-hidden="true">🗂️</span>
+                <span class="mock-step-title" id="ms-title">查询配置项</span>
+                <span class="mock-step-name" id="ms-name">std-L1-配置管理-cmdb-query_ci</span>
+              </div>
+              <div class="badge-row" id="ms-badges"></div>
+              <div class="mock-fields" aria-hidden="true">
+                <div class="mock-field"><small>配置项类型</small>服务器</div>
+                <div class="mock-field"><small>关键字</small>order</div>
+              </div>
+              <div class="compile-box" id="ms-compile" aria-label="编译结果"></div>
+            </div>
+            <p class="pin-note" id="ms-note" aria-live="polite"></p>
+
+            <div class="mock-dialog" id="mock-dialog" role="dialog" aria-labelledby="dlg-title" tabindex="-1">
+              <h4 id="dlg-title">流程库「std-L1-配置管理-cmdb-query_ci」已有新版本 v2（当前引用 v1）。</h4>
+              <div class="diff-group impact">【会影响已填内容】</div>
+              <ul>
+                <li>新增必填入参「租户编号（tenantId）」，需要补充填写</li>
+                <li>出参「costMs」已删除，下游步骤对它的引用将失效<span class="tag-demo">条件触发</span></li>
+              </ul>
+              <div class="diff-group plain">【其它变化】</div>
+              <ul><li>入参「配置项类型」新增可选值“容器”</li></ul>
+              <p class="dialog-foot">升级差异取自演示库 <code>query_ci</code> v1→v2。“下游引用将失效”仅在被删出参确有下游引用时出现；若升级删除了已填写的入参，还会提示“已填写的值将丢失”。</p>
+              <div class="dialog-actions">
+                <button type="button" class="mini-btn" id="dlg-cancel">取消</button>
+                <button type="button" class="mini-btn primary" id="dlg-ok">确认升级到 v2</button>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- 支柱 4：生产实例一键脱敏提炼工具链 -->
+    <!-- ===================== 业务域与分层 ===================== -->
+    <section class="section" id="domains" aria-labelledby="domains-title">
+      <div class="section-head">
+        <div class="section-eyebrow">DOMAIN &amp; LEVEL</div>
+        <h2 class="section-title" id="domains-title">业务域与分层</h2>
+        <p class="section-desc">用一条命名规范把“是什么、属于谁、能被谁调用”写进名字里；业务域列表由服务端提供，SDK 不写死，随时可调整。</p>
+      </div>
+
+      <div class="bento-grid" style="margin-bottom:1.5rem;">
+        <div class="bento-card span-2">
+          <span class="bento-badge purple">🏷 命名规范</span>
+          <h3><code>类型-层级-业务域-产品-功能</code></h3>
+          <p><code>parseWorkflowName</code> 把名称切成 5 段；记录没有提供 <code>extension.domain</code> / <code>level</code> 时按名称兜底，显式值优先。段数不足 5，或类型、层级不合法时返回 <code>null</code>；<code>validateWorkflowName</code> 返回中文错误列表。</p>
+          <ol class="name-parse" aria-label="命名解析示例：std-L1-云资源-ecs-snapshot">
+            <li class="name-seg c1"><b>std</b><span>类型</span></li><li class="name-sep" aria-hidden="true">-</li>
+            <li class="name-seg c2"><b>L1</b><span>层级</span></li><li class="name-sep" aria-hidden="true">-</li>
+            <li class="name-seg c3"><b>云资源</b><span>业务域</span></li><li class="name-sep" aria-hidden="true">-</li>
+            <li class="name-seg c4"><b>ecs</b><span>产品</span></li><li class="name-sep" aria-hidden="true">-</li>
+            <li class="name-seg c5"><b>snapshot</b><span>功能</span></li>
+          </ol>
+          <p style="font-size:0.8rem;">类型取值：<code>std</code> / <code>proxy</code> / <code>tmp</code> / <code>custom</code>。示例为 Demo 演示库中的“云主机快照”。</p>
+        </div>
         <div class="bento-card">
-          <span class="bento-badge green">🪄 生产模板提炼</span>
-          <h3>一键脱敏线上实例，沉淀业务资产</h3>
-          <p>通过强大的 TemplateExtractor，只需一键即可把生产环境或演练场中运行过的复杂流程提炼为规范模板。智能识别内网 IP、API 密钥、用户密码并自动生成占位符与安全指引。</p>
-          <div class="bento-inner-box" style="font-size: 0.75rem;">
-            <div style="color: #FB7185;">- "privateIp": "10.120.44.12"</div>
-            <div style="color: #34D399;">+ "privateIp": "${workflow.input.targetIp}"</div>
-            <div style="margin-top: 4px; color: #94A3B8;">✓ 自动生成入参声明与场景价值主张</div>
+          <span class="bento-badge orange">🔒 分层调用规则</span>
+          <h3>高层可调低层，不可反向</h3>
+          <table class="rule-table">
+            <thead><tr><th scope="col">当前流程</th><th scope="col">可引用</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">L1</th><td>L1</td></tr>
+              <tr><th scope="row">L2</th><td>L2 / L1</td></tr>
+              <tr><th scope="row">L3</th><td>L3 / L2 / L1</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:0.8rem; font-size:0.8rem;">给 <code>WorkflowIDE</code> 传 <code>currentWorkflowLevel</code> 后，动作选择器自动隐藏违反规则的能力；已下线条目不出现在选择器，已引用的步骤照常显示与编译。</p>
+        </div>
+      </div>
+
+      <div class="fs-panel">
+        <div class="fs-panel-header">
+          <h3 class="fs-title">🧭 动作选择器示意：按业务域分组 + 层级过滤</h3>
+          <span class="badge-diff after">演示库 · 11 个可选能力</span>
+        </div>
+        <div class="level-bar" role="group" aria-label="模拟 currentWorkflowLevel">
+          <span>currentWorkflowLevel =</span>
+          <button type="button" class="seg-btn" data-level="" aria-pressed="true">不限</button>
+          <button type="button" class="seg-btn" data-level="L1" aria-pressed="false">L1</button>
+          <button type="button" class="seg-btn" data-level="L2" aria-pressed="false">L2</button>
+          <button type="button" class="seg-btn" data-level="L3" aria-pressed="false">L3</button>
+        </div>
+        <div class="picker-groups" id="picker-groups"></div>
+        <p class="picker-status" id="picker-status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- ===================== 一个数据源，两个 IDE ===================== -->
+    <section class="section" id="one-source" aria-labelledby="one-source-title">
+      <div class="section-head">
+        <div class="section-eyebrow">ONE SOURCE · TWO IDEs</div>
+        <h2 class="section-title" id="one-source-title">一个数据源，两个 IDE</h2>
+        <p class="section-desc">同一份规范化目录（<code>LibraryCatalog</code>）投影成业务动作、AI 任务 Schema 与 AI 流程库目录。宿主只需要接一次。</p>
+      </div>
+
+      <div class="fs-panel" style="margin-bottom:1.5rem;">
+        <div class="fanout">
+          <div class="fan-col">
+            <div class="fan-box"><h4>👔 业务 IDE · <code>WorkflowIDE</code></h4>目录经 <code>toActions</code> 变成动作选择器里的业务动作，带业务域分组、层级过滤、版本徽标。</div>
+          </div>
+          <div class="fan-center" role="group" aria-label="共享的 LibraryProvider">
+            <code>libraryProvider</code>
+            <p>list / get / 可选 search<br/>引用稳定，变化即重新加载</p>
+          </div>
+          <div class="fan-col">
+            <div class="fan-box"><h4>✨ AI IDE · <code>AiWorkflowIDE</code></h4>目录经 <code>toTaskSchemas</code> / <code>toLibraryItems</code> 并入 AI 的 Schema、目录与检索工具。</div>
           </div>
         </div>
+      </div>
 
-        <!-- 支柱 5：运行故事线时间轴与生活化诊断 -->
+      <div class="bento-grid">
         <div class="bento-card">
-          <span class="bento-badge orange">📖 运行故事线</span>
-          <h3>告别冷冰冰报错，生活化白话诊断</h3>
-          <p>运行态新增“业务故事线”视图。用生活化的流水账展示“xx点xx分创建了云主机并打好快照”。当节点失败时，AI 诊断引擎给出生活化故障原因与可落地的自愈修复建议。</p>
-          <div class="bento-inner-box" style="font-size: 0.75rem; border-left: 3px solid #F59E0B;">
-            <div style="color: #FBBF24; font-weight: 700;">⚠️ 快照打标失败 (生活化诊断)</div>
-            <div style="color: #E2E8F0; margin-top: 2px;">磁盘处于只读锁定状态，建议在释放前检查挂载点进程占用并重试。</div>
-          </div>
+          <span class="bento-badge cyan">🔎 AI 检索</span>
+          <h3>目录与检索</h3>
+          <p><code>search_workflow_library</code> 支持按<strong>业务域</strong>过滤。Provider 实现了 <code>search</code> 时检索走服务端，否则在本地目录内匹配（结果最多展示 50 条）。</p>
+        </div>
+        <div class="bento-card">
+          <span class="bento-badge green">📌 自动固定</span>
+          <h3>AI 生成的子流程不乱填版本</h3>
+          <p>AI 新建的 <code>SUB_WORKFLOW</code> 引用自动固定为目录当前最新版本；画布上已有的步骤与已有版本号一律不被改动。</p>
+        </div>
+        <div class="bento-card">
+          <span class="bento-badge orange">📏 大目录</span>
+          <h3><code>promptCatalogLimit</code></h3>
+          <p>默认 50。目录注入系统提示词时按层级 L3 → L1 截断，超出部分提示 AI 改用检索工具，治理平台 1000+ 工作流也不会撑爆提示词。</p>
         </div>
       </div>
     </section>
 
-    <!-- ========================================================================
-         历史版本功能保留与承前启后
-         ======================================================================== -->
-    <section class="history-card-box">
-      <div>
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem;">
-          <span style="font-size: 1.2rem;">📜</span>
-          <h3 style="font-size: 1.15rem; color: #FFF;">v1.0.0 确定性工程核心支柱全面传承</h3>
+    <!-- ===================== 接入即用 ===================== -->
+    <section class="section" id="integrate" aria-labelledby="integrate-title">
+      <div class="section-head">
+        <div class="section-eyebrow">INTEGRATE</div>
+        <h2 class="section-title" id="integrate-title">接入即用</h2>
+        <p class="section-desc">一个 Provider，两个 IDE。治理服务版实现与接口约定见接入指南第 5 节，示例代码随 CI 做类型检查。</p>
+      </div>
+
+      <div class="quickstart-box">
+        <div class="qs-tabs" role="group" aria-label="选择代码示例">
+          <button type="button" class="qs-tab active" data-code="shared" aria-pressed="true">同一个 Provider</button>
+          <button type="button" class="qs-tab" data-code="api" aria-pressed="false">治理服务接口约定</button>
+          <button type="button" class="qs-tab" data-code="conductor" aria-pressed="false">Conductor 默认实现</button>
         </div>
-        <p style="font-size: 0.85rem; color: #94A3B8; max-width: 750px; line-height: 1.6;">
-          v1.1.0 完美继承了 v1.0.0 建立的工业级底座：<strong>W-LSP 确定性语言补全</strong>、<strong>浏览器端 0ms 本地沙箱推演与故障注入</strong>、<strong>并发甘特图时间旅行调试器</strong>、<strong>画布 Cmd+K 原生 AI 微调与 Shadow Graph 视觉 Diff</strong>。您可以随时按需在经典开发者模式中使用。
-        </p>
-      </div>
-
-      <div style="display: flex; gap: 0.75rem; align-items: center;">
-        <a href="/v1-0.html" class="ghost-btn" style="white-space: nowrap;">
-          📖 查阅 v1.0 历史首发宣传专页 →
-        </a>
+        <div class="code-container">
+          <pre class="code-body" id="qs-code-body" tabindex="0" aria-label="代码示例"></pre>
+          <button type="button" class="copy-code-btn" id="copy-code">复制代码</button>
+        </div>
+        <p class="qs-note" id="qs-note"></p>
+        <p class="qs-note">演示站的 <code>WorkflowIDE</code> / <code>AiWorkflowIDE</code> 接的是<strong>模拟治理服务</strong>（<code>createMockGovernanceProvider</code>：带网络延迟、可注入加载失败）。完整接入步骤见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a>。</p>
       </div>
     </section>
 
-    <!-- ========================================================================
-         版本演进功能矩阵：传统 vs 1.0 vs 1.1
-         ======================================================================== -->
-    <section class="compare-section">
-      <div class="section-head" style="margin-bottom: 1.5rem;">
-        <div class="section-eyebrow">EVOLUTION MATRIX</div>
-        <h2 class="section-title">产品进化全景对照</h2>
+    <!-- ===================== 体验与质量 ===================== -->
+    <section class="section" id="quality" aria-labelledby="quality-title">
+      <div class="section-head">
+        <div class="section-eyebrow">POLISH</div>
+        <h2 class="section-title" id="quality-title">体验与质量</h2>
+        <p class="section-desc">走查中发现的问题和一批性能、工程质量收尾，全部来自 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG</a>。</p>
       </div>
-
-      <table class="compare-table">
-        <thead>
-          <tr>
-            <th>维度</th>
-            <th>传统工作流编排工具</th>
-            <th>v1.0.0 (确定性工程 IDE)</th>
-            <th>v1.1.0 (双模全融合新标杆)</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>用户受众群体</strong></td>
-            <td>仅限熟悉后端 JSON 的资深工程师</td>
-            <td>面向前后端研发工程师与架构师</td>
-            <td style="color:#6EE7B7;"><strong>业务专家、运维人员、测试与开发全员协同</strong></td>
-          </tr>
-          <tr>
-            <td><strong>编排视觉形态</strong></td>
-            <td>扁平节点连线，大图乱如蜘蛛网</td>
-            <td>三级语义缩放 DAG + 分屏实时 JSON</td>
-            <td style="color:#6EE7B7;"><strong>👔 业务卡片流 + 💻 开发者 DAG 同屏热切换</strong></td>
-          </tr>
-          <tr>
-            <td><strong>云平台动作支持</strong></td>
-            <td>无内置，需逐个手写 HTTP/Shell 节点</td>
-            <td>支持 TaskSchema 校验与通用定义</td>
-            <td style="color:#6EE7B7;"><strong>内置类阿里云云主机、快照、升降配全生命周期动作库</strong></td>
-          </tr>
-          <tr>
-            <td><strong>高级控制流交互</strong></td>
-            <td>多路连线交织，循环体排布混乱</td>
-            <td>SWITCH 弹窗、DO_WHILE 头部胶囊</td>
-            <td style="color:#6EE7B7;"><strong>分支 Tabs 快速导航、并行泳道、循环体内嵌卡片容器</strong></td>
-          </tr>
-          <tr>
-            <td><strong>模板沉淀与共享</strong></td>
-            <td>手动导出 JSON，极易泄漏线上密钥/IP</td>
-            <td>无内置模板库，需手动导入</td>
-            <td style="color:#6EE7B7;"><strong>8 大场景模板开箱即用 + 生产实例一键脱敏提炼工具链</strong></td>
-          </tr>
-          <tr>
-            <td><strong>运行态排障诊断</strong></td>
-            <td>仅返回 502/Timeout 堆栈字符串</td>
-            <td>并发甘特瀑布流 + 毫秒级时间旅行回放</td>
-            <td style="color:#6EE7B7;"><strong>白话运行故事线 + 生活化诊断与自愈行动指南</strong></td>
-          </tr>
-        </tbody>
-      </table>
+      <ul class="quality-grid">
+        <li class="q-item"><h3><span aria-hidden="true">🔗</span>下拉字段「插入数据」</h3><p>下拉字段可改为引用上游步骤输出或全局入参，也可切回选择；已保存 <code>${…}</code> 时自动进入动态取值。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">🎨</span>弹窗跟随主题</h3><p>动作选择、沙箱配置、参数联想弹窗不再在暗色下透明；动作选择弹窗的筛选拆为“分类”“业务域”两行。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">⚡</span>卡片视图更跟手</h3><p>编辑只更新定义，不再每次按键都做整图布局，切回画布时再补建。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">🎯</span>按需订阅</h3><p>Store 订阅改为按需（<code>useShallow</code>），逐节点组件不再因无关状态变化而重渲染。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">↩️</span>撤销历史上限</h3><p>撤销历史上限 100 条，历史比较先做引用相等判断，避免每次都序列化整份定义。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">🪆</span>多层嵌套控制流</h3><p>分支 / 并行泳道 / 循环体内支持任意层级嵌套控制流。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">⌨️</span>输入不再丢焦点</h3><p>步骤 ID 不再随时间变化，编辑时不再重建卡片、收起展开项。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">🧹</span>展开不再重复信息</h3><p>去掉表单顶部与步骤头部重复的名称 / 描述横幅，保留敏感操作提示。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">🛡</span>类型检查门禁</h3><p>CI 新增阻塞式全量类型检查，并修复了测试与演示代码中原有的类型错误。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">🤖</span>AI 版本更稳</h3><p>AI 生成子工作流不再随意填版本，新建引用固定为目录当前最新版本。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">🔢</span>版本串解析修复</h3><p>流程库面板插入子工作流时，不再把 <code>"1.2.0"</code> 这类版本串错误解析成 <code>120</code>。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true">💬</span>统一对话框</h3><p>控制流卡片的原生 <code>alert</code> / <code>confirm</code> 改用项目自带对话框，重复的子步骤列表代码合并为 <code>StepListEditor</code>。</p></li>
+      </ul>
     </section>
 
-    <!-- ========================================================================
-         快速接入代码区 (Quickstart SDK)
-         ======================================================================== -->
-    <section class="quickstart-box" id="quickstart">
-      <div class="section-head" style="margin-bottom: 1.5rem;">
-        <div class="section-eyebrow">DEVELOPER QUICKSTART</div>
-        <h2 class="section-title">30 秒集成至现有 React 项目</h2>
-        <p class="section-desc">一行导入即可获得开箱即用的业务卡片流与双模工作台。</p>
+    <!-- ===================== 接下来 ===================== -->
+    <section class="section" id="next" aria-labelledby="next-title">
+      <div class="section-head">
+        <div class="section-eyebrow">WHAT'S NEXT</div>
+        <h2 class="section-title" id="next-title">接下来</h2>
+        <p class="section-desc">小步发版，每个小版本一个主题。每个新扩展点都会同时提供契约文档和 Demo 用的模拟实现，不接扩展点时行为不变。完整计划见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">docs/roadmap.md</a>。</p>
       </div>
+      <ul class="roadmap-grid">
+        <li class="rm-card"><div class="ver">v1.3.0</div><h3>自助接入</h3><div class="when">目标 2026-11-13</div><p>扩展点注册机制、自助接入向导（<code>OnboardingProvider</code>，含命名生成器）、接口导入（OpenAPI / curl → HTTP 任务）、接入漏斗埋点（<code>TelemetrySink</code>）。</p></li>
+        <li class="rm-card"><div class="ver">v1.4.0</div><h3>放心上线</h3><div class="when">目标 2026-12-11</div><p>发布审核流（<code>ReviewProvider</code>）、影子运行与一键回滚、AI 产出体检报告、默认可靠性模板、系统价值报告。</p></li>
+        <li class="rm-card"><div class="ver">v1.5.0</div><h3>持续好用</h3><div class="when">目标 2027 Q1</div><p>Schema 助手（<code>ExecutionSampleProvider</code>）、模板中心接入组织模板源（<code>TemplateProvider</code>）、新手引导与“解释这个流程”。</p></li>
+        <li class="rm-card labs"><div class="ver">Labs</div><h3>前沿探索</h3><div class="when">与稳定线并行 · 不承诺兼容</div><p>先做可验证的意图到流程、历史回放回归；之后探索能力即工具（MCP）、智能体编排、执行自愈、流程挖掘、类型化数据流、流程即代码。</p></li>
+      </ul>
+      <p class="hero-note" style="text-align:center;">v1.2.0 目标发布时间为 2026-10-30，以 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/v1.2.0-release-plan.md" target="_blank" rel="noreferrer">发布计划</a> 为准。</p>
+    </section>
 
-      <div class="qs-tabs">
-        <button class="qs-tab active" onclick="switchQS11('business', this)">双模工作台 (WorkflowIDE)</button>
-        <button class="qs-tab" onclick="switchQS11('cloud', this)">注册自定义云动作 (Registry)</button>
-        <button class="qs-tab" onclick="switchQS11('extractor', this)">脱敏提炼工具 (Extractor)</button>
+    <!-- ===================== CTA ===================== -->
+    <section class="section" id="try" aria-labelledby="try-title">
+      <div class="section-head">
+        <div class="section-eyebrow">TRY IT</div>
+        <h2 class="section-title" id="try-title">三分钟，在工作台里走一遍</h2>
+        <p class="section-desc">工作台跑在模拟治理服务上，所有流程库能力都是合成的演示数据。</p>
       </div>
-
-      <div class="code-container">
-        <pre class="code-body" id="qs-code-body">import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';
-import '@yiyi_zhang/reactflow-ui/style.css';
-
-export function CloudOpsStudio() {
-  return (
-    &lt;div style={{ height: '100vh', width: '100vw' }}&gt;
-      &lt;WorkflowIDE
-        theme="dark"
-        themeColor="blue"
-        defaultUiMode="business" // 默认开启业务卡片流模式
-        onSave={(workflowDef) =&gt; {
-          // 保存为标准 Conductor 工作流定义
-          console.log('保存工作流:', workflowDef);
-        }}
-      /&gt;
-    &lt;/div&gt;
-  );
-}</pre>
-        <button class="copy-code-btn" onclick="copyCode(this)">复制集成代码</button>
+      <div class="fs-panel">
+        <div class="two-col">
+          <ol class="try-steps">
+            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>，使用默认的 <strong>👔 业务模式</strong>，并保持 <strong>💻 经典模式</strong>（层级控制只在经典模式下出现）。</li>
+            <li>在“📁 示例工作流...”下拉里选 <strong>📚 引用库能力（有新版本 / 版本不可用）</strong>。</li>
+            <li>展开步骤，看每个库能力的固定版本徽标；点 <strong>⬆ 有新版本</strong> 查看升级差异，确认后才会升级；<strong>⚠ 版本不可用</strong> 的步骤保持原样编译。</li>
+            <li>试试工具栏 <strong>📚 流程库...</strong>：“重新加载流程库”，或“模拟加载失败”后点击重试。</li>
+            <li>用 <strong>层级：不限 / L1 / L2 / L3</strong> 切换当前流程层级，再打开动作选择器添加步骤，观察被隐藏的高层能力。</li>
+            <li>切到 <strong>✨ AI 模式</strong>，让 AI 检索并引用库能力（可按业务域），生成的子工作流会带上固定版本。</li>
+          </ol>
+          <ul class="link-list">
+            <li><a href="./app">🎮 打开工作台 /app<small>业务模式 + 演示库</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">📝 CHANGELOG<small>[Unreleased] 即 1.2.0 的全部变更</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">📘 宿主接入指南<small>docs/integration-guide.md</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">🧭 演进路线图<small>docs/roadmap.md</small></a></li>
+          </ul>
+        </div>
       </div>
     </section>
-  </div>
+  </main>
 
-  <!-- Footer -->
   <footer>
-    <div style="margin-bottom: 1rem;">
-      <a href="/">⚡ v1.1.0 宣传页</a>
-      <a href="/v1-0.html">📜 v1.0.0 历史首发页</a>
-      <a href="/app">🎮 在线演练场</a>
+    <nav aria-label="页脚导航" style="margin-bottom: 1rem;">
+      <a href="./">⚡ v1.2.0 宣传页</a>
+      <a href="./v1-1.html">📜 v1.1.0 历史页</a>
+      <a href="./v1-0.html">📜 v1.0.0 历史首发页</a>
+      <a href="./app">🎮 在线演练场</a>
       <a href="https://github.com/yiyisf/reactflow-ui" target="_blank" rel="noreferrer">GitHub 仓库</a>
       <a href="https://www.npmjs.com/package/@yiyi_zhang/reactflow-ui" target="_blank" rel="noreferrer">npm 包主页</a>
-    </div>
-    <div>
-      © 2026 Conductor Workflow IDE (@yiyi_zhang/reactflow-ui). All rights reserved.
-    </div>
+    </nav>
+    <div>© 2026 Conductor Workflow IDE (@yiyi_zhang/reactflow-ui). All rights reserved.</div>
   </footer>
 
   <script>
-    // 命令行切换
+    // ---- 安装命令切换 ----
     const pmCmds = {
-      npm: 'npm install @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom',
-      pnpm: 'pnpm add @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom',
-      yarn: 'yarn add @yiyi_zhang/reactflow-ui@1.1.0 reactflow react react-dom',
-      import: "import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';\nimport '@yiyi_zhang/reactflow-ui/style.css';"
+      npm: 'npm install @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom',
+      pnpm: 'pnpm add @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom',
+      yarn: 'yarn add @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom',
+      import: "import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';"
     };
+    document.querySelectorAll('.pm-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.pm-tab').forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        const cmd = document.getElementById('cli-cmd');
+        cmd.textContent = pmCmds[btn.dataset.pm];
+        cmd.style.whiteSpace = btn.dataset.pm === 'import' ? 'pre-wrap' : '';
+      });
+    });
 
-    function switchPM(key, btn) {
-      document.querySelectorAll('.pm-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('cli-cmd').textContent = pmCmds[key];
-    }
-
-    function copyInstall(btn) {
-      const cmd = document.getElementById('cli-cmd').textContent;
-      navigator.clipboard.writeText(cmd);
+    function copyText(text, btn, doneText) {
       const orig = btn.textContent;
-      btn.textContent = "✓ 已复制";
-      setTimeout(() => btn.textContent = orig, 1500);
+      const done = () => { btn.textContent = doneText; setTimeout(() => { btn.textContent = orig; }, 1500); };
+      try {
+        navigator.clipboard.writeText(text).then(done, () => { btn.textContent = '请手动复制'; setTimeout(() => { btn.textContent = orig; }, 1500); });
+      } catch (e) { btn.textContent = '请手动复制'; setTimeout(() => { btn.textContent = orig; }, 1500); }
     }
+    document.getElementById('copy-install').addEventListener('click', (e) => copyText(document.getElementById('cli-cmd').textContent, e.currentTarget, '✓ 已复制'));
 
-    // 交互式小部件切换预览
-    function switchLiveMode(mode) {
-      const bTab = document.getElementById('tab-business');
-      const pTab = document.getElementById('tab-pro');
-      const vp = document.getElementById('viewport-content');
-
-      if (mode === 'business') {
-        bTab.classList.add('active');
-        pTab.classList.remove('active');
-        vp.innerHTML = `
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <div class="mock-step-card">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 1.2rem;">🖥️</span>
-                <div>
-                  <div style="font-weight: 700; color: #F8FAFC;">1. 创建高可用云主机 ECS</div>
-                  <div style="font-size: 0.72rem; color: #94A3B8;">按需配置规格 · 自动绑定安全组</div>
-                </div>
-              </div>
-              <div style="display: flex; gap: 6px;">
-                <span class="mock-capsule">ecs.c7.xlarge</span>
-                <span class="mock-capsule" style="color: #6EE7B7; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.1);">vpc-cn-hangzhou</span>
-              </div>
-            </div>
-
-            <div class="mock-step-card" style="border-left: 3px solid #10B981;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 1.2rem;">📸</span>
-                <div>
-                  <div style="font-weight: 700; color: #F8FAFC;">2. 生产发布前安全快照</div>
-                  <div style="font-size: 0.72rem; color: #94A3B8;">关联第 1 步实例 ID · 容灾秒级备份</div>
-                </div>
-              </div>
-              <div>
-                <span class="mock-capsule">🔗 \${step_1.output.instanceId}</span>
-              </div>
-            </div>
-
-            <div class="mock-step-card" style="border: 1px dashed rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.05);">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 1.2rem;">🔀</span>
-                <div>
-                  <div style="font-weight: 700; color: #C4B5FD;">3. 自动化条件分支判定 (DECISION)</div>
-                  <div style="font-size: 0.72rem; color: #94A3B8;">环境标识: 生产 (PROD) 审批 ⇄ 研发 (DEV) 直通</div>
-                </div>
-              </div>
-              <span class="mock-capsule" style="color: #C4B5FD; border-color: rgba(139,92,246,0.3);">2 个执行分支</span>
-            </div>
-          </div>
-        `;
-      } else {
-        pTab.classList.add('active');
-        bTab.classList.remove('active');
-        vp.innerHTML = `
-          <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 0.74rem;">
-            <div style="color: #64748B;">// Conductor Native Workflow Definition (JSON 严格对齐)</div>
-            <div style="background: #06080F; padding: 0.75rem; border-radius: 6px; border: 1px solid #1E293B; line-height: 1.5;">
-              <span style="color: #F43F5E;">"tasks"</span>: [<br/>
-              &nbsp;&nbsp;{ <span style="color: #38BDF8;">"taskReferenceName"</span>: <span style="color: #A7F3D0;">"create_ecs_instance"</span>, <span style="color: #38BDF8;">"type"</span>: <span style="color: #FBBF24;">"SIMPLE"</span> },<br/>
-              &nbsp;&nbsp;{ <span style="color: #38BDF8;">"taskReferenceName"</span>: <span style="color: #A7F3D0;">"disk_snapshot_backup"</span>, <span style="color: #38BDF8;">"type"</span>: <span style="color: #FBBF24;">"SIMPLE"</span>,<br/>
-              &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #38BDF8;">"inputParameters"</span>: { <span style="color: #38BDF8;">"instanceId"</span>: <span style="color: #34D399;">"\${create_ecs_instance.output.instanceId}"</span> } },<br/>
-              &nbsp;&nbsp;{ <span style="color: #38BDF8;">"taskReferenceName"</span>: <span style="color: #A78BFA;">"env_route_decision"</span>, <span style="color: #38BDF8;">"type"</span>: <span style="color: #FBBF24;">"DECISION"</span>,<br/>
-              &nbsp;&nbsp;&nbsp;&nbsp;<span style="color: #38BDF8;">"caseExpression"</span>: <span style="color: #34D399;">"true ? 'PROD' : 'DEV'"</span> }<br/>
-              ]
-            </div>
-            <div style="color: #38BDF8; font-size: 0.72rem; margin-top: 4px;">✓ DAG 拓扑、数据血缘与 LSP 语法校验实时就绪</div>
-          </div>
-        `;
+    // ---- 版本固定演示 ----
+    const QUERY_CI = 'std-L1-配置管理-cmdb-query_ci';
+    const SNAPSHOT = 'std-L1-云资源-ecs-snapshot';
+    const pinStates = {
+      pinned: {
+        icon: '🗂️', title: '查询配置项', name: QUERY_CI, version: 1,
+        badges: '<span class="lib-badge" title="已固定版本 v1，库升级后不会自动变化">📚 流程库 v1</span>',
+        note: '已固定 v1：即使库里已发布 v2，这一步的编译结果也不会变化。'
+      },
+      upgrade: {
+        icon: '🗂️', title: '查询配置项', name: QUERY_CI, version: 1,
+        badges: '<span class="lib-badge" title="已固定版本 v1">📚 流程库 v1</span><button type="button" class="lib-badge up" id="upgrade-badge" aria-haspopup="dialog" title="查看升级差异并升级到库中最新版本">⬆ 有新版本 v2</button>',
+        note: '库里有 v2，但当前步骤仍按 v1 编译。点击黄色徽标查看升级差异。'
+      },
+      unavailable: {
+        icon: '📸', title: '云主机快照', name: SNAPSHOT, version: 1,
+        badges: '<span class="lib-badge" title="已固定版本 v1">📚 流程库 v1</span><span class="lib-badge bad" title="固定版本在库中不存在、已撤回或已下线">⚠ 版本不可用</span>',
+        note: '演示库里 v1 已被治理服务撤回。步骤保持原样编译，不会自动改版本，由你决定如何处理。'
       }
-    }
-
-    // ROI 动态估算
-    function recalcROI11() {
-      const wfs = parseInt(document.getElementById('wf-slider').value, 10);
-      const users = parseInt(document.getElementById('user-slider').value, 10);
-      document.getElementById('wf-count-label').textContent = wfs + ' 条 / 月';
-      document.getElementById('user-count-label').textContent = users + ' 人';
-
-      // 口径：每条需求节省研发联调 4.3h；每位业务/运维人员每月另省需求沟通与排期等待约 2.5h
-      const savedHours = Math.round(wfs * 4.3 + users * 2.5);
-      const savedMoney = (savedHours * 0.05).toFixed(1);
-
-      document.getElementById('roi-hours').textContent = savedHours + ' h';
-      document.getElementById('roi-money').textContent = '¥' + savedMoney + ' 万';
-    }
-
-    // 代码标签切换
-    const codeSnippets = {
-      business: `import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';
-import '@yiyi_zhang/reactflow-ui/style.css';
-
-export function CloudOpsStudio() {
-  return (
-    <div style={{ height: '100vh', width: '100vw' }}>
-      <WorkflowIDE
-        theme="dark"
-        themeColor="blue"
-        defaultUiMode="business" // 默认开启业务卡片流模式
-        onSave={(workflowDef) => {
-          // 保存为标准 Conductor 工作流定义
-          console.log('保存工作流:', workflowDef);
-        }}
-      />
-    </div>
-  );
-}`,
-      cloud: `import { defaultActionRegistry } from '@yiyi_zhang/reactflow-ui';
-
-// 注册团队内部自定义云动作（如内部私有云主机、负载均衡等）
-defaultActionRegistry.registerAction({
-  id: 'corp.cloud.create_node',
-  name: '创建私有算力节点',
-  category: 'cloud_ecs',
-  icon: '⚡',
-  description: '调用内网管控平面分配独享裸金属算力服务器',
-  params: [
-    { key: 'nodeType', label: '节点规格', type: 'select', options: ['G8.4x', 'A100.8x'] },
-    { key: 'clusterId', label: '目标机房集群', type: 'string', required: true }
-  ]
-});`,
-      extractor: `import { extractTemplateFromWorkflow } from '@yiyi_zhang/reactflow-ui';
-
-// 将线上真实运行实例一键脱敏提炼为团队公共模板
-const sanitizedTemplate = extractTemplateFromWorkflow(productionWorkflowDef, {
-  name: '企业云主机生命周期自动化模板',
-  category: 'cloud_ecs',
-  anonymizeIps: true,      // 自动脱敏内网与公网 IP
-  anonymizeTokens: true,   // 自动脱敏密钥与密码
-});
-
-console.log('已提取安全脱敏模板:', sanitizedTemplate);`
     };
+    let pinState = 'pinned';
+    let upgraded = false;
+    const $ = (id) => document.getElementById(id);
 
-    function switchQS11(key, btn) {
-      document.querySelectorAll('.qs-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('qs-code-body').textContent = codeSnippets[key];
+    function renderCompile(name, version, changed) {
+      $('ms-compile').innerHTML = '{ "type": "SUB_WORKFLOW",\n  "subWorkflowParam": { "name": "' + name + '",\n    "version": <span class="hl">' + version + '</span> } }' + (changed ? '  // 已升级' : '');
     }
+    function renderPin() {
+      const s = pinStates[pinState];
+      $('ms-icon').textContent = s.icon;
+      $('ms-title').textContent = s.title;
+      $('ms-name').textContent = s.name;
+      if (pinState === 'upgrade' && upgraded) {
+        $('ms-badges').innerHTML = '<span class="lib-badge" title="已固定版本 v2">📚 流程库 v2</span><span class="lib-badge ok">✓ 已升级</span>';
+        renderCompile(s.name, 2, true);
+        $('ms-note').textContent = '升级由你确认后才发生：同时清理已删除入参的值、补上新增入参的默认值；新增的必填入参仍需你自己填写。';
+      } else {
+        $('ms-badges').innerHTML = s.badges;
+        renderCompile(s.name, s.version, false);
+        $('ms-note').textContent = s.note;
+      }
+      const ub = $('upgrade-badge');
+      if (ub) ub.addEventListener('click', openDialog);
+    }
+    function openDialog() {
+      const d = $('mock-dialog');
+      d.classList.add('open');
+      d.focus();
+    }
+    function closeDialog(returnFocus) {
+      $('mock-dialog').classList.remove('open');
+      if (returnFocus) { const ub = $('upgrade-badge'); if (ub) ub.focus(); }
+    }
+    document.querySelectorAll('.state-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.state-btn').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        pinState = btn.dataset.state;
+        upgraded = false;
+        closeDialog(false);
+        renderPin();
+      });
+    });
+    $('dlg-cancel').addEventListener('click', () => closeDialog(true));
+    $('dlg-ok').addEventListener('click', () => { upgraded = true; closeDialog(false); renderPin(); });
+    $('mock-dialog').addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); closeDialog(true); }
+    });
+    renderPin();
 
-    function copyCode(btn) {
-      const code = document.getElementById('qs-code-body').textContent;
-      navigator.clipboard.writeText(code);
-      const orig = btn.textContent;
-      btn.textContent = "✓ 已复制代码";
-      setTimeout(() => btn.textContent = orig, 1500);
+    // ---- 动作选择器：业务域分组 + 层级过滤 ----
+    const RANK = { L1: 1, L2: 2, L3: 3 };
+    const pickerItems = [
+      { domain: '云资源', level: 'L1', name: '创建云主机', icon: '🖥️' },
+      { domain: '云资源', level: 'L1', name: '云主机快照', icon: '📸' },
+      { domain: '监控运维', level: 'L1', name: '查询监控指标', icon: '📈' },
+      { domain: '监控运维', level: 'L2', name: '告警自动扩容', icon: '📊' },
+      { domain: '通知协助', level: 'L1', name: '发送短信', icon: '📱' },
+      { domain: '通知协助', level: 'L1', name: '发送群消息卡片', icon: '💬' },
+      { domain: '配置管理', level: 'L1', name: '查询配置项', icon: '🗂️' },
+      { domain: '运维操作', level: 'L2', name: '漏洞修复', icon: '🛠️' },
+      { domain: '应用管理', level: 'L3', name: '应用全量发布', icon: '🚀' },
+      { domain: '安全服务', level: 'L1', name: '临时授权', icon: '🔑' },
+      { domain: '数据服务', level: 'L1', name: '导出报表', icon: '📄' }
+    ];
+    let currentLevel = '';
+    function renderPicker() {
+      const visible = pickerItems.filter((it) => !currentLevel || RANK[it.level] <= RANK[currentLevel]);
+      const domains = [];
+      pickerItems.forEach((it) => { if (!domains.includes(it.domain)) domains.push(it.domain); });
+      const root = $('picker-groups');
+      root.innerHTML = '';
+      domains.forEach((d) => {
+        const items = visible.filter((it) => it.domain === d);
+        if (!items.length) return;
+        const g = document.createElement('div');
+        g.className = 'picker-group';
+        const h = document.createElement('h4');
+        h.textContent = d;
+        const ul = document.createElement('ul');
+        ul.className = 'picker-items';
+        items.forEach((it) => {
+          const li = document.createElement('li');
+          li.className = 'picker-item';
+          const ic = document.createElement('span'); ic.setAttribute('aria-hidden', 'true'); ic.textContent = it.icon;
+          const nm = document.createElement('span'); nm.textContent = it.name;
+          const lv = document.createElement('span'); lv.className = 'lv ' + it.level; lv.textContent = it.level;
+          li.append(ic, nm, lv);
+          ul.appendChild(li);
+        });
+        g.append(h, ul);
+        root.appendChild(g);
+      });
+      const hidden = pickerItems.length - visible.length;
+      $('picker-status').textContent = currentLevel
+        ? '当前流程为 ' + currentLevel + '：显示 ' + visible.length + ' 个能力，隐藏 ' + hidden + ' 个违反分层规则的能力。'
+        : '未设置 currentWorkflowLevel：不做层级过滤，显示全部 ' + visible.length + ' 个能力。业务域按目录中首次出现的顺序排列，无业务域的归“其他”并排在最后。';
     }
+    document.querySelectorAll('.seg-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.seg-btn').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+        currentLevel = btn.dataset.level;
+        renderPicker();
+      });
+    });
+    renderPicker();
+
+    // ---- 接入代码示例 ----
+    const codeSnippets = {"shared": "import { useMemo } from 'react';\nimport { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';\n// 治理服务版 LibraryProvider，完整实现见接入指南第 5 节\nimport { createGovernanceLibraryProvider } from './governanceLibraryProvider';\n\nexport function WorkflowStudio({ mode }: { mode: 'business' | 'ai' }) {\n  // 同一个 Provider 同时喂给两个 IDE；引用必须稳定\n  const libraryProvider = useMemo(\n    () => createGovernanceLibraryProvider({\n      baseUrl: '',\n      headers: () => ({ Authorization: `Bearer ${getToken()}` }),\n    }),\n    [],\n  );\n\n  return (\n    <div style={{ height: '100vh' }}>\n      {mode === 'ai' ? (\n        <AiWorkflowIDE\n          libraryProvider={libraryProvider}\n          promptCatalogLimit={50} // 默认 50，超出部分由 AI 检索\n          aiConfig={{ apiKey: '', transport: { type: 'endpoint', url: '/api/ai/chat' } }}\n        />\n      ) : (\n        <WorkflowIDE\n          uiMode=\"business\"\n          libraryProvider={libraryProvider}\n          currentWorkflowLevel=\"L2\" // L2 看不到 L3 能力\n          onSave={saveToGovernance}\n        />\n      )}\n    </div>\n  );\n}", "api": "// 治理服务需要提供的流程库接口（权限在服务端判断）\n\nGET /api/library/catalog?kind=WORKFLOW,TASK\n  → LibraryListResult\n    已发布与已下线（deprecated: true）的能力，每个名称给当前版本；\n    inputSchema / outputSchema 要完整；支持 ETag / If-None-Match → 304\n\nGET /api/library/workflows/{name}/versions/{version}\n  → LibraryWorkflowRecord（完整定义）\n    版本不存在 / 已撤回 / 无权限：统一 404（对应前端的「版本不可用」）\n\nGET /api/library/search?q=&level=&domain=&limit=\n  → LibraryWorkflowRecord[]\n    服务端检索，后续提供，默认不启用（enableSearch）", "conductor": "import { createConductorLibraryProvider } from '@yiyi_zhang/reactflow-ui';\n\n// 仅限本地开发 / 没有治理服务的环境；内部项目请用治理服务版\nconst libraryProvider = createConductorLibraryProvider({\n  baseUrl: 'https://conductor.example.com/api',\n  headers: () => ({ Authorization: `Bearer ${getToken()}` }), // 组件库不保存凭据\n  filter: (def) => def.name.startsWith('std-'),                // 限定流程库范围\n  resolveExtension: (def) => lookupExtension(def.name),        // 补充层级 / 业务域 / 分类 / 下线标记\n});"};
+    const codeNotes = {
+      shared: 'Provider 必须保持引用稳定：<code>libraryProvider</code> 的引用一变化，IDE 就会丢弃已加载的目录并重新请求。组件按父容器高度撑满，请给容器明确的高度。',
+      api: '权限全部在服务端判断，前端不做任何权限过滤。示例实现见仓库 <code>src/demo/examples/governanceLibraryProvider.ts</code>（ETag 缓存、404 → <code>null</code>、认证头注入、<code>AbortSignal</code>）。',
+      conductor: '<code>createConductorLibraryProvider</code> 直接读取 Conductor OSS 元数据接口，绕过治理服务的权限与发布 / 下线 / 撤回状态，<strong>仅适合本地开发或没有治理服务的环境</strong>；内部项目请使用治理服务版。'
+    };
+    let codeKey = 'shared';
+    function renderCode() {
+      $('qs-code-body').textContent = codeSnippets[codeKey];
+      $('qs-note').innerHTML = codeNotes[codeKey];
+    }
+    document.querySelectorAll('.qs-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.qs-tab').forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+        codeKey = btn.dataset.code;
+        renderCode();
+      });
+    });
+    $('copy-code').addEventListener('click', (e) => copyText(codeSnippets[codeKey], e.currentTarget, '✓ 已复制代码'));
+    renderCode();
   </script>
 </body>
 </html>

@@ -4,6 +4,32 @@
 
 ---
 
+## 🚧 v1.2.0：流程库就绪（发布准备中）
+
+**目标**：让内部项目基于真实治理服务使用流程库——业务模式按业务域选到库能力、引用时固定版本、升级前看差异；AI IDE 能检索并正确引用库能力。目标发布时间见 [`docs/v1.2.0-release-plan.md`](./docs/v1.2.0-release-plan.md)，当前变更见 `CHANGELOG.md` 的 `[Unreleased]`。
+
+- [x] **流程库数据源 `LibraryProvider`**：同一份规范化目录投影为业务动作、AI 任务 Schema 与 AI 流程库目录；`WorkflowIDE` / `AiWorkflowIDE` 新增 `libraryProvider` prop；默认 Conductor 实现 `createConductorLibraryProvider`
+- [x] **流程库能力动作**：由 Conductor 标准 `WorkflowDef` / `TaskDef` 及 `inputSchema` / `outputSchema` 生成业务动作，编译为 `SUB_WORKFLOW`；首次引用固定版本，库升级后不自动跟随
+- [x] **升级差异与「版本不可用」**：「⬆ 有新版本」展示入参 / 出参差异后再确认升级；固定版本被撤回或下线时显示「⚠ 版本不可用」，编译结果不变
+- [x] **业务域与分层**：命名规范 `类型-层级-业务域-产品-功能`（`parseWorkflowName` / `validateWorkflowName`）、动作选择器按业务域分组、`currentWorkflowLevel` 分层过滤、AI 检索支持按业务域过滤、`promptCatalogLimit`
+- [x] **Demo 演示后端与宿主接入指南**：模拟治理服务（`src/demo/mockGovernance/`）与 [`docs/integration-guide.md`](./docs/integration-guide.md)
+- [x] **体验与质量**：下拉字段「插入数据」、弹窗跟随主题、多层嵌套控制流、卡片视图性能 / 按需订阅 / 撤销上限、类型检查成为 CI 门禁
+- [ ] **收尾**：补 `@types/node` 并移除类型检查排除项、人工走查、版本号与 CHANGELOG 定稿、发布
+
+---
+
+## ✅ v1.1.0：业务与技术双模全融合 (已发布 · 2026-10-21)
+
+**目标**：打破资深研发与业务 / 运维专家之间的使用鸿沟。
+
+- [x] **业务卡片流设计器 (StepFlow)**：`uiMode: 'business' | 'pro'` 双模同屏无损热切换；`compile.ts` / `decompile.ts` 实现业务步骤模型与 Conductor 原生 DAG 的双向无损转换，非标任务由 `isProFallback` 保护
+- [x] **云平台业务动作库与动态参数胶囊**：内置阿里云 ECS 全生命周期 8 个高频动作；`ActionRegistry` / `defaultActionRegistry` 支持接入方注册私有动作与自定义表单；`ParamCapsule` 智能绑定上游输出引用
+- [x] **高级控制流卡片**：条件分支 (`DecisionBranchCard`)、并行泳道 (`ForkJoinCard`)、循环 (`LoopDoWhileCard`)，适配双品牌色与明暗模式
+- [x] **生产实例一键脱敏提炼为模板**：`TemplateExtractor` + `anonymize.ts` 脱敏（内网 / 公网 IP、云凭证、密码等），场景化模板中心 `TemplateGallery`（内置 8 个场景模板）与参数配置向导
+- [x] **运行故事线时间轴与生活化诊断自愈建议** (`RunStoryTimeline`)
+
+---
+
 ## ✅ v1.0.0 GA：四大核心支柱架构 × 本地确定性沙箱 × W-LSP 语言服务 (已发布 🎉)
 
 **目标**：对标 Temporal UI、n8n、LangGraph Studio 与 Cursor，打造兼具**零延迟确定性工程体验**与**画布原生 AI 协同能力**的 `1.0.0` 正式版。
@@ -60,7 +86,9 @@
 
 ---
 
-## 🔭 v1.1.0+ 未来演进方向 (Next Horizon)
+## 🔭 远期构想
+
+> **前瞻规划已迁移到 [`docs/roadmap.md`](./docs/roadmap.md)**（稳定线 vs 实验线 Labs，v1.2.0 – v1.5.0 版本计划与扩展点总表）。本文只保留尚未排期的远期构想，排期以 `docs/roadmap.md` 为准。
 
 ### 1. 多人实时协同编排 (Multiplayer Collaboration)
 - [ ] 基于 Yjs / CRDT 的多用户画布光标同步与节点锁机制

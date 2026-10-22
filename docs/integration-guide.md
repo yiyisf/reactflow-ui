@@ -37,7 +37,7 @@ npm install @yiyi_zhang/reactflow-ui reactflow react react-dom
 | `@yiyi_zhang/reactflow-ui/ai` | `AiWorkflowIDE`（AI 对话式建模）及 AI 相关类型、`LibraryProvider` 等流程库**类型** | 需要 AI 建模。AI 代码单独打包，只用 `WorkflowIDE` 的项目不会引入 |
 | `@yiyi_zhang/reactflow-ui/style.css` | 样式 | **必须引入一次**（两个入口共用） |
 
-> `/ai` 入口只导出流程库的类型与 `LibraryCatalog` / 投影函数，**不含** `parseWorkflowName`、`validateWorkflowName`、`createConductorLibraryProvider` 等工具函数；需要时从主入口引入。
+> `/ai` 入口同样导出流程库的类型、`LibraryCatalog`、投影函数，以及 `parseWorkflowName`、`validateWorkflowName`、`createConductorLibraryProvider`，只引入 `/ai` 的宿主无需再从主入口引入。
 
 组件按父容器高度撑满，**务必给容器一个明确的高度**（如 `height: 100vh`）。
 
@@ -418,7 +418,7 @@ function Editor({ useAi }: { useAi: boolean }) {
 
 SDK 对命名与业务域的处理：
 
-- **解析**：`parseWorkflowName(name)` 返回 `{ type, level, domain, product, func }`，不合规返回 `null`；`validateWorkflowName(name, allowedDomains?)` 返回中文错误列表（空数组 = 合法），传入 `allowedDomains` 才校验业务域。两者都是纯函数，从主入口导出。
+- **解析**：`parseWorkflowName(name)` 返回 `{ type, level, domain, product, func }`，不合规返回 `null`；`validateWorkflowName(name, allowedDomains?)` 返回中文错误列表（空数组 = 合法），传入 `allowedDomains` 才校验业务域。两者都是纯函数，主入口与 `/ai` 入口均有导出。
 - **兜底**：库记录没有 `extension.level` / `extension.domain` 时，按名称解析得到；`extension` 中显式给出的值**始终优先**（两者层级不一致时保留 `extension.level`，不报错）；名称不符合规范则不兜底。
 - **动作选择器**：存在业务域时，在原分类标签后追加业务域标签，按目录中首次出现的顺序排列，没有业务域的库动作归「其他」并固定在最后；搜索跨全部动作。
 - **AI**：系统提示词目录显示 `[业务域: X]`，`search_workflow_library` 支持 `domain` 参数，并透传给 `provider.search`；流程库面板可按业务域筛选。

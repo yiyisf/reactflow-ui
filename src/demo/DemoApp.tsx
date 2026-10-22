@@ -4,6 +4,8 @@ import { AiWorkflowIDE } from '../AiWorkflowIDE';
 
 import type { ViewMode } from '../types/workflow';
 import type { WorkflowDef } from '../types/conductor';
+import type { WorkflowLevel } from '../types/workflowLibrary';
+import { createMockGovernanceProvider } from './mockGovernance';
 import { useTheme } from '../hooks/useTheme';
 import { ThemeControls } from '../components/ThemeControls';
 import { BrandLogo } from '../components/BrandLogo';
@@ -22,6 +24,19 @@ function DemoApp() {
   const [useNewAiMode, setUseNewAiMode] = useState(false);
   const [uiMode, setUiMode] = useState<'pro' | 'business'>('business');
   const [allowOperations, setAllowOperations] = useState(true);
+
+  // 流程库：演示用的模拟治理服务（有网络延迟，可模拟加载失败）。
+  // 同一个实例同时传给 WorkflowIDE 与 AiWorkflowIDE；更换实例即触发目录重新加载。
+  const [libraryProvider, setLibraryProvider] = useState(() => createMockGovernanceProvider());
+  // 当前编辑的流程层级：用于演示分层调用规则（空 = 不限）
+  const [workflowLevel, setWorkflowLevel] = useState<WorkflowLevel | ''>('');
+
+  const handleLibraryAction = useCallback((action: string) => {
+    const next = createMockGovernanceProvider();
+    // 让第一次目录加载失败：界面显示「加载失败，点击重试」，点击重试后恢复正常
+    if (action === 'fail') next.failNext();
+    setLibraryProvider(next);
+  }, []);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
   const [viewMode] = useState<ViewMode>('developer');
@@ -247,6 +262,37 @@ function DemoApp() {
 
             <div className="divider"></div>
 
+            {/* 流程库演示控制：模拟治理服务的加载失败与层级过滤 */}
+            <select
+              className="sample-select"
+              onChange={(e) => {
+                handleLibraryAction(e.target.value);
+                e.target.value = '';
+              }}
+              defaultValue=""
+              title="流程库由演示用的模拟治理服务提供（约 0.4 秒延迟）；可模拟目录加载失败，查看错误提示与重试"
+            >
+              <option value="" disabled>📚 流程库...</option>
+              <option value="reload">重新加载流程库</option>
+              <option value="fail">模拟加载失败（点击重试可恢复）</option>
+            </select>
+
+            {!useNewAiMode && (
+              <select
+                className="sample-select"
+                value={workflowLevel}
+                onChange={(e) => setWorkflowLevel(e.target.value as WorkflowLevel | '')}
+                title="当前编辑流程的层级：L1 看不到 L2/L3 能力，L2 看不到 L3 能力（业务模式的动作选择器生效）"
+              >
+                <option value="">层级：不限</option>
+                <option value="L1">层级：L1</option>
+                <option value="L2">层级：L2</option>
+                <option value="L3">层级：L3</option>
+              </select>
+            )}
+
+            <div className="divider"></div>
+
             {/* 合并工作流示例下拉选择器 */}
             <select
               className="sample-select"
@@ -262,6 +308,9 @@ function DemoApp() {
               title="载入官方示例工作流（包含编辑态与运行态案例）"
             >
               <option value="" disabled>📁 示例工作流...</option>
+              <optgroup label="── 📚 流程库 ──">
+                <option value="def:library-capabilities-demo">📚 引用库能力（有新版本 / 版本不可用）</option>
+              </optgroup>
               <optgroup label="── ☁️ 云平台业务流程 ──">
                 <option value="def:ecs-lifecycle-automation">☁️ 云主机全生命周期自动化 (业务模式)</option>
               </optgroup>
@@ -341,6 +390,7 @@ function DemoApp() {
             themeColor={themeColor}
             layoutDirection="LR"
             aiConfig={aiConfig}
+            libraryProvider={libraryProvider}
             onSave={handleSave}
             onWorkflowChange={handleWorkflowChange}
             onRequestImport={() => {
@@ -364,6 +414,8 @@ function DemoApp() {
             searchQuery={searchQuery}
             viewMode={viewMode}
             aiConfig={aiConfig}
+            libraryProvider={libraryProvider}
+            currentWorkflowLevel={workflowLevel || undefined}
             onSave={handleSave}
             onWorkflowChange={handleWorkflowChange}
             onRequestImport={() => {

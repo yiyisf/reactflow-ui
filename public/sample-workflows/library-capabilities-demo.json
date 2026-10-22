@@ -1,0 +1,66 @@
+{
+  "name": "custom-L2-应用管理-demo-library_showcase",
+  "description": "流程库能力演示：引用治理服务中的库能力并固定版本。含「有新版本」、「版本不可用」（已撤回 / 已下线）与当前版本四种状态。",
+  "version": 1,
+  "schemaVersion": 2,
+  "ownerEmail": "platform-governance@example.com",
+  "tasks": [
+    {
+      "name": "std-L1-配置管理-cmdb-query_ci",
+      "taskReferenceName": "query_ci",
+      "type": "SUB_WORKFLOW",
+      "description": "查询配置项（固定 v1，库已有 v2：新增必填「租户编号」、删除出参「耗时」）",
+      "inputParameters": {
+        "ciType": "服务器",
+        "keyword": "order",
+        "pageSize": 20
+      },
+      "subWorkflowParam": {
+        "name": "std-L1-配置管理-cmdb-query_ci",
+        "version": 1
+      }
+    },
+    {
+      "name": "std-L1-云资源-ecs-snapshot",
+      "taskReferenceName": "snapshot_vm",
+      "type": "SUB_WORKFLOW",
+      "description": "云主机快照（固定 v1，该版本已被治理服务撤回）",
+      "inputParameters": {
+        "instanceId": "i-demo0001"
+      },
+      "subWorkflowParam": {
+        "name": "std-L1-云资源-ecs-snapshot",
+        "version": 1
+      }
+    },
+    {
+      "name": "std-L1-系统工具-sftp-upload_file",
+      "taskReferenceName": "upload_pkg",
+      "type": "SUB_WORKFLOW",
+      "description": "SFTP 上传文件（该能力已下线）",
+      "inputParameters": {
+        "host": "10.20.30.41",
+        "remotePath": "/data/upload",
+        "fileUrl": "http://mock-gateway.internal/files/demo.tar.gz"
+      },
+      "subWorkflowParam": {
+        "name": "std-L1-系统工具-sftp-upload_file",
+        "version": 1
+      }
+    },
+    {
+      "name": "std-L1-通知协助-msg-send_sms",
+      "taskReferenceName": "notify_owner",
+      "type": "SUB_WORKFLOW",
+      "description": "发送短信（固定 v2，即当前最新版本）",
+      "inputParameters": {
+        "phone": "13800000001",
+        "content": "配置项查询完成，共 ${query_ci.output.total} 条，耗时 ${query_ci.output.costMs} 毫秒"
+      },
+      "subWorkflowParam": {
+        "name": "std-L1-通知协助-msg-send_sms",
+        "version": 2
+      }
+    }
+  ]
+}

@@ -12,6 +12,8 @@ export interface DataPillInputProps {
   registry?: ActionRegistry;
   workflowInputParams?: any[];
   disabled?: boolean;
+  /** 初始即展开「插入数据」选择面板（例如下拉字段刚切换为动态取值时） */
+  defaultShowPicker?: boolean;
 }
 
 export const DataPillInput: React.FC<DataPillInputProps> = ({
@@ -23,8 +25,9 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
   registry = defaultActionRegistry,
   workflowInputParams,
   disabled = false,
+  defaultShowPicker = false,
 }) => {
-  const [showPicker, setShowPicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(defaultShowPicker);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 

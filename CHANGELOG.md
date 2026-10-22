@@ -7,6 +7,8 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 ## [Unreleased]
 
 ### Added
+- **下拉字段支持「插入数据」**：可改为引用上游步骤输出或全局入参（运行时取值），也可切回选择；已保存的值为 `${...}` 表达式时自动进入动态取值。字段 `acceptsPills` 为 `false` 时不提供。
+- `/ai` 入口补充导出 `parseWorkflowName`、`validateWorkflowName`、`createConductorLibraryProvider`。
 - **流程库能力动作**：由 Conductor 标准 `WorkflowDef` / 已注册 `TaskDef` 生成业务动作（`buildActionFromWorkflowDef` 等），入参取自 `inputSchema`，出参取自 `outputSchema` / `outputParameters`；流程库能力编译为 `SUB_WORKFLOW`，步骤记录 `libraryRef`，**首次引用时固定版本，库升级后不自动跟随**，由用户确认后手动升级。
 - 分支 / 并行泳道 / 循环体内支持任意层级嵌套控制流。
 - **流程库数据源 `LibraryProvider`**（设计见 `docs/design/流程库数据源-LibraryProvider设计.md`）：新增公共层 `src/library`，同一份规范化目录（`LibraryCatalog`）投影为业务动作（`toActions`）、AI 任务 Schema（`toTaskSchemas`）与 AI 流程库目录（`toLibraryItems`），不再需要宿主把同一批能力分别喂给 `actions` / `workflowLibrary` / `taskSchemas` 三处。版本统一规范化为整数；同名多版本取最大版本；历史版本按需获取并缓存。
@@ -20,6 +22,8 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **宿主接入指南** `docs/integration-guide.md`：面向内部项目，覆盖安装与入口、最小接入、全部已有扩展点、用治理服务实现 `LibraryProvider`、命名规范与业务域、版本固定行为、常见问题与各版本计划的扩展点；示例实现 `src/demo/examples/governanceLibraryProvider.ts`（ETag 缓存、404 → `null`、认证头注入、`AbortSignal`）随 CI 类型检查并带单元测试。
 
 ### Fixed
+- **业务动作选择弹窗跟随主题**：弹窗经 Portal 渲染时未带主题属性，暗色模式下背景透明、配色与项目不一致；现已修复，并将筛选拆为「分类」「业务域」两行、搜索移到标题栏、卡片显示层级与业务域。沙箱配置弹窗与参数联想浮层同样补上主题属性。
+- **业务卡片展开后不再重复显示动作信息**：去掉表单顶部与步骤头部重复的名称 / 描述横幅，保留敏感操作提示。
 - **AI 生成的子工作流不再随意填版本**：此前 `workflowSynthesizer` 对缺少版本的 `SUB_WORKFLOW` 一律填 `t.version ?? 1`；现在新建引用固定为流程库目录的当前最新版本（目录没有该流程时保持原行为并提示）。已有版本号以及画布上已存在的步骤一律不会被自动改变。
 - `LibraryPanel` 插入子工作流时不再把 `"1.2.0"` 这类版本串错误解析成 `120`。
 - 业务模式：宣传页版本入口收进下拉；ROI 估算现在包含团队人数；模板中心弹窗跟随系统主题。

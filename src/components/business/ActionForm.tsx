@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { BusinessStep } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import { DataPillInput } from './DataPillInput';
@@ -65,56 +65,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Action Header Banner */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 10,
-          padding: '10px 12px',
-          background: 'var(--bg-primary)',
-          borderRadius: 8,
-          border: '1px solid var(--border-primary)',
-        }}
-      >
-        <span style={{ fontSize: 24 }}>{action.icon}</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
-              {action.name}
-            </span>
-            {action.riskLevel === 'sensitive' && (
-              <span
-                style={{
-                  fontSize: 10,
-                  padding: '1px 6px',
-                  borderRadius: 4,
-                  background: 'color-mix(in srgb, var(--status-failed, #ef4444) 15%, transparent)',
-                  color: 'var(--status-failed, #ef4444)',
-                  border: '1px solid color-mix(in srgb, var(--status-failed, #ef4444) 30%, transparent)',
-                  fontWeight: 600,
-                }}
-              >
-                ⚠️ 敏感变更
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            {action.description}
-          </div>
-        </div>
-      </div>
-
       {/* Sensitive Risk Alert Banner */}
       {action.riskLevel === 'sensitive' && (
         <div
           style={{
             padding: '8px 12px',
             borderRadius: 6,
-            background: 'color-mix(in srgb, var(--status-failed, #ef4444) 8%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--status-failed, #ef4444) 25%, transparent)',
+            background: 'color-mix(in srgb, var(--color-error) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-error) 25%, transparent)',
             fontSize: 12,
-            color: 'var(--status-failed, #ef4444)',
+            color: 'var(--color-error)',
             lineHeight: 1.5,
           }}
         >
@@ -152,27 +112,17 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 
               {/* Render field control based on type */}
               {field.type === 'select' ? (
-                <select
+                <SelectField
+                  value={val}
+                  options={field.options ?? []}
+                  allowDynamic={field.acceptsPills !== false}
                   disabled={disabled}
-                  value={val ?? ''}
-                  onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                  style={{
-                    padding: '7px 10px',
-                    borderRadius: 6,
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-secondary)',
-                    color: 'var(--text-primary)',
-                    fontSize: 13,
-                    outline: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {field.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={field.placeholder}
+                  upstreamSteps={upstreamSteps}
+                  workflowInputParams={workflowInputParams}
+                  registry={registry}
+                  onChange={(nextVal) => handleFieldChange(field.key, nextVal)}
+                />
               ) : field.type === 'boolean' ? (
                 <label
                   style={{
@@ -297,6 +247,130 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+};
+
+/** 值中含 ${...} 引用时视为动态取值 */
+const isExpression = (v: unknown): boolean => typeof v === 'string' && v.includes('${');
+
+interface SelectFieldProps {
+  value: any;
+  options: { label: string; value: any }[];
+  /** 是否允许改为「插入数据」动态取值（字段 acceptsPills 显式为 false 时不允许） */
+  allowDynamic: boolean;
+  disabled: boolean;
+  placeholder?: string;
+  upstreamSteps: BusinessStep[];
+  workflowInputParams?: any[];
+  registry: ActionRegistry;
+  onChange: (val: any) => void;
+}
+
+/**
+ * 下拉字段：默认从可选项中选择；也可切换为「插入数据」，引用上游步骤输出或全局入参（运行时取值）。
+ * 已保存的值是 ${...} 表达式时自动处于动态取值状态。
+ */
+const SelectField: React.FC<SelectFieldProps> = ({
+  value,
+  options,
+  allowDynamic,
+  disabled,
+  placeholder,
+  upstreamSteps,
+  workflowInputParams,
+  registry,
+  onChange,
+}) => {
+  const [dynamic, setDynamic] = useState(() => isExpression(value));
+  const [justSwitched, setJustSwitched] = useState(false);
+
+  const smallButton: React.CSSProperties = {
+    flexShrink: 0,
+    background: 'transparent',
+    color: 'var(--text-secondary)',
+    border: '1px solid var(--border-primary)',
+    borderRadius: 4,
+    padding: '2px 8px',
+    fontSize: 11,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    whiteSpace: 'nowrap',
+  };
+
+  if (allowDynamic && dynamic) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <DataPillInput
+          disabled={disabled}
+          value={isExpression(value) ? value : ''}
+          placeholder={placeholder || '插入上游数据，运行时取值'}
+          upstreamSteps={upstreamSteps}
+          workflowInputParams={workflowInputParams}
+          registry={registry}
+          defaultShowPicker={justSwitched}
+          onChange={onChange}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            动态取值：运行时的值需为可选项之一（{options.map((o) => o.label).join(' / ')}）
+          </span>
+          <button
+            type="button"
+            disabled={disabled}
+            style={smallButton}
+            onClick={() => {
+              setDynamic(false);
+              setJustSwitched(false);
+              // 改回选择时，表达式不是合法选项，回到第一个可选项
+              if (isExpression(value)) onChange(options[0]?.value ?? '');
+            }}
+          >
+            改为选择
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <select
+        disabled={disabled}
+        value={isExpression(value) ? '' : value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: '7px 10px',
+          borderRadius: 6,
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-secondary)',
+          color: 'var(--text-primary)',
+          fontSize: 13,
+          outline: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        {options.map((opt) => (
+          <option key={String(opt.value)} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {allowDynamic && (
+        <button
+          type="button"
+          disabled={disabled}
+          title="改为引用上游步骤输出或全局入参，运行时取值"
+          style={smallButton}
+          onClick={() => {
+            setDynamic(true);
+            setJustSwitched(true);
+          }}
+        >
+          🏷️ 插入数据
+        </button>
       )}
     </div>
   );

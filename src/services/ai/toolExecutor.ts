@@ -16,7 +16,9 @@ import {
     applyTaskConfigurations,
     verifyWorkflowSemantics,
     normalizeWorkflowDef,
+    pinSubWorkflowVersions,
     collectAllTasksInOrder,
+    type NormalizeOptions,
     type SynthesisPhase,
     type VerificationSummary,
 } from './workflowSynthesizer';
@@ -85,6 +87,27 @@ export interface ToolExecutionContext {
     workingDraft?: WorkflowDef | null;
     validationResults: ValidationResults;
     libraryItems: WorkflowLibraryItem[];
+    /**
+     * 查询流程库中某个名称的当前最新版本（由调用方注入，本模块保持纯净、不读 store）。
+     * 提供后，AI 新建的 SUB_WORKFLOW 缺少版本时固定为库当前版本；已有版本号一律不改。
+     */
+    resolveLatestVersion?: (name: string) => number | undefined;
+    /**
+     * 服务端检索命中（由调用方在调用前预取，通常来自 LibraryProvider.search）。
+     * 提供时 search_workflow_library 直接展示这些结果，不再在 libraryItems 内本地匹配。
+     */
+    librarySearchResults?: WorkflowLibraryItem[];
+}
+
+/** 工作流库检索结果最多展示的条数（目录可能有上千项，避免一次塞满上下文） */
+export const LIBRARY_SEARCH_RESULT_LIMIT = 50;
+
+/** 汇总 SUB_WORKFLOW 固定版本所需的选项：画布上已存在的任务不会被自动补版本 */
+function buildNormalizeOptions(ctx: ToolExecutionContext): NormalizeOptions {
+    return {
+        resolveLatestVersion: ctx.resolveLatestVersion,
+        existingRefs: new Set(collectAllTasksInOrder(ctx.workflowDef?.tasks ?? []).map(t => t.taskReferenceName)),
+    };
 }
 
 // ─── Recursive task search/transform ────────────────────────────────────────
@@ -537,6 +560,7 @@ export function executeToolCall(
                     outputParameters: args.outputParameters,
                     inputParameters: args.inputParameters,
                 },
+                buildNormalizeOptions(ctx),
             );
             const allTasks = collectAllTasksInOrder(nextDraft.tasks);
             const missingNote = missingRefs.length > 0
@@ -559,7 +583,7 @@ export function executeToolCall(
                     text: '当前没有可提交的工作流草稿，请先编排任务后再提交。',
                 };
             }
-            const { workflow: normalizedDraft, autoFixed } = normalizeWorkflowDef(activeDraft);
+            const { workflow: normalizedDraft, autoFixed } = normalizeWorkflowDef(activeDraft, buildNormalizeOptions(ctx));
             const verification = verifyWorkflowSemantics(normalizedDraft, autoFixed);
             const diff = computeDiff(currentDef, normalizedDraft);
             const { inferredLevel } = checkLevelCompliance(normalizedDraft, ctx.libraryItems);
@@ -590,9 +614,11 @@ export function executeToolCall(
             if (proposed.version === undefined) {
                 proposed = { ...proposed, version: 1 };
             }
+            const pinned = pinSubWorkflowVersions(proposed, buildNormalizeOptions(ctx));
+            proposed = pinned.workflow;
             const diff = computeDiff(currentDef, proposed);
             const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
-            const verification = verifyWorkflowSemantics(proposed);
+            const verification = verifyWorkflowSemantics(proposed, pinned.autoFixed);
             return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined, verification };
         }
 
@@ -605,10 +631,12 @@ export function executeToolCall(
             if (!targetBase) {
                 return { type: 'error', text: '当前没有加载工作流，请先创建或加载一个工作流' };
             }
-            const proposed = applyPatch(targetBase, ops);
+            const patched = applyPatch(targetBase, ops);
+            const pinned = pinSubWorkflowVersions(patched, buildNormalizeOptions(ctx));
+            const proposed = pinned.workflow;
             const diff = computeDiff(currentDef, proposed);
             const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
-            const verification = verifyWorkflowSemantics(proposed);
+            const verification = verifyWorkflowSemantics(proposed, pinned.autoFixed);
             return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined, verification };
         }
 
@@ -670,13 +698,15 @@ export function executeToolCall(
 
         case 'search_workflow_library': {
             const library = ctx.libraryItems;
-            if (library.length === 0) {
-                return { type: 'info', text: '当前没有配置工作流库，无法搜索。' };
-            }
             const query = (args.query as string || '').toLowerCase();
             const levelFilter = args.level as WorkflowLevel | undefined;
 
-            const matched = library.filter(item => {
+            // 服务端检索命中（预取）优先；否则在本地目录内匹配
+            const serverHits = ctx.librarySearchResults;
+            if (!serverHits && library.length === 0) {
+                return { type: 'info', text: '当前没有配置工作流库，无法搜索。' };
+            }
+            const matched = serverHits ?? library.filter(item => {
                 if (levelFilter && item.workflowLevel !== levelFilter) return false;
                 return (
                     item.workflowName.toLowerCase().includes(query) ||
@@ -689,8 +719,9 @@ export function executeToolCall(
                 return { type: 'info', text: `未找到与「${args.query}」相关的子工作流。` };
             }
 
+            const shown = matched.slice(0, LIBRARY_SEARCH_RESULT_LIMIT);
             const byLevel: Record<string, WorkflowLibraryItem[]> = { L3: [], L2: [], L1: [] };
-            matched.forEach(item => byLevel[item.workflowLevel].push(item));
+            shown.forEach(item => byLevel[item.workflowLevel].push(item));
 
             const lines: string[] = [`找到 ${matched.length} 个相关工作流：`];
             (['L3', 'L2', 'L1'] as WorkflowLevel[]).forEach(lvl => {
@@ -700,6 +731,9 @@ export function executeToolCall(
                     lines.push(`- \`${item.workflowName}\` (v${item.version}): ${item.description ?? ''} [${(item.tags ?? []).join(', ')}]`);
                 });
             });
+            if (matched.length > shown.length) {
+                lines.push(`\n（仅显示前 ${shown.length} 个，请用更具体的关键词或指定层级缩小范围）`);
+            }
 
             return { type: 'info', text: lines.join('\n') };
         }

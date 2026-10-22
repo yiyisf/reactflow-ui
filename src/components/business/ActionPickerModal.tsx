@@ -2,6 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ActionRegistry } from '../../actions/registry';
 import type { ActionDefinition, ActionCategory } from '../../actions/types';
+import type { WorkflowLevel } from '../../types/workflowLibrary';
+import type { LibraryCatalog } from '../../library/catalog';
+import { filterPickableActions } from '../../library/projections';
+import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
+
+/** 单次最多渲染的动作数（流程库可能有上千项）；超出请用搜索缩小范围 */
+const RENDER_LIMIT = 200;
 
 export interface ActionPickerModalProps {
   registry: ActionRegistry;
@@ -9,6 +16,13 @@ export interface ActionPickerModalProps {
   stepNumber: number;
   onClose: () => void;
   onSelect: (action: ActionDefinition) => void;
+  /**
+   * 当前正在编辑的工作流层级。提供时隐藏违反分层调用规则的流程库动作
+   * （L1 不显示 L2/L3，L2 不显示 L3）；未提供则不按层级过滤。
+   */
+  currentWorkflowLevel?: WorkflowLevel;
+  /** 流程库目录：用于显示「加载中 / 加载失败，点击重试」状态 */
+  libraryCatalog?: LibraryCatalog;
 }
 
 /**
@@ -21,13 +35,17 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
   stepNumber,
   onClose,
   onSelect,
+  currentWorkflowLevel,
+  libraryCatalog,
 }) => {
+  const catalogState = useLibraryCatalogSnapshot(libraryCatalog);
   const [selectedCategory, setSelectedCategory] = useState<ActionCategory | 'all'>('all');
   const [actionSearch, setActionSearch] = useState('');
 
   const filteredActions = useMemo(() => {
     const keyword = actionSearch.trim().toLowerCase();
-    return registry.getAllActions().filter((a) => {
+    // 已下线动作与违反层级规则的流程库动作不出现在选择器中（已引用的步骤不受影响）
+    return filterPickableActions(registry.getAllActions(), { currentLevel: currentWorkflowLevel }).filter((a) => {
       const matchesCat = selectedCategory === 'all' || a.category === selectedCategory;
       const matchesSearch =
         !keyword ||
@@ -35,7 +53,9 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
         a.description.toLowerCase().includes(keyword);
       return matchesCat && matchesSearch;
     });
-  }, [registry, selectedCategory, actionSearch]);
+  }, [registry, selectedCategory, actionSearch, currentWorkflowLevel]);
+
+  const visibleActions = useMemo(() => filteredActions.slice(0, RENDER_LIMIT), [filteredActions]);
 
   if (typeof document === 'undefined') return null;
 
@@ -123,6 +143,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
                 { id: 'notify', label: '📢 通知消息' },
                 { id: 'human', label: '👤 人工审批' },
                 { id: 'logic', label: '⏳ 流程控制' },
+                { id: 'custom', label: '🧩 流程库 / 自定义' },
               ] as const
             ).map((tab) => (
               <button
@@ -162,6 +183,44 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
           />
         </div>
 
+        {/* 流程库加载状态：失败不阻塞使用其它动作 */}
+        {catalogState.status === 'loading' && (
+          <div style={{ padding: '6px 18px', fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-tertiary)' }}>
+            正在加载流程库…
+          </div>
+        )}
+        {catalogState.status === 'error' && (
+          <div
+            style={{
+              padding: '6px 18px',
+              fontSize: 12,
+              color: 'var(--status-failed, #ef4444)',
+              background: 'var(--bg-tertiary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <span title={catalogState.error?.message}>流程库加载失败，其它动作仍可使用</span>
+            <button
+              onClick={() => {
+                void libraryCatalog?.reload();
+              }}
+              style={{
+                background: 'none',
+                border: '1px solid currentColor',
+                borderRadius: 4,
+                color: 'inherit',
+                cursor: 'pointer',
+                fontSize: 11,
+                padding: '1px 8px',
+              }}
+            >
+              点击重试
+            </button>
+          </div>
+        )}
+
         {/* Actions Grid */}
         <div
           style={{
@@ -173,7 +232,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
             gap: 12,
           }}
         >
-          {filteredActions.map((action) => (
+          {visibleActions.map((action) => (
             <div
               key={action.id}
               onClick={() => onSelect(action)}
@@ -230,6 +289,11 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
               </div>
             </div>
           ))}
+          {filteredActions.length > visibleActions.length && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+              共 {filteredActions.length} 项，仅显示前 {visibleActions.length} 项，请用搜索缩小范围
+            </div>
+          )}
         </div>
       </div>
     </div>,

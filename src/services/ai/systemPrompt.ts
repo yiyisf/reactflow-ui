@@ -100,9 +100,13 @@ export function buildSystemPrompt(
         systemPromptExtra?: string;
         viewMode?: ViewMode;
         pendingProposalDef?: import('../../types/conductor').WorkflowDef;
+        /** 流程库目录注入提示词的条数上限，默认 DEFAULT_PROMPT_CATALOG_LIMIT；超出部分提示改用 search_workflow_library */
+        promptCatalogLimit?: number;
+        /** 任务 Schema 注入提示词的条数上限；缺省不限制（保持旧行为） */
+        promptSchemaLimit?: number;
     },
 ): string {
-    const { systemPrompt, systemPromptExtra, viewMode, pendingProposalDef } = options ?? {};
+    const { systemPrompt, systemPromptExtra, viewMode, pendingProposalDef, promptCatalogLimit, promptSchemaLimit } = options ?? {};
 
     const intent = classifyIntent(userInput);
     const contextOptions = getContextOptions(intent);
@@ -130,13 +134,13 @@ export function buildSystemPrompt(
     }
 
     // Task schema registry (injected when integrator registers task schemas)
-    const schemaBlock = schemaRegistry.buildPromptSection();
+    const schemaBlock = schemaRegistry.buildPromptSection(promptSchemaLimit !== undefined ? { limit: promptSchemaLimit } : undefined);
     if (schemaBlock) {
         parts.push(schemaBlock);
     }
 
     // Sub-workflow library catalog (injected when library is available)
-    const libraryBlock = buildLibraryCatalog(libraryItems);
+    const libraryBlock = buildLibraryCatalog(libraryItems, promptCatalogLimit);
     if (libraryBlock) {
         parts.push(libraryBlock);
     }
@@ -172,8 +176,32 @@ export function buildSystemPrompt(
 
 // ─── Library catalog builder ─────────────────────────────────────────────────
 
-function buildLibraryCatalog(items: WorkflowLibraryItem[]): string | null {
-    if (items.length === 0) return null;
+/** 目录注入提示词的默认条数上限（治理平台可能有 1000+ 工作流，不能全量塞进提示词） */
+export const DEFAULT_PROMPT_CATALOG_LIMIT = 50;
+
+/**
+ * 构建流程库目录段落。
+ * 超过 limit 时按层级 L3 -> L2 -> L1 截断（高层场景优先），并写明剩余数量与检索指引。
+ */
+export function buildLibraryCatalog(
+    allItems: WorkflowLibraryItem[],
+    limit: number = DEFAULT_PROMPT_CATALOG_LIMIT,
+): string | null {
+    if (allItems.length === 0) return null;
+
+    const cap = Math.max(0, Math.floor(limit));
+    let items = allItems;
+    let omitted = 0;
+    if (allItems.length > cap) {
+        const rank: Record<string, number> = { L3: 0, L2: 1, L1: 2 };
+        // 稳定排序：同层级保持原有顺序
+        items = allItems
+            .map((item, idx) => ({ item, idx }))
+            .sort((a, b) => (rank[a.item.workflowLevel] - rank[b.item.workflowLevel]) || (a.idx - b.idx))
+            .slice(0, cap)
+            .map(x => x.item);
+        omitted = allItems.length - items.length;
+    }
 
     const byLevel = {
         L3: items.filter(i => i.workflowLevel === 'L3'),
@@ -216,6 +244,10 @@ function buildLibraryCatalog(items: WorkflowLibraryItem[]): string | null {
             const preview = byLevel.L1.slice(0, 10).map(formatItem).join('\n');
             sections.push(`### L1 原子操作（共 ${byLevel.L1.length} 个，以下为部分示例）\n${preview}\n...\n（使用 search_workflow_library 工具搜索完整 L1 列表）`);
         }
+    }
+
+    if (omitted > 0) {
+        sections.push(`另有 ${omitted} 个子工作流未在此列出，请调用 \`search_workflow_library\` 按关键词或层级检索后再引用。`);
     }
 
     return sections.join('\n\n');

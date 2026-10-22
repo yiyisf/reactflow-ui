@@ -13,6 +13,11 @@ import { WorkflowDef, WorkflowInstance } from './types/conductor';
 import { AIServiceConfig } from './services/aiService';
 import { ActionDefinition } from './actions/types';
 import { ActionRegistry, defaultActionRegistry } from './actions/registry';
+import type { WorkflowLevel } from './types/workflowLibrary';
+import { LibraryCatalog } from './library/catalog';
+import { toActions } from './library/projections';
+import { useLibraryCatalogLoader, useLibraryCatalogSnapshot } from './library/useLibraryCatalog';
+import type { LibraryProvider } from './library/types';
 import { StepFlowEditor } from './components/business/StepFlowEditor';
 import { TemplateGallery } from './components/template/TemplateGallery';
 import './styles/tokens.css';
@@ -136,6 +141,27 @@ export interface WorkflowIDEProps {
     actions?: ActionDefinition[];
 
     /**
+     * 流程库数据源（LibraryProvider）。提供后，库内流程 / 任务定义会生成业务动作并注册到本实例的动作库：
+     * 流程库能力编译为 `SUB_WORKFLOW`，步骤在首次引用时固定为目录当前最新版本，
+     * 库发布新版本后步骤不会自动跟随，徽标提示「有新版本」，由用户确认差异后手动升级。
+     *
+     * 同名动作 Provider 优先于 `actions`；不传时 `actions` 的行为完全不变。
+     * `libraryProvider` 引用变化时重新加载，组件卸载时中止进行中的请求。
+     *
+     * ```tsx
+     * const provider = createConductorLibraryProvider({ baseUrl, headers });
+     * <WorkflowIDE uiMode="business" libraryProvider={provider} />
+     * ```
+     */
+    libraryProvider?: LibraryProvider;
+
+    /**
+     * 当前正在编辑的工作流层级（L1 / L2 / L3）。
+     * 提供时，动作选择器隐藏违反分层调用规则的流程库动作（L1 不显示 L2/L3，L2 不显示 L3）；未提供则不过滤。
+     */
+    currentWorkflowLevel?: WorkflowLevel;
+
+    /**
      * 组件容器高度。
      * @default '100%'
      */
@@ -194,6 +220,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     viewMode = 'developer',
     uiMode = 'pro',
     actions,
+    libraryProvider,
+    currentWorkflowLevel,
     onSave,
     onWorkflowChange,
     height = '100%',
@@ -205,13 +233,25 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     const [businessViewLayout, setBusinessViewLayout] = useState<'card' | 'canvas'>('card');
     const [showTemplateGallery, setShowTemplateGallery] = useState(false);
 
-    // 动作注册表
+    // 流程库目录：每个 IDE 实例独立；provider 变化时重新加载，卸载时中止进行中的请求
+    const [libraryCatalog] = useState(() => new LibraryCatalog());
+    useLibraryCatalogLoader(libraryCatalog, libraryProvider);
+    const catalogSnapshot = useLibraryCatalogSnapshot(libraryCatalog);
+
+    // 动作注册表：内置动作 + actions prop + 流程库动作（同名 Provider 优先，先 unregister 再注册）
     const actionRegistry = useMemo(() => {
-        if (!actions || actions.length === 0) return defaultActionRegistry;
+        const libraryActions = libraryProvider ? toActions(libraryCatalog) : [];
+        if ((!actions || actions.length === 0) && libraryActions.length === 0) return defaultActionRegistry;
         const reg = new ActionRegistry(defaultActionRegistry.getAllActions());
-        reg.registerAll(actions);
+        if (actions) reg.registerAll(actions);
+        for (const a of libraryActions) {
+            reg.unregister(a.id);
+            reg.register(a);
+        }
         return reg;
-    }, [actions]);
+        // catalogSnapshot.revision：目录加载完成 / 变化后重建
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [actions, libraryProvider, libraryCatalog, catalogSnapshot.revision]);
     const { setWorkflow, setWorkflowDefOnly, refreshGraph, graphStale, setTheme, setThemeColor, setLayoutDirection, setNodesLocked, selectedTask, setSelectedTask, edgeType, importExecutionJSON, setMode, setViewMode, isDetailPanelOpen, setIsDetailPanelOpen, selectTaskAction, workflowDef: storeWorkflowDef, isSimRunning, startSimulation, stopSimulation, mode, setShowRunPanel, showAnalysisPanel, setShowAnalysisPanel, executionData, workflowInstance } = useWorkflowStore(useShallow((s) => ({
             setWorkflow: s.setWorkflow,
             setWorkflowDefOnly: s.setWorkflowDefOnly,
@@ -536,6 +576,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         workflowDef={storeWorkflowDef}
                         workflowExecution={workflowInstance ?? undefined}
                         registry={actionRegistry}
+                        libraryCatalog={libraryProvider ? libraryCatalog : undefined}
+                        currentWorkflowLevel={currentWorkflowLevel}
                         readOnly={readOnly || mode === 'run'}
                         onChange={(newDef) => {
                             // 卡片视图下画布未挂载：只更新定义，避免每次按键都做整图布局

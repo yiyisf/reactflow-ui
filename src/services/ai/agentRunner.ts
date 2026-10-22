@@ -17,18 +17,20 @@
 import useWorkflowStore from '../../store/workflowStore';
 import type { AiStore, DurableSessionCheckpoint } from '../../store/aiStore';
 import type { LibraryStore } from '../../store/libraryStore';
+import type { LibraryCatalog } from '../../library/catalog';
+import { entriesToLibraryItems } from '../../library/projections';
 import type { ToolRegistry } from './toolRegistry';
 import { streamChat } from './protocolAdapter';
 import type { Message } from './protocolAdapter';
 import { TOOL_DEFINITIONS } from './toolDefs';
-import { executeToolCall, describeDiff } from './toolExecutor';
+import { executeToolCall, describeDiff, LIBRARY_SEARCH_RESULT_LIMIT } from './toolExecutor';
 import type { DiffSummary, ToolExecutionContext } from './toolExecutor';
 import { buildSystemPrompt } from './systemPrompt';
 import type { WorkflowSnapshot } from './contextEngine';
 import { verifyWorkflowSemantics, type SynthesisPhase, type VerificationSummary } from './workflowSynthesizer';
 import { humanizeAiError } from './errorMessages';
 import type { WorkflowDef } from '../../types/conductor';
-import type { WorkflowLevel } from '../../types/workflowLibrary';
+import type { WorkflowLevel, WorkflowLibraryItem } from '../../types/workflowLibrary';
 import type { AiEvent } from '../../types/aiEvents';
 import type { UseBoundStore, StoreApi } from 'zustand';
 
@@ -69,12 +71,18 @@ export interface AgentRunnerOptions {
         canRepair?: boolean;
     };
     onAiEvent?: (event: AiEvent) => void;
+    /** 流程库目录注入系统提示词的条数上限（缺省 50）；超出部分提示 AI 改用 search_workflow_library */
+    promptCatalogLimit?: number;
+    /** 任务 Schema 注入系统提示词的条数上限（缺省不限制） */
+    promptSchemaLimit?: number;
 }
 
 export interface AgentRunnerStores {
     aiStore: UseBoundStore<StoreApi<AiStore>>;
     libraryStore: UseBoundStore<StoreApi<LibraryStore>>;
     toolRegistry: ToolRegistry;
+    /** 本 IDE 实例的流程库目录；提供后用于固定子工作流版本与服务端检索 */
+    libraryCatalog?: LibraryCatalog;
 }
 
 function snapshotWorkflow(): WorkflowSnapshot {
@@ -110,18 +118,26 @@ export class AgentRunner {
             workingDraft: workingDraft ?? this.stores.aiStore.getState().workingDraft,
             validationResults: s.validationResults,
             libraryItems: this.stores.libraryStore.getState().items,
+            resolveLatestVersion: this.latestVersionResolver(),
         };
     }
 
+    /** 子工作流版本固定：把目录里的「当前最新版本」以查询函数的形式注入纯函数的工具执行层 */
+    private latestVersionResolver(): ToolExecutionContext['resolveLatestVersion'] {
+        const catalog = this.stores.libraryCatalog;
+        if (!catalog) return undefined;
+        return (name: string) => catalog.latest(name)?.version;
+    }
+
     private buildHistory(userInput: string, priorMessages: AiStore['messages']): Message[] {
-        const { systemPrompt, systemPromptExtra } = this.getOptions();
+        const { systemPrompt, systemPromptExtra, promptCatalogLimit, promptSchemaLimit } = this.getOptions();
         const viewMode = useWorkflowStore.getState().viewMode;
         const pendingProposalDef = this.stores.aiStore.getState().pendingProposal?.proposedDef;
         const systemContent = buildSystemPrompt(
             userInput,
             snapshotWorkflow(),
             this.stores.libraryStore.getState().items,
-            { systemPrompt, systemPromptExtra, viewMode, pendingProposalDef },
+            { systemPrompt, systemPromptExtra, viewMode, pendingProposalDef, promptCatalogLimit, promptSchemaLimit },
         );
         const history: Message[] = [{ role: 'system', content: systemContent }];
         const recent = priorMessages.slice(-20);
@@ -131,6 +147,25 @@ export class AgentRunner {
         }
         history.push({ role: 'user', content: userInput });
         return history;
+    }
+
+    /** 服务端检索：Provider 没有 search、或检索失败时返回 undefined（调用方退回本地匹配） */
+    private async serverLibrarySearch(args: Record<string, any>): Promise<WorkflowLibraryItem[] | undefined> {
+        const catalog = this.stores.libraryCatalog;
+        if (!catalog?.hasServerSearch()) return undefined;
+        try {
+            const hits = await catalog.search(
+                String(args.query ?? ''),
+                { level: args.level as WorkflowLevel | undefined, limit: LIBRARY_SEARCH_RESULT_LIMIT },
+                this.controller?.signal,
+            );
+            if (!hits) return undefined;
+            return entriesToLibraryItems(hits);
+        } catch {
+            if (this.controller?.signal.aborted) return undefined;
+            this.stores.aiStore.getState().addTimelineEntry('服务端检索失败，已改用本地目录匹配', 'warning');
+            return undefined;
+        }
     }
 
     /**
@@ -449,7 +484,12 @@ export class AgentRunner {
 
                     let result: ReturnType<typeof executeToolCall>;
                     try {
-                        result = executeToolCall(tc.name, tc.args, this.toolExecutionContext(workingDraft));
+                        const toolCtx = this.toolExecutionContext(workingDraft);
+                        if (tc.name === 'search_workflow_library') {
+                            // Provider 支持服务端检索时走服务端（大目录），失败则退回本地匹配
+                            toolCtx.librarySearchResults = await this.serverLibrarySearch(tc.args);
+                        }
+                        result = executeToolCall(tc.name, tc.args, toolCtx);
                     } catch (err: any) {
                         toolResultMsgs.push({ role: 'tool', content: `工具执行出错：${err?.message ?? '未知错误'}`, tool_call_id: tc.id });
                         ai.getState().addTimelineEntry(`${tc.name} 执行出错`, 'warning');

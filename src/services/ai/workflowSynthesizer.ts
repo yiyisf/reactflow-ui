@@ -105,13 +105,29 @@ export function collectAllTasksInOrder(tasks: TaskDef[] = []): TaskDef[] {
 }
 
 /**
+ * 规范化选项（均为可选，保持本模块为纯函数：数据由调用方注入，不读取任何 store）。
+ */
+export interface NormalizeOptions {
+    /**
+     * 查询工作流库中某个名称的当前最新版本。提供后，新建的 SUB_WORKFLOW 若没有
+     * `subWorkflowParam.version`，会固定为库当前版本；已有版本号一律不改。
+     */
+    resolveLatestVersion?: (name: string) => number | undefined;
+    /**
+     * 画布上已存在的任务引用名。这些任务不会被自动补版本——
+     * 未固定版本的旧步骤保持原语义，避免 AI 改动其它内容时顺带改变它们。
+     */
+    existingRefs?: ReadonlySet<string>;
+}
+
+/**
  * Normalizes a single task's structure to prevent common LLM schema mismatches:
  * - Ensures `name` and `taskReferenceName` and `type` exist
  * - Normalizes `HTTP` task `httpRequest` / `inputParameters.uri` into `inputParameters.http_request`
  * - Normalizes `SUB_WORKFLOW` `workflowName` into `subWorkflowParam.name`
  * - Normalizes `TERMINATE` `terminationStatus` into `inputParameters.terminationStatus`
  */
-export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = []): TaskDef {
+export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = [], options: NormalizeOptions = {}): TaskDef {
     const t: any = { ...task };
     const ref = t.taskReferenceName || t.name || 'unnamed_task';
     if (!t.taskReferenceName) {
@@ -160,15 +176,39 @@ export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = []): TaskD
 
     // Normalize SUB_WORKFLOW task config
     if (t.type === 'SUB_WORKFLOW') {
+        const resolve = options.resolveLatestVersion;
+        // 画布上已有的步骤不自动补版本（版本号一旦记录就不被自动改变，未记录的也不被悄悄固定）
+        const isNewTask = !options.existingRefs?.has(t.taskReferenceName);
         if (!t.subWorkflowParam?.name) {
             const fallbackName = t.workflowName || t.inputParameters?.workflowName || t.inputParameters?.subWorkflowName;
             if (fallbackName) {
+                let version = t.subWorkflowParam?.version;
+                if (version === undefined) {
+                    const latest = isNewTask ? resolve?.(fallbackName) : undefined;
+                    if (latest !== undefined) {
+                        version = latest;
+                        autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
+                    } else {
+                        version = t.version ?? 1;
+                        if (resolve && isNewTask) {
+                            autoFixed.push(`子工作流「${fallbackName}」不在流程库目录中，版本未能固定（暂用 v${version}），请确认该版本是否存在`);
+                        }
+                    }
+                }
                 t.subWorkflowParam = {
                     name: fallbackName,
-                    version: t.subWorkflowParam?.version ?? t.version ?? 1,
+                    version,
                     ...(t.subWorkflowParam ?? {}),
                 };
                 autoFixed.push(`将子工作流任务「${t.taskReferenceName}」的流程名规范化至 subWorkflowParam.name`);
+            }
+        } else if (resolve && isNewTask && t.subWorkflowParam.version === undefined) {
+            const latest = resolve(t.subWorkflowParam.name);
+            if (latest !== undefined) {
+                t.subWorkflowParam = { ...t.subWorkflowParam, version: latest };
+                autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
+            } else {
+                autoFixed.push(`子工作流「${t.subWorkflowParam.name}」不在流程库目录中，版本未能固定，请确认其是否存在`);
             }
         }
     }
@@ -189,11 +229,11 @@ export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = []): TaskD
         }
         const newCases: Record<string, TaskDef[]> = {};
         for (const [k, branch] of Object.entries(t.decisionCases)) {
-            newCases[k] = Array.isArray(branch) ? branch.map(b => normalizeTaskDef(b, autoFixed)) : [];
+            newCases[k] = Array.isArray(branch) ? branch.map(b => normalizeTaskDef(b, autoFixed, options)) : [];
         }
         t.decisionCases = newCases;
         if (Array.isArray(t.defaultCase)) {
-            t.defaultCase = t.defaultCase.map((b: TaskDef) => normalizeTaskDef(b, autoFixed));
+            t.defaultCase = t.defaultCase.map((b: TaskDef) => normalizeTaskDef(b, autoFixed, options));
         }
         if (t.type === 'SWITCH' && !t.evaluatorType) {
             t.evaluatorType = t.caseExpression ? 'javascript' : 'value-param';
@@ -210,13 +250,13 @@ export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = []): TaskD
     // Normalize FORK_JOIN branches recursively
     if (t.type === 'FORK_JOIN' && Array.isArray(t.forkTasks)) {
         t.forkTasks = t.forkTasks.map((branch: TaskDef[]) =>
-            Array.isArray(branch) ? branch.map(b => normalizeTaskDef(b, autoFixed)) : []
+            Array.isArray(branch) ? branch.map(b => normalizeTaskDef(b, autoFixed, options)) : []
         );
     }
 
     // Normalize DO_WHILE loopOver recursively
     if (t.type === 'DO_WHILE' && Array.isArray(t.loopOver)) {
-        t.loopOver = t.loopOver.map((b: TaskDef) => normalizeTaskDef(b, autoFixed));
+        t.loopOver = t.loopOver.map((b: TaskDef) => normalizeTaskDef(b, autoFixed, options));
         if (!t.loopCondition) {
             t.loopCondition = `if ($.${t.taskReferenceName}['iteration'] < 3) { true; } else { false; }`;
             autoFixed.push(`为循环任务「${t.taskReferenceName}」补充默认退出条件 loopCondition`);
@@ -229,28 +269,28 @@ export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = []): TaskD
 /**
  * Normalizes a task list, ensuring every FORK_JOIN has a paired JOIN with complete `joinOn` references.
  */
-function normalizeTaskList(tasks: TaskDef[], autoFixed: string[]): TaskDef[] {
+function normalizeTaskList(tasks: TaskDef[], autoFixed: string[], options: NormalizeOptions = {}): TaskDef[] {
     const normalized: TaskDef[] = [];
 
     for (let i = 0; i < tasks.length; i++) {
-        const current = normalizeTaskDef(tasks[i], autoFixed);
+        const current = normalizeTaskDef(tasks[i], autoFixed, options);
 
         // Recursively normalize nested branch lists so nested FORK_JOINs also get paired
         if (current.decisionCases) {
             const updatedCases: Record<string, TaskDef[]> = {};
             for (const [k, branch] of Object.entries(current.decisionCases)) {
-                updatedCases[k] = normalizeTaskList(branch, autoFixed);
+                updatedCases[k] = normalizeTaskList(branch, autoFixed, options);
             }
             current.decisionCases = updatedCases;
         }
         if (current.defaultCase) {
-            current.defaultCase = normalizeTaskList(current.defaultCase, autoFixed);
+            current.defaultCase = normalizeTaskList(current.defaultCase, autoFixed, options);
         }
         if (current.forkTasks) {
-            current.forkTasks = current.forkTasks.map(branch => normalizeTaskList(branch, autoFixed));
+            current.forkTasks = current.forkTasks.map(branch => normalizeTaskList(branch, autoFixed, options));
         }
         if (current.loopOver) {
-            current.loopOver = normalizeTaskList(current.loopOver, autoFixed);
+            current.loopOver = normalizeTaskList(current.loopOver, autoFixed, options);
         }
 
         normalized.push(current);
@@ -315,9 +355,9 @@ export function extractExpressions(value: any): string[] {
  * - Normalizes all tasks and FORK_JOIN <-> JOIN pairings
  * - Auto-collects `${workflow.input.xxx}` into `workflow.inputParameters` if missing
  */
-export function normalizeWorkflowDef(def: WorkflowDef): { workflow: WorkflowDef; autoFixed: string[] } {
+export function normalizeWorkflowDef(def: WorkflowDef, options: NormalizeOptions = {}): { workflow: WorkflowDef; autoFixed: string[] } {
     const autoFixed: string[] = [];
-    const tasks = normalizeTaskList(def.tasks ?? [], autoFixed);
+    const tasks = normalizeTaskList(def.tasks ?? [], autoFixed, options);
 
     // Collect referenced workflow.input.* parameters across all tasks & outputParameters
     const rawInputs = Array.isArray(def.inputParameters) ? def.inputParameters : [];
@@ -348,6 +388,51 @@ export function normalizeWorkflowDef(def: WorkflowDef): { workflow: WorkflowDef;
     };
 
     return { workflow, autoFixed };
+}
+
+/**
+ * 只做「SUB_WORKFLOW 固定版本」的轻量规范化（供 replace_workflow / patch_workflow 使用，
+ * 这两条路径不经过完整的 normalizeWorkflowDef）：
+ * 为新建的、未记录版本的子工作流任务填入流程库当前版本。已有版本号、画布上已存在的任务一律不改。
+ * 未提供 resolveLatestVersion 时原样返回。
+ */
+export function pinSubWorkflowVersions(
+    def: WorkflowDef,
+    options: NormalizeOptions,
+): { workflow: WorkflowDef; autoFixed: string[] } {
+    const resolve = options.resolveLatestVersion;
+    if (!resolve) return { workflow: def, autoFixed: [] };
+    const autoFixed: string[] = [];
+
+    const walk = (tasks: TaskDef[]): TaskDef[] =>
+        tasks.map(task => {
+            let t: TaskDef = task;
+            if (
+                t.type === 'SUB_WORKFLOW' &&
+                t.subWorkflowParam?.name &&
+                t.subWorkflowParam.version === undefined &&
+                !options.existingRefs?.has(t.taskReferenceName)
+            ) {
+                const latest = resolve(t.subWorkflowParam.name);
+                if (latest !== undefined) {
+                    t = { ...t, subWorkflowParam: { ...t.subWorkflowParam, version: latest } };
+                    autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
+                } else {
+                    autoFixed.push(`子工作流「${t.subWorkflowParam.name}」不在流程库目录中，版本未能固定，请确认其是否存在`);
+                }
+            }
+            if (t.decisionCases) {
+                const cases: Record<string, TaskDef[]> = {};
+                for (const [k, branch] of Object.entries(t.decisionCases)) cases[k] = walk(branch);
+                t = { ...t, decisionCases: cases };
+            }
+            if (t.defaultCase) t = { ...t, defaultCase: walk(t.defaultCase) };
+            if (t.forkTasks) t = { ...t, forkTasks: t.forkTasks.map(walk) };
+            if (t.loopOver) t = { ...t, loopOver: walk(t.loopOver) };
+            return t;
+        });
+
+    return { workflow: { ...def, tasks: walk(def.tasks ?? []) }, autoFixed };
 }
 
 // ─── Progressive Phase Executors ─────────────────────────────────────────────
@@ -396,6 +481,7 @@ export function applyTopologyScaffold(currentDraft: WorkflowDef | null, args: To
 export function applyTaskConfigurations(
     currentDraft: WorkflowDef,
     args: ConfigureTasksArgs,
+    options: NormalizeOptions = {},
 ): {
     workflow: WorkflowDef;
     configuredRefs: string[];
@@ -448,7 +534,7 @@ export function applyTaskConfigurations(
                 if (cfg.dynamicForkTasksInputParamName !== undefined) {
                     updated.dynamicForkTasksInputParamName = cfg.dynamicForkTasksInputParamName;
                 }
-                updated = normalizeTaskDef(updated, autoFixed);
+                updated = normalizeTaskDef(updated, autoFixed, options);
             }
 
             if (updated.decisionCases) {

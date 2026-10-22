@@ -23,6 +23,10 @@ import type { WorkflowDef, WorkflowInstance } from './types/conductor';
 import type { AiConfig } from './services/ai/protocolAdapter';
 import type { AiMetrics } from './store/aiStore';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
+import { LibraryCatalog } from './library/catalog';
+import { toLibraryItems, toTaskSchemas } from './library/projections';
+import { useLibraryCatalogLoader, useLibraryCatalogSnapshot } from './library/useLibraryCatalog';
+import type { LibraryProvider } from './library/types';
 import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData, WorkflowExecutionInput } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
 import { ToolRegistry } from './services/ai/toolRegistry';
@@ -30,6 +34,7 @@ import type { CustomValidationRule } from './services/ai/ruleEngine';
 import { ruleEngine } from './services/ai/ruleEngine';
 import type { TaskSchema } from './services/ai/schemaRegistry';
 import { schemaRegistry } from './services/ai/schemaRegistry';
+import { DEFAULT_PROMPT_CATALOG_LIMIT } from './services/ai/systemPrompt';
 import type { PartialAcceptSelection } from './services/ai/toolExecutor';
 import { applyPartialProposal } from './services/ai/toolExecutor';
 import type { AiEvent } from './types/aiEvents';
@@ -78,6 +83,26 @@ export interface AiWorkflowIDEProps {
      * ```
      */
     workflowLibrary?: WorkflowLibraryItem[];
+    /**
+     * 流程库数据源（LibraryProvider）。提供后，库内流程 / 任务定义经规范化后同时投影为
+     * AI 目录（`workflowLibrary`）、任务 Schema（`taskSchemas`）与检索工具的数据来源；
+     * 同名条目 Provider 优先于静态 prop，静态 prop 仍可单独使用。
+     *
+     * `libraryProvider` 引用变化时重新加载，组件卸载时中止进行中的请求。
+     * AI 新建的 SUB_WORKFLOW 会固定为目录当前最新版本，已有版本号不会被自动改变。
+     *
+     * ```tsx
+     * const provider = createConductorLibraryProvider({ baseUrl, headers });
+     * <AiWorkflowIDE libraryProvider={provider} />
+     * ```
+     */
+    libraryProvider?: LibraryProvider;
+    /**
+     * 流程库目录注入系统提示词的条数上限，默认 50（按层级 L3 -> L1 截断）。
+     * 超出部分会提示 AI 改用 `search_workflow_library` 检索。
+     * 提供 `libraryProvider` 时，任务 Schema 段落同样受此上限约束。
+     */
+    promptCatalogLimit?: number;
 
     // ── AI configuration ───────────────────────────────────────────────────
     /**
@@ -272,6 +297,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowExecution,
         aiConfig: propAiConfig,
         workflowLibrary: propLibrary,
+        libraryProvider,
+        promptCatalogLimit,
         customTools: propCustomTools,
         validationRules: propValidationRules,
         taskSchemas: propTaskSchemas,
@@ -305,7 +332,10 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         aiStore: createAiStore(),
         libraryStore: createLibraryStore(),
         toolRegistry: new ToolRegistry(),
+        // 每个实例独立的流程库目录：静态 prop 与 Provider 规范化后的唯一数据源
+        libraryCatalog: new LibraryCatalog(),
     }));
+    const libraryCatalog = stores.libraryCatalog;
     const aiStore = stores.aiStore();
     const libraryStore = stores.libraryStore();
     const [showConfig, setShowConfig] = useState(false);
@@ -345,14 +375,39 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         aiStore.setConfig(propAiConfig);
     }, [propAiConfig]);
 
-    // ── Workflow library: sync on every prop change ─────────────────────────
+    // ── Workflow library: 静态 prop 与 Provider 合并为同一份目录 ──────────────
+    // 静态 prop（workflowLibrary / taskSchemas）进入目录作为兜底条目；同名时 Provider 优先。
+    // 不传 libraryProvider 时，投影结果与原先直接使用 prop 完全一致。
+    const prevStaticRef = useRef<string>('');
+    useEffect(() => {
+        const serialized = JSON.stringify([propLibrary ?? [], propTaskSchemas ?? []]);
+        if (serialized === prevStaticRef.current) return;
+        prevStaticRef.current = serialized;
+        libraryCatalog.setStatic({ staticItems: propLibrary ?? [], staticTaskSchemas: propTaskSchemas ?? [] });
+    }, [propLibrary, propTaskSchemas, libraryCatalog]);
+
+    // provider 引用变化时重新加载；卸载 / 更换时 abort 进行中的请求
+    useLibraryCatalogLoader(libraryCatalog, libraryProvider);
+    const catalogSnapshot = useLibraryCatalogSnapshot(libraryCatalog);
+
+    // 目录 -> libraryStore（AI 目录 / 检索 / LibraryPanel）与 schemaRegistry（提示词 / W-LSP）
     const prevLibraryRef = useRef<string>('');
     useEffect(() => {
-        const serialized = JSON.stringify(propLibrary ?? []);
+        const items = toLibraryItems(libraryCatalog);
+        const serialized = JSON.stringify(items);
         if (serialized === prevLibraryRef.current) return;
         prevLibraryRef.current = serialized;
-        libraryStore.setLibrary(propLibrary ?? []);
-    }, [propLibrary]);
+        libraryStore.setLibrary(items);
+    }, [catalogSnapshot.revision, libraryCatalog]);
+
+    const prevSchemasRef = useRef<string>('');
+    useEffect(() => {
+        const schemas = toTaskSchemas(libraryCatalog);
+        const serialized = JSON.stringify(schemas);
+        if (serialized === prevSchemasRef.current) return;
+        prevSchemasRef.current = serialized;
+        schemaRegistry.setSchemas(schemas);
+    }, [catalogSnapshot.revision, libraryCatalog]);
 
     // ── Custom tools: sync on every prop change ─────────────────────────────
     const prevCustomToolsRef = useRef<string>('');
@@ -371,15 +426,6 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         prevRulesRef.current = serialized;
         ruleEngine.setRules(propValidationRules ?? []);
     }, [propValidationRules]);
-
-    // ── Task schemas: sync on every prop change ─────────────────────────────
-    const prevSchemasRef = useRef<string>('');
-    useEffect(() => {
-        const serialized = JSON.stringify((propTaskSchemas ?? []).map(s => s.taskName));
-        if (serialized === prevSchemasRef.current) return;
-        prevSchemasRef.current = serialized;
-        schemaRegistry.setSchemas(propTaskSchemas ?? []);
-    }, [propTaskSchemas]);
 
     // ── Workflow def ────────────────────────────────────────────────────────
     useEffect(() => {
@@ -681,6 +727,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     executionActions={executionActions}
                     onAiEvent={onAiEvent}
                     aiPermissions={aiPermissions}
+                    promptCatalogLimit={promptCatalogLimit}
+                    promptSchemaLimit={libraryProvider ? (promptCatalogLimit ?? DEFAULT_PROMPT_CATALOG_LIMIT) : undefined}
                     canvasOpen={canvasDrawerOpen}
                     onOpenCanvas={() => setCanvasDrawerOpen(true)}
                     onCloseCanvas={() => {

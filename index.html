@@ -1266,11 +1266,10 @@
               <ul>
                 <li>新增必填入参「租户编号（tenantId）」，需要补充填写</li>
                 <li>出参「costMs」已删除，下游步骤对它的引用将失效<span class="tag-demo">条件触发</span></li>
-                <li>入参「…」已删除，已填写的值将丢失<span class="tag-demo">示意</span></li>
               </ul>
               <div class="diff-group plain">【其它变化】</div>
               <ul><li>入参「配置项类型」新增可选值“容器”</li></ul>
-              <p class="dialog-foot">升级差异取自演示库 <code>query_ci</code> v1→v2。“下游引用将失效”仅在被删出参确有下游引用时出现；“已填写的值将丢失”仅在升级删除了已填写的入参时出现（此条为示意，演示数据中没有）。</p>
+              <p class="dialog-foot">升级差异取自演示库 <code>query_ci</code> v1→v2。“下游引用将失效”仅在被删出参确有下游引用时出现；若升级删除了已填写的入参，还会提示“已填写的值将丢失”。</p>
               <div class="dialog-actions">
                 <button type="button" class="mini-btn" id="dlg-cancel">取消</button>
                 <button type="button" class="mini-btn primary" id="dlg-ok">确认升级到 v2</button>

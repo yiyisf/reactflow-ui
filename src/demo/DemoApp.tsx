@@ -248,7 +248,7 @@ function DemoApp() {
             <a
               href={import.meta.env.BASE_URL}
               className="mode-btn"
-              title="查看 Conductor Workflow IDE v1.1.0 业务全融合发布宣传页"
+              title="查看 Conductor Workflow IDE v1.2.0「流程库就绪」发布宣传页"
               style={{
                 textDecoration: 'none',
                 background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
@@ -257,7 +257,7 @@ function DemoApp() {
                 fontWeight: 600,
               }}
             >
-              ⚡ v1.1 宣传页
+              ⚡ v1.2 宣传页
             </a>
 
             <div className="divider"></div>

@@ -76,6 +76,8 @@ export interface ActionDefinition {
   workflowRef?: { name: string; version: number };
   /** 流程库层级 L1 / L2 / L3（调用方向规则见 workflowLibrary） */
   level?: WorkflowLevel;
+  /** 已下线 / 不建议新引用：动作选择器隐藏，但已引用的步骤照常显示与编译 */
+  deprecated?: boolean;
   tags?: string[];
   ownerEmail?: string;
   riskLevel: 'safe' | 'sensitive';

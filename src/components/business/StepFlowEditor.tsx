@@ -15,6 +15,7 @@ import { LoopDoWhileCard } from './LoopDoWhileCard';
 import { RunStoryTimeline } from './RunStoryTimeline';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
 import type { LibraryCatalog } from '../../library/catalog';
+import { applyUpgradeToValues, collectReferencedOutputKeys } from '../../library/diff';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
 
 export interface StepFlowEditorProps {
@@ -772,10 +773,19 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           step={step}
                           action={action}
                           disabled={readOnly}
-                          onUpgrade={(v) =>
+                          catalog={libraryCatalog}
+                          getReferencedOutputs={() =>
+                            collectReferencedOutputKeys(
+                              step.taskReferenceName,
+                              steps.filter((s) => s.id !== step.id)
+                            )
+                          }
+                          onUpgrade={(v, diff) =>
                             handleUpdateStep(idx, {
                               ...step,
                               libraryRef: { name: step.libraryRef!.name, version: v },
+                              // 差异里提示「值将丢失」的已删除入参，随升级一并清理；新增入参补默认值
+                              ...(diff ? { values: applyUpgradeToValues(step.values, diff) } : {}),
                             })
                           }
                         />

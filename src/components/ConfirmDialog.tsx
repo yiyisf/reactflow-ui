@@ -65,6 +65,10 @@ const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => 
                     color: 'var(--text-primary)',
                     marginBottom: '24px',
                     lineHeight: '1.6',
+                    // 支持多行文案（如升级差异列表），内容很长时在对话框内滚动
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: '50vh',
+                    overflowY: 'auto',
                 }}>
                     {message}
                 </div>

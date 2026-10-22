@@ -14,6 +14,7 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **`WorkflowIDE` 新增 `currentWorkflowLevel`**：提供后动作选择器隐藏违反分层调用规则的流程库动作（L1 不显示 L2/L3，L2 不显示 L3）；已下线条目不出现在选择器中，已引用的步骤照常显示与编译。动作选择器与 `LibraryPanel` 显示「加载中 / 加载失败，点击重试」，失败不阻塞编辑。
 - **`AiWorkflowIDE` 新增 `promptCatalogLimit`**（默认 50）：流程库目录注入系统提示词按层级 L3 → L1 截断，超出部分提示 AI 改用 `search_workflow_library`；Provider 实现了 `search` 时检索走服务端，否则在本地目录内匹配（结果最多展示 50 条）。
 - **默认 Conductor 实现 `createConductorLibraryProvider`**：直接读取 Conductor OSS 元数据接口（`/metadata/workflow`、`/metadata/workflow/{name}?version=`、可选 `/metadata/taskdefs`），同名多版本取最大版本，404 视为不存在；认证头由宿主通过 `headers()` 注入（组件库不保存凭据），并支持 `fetch` 注入、`filter`（限定流程库范围）、`resolveExtension`（补充层级 / 分类 / 图标 / 下线标记）与网关路径覆盖。
+- **流程库能力升级差异与「版本不可用」**：点击「⬆ 有新版本」时取旧、新两个版本的定义，展示升级差异（新增 / 删除 / 类型变化的入参、新增 / 删除的出参；会影响已填内容的条目置顶，如「已填写的值将丢失」「下游引用将失效」），无差异时提示「入参出参未变化」，确认后才升级；升级时同步清理已删除入参的值、补上新增入参的默认值。固定版本在库中不存在或已下线时徽标显示「⚠ 版本不可用」，步骤保持原样编译，不自动改版本；目录加载失败时不显示新版本提示。新增纯函数 `diffWorkflowVersions` / `summarizeDiff` / `resolveLibraryBadgeState` 并从入口导出。
 
 ### Fixed
 - **AI 生成的子工作流不再随意填版本**：此前 `workflowSynthesizer` 对缺少版本的 `SUB_WORKFLOW` 一律填 `t.version ?? 1`；现在新建引用固定为流程库目录的当前最新版本（目录没有该流程时保持原行为并提示）。已有版本号以及画布上已存在的步骤一律不会被自动改变。

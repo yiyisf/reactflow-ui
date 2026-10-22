@@ -167,6 +167,16 @@ export class LibraryCatalog {
 | `toTaskSchemas(catalog)` | `TaskSchema[]` | 由 `inputSchema.properties` / `outputSchema.properties` 展开为类型串；`enum` 输出为 `a\|b`；无 schema 时退回 `inputKeys` |
 | `toLibraryItems(catalog)` | `WorkflowLibraryItem[]` | 供提示词目录、检索工具与 `LibraryPanel`；`version` 输出为字符串以兼容旧类型 |
 
+#### 业务域（domain）与命名规范兜底
+
+治理平台的流程命名规范为 `类型-层级-业务域-产品-功能`（以 `-` 分隔）：类型 ∈ `std` / `proxy` / `tmp` / `custom`，层级 ∈ `L1` / `L2` / `L3`，业务域取自服务端维护的**全局可调整列表**（组件库不写死，只当字符串），产品不含 `-`，功能为第 4 个 `-` 之后的全部内容（可再含 `-`）。内置的 8 类 `ActionCategory` 不适用于这些业务域，因此新增独立字段：
+
+- `LibraryExtension.domain` → `LibraryEntry.domain` → `ActionDefinition.domain` / `WorkflowLibraryItem.domain`（均为可选，缺省时行为与之前完全一致）。
+- `parseWorkflowName` / `validateWorkflowName`（`src/library/naming.ts`，纯函数）：前者解析失败返回 `null`；后者返回中文错误列表，仅当传入 `allowedDomains` 时才校验业务域。
+- **兜底**：记录没有 `extension.domain` / `extension.level` 时，由 `parseWorkflowName(def.name)` 解析得到；`extension` 中的显式值始终优先，两者层级不一致时保留 `extension.level`，不报错。名称不符合规范则不兜底。
+- **动作选择器**：任一动作带 `domain` 时，在原分类标签后追加业务域标签（按目录中**首次出现的顺序**，无业务域的流程库动作归「其他」并固定在最后）；业务域模式下流程库动作只出现在业务域标签中，内置动作仍按原分类。搜索跨全部动作，`currentWorkflowLevel` 层级过滤不变。
+- **AI 侧**：提示词目录在条目后追加 `[业务域: X]`；`search_workflow_library` 新增可选 `domain` 参数（精确匹配），同时透传给 `provider.search`（`LibrarySearchOptions.domain`）；`LibraryPanel` 显示业务域并提供下拉筛选。
+
 ### 4.4 默认 Conductor 实现（`src/library/conductorProvider.ts`）
 
 ```ts

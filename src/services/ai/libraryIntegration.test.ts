@@ -309,3 +309,54 @@ describe('集成：Provider -> 目录 -> 三种投影 -> AI 侧消费', () => {
     expect(subVersion(r.proposed!.tasks[1])).toBe(6);
   });
 });
+
+describe('业务域：系统提示词与 search_workflow_library 过滤', () => {
+  const item = (name: string, domain?: string): WorkflowLibraryItem => ({
+    workflowName: name, workflowLevel: 'L1', version: '1', description: `${name} 描述`, tags: [], ...(domain ? { domain } : {}),
+  });
+
+  it('提示词目录在有业务域时输出 [业务域: X]，没有时不输出', () => {
+    const text = buildLibraryCatalog([item('notify_a', '通知协助'), item('plain_b')])!;
+    expect(text).toContain('[业务域: 通知协助]');
+    expect(text.split('[业务域:').length - 1).toBe(1);
+    expect(buildLibraryCatalog([item('plain_b')])!.includes('业务域:')).toBe(false);
+  });
+
+  it('domain 参数在本地目录内精确过滤', () => {
+    const lib = [item('wf_notify', '通知协助'), item('wf_cloud', '云资源'), item('wf_none')];
+    const r = executeToolCall('search_workflow_library', { query: 'wf_', domain: '通知协助' }, baseCtx({ libraryItems: lib }));
+    expect(r.text).toContain('wf_notify');
+    expect(r.text).toContain('[业务域: 通知协助]');
+    expect((r.text ?? '').includes('wf_cloud')).toBe(false);
+    expect((r.text ?? '').includes('wf_none')).toBe(false);
+  });
+
+  it('不传 domain 时行为不变（全部命中）', () => {
+    const lib = [item('wf_notify', '通知协助'), item('wf_cloud', '云资源')];
+    const r = executeToolCall('search_workflow_library', { query: 'wf_' }, baseCtx({ libraryItems: lib }));
+    expect(r.text).toContain('找到 2 个');
+  });
+
+  it('domain 也作用于服务端命中；无匹配时提示未找到', () => {
+    const hits = [item('srv_a', '通知协助'), item('srv_b', '云资源')];
+    const r = executeToolCall('search_workflow_library', { query: 'srv', domain: '云资源' }, baseCtx({ librarySearchResults: hits }));
+    expect(r.text).toContain('srv_b');
+    expect((r.text ?? '').includes('srv_a')).toBe(false);
+    const none = executeToolCall('search_workflow_library', { query: 'srv', domain: '安全服务' }, baseCtx({ librarySearchResults: hits }));
+    expect(none.text).toContain('未找到');
+  });
+
+  it('端到端：Provider 记录（名称兜底）-> 目录 -> toLibraryItems -> 按业务域检索', async () => {
+    const rec = (name: string): LibraryWorkflowRecord => ({ def: { name, version: 1, description: '描述', tasks: [] } as WorkflowDef });
+    const provider: LibraryProvider = {
+      async list() { return { workflows: [rec('std-L1-通知协助-企微-发送'), rec('std-L1-云资源-ECS-创建')] }; },
+      async get() { return null; },
+    };
+    const catalog = new LibraryCatalog(provider);
+    await catalog.load();
+    const items = toLibraryItems(catalog);
+    const r = executeToolCall('search_workflow_library', { query: 'std', domain: '云资源' }, baseCtx({ libraryItems: items }));
+    expect(r.text).toContain('std-L1-云资源-ECS-创建');
+    expect((r.text ?? '').includes('企微')).toBe(false);
+  });
+});

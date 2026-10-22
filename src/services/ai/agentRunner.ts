@@ -156,7 +156,11 @@ export class AgentRunner {
         try {
             const hits = await catalog.search(
                 String(args.query ?? ''),
-                { level: args.level as WorkflowLevel | undefined, limit: LIBRARY_SEARCH_RESULT_LIMIT },
+                {
+                    level: args.level as WorkflowLevel | undefined,
+                    domain: typeof args.domain === 'string' && args.domain.trim() ? args.domain.trim() : undefined,
+                    limit: LIBRARY_SEARCH_RESULT_LIMIT,
+                },
                 this.controller?.signal,
             );
             if (!hits) return undefined;

@@ -40,11 +40,20 @@ const LibraryPanel: React.FC = () => {
 
     const [query, setQuery] = useState('');
     const [levelFilter, setLevelFilter] = useState<WorkflowLevel | 'ALL'>('ALL');
+    const [domainFilter, setDomainFilter] = useState<string>('ALL');
+
+    // 业务域列表按目录中首次出现的顺序；没有任何条目带业务域时不显示筛选
+    const domains = useMemo(() => {
+        const out: string[] = [];
+        for (const item of items) if (item.domain && !out.includes(item.domain)) out.push(item.domain);
+        return out;
+    }, [items]);
 
     const filtered = useMemo(() => {
         const q = query.toLowerCase().trim();
         return items.filter(item => {
             if (levelFilter !== 'ALL' && item.workflowLevel !== levelFilter) return false;
+            if (domainFilter !== 'ALL' && item.domain !== domainFilter) return false;
             if (!q) return true;
             return (
                 item.workflowName.toLowerCase().includes(q) ||
@@ -52,7 +61,7 @@ const LibraryPanel: React.FC = () => {
                 item.tags.some(t => t.toLowerCase().includes(q))
             );
         });
-    }, [items, query, levelFilter]);
+    }, [items, query, levelFilter, domainFilter]);
 
     const visible = useMemo(() => filtered.slice(0, RENDER_LIMIT), [filtered]);
 
@@ -150,6 +159,17 @@ const LibraryPanel: React.FC = () => {
                         </button>
                     ))}
                 </div>
+                {domains.length > 0 && (
+                    <select
+                        className="ai-library-search"
+                        value={domainFilter}
+                        onChange={e => setDomainFilter(e.target.value)}
+                        title="按业务域筛选"
+                    >
+                        <option value="ALL">全部业务域</option>
+                        {domains.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                )}
             </div>
 
             {/* Results */}
@@ -177,6 +197,7 @@ const LibraryPanel: React.FC = () => {
                                         <div className="ai-library-item-main">
                                             <div className="ai-library-item-name">{item.workflowName}</div>
                                             <div className="ai-library-item-version">v{item.version}</div>
+                                            {item.domain && <span className="ai-library-tag" title="业务域">{item.domain}</span>}
                                         </div>
                                         <div className="ai-library-item-desc">{item.description}</div>
                                         {item.tags.length > 0 && (

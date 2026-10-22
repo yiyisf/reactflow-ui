@@ -13,6 +13,8 @@ import type { ActionExtension, RegisteredTaskDef } from '../actions/fromDefiniti
 export interface LibraryExtension {
   level?: WorkflowLevel;
   category?: string;
+  /** 业务域展示名（如「通知协助」）。取值来自服务端的全局可调整列表，不在组件库内写死；缺省时尝试从流程名称解析 */
+  domain?: string;
   icon?: string;
   tags?: string[];
   displayName?: string;
@@ -46,6 +48,8 @@ export interface LibraryListResult {
 
 export interface LibrarySearchOptions {
   level?: WorkflowLevel;
+  /** 按业务域过滤（与 LibraryExtension.domain 同一取值） */
+  domain?: string;
   limit?: number;
 }
 

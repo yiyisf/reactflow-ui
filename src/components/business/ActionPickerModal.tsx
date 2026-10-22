@@ -4,7 +4,7 @@ import type { ActionRegistry } from '../../actions/registry';
 import type { ActionDefinition, ActionCategory } from '../../actions/types';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
 import type { LibraryCatalog } from '../../library/catalog';
-import { filterPickableActions } from '../../library/projections';
+import { collectLibraryDomains, filterPickableActions, libraryDomainOf } from '../../library/projections';
 import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
 
 /** 单次最多渲染的动作数（流程库可能有上千项）；超出请用搜索缩小范围 */
@@ -40,20 +40,40 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
 }) => {
   const catalogState = useLibraryCatalogSnapshot(libraryCatalog);
   const [selectedCategory, setSelectedCategory] = useState<ActionCategory | 'all'>('all');
+  /** 选中的业务域；非 null 时只显示该业务域下的流程库动作（与分类选中互斥） */
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [actionSearch, setActionSearch] = useState('');
+
+  // 已下线动作与违反层级规则的流程库动作不出现在选择器中（已引用的步骤不受影响）
+  const pickableActions = useMemo(
+    () => filterPickableActions(registry.getAllActions(), { currentLevel: currentWorkflowLevel }),
+    [registry, currentWorkflowLevel],
+  );
+
+  // 业务域分组：任一动作带 domain 时启用，按目录中首次出现的顺序排列，无业务域的流程库动作归入「其他」（固定最后）
+  const domains = useMemo(() => collectLibraryDomains(pickableActions), [pickableActions]);
+  const domainMode = domains.length > 0;
 
   const filteredActions = useMemo(() => {
     const keyword = actionSearch.trim().toLowerCase();
-    // 已下线动作与违反层级规则的流程库动作不出现在选择器中（已引用的步骤不受影响）
-    return filterPickableActions(registry.getAllActions(), { currentLevel: currentWorkflowLevel }).filter((a) => {
-      const matchesCat = selectedCategory === 'all' || a.category === selectedCategory;
+    return pickableActions.filter((a) => {
+      const libDomain = domainMode ? libraryDomainOf(a) : null;
+      let matchesCat: boolean;
+      if (selectedDomain !== null) {
+        matchesCat = libDomain === selectedDomain;
+      } else if (selectedCategory === 'all') {
+        matchesCat = true;
+      } else {
+        // 业务域模式下，流程库动作按业务域分组，不再出现在分类标签里
+        matchesCat = libDomain === null && a.category === selectedCategory;
+      }
       const matchesSearch =
         !keyword ||
         a.name.toLowerCase().includes(keyword) ||
         a.description.toLowerCase().includes(keyword);
       return matchesCat && matchesSearch;
     });
-  }, [registry, selectedCategory, actionSearch, currentWorkflowLevel]);
+  }, [pickableActions, domainMode, selectedCategory, selectedDomain, actionSearch]);
 
   const visibleActions = useMemo(() => filteredActions.slice(0, RENDER_LIMIT), [filteredActions]);
 
@@ -148,19 +168,41 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
             ).map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setSelectedCategory(tab.id)}
+                onClick={() => {
+                  setSelectedCategory(tab.id);
+                  setSelectedDomain(null);
+                }}
                 style={{
                   padding: '4px 10px',
                   borderRadius: 6,
-                  background: selectedCategory === tab.id ? 'var(--color-accent, #3b82f6)' : 'transparent',
-                  color: selectedCategory === tab.id ? '#fff' : 'var(--text-secondary)',
+                  background: selectedDomain === null && selectedCategory === tab.id ? 'var(--color-accent, #3b82f6)' : 'transparent',
+                  color: selectedDomain === null && selectedCategory === tab.id ? '#fff' : 'var(--text-secondary)',
                   border: 'none',
                   fontSize: 12,
                   cursor: 'pointer',
-                  fontWeight: selectedCategory === tab.id ? 600 : 400,
+                  fontWeight: selectedDomain === null && selectedCategory === tab.id ? 600 : 400,
                 }}
               >
                 {tab.label}
+              </button>
+            ))}
+            {domains.map((d) => (
+              <button
+                key={`domain:${d}`}
+                onClick={() => setSelectedDomain(d)}
+                title="流程库业务域"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  background: selectedDomain === d ? 'var(--color-accent, #3b82f6)' : 'transparent',
+                  color: selectedDomain === d ? '#fff' : 'var(--text-secondary)',
+                  border: '1px dashed var(--border-secondary)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  fontWeight: selectedDomain === d ? 600 : 400,
+                }}
+              >
+                {d}
               </button>
             ))}
           </div>

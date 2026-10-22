@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { LibraryCatalog } from './catalog';
-import { toActions, toTaskSchemas, toLibraryItems, filterPickableActions, schemaToTypeStrings } from './projections';
+import {
+  toActions,
+  toTaskSchemas,
+  toLibraryItems,
+  filterPickableActions,
+  schemaToTypeStrings,
+  collectLibraryDomains,
+  libraryDomainOf,
+  OTHER_DOMAIN,
+} from './projections';
+import type { ActionDefinition } from '../actions/types';
 import { canCallLevel } from './level';
 import { createStepFromAction } from '../stepmodel/factory';
 import { compileStepToTaskDef } from '../stepmodel/compile';
@@ -219,5 +229,82 @@ describe('层级过滤 filterPickableActions', () => {
     const actions = toActions(c);
     expect(filterPickableActions(actions).map((a) => a.id)).toEqual(['task.atom']);
     expect(filterPickableActions(actions, { currentLevel: 'L1' }).map((a) => a.id)).toEqual(['task.atom']);
+  });
+});
+
+describe('业务域：传播与命名兜底', () => {
+  const rec = (name: string, extension?: LibraryWorkflowRecord['extension']): LibraryWorkflowRecord => ({
+    def: { ...ecsDef(1), name },
+    extension,
+  });
+
+  it('extension.domain 传播到动作与 LibraryItem', async () => {
+    const c = await loaded([rec('create_vm', { domain: '云资源', level: 'L1' })]);
+    expect(toActions(c)[0].domain).toBe('云资源');
+    expect(toLibraryItems(c)[0].domain).toBe('云资源');
+  });
+
+  it('无 domain 时输出对象不带 domain 键（保持旧行为）', async () => {
+    const c = await loaded([rec('create_vm', { level: 'L1' })]);
+    expect('domain' in toActions(c)[0]).toBe(false);
+    expect('domain' in toLibraryItems(c)[0]).toBe(false);
+  });
+
+  it('extension 缺省时从命名规范兜底 domain 与 level', async () => {
+    const c = await loaded([rec('std-L2-通知协助-企业微信-发送消息')]);
+    const a = toActions(c)[0];
+    expect(a.domain).toBe('通知协助');
+    expect(a.level).toBe('L2');
+    const item = toLibraryItems(c)[0];
+    expect(item.domain).toBe('通知协助');
+    expect(item.workflowLevel).toBe('L2');
+  });
+
+  it('显式 extension 优先；层级冲突时保留 extension.level，不抛错', async () => {
+    const c = await loaded([rec('std-L2-通知协助-企业微信-发送消息', { domain: '监控运维', level: 'L3' })]);
+    const a = toActions(c)[0];
+    expect(a.domain).toBe('监控运维');
+    expect(a.level).toBe('L3');
+  });
+
+  it('只给 domain 不给 level 时，level 仍从名称兜底', async () => {
+    const c = await loaded([rec('std-L3-云资源-ECS-创建', { domain: '自定义域' })]);
+    expect(toActions(c)[0].level).toBe('L3');
+    expect(toActions(c)[0].domain).toBe('自定义域');
+  });
+
+  it('不符合命名规范的名称不兜底', async () => {
+    const c = await loaded([rec('create_vm')]);
+    expect(toActions(c)[0].domain).toBeUndefined();
+    expect(toActions(c)[0].level).toBeUndefined();
+  });
+
+  it('静态 workflowLibrary 条目的 domain 保留', () => {
+    const c = new LibraryCatalog(undefined, {
+      staticItems: [{ workflowName: 'legacy', workflowLevel: 'L1', version: '1', description: 'd', tags: [], domain: '安全服务' }],
+    });
+    expect(toLibraryItems(c)[0].domain).toBe('安全服务');
+  });
+});
+
+describe('业务域分组 collectLibraryDomains', () => {
+  const act = (id: string, extra: Partial<ActionDefinition>): ActionDefinition =>
+    ({ id, name: id, category: 'custom', icon: 'x', description: '', riskLevel: 'safe', fields: [], outputs: [], compile: () => ({}) as any, ...extra }) as ActionDefinition;
+
+  it('没有任何 domain 时返回空数组（保持分类分组）', () => {
+    expect(collectLibraryDomains([act('a', { kind: 'workflow' }), act('b', {})])).toEqual([]);
+  });
+
+  it('按首次出现顺序，无业务域的流程库动作归「其他」且排最后；内置动作不参与', () => {
+    const list = [
+      act('a', { kind: 'workflow' }),
+      act('b', { kind: 'workflow', domain: '通知协助' }),
+      act('c', {}),
+      act('d', { kind: 'workflow', domain: '云资源' }),
+      act('e', { kind: 'workflow', domain: '通知协助' }),
+    ];
+    expect(collectLibraryDomains(list)).toEqual([ '通知协助', '云资源', OTHER_DOMAIN ]);
+    expect(libraryDomainOf(list[0])).toBe(OTHER_DOMAIN);
+    expect(libraryDomainOf(list[2])).toBeNull();
   });
 });

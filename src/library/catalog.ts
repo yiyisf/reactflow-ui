@@ -1,6 +1,7 @@
 import type { WorkflowLevel, WorkflowLibraryItem } from '../types/workflowLibrary';
 import type { TaskSchema } from '../services/ai/schemaRegistry';
 import { normalizeVersion } from './version';
+import { parseWorkflowName } from './naming';
 import type {
   LibraryLoadStatus,
   LibraryProvider,
@@ -17,6 +18,8 @@ export interface LibraryEntry {
   versionLabel?: string;
   description?: string;
   level?: WorkflowLevel;
+  /** 业务域展示名：优先取 extension.domain，缺省时从流程名称解析 */
+  domain?: string;
   tags: string[];
   deprecated: boolean;
   record: LibraryWorkflowRecord;
@@ -48,12 +51,16 @@ export function entryFromRecord(
   const nv = normalizeVersion(record.def.version);
   const versionLabel = record.versionLabel ?? nv.label;
   if (nv.lossy && onLossy) onLossy(record.def.name, nv.label ?? String(record.def.version));
+  // 命名规范兜底：extension 中显式给出的值始终优先；两者层级不一致时保留 extension.level，不报错
+  const parsed = parseWorkflowName(record.def.name);
+  const domain = record.extension?.domain || parsed?.domain || undefined;
   return {
     name: record.def.name,
     version: nv.version,
     versionLabel,
     description: record.def.description,
-    level: record.extension?.level,
+    level: record.extension?.level ?? parsed?.level,
+    ...(domain ? { domain } : {}),
     tags: record.extension?.tags ?? [],
     deprecated: record.deprecated ?? record.extension?.deprecated ?? false,
     record,
@@ -67,7 +74,7 @@ function recordFromStaticItem(item: WorkflowLibraryItem): { record: LibraryWorkf
   return {
     record: {
       def: { name: item.workflowName, description: item.description, version: nv.version, tasks: [] },
-      extension: { level: item.workflowLevel, tags: item.tags ?? [] },
+      extension: { level: item.workflowLevel, tags: item.tags ?? [], ...(item.domain ? { domain: item.domain } : {}) },
       versionLabel: nv.label,
     },
     lossyLabel: nv.lossy ? nv.label : undefined,

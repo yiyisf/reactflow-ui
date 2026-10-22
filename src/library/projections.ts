@@ -30,6 +30,7 @@ export function toActionExtension(ext?: LibraryExtension): ActionExtension {
     ...(category ? { category } : {}),
     ...(ext.icon ? { icon: ext.icon } : {}),
     ...(ext.level ? { level: ext.level } : {}),
+    ...(ext.domain ? { domain: ext.domain } : {}),
     ...(ext.tags ? { tags: ext.tags } : {}),
     ...(ext.action ?? {}),
   };
@@ -45,7 +46,12 @@ export function toActions(catalog: LibraryCatalog): ActionDefinition[] {
   for (const entry of catalog.entries()) {
     if (entry.source !== 'provider') continue;
     const def: WorkflowDef = { ...entry.record.def, version: entry.version };
-    const action = buildActionFromWorkflowDef(def, toActionExtension(entry.record.extension));
+    // 层级 / 业务域使用目录条目上已做过命名兜底的值；extension.action 中的显式设置仍然优先
+    const action = buildActionFromWorkflowDef(def, {
+      ...(entry.level ? { level: entry.level } : {}),
+      ...(entry.domain ? { domain: entry.domain } : {}),
+      ...toActionExtension(entry.record.extension),
+    });
     if (!action) continue;
     out.push(entry.deprecated ? { ...action, deprecated: true } : action);
   }
@@ -139,6 +145,7 @@ export function entriesToLibraryItems(entries: LibraryEntry[]): WorkflowLibraryI
       workflowName: e.name,
       workflowLevel: (e.level ?? 'L1') as WorkflowLevel,
       version: e.source === 'static' ? (e.versionLabel ?? String(e.version)) : String(e.version),
+      ...(e.domain ? { domain: e.domain } : {}),
       description: e.description ?? '',
       tags: e.tags,
     }));
@@ -158,4 +165,35 @@ export function filterPickableActions(
     if (opts.currentLevel && a.kind === 'workflow' && !canCallLevel(opts.currentLevel, a.level)) return false;
     return true;
   });
+}
+
+// ── 业务域分组（动作选择器） ────────────────────────────────────────────────
+
+/** 没有业务域的流程库动作所属分组 */
+export const OTHER_DOMAIN = '其他';
+
+/**
+ * 动作所属的业务域分组：有 domain 取 domain；流程库动作（kind = workflow）无 domain 归入「其他」；
+ * 其余（内置 / 非流程库）返回 null，继续按原有分类分组。
+ */
+export function libraryDomainOf(action: ActionDefinition): string | null {
+  if (action.domain) return action.domain;
+  return action.kind === 'workflow' ? OTHER_DOMAIN : null;
+}
+
+/**
+ * 收集动作中出现的业务域，按首次出现的顺序排列（顺序即目录顺序，不重新排序），「其他」固定最后。
+ * 没有任何动作带 domain 时返回空数组（选择器据此保持旧的分类分组）。
+ */
+export function collectLibraryDomains(actions: ActionDefinition[]): string[] {
+  if (!actions.some((a) => !!a.domain)) return [];
+  const seen: string[] = [];
+  let hasOther = false;
+  for (const a of actions) {
+    const d = libraryDomainOf(a);
+    if (d === null) continue;
+    if (d === OTHER_DOMAIN) hasOther = true;
+    else if (!seen.includes(d)) seen.push(d);
+  }
+  return hasOther ? [...seen, OTHER_DOMAIN] : seen;
 }

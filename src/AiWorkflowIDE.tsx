@@ -45,6 +45,7 @@ import type { AiEvent } from './types/aiEvents';
 import type { IdeDraft } from './services/ai/draftPersistence';
 import { isMeaningfulDraft, loadDraft, saveDraft, clearDraft } from './services/ai/draftPersistence';
 
+import { useOnboardingController, OnboardingToolbarButtons, OnboardingOverlays } from './components/onboarding/OnboardingController';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
 import './components/AiNative/AiNative.css';
@@ -361,6 +362,12 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             onAiEventProp?.(event);
         };
     }, [onAiEventProp, telemetrySink, track]);
+    // 自助接入（仅在解析到 providers.onboarding 时出现工具栏入口；本 IDE 暂不含空画布引导）
+    const onboarding = useOnboardingController({
+        provider: resolvedProviders.onboarding,
+        track,
+        disabled: !!workflowExecution,
+    });
     const handleStepAdded = useCallback((info: { source: 'library' | 'builtin' }) => {
         track('step_added', { source: info.source });
     }, [track]);
@@ -846,6 +853,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                             💬 展开 AI 对话
                         </button>
                     )}
+                    <OnboardingToolbarButtons c={onboarding} />
                     <div className="biz-view-toggle">
                         <button
                             className={`biz-view-toggle-btn ${!showBusinessView ? 'active' : ''}`}
@@ -863,6 +871,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                         </button>
                     </div>
                 </div>
+
+                <OnboardingOverlays c={onboarding} />
 
                 {/* Canvas area: business view or technical canvas */}
                 {showBusinessView ? (

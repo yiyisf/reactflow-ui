@@ -106,6 +106,29 @@ export type {
     StartTrialResult,
     PromotionStatus,
 } from './providers/types';
+// 自助接入：向导 / 命名生成器 / 申请上线面板与纯函数
+export { WorkflowNameBuilder, OnboardingWizard, PromotionPanel, OnboardingGuideCard } from './components/onboarding';
+export type {
+    WorkflowNameBuilderProps,
+    OnboardingWizardProps,
+    OnboardingCreateResult,
+    PromotionPanelProps,
+    OnboardingGuideCardProps,
+} from './components/onboarding';
+export {
+    buildWorkflowName,
+    validateNameParts,
+    suggestFuncSlug,
+    promotionTargetName,
+    isPromotableName,
+    buildSkeletonWorkflow,
+    nextPollDelay,
+    isTerminalPromotionState,
+    buildPromotionTimeline,
+    promotionStateLabel,
+    pollPromotion,
+} from './onboarding';
+export type { WorkflowNameParts, PromotionTargetType, SkeletonInput, TimelineItem, PromotionState, StartSource } from './onboarding';
 export { createTelemetryBuffer } from './telemetry/buffer';
 export type { TelemetryBuffer, TelemetryBufferOptions } from './telemetry/buffer';
 export type { TelemetrySink, IdeEvent, IdeEventName } from './telemetry/types';

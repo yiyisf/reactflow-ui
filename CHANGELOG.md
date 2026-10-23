@@ -11,6 +11,8 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **接入埋点 `TelemetrySink`**：新增 `IdeEvent` / `IdeEventName` / `TelemetrySink` 与 `createTelemetryBuffer`（5 秒或 20 条攒批，页面隐藏 / `pagehide` 时 flush，sink 异常不影响界面，仅 `console.warn` 一次；无 sink 时丢弃）。本批次上报 `ide_opened`、`workflow_saved`、`step_added`、`sandbox_run`，`AiWorkflowIDE` 额外把 `onAiEvent` 的类型作为 `ai_event` 转发（只含 `props.type`）。事件只含名称与简单属性，`props` 中非 string / number / boolean 的值会被剔除，不采集参数值、提示词、对话内容。`StepFlowEditor` 新增可选回调 `onStepAdded` / `onSandboxRun`。
 - Demo：新增 `createMockProviders()`（模拟治理服务流程库 + 控制台 `[telemetry]` 埋点），`DemoApp` 改用 `WorkflowIdeProvider`；工具栏「流程库」重新加载 / 模拟失败照常可用。
 - 接入指南新增 4.5 节：`WorkflowIdeProvider` / `providers` 的解析顺序、稳定性说明与 `TelemetrySink` 示例。
+- **自助接入向导**（v1.3.0 B2）：配置 `providers.onboarding` 后，`WorkflowIDE` / `AiWorkflowIDE` 工具栏出现「新建流程」（3 步向导：产品 → 命名 → 起点）与「申请上线」（仅 `tmp` 类型流程可用，选择 `custom` / `std`、预览正式名称、指数退避轮询审批进度，2 秒起 30 秒封顶）；`WorkflowIDE` 在测试环境开放试用且用户无所属产品时，空画布显示「开始试用」引导卡片。命名遵循 `类型-层级-业务域-产品-功能`，试用环境类型固定 `tmp`，生产环境可选 `custom` / `std`；向导选择的层级在宿主未传 `currentWorkflowLevel` 时作为默认值。接口失败可重试且保留已填内容，产品被他人占用时提示联系负责人。新增导出 `WorkflowNameBuilder`、`OnboardingWizard`、`PromotionPanel`、`OnboardingGuideCard` 与纯函数 `buildWorkflowName` / `suggestFuncSlug` / `buildSkeletonWorkflow` / `promotionTargetName` / `nextPollDelay` 等（`/ai` 入口同步）。新增埋点 `trial_started`、`workflow_created`、`promotion_requested`、`promotion_state`。不配置 `onboarding` 时行为与之前完全一致。
+- Demo：`createMockOnboardingProvider()`（内存产品、冲突、失败注入、上线申请逐步推进与驳回）并纳入 `createMockProviders()`；顶栏新增 TEST / PROD 环境切换与「重置产品」。接入指南新增 4.6 节（契约与治理服务接口对照、示例实现）。
 
 ---
 

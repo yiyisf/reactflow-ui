@@ -1,10 +1,11 @@
 /**
  * Demo 专用：一次提供全部模拟扩展点。不从包入口导出。
- * B2 起补充 onboarding 的模拟实现；目前 `onboarding` 保持 undefined。
+ * 包含流程库、自助接入（onboarding）与控制台埋点。
  */
 import type { IdeProviders } from '../providers/types';
 import type { IdeEvent, TelemetrySink } from '../telemetry/types';
-import { createMockGovernanceProvider } from './mockGovernance';
+import { createMockGovernanceProvider, createMockOnboardingProvider } from './mockGovernance';
+import type { MockOnboardingProviderOptions } from './mockGovernance';
 
 /** 控制台 sink：按批次分组打印 `[telemetry]`，便于在演示站直接观察事件与属性 */
 export const consoleSink: TelemetrySink = {
@@ -20,9 +21,10 @@ export const consoleSink: TelemetrySink = {
     },
 };
 
-export function createMockProviders(): IdeProviders {
+export function createMockProviders(options: { onboarding?: MockOnboardingProviderOptions } = {}): IdeProviders {
     return {
         library: createMockGovernanceProvider(),
+        onboarding: createMockOnboardingProvider(options.onboarding),
         telemetry: consoleSink,
     };
 }

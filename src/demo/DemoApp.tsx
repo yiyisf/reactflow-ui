@@ -169,7 +169,7 @@ function DemoApp() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
             <h1 className="app-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '9px' }}>
               <BrandLogo size={26} />
-              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>v1.1</span>
+              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>v1.2</span>
             </h1>
 
             {/* 搜索框 */}

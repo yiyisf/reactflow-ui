@@ -26,6 +26,12 @@ import { TemplateGallery } from './components/template/TemplateGallery';
 import { ApiImportDialog } from './components/import/ApiImportDialog';
 import type { ApiImportInsertInfo } from './components/import/ApiImportDialog';
 import { appendImportedActions } from './import/insert';
+import {
+    useOnboardingController,
+    OnboardingToolbarButtons,
+    OnboardingOverlays,
+    OnboardingGuideOverlay,
+} from './components/onboarding/OnboardingController';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
 
@@ -275,6 +281,18 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     const [showApiImport, setShowApiImport] = useState(false);
     const [importedActions, setImportedActions] = useState<ActionDefinition[]>([]);
 
+    // 自助接入（仅在解析到 providers.onboarding 时出现入口）
+    const onboarding = useOnboardingController({
+        provider: resolvedProviders.onboarding,
+        track,
+        disabled: readOnly || !!workflowExecution,
+        onPickTemplate: () => setShowTemplateGallery(true),
+        // 向导起点「从接口导入」：先建好骨架流程，再打开接口导入对话框
+        onImportApi: () => setShowApiImport(true),
+    });
+    // 宿主没传 currentWorkflowLevel 时，用向导选择的层级作为默认
+    const effectiveWorkflowLevel = currentWorkflowLevel ?? onboarding.level;
+
     // 流程库目录：每个 IDE 实例独立；provider 变化时重新加载，卸载时中止进行中的请求
     const [libraryCatalog] = useState(() => new LibraryCatalog());
     useLibraryCatalogLoader(libraryCatalog, libraryProvider);
@@ -506,6 +524,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         <span>导入接口</span>
                     </button>
                 )}
+                {/* 自助接入：新建流程 / 申请上线 */}
+                {mode !== 'run' && <OnboardingToolbarButtons c={onboarding} />}
 
                 {/* 模板中心按钮（编辑/查看态下可用） */}
                 {mode !== 'run' && (
@@ -653,7 +673,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         workflowExecution={workflowInstance ?? undefined}
                         registry={actionRegistry}
                         libraryCatalog={libraryProvider ? libraryCatalog : undefined}
-                        currentWorkflowLevel={currentWorkflowLevel}
+                        currentWorkflowLevel={effectiveWorkflowLevel}
                         onStepAdded={handleStepAdded}
                         onSandboxRun={handleSandboxRun}
                         readOnly={readOnly || mode === 'run'}
@@ -717,11 +737,22 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             {/* 场景化工作流模板中心 */}
             <TemplateGallery
                 isOpen={showTemplateGallery}
-                onClose={() => setShowTemplateGallery(false)}
+                onClose={() => { setShowTemplateGallery(false); onboarding.takePendingIdentity(); }}
                 onSelectTemplate={(configuredDef) => {
-                    setWorkflow(configuredDef, layoutDirection);
+                    // 经自助接入向导选了模板：保留向导按规范生成的名称与说明
+                    const identity = onboarding.takePendingIdentity();
+                    setWorkflow(
+                        identity
+                            ? { ...configuredDef, name: identity.name, description: identity.description || configuredDef.description }
+                            : configuredDef,
+                        layoutDirection,
+                    );
                 }}
             />
+
+            {/* 自助接入：向导 / 申请上线弹窗与空画布引导 */}
+            <OnboardingOverlays c={onboarding} />
+            <OnboardingGuideOverlay c={onboarding} />
         </div >
     );
 });

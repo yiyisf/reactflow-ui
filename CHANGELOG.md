@@ -6,6 +6,12 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] - 2026-10-23
+
+> 主题：流程库就绪 —— 标准能力一次沉淀，处处安全复用。
+
 ### Added
 - **下拉字段支持「插入数据」**：可改为引用上游步骤输出或全局入参（运行时取值），也可切回选择；已保存的值为 `${...}` 表达式时自动进入动态取值。字段 `acceptsPills` 为 `false` 时不提供。
 - `/ai` 入口补充导出 `parseWorkflowName`、`validateWorkflowName`、`createConductorLibraryProvider`。
@@ -20,6 +26,10 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **流程库「业务域」**：`LibraryExtension` / `ActionDefinition` / `WorkflowLibraryItem` 新增可选 `domain`（业务域，取值由服务端提供，不写死列表）。新增纯函数 `parseWorkflowName` / `validateWorkflowName`（命名规范 `类型-层级-业务域-产品-功能`），记录未提供 `extension.domain` / `level` 时按名称兜底，显式值优先。动作选择器在存在业务域时按业务域分组（无业务域归「其他」），AI 系统提示词目录显示 `[业务域: X]`，`search_workflow_library` 新增 `domain` 参数，`LibraryPanel` 显示并可按业务域筛选。不使用业务域时行为不变。
 - **Demo 演示后端**（仅演示站使用，不进入包产物）：新增模拟编排治理服务 `src/demo/mockGovernance/`——12 个按命名规范 `类型-层级-业务域-产品-功能` 命名的流程库能力（覆盖 9 个业务域与 L1 / L2 / L3，含完整中文 schema）、2 个原子任务，以及多版本、已下线、固定版本被撤回等场景；`createMockGovernanceProvider` 带模拟网络延迟、可注入加载失败、支持 `AbortSignal` 与服务端检索。演示站的 `WorkflowIDE` / `AiWorkflowIDE` 已接入，工具栏新增「流程库」（重新加载 / 模拟加载失败）与「层级」（`currentWorkflowLevel`）控制，示例列表新增「引用库能力」示例（含「有新版本」「版本不可用」）。
 - **宿主接入指南** `docs/integration-guide.md`：面向内部项目，覆盖安装与入口、最小接入、全部已有扩展点、用治理服务实现 `LibraryProvider`、命名规范与业务域、版本固定行为、常见问题与各版本计划的扩展点；示例实现 `src/demo/examples/governanceLibraryProvider.ts`（ETag 缓存、404 → `null`、认证头注入、`AbortSignal`）随 CI 类型检查并带单元测试。
+
+### Changed
+- **AI IDE 的「业务视图」改用经典模式的业务卡片流**（`StepFlowEditor`）：原只读的步骤卡片（`BusinessCanvas`）移除。业务视图现在可直接编辑，并支持流程库能力（按业务域选择、版本固定与升级差异）、下拉字段插入数据、多层嵌套控制流与运行故事线。步骤头部的「🤖」按钮保留原有「请 AI 介绍该步骤」的能力；AI 方案待审阅时业务视图只读。业务视图下的编辑只更新定义，切回技术视图时再补建画布。
+- `StepFlowEditor` 新增可选 `onAskAi`。
 
 ### Fixed
 - **业务动作选择弹窗跟随主题**：弹窗经 Portal 渲染时未带主题属性，暗色模式下背景透明、配色与项目不一致；现已修复，并将筛选拆为「分类」「业务域」两行、搜索移到标题栏、卡片显示层级与业务域。沙箱配置弹窗与参数联想浮层同样补上主题属性。

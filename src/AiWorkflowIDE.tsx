@@ -16,7 +16,8 @@ import { IdeStoresProvider } from './store/ideStoresContext';
 import AiCommandCenter from './components/AiNative/AiCommandCenter';
 import CanvasPreview from './components/AiNative/CanvasPreview';
 import ReviewBar from './components/AiNative/ReviewBar';
-import BusinessCanvas from './components/AiNative/BusinessCanvas';
+import { StepFlowEditor } from './components/business/StepFlowEditor';
+import { ActionRegistry, defaultActionRegistry } from './actions/registry';
 import AiConfigPanel from './components/AiNative/AiConfigPanel';
 import { workflowToMermaid } from './utils/workflowToMermaid';
 import type { WorkflowDef, WorkflowInstance } from './types/conductor';
@@ -24,10 +25,10 @@ import type { AiConfig } from './services/ai/protocolAdapter';
 import type { AiMetrics } from './store/aiStore';
 import type { WorkflowLibraryItem } from './types/workflowLibrary';
 import { LibraryCatalog } from './library/catalog';
-import { toLibraryItems, toTaskSchemas } from './library/projections';
+import { toActions, toLibraryItems, toTaskSchemas } from './library/projections';
 import { useLibraryCatalogLoader, useLibraryCatalogSnapshot } from './library/useLibraryCatalog';
 import type { LibraryProvider } from './library/types';
-import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, TaskExecutionData, WorkflowExecutionInput } from './types/workflow';
+import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, WorkflowExecutionInput } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
 import { ToolRegistry } from './services/ai/toolRegistry';
 import type { CustomValidationRule } from './services/ai/ruleEngine';
@@ -556,15 +557,26 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         document.addEventListener('mouseup', onMouseUp);
     }, [chatWidth]);
 
-    // ── Business view execution status map ─────────────────────────────────
-    const executionStatusMap = useMemo<Record<string, string>>(() => {
-        if (!workflowStore.executionData) return {};
-        return Object.fromEntries(
-            Object.entries(workflowStore.executionData).map(
-                ([ref, data]: [string, TaskExecutionData]) => [ref, data.status]
-            )
-        );
-    }, [workflowStore.executionData]);
+    // ── 业务视图：复用经典模式的业务卡片流（StepFlowEditor） ─────────────────
+    // 动作库 = 内置动作 + 流程库能力（同名时流程库优先），与 WorkflowIDE 的组装方式一致
+    const actionRegistry = useMemo(() => {
+        const libraryActions = libraryProvider ? toActions(libraryCatalog) : [];
+        if (libraryActions.length === 0) return defaultActionRegistry;
+        const reg = new ActionRegistry(defaultActionRegistry.getAllActions());
+        for (const a of libraryActions) {
+            reg.unregister(a.id);
+            reg.register(a);
+        }
+        return reg;
+        // catalogSnapshot.revision：目录加载完成 / 变化后重建
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [libraryProvider, libraryCatalog, catalogSnapshot.revision]);
+
+    // 业务视图下编辑只更新定义（不做整图布局）；切回技术视图时再补建画布
+    const { graphStale, refreshGraph } = workflowStore;
+    useEffect(() => {
+        if (!showBusinessView && graphStale) refreshGraph();
+    }, [showBusinessView, graphStale, refreshGraph]);
 
     // ── Ref API ─────────────────────────────────────────────────────────────
     // Use getState() to avoid stale closure — ref callbacks must always reflect latest store state.
@@ -812,14 +824,22 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                 {/* Canvas area: business view or technical canvas */}
                 {showBusinessView ? (
                     <div className="ai-canvas-area">
-                        <BusinessCanvas
+                        {aiStore.pendingProposal && (
+                            <div className="ai-biz-view-hint">AI 方案待审阅，采纳或放弃后可继续编辑</div>
+                        )}
+                        <StepFlowEditor
                             workflowDef={workflowStore.workflowDef}
-                            executionStatus={executionStatusMap}
-                            onStepClick={(taskRef, taskType) => {
+                            workflowExecution={workflowStore.workflowInstance ?? undefined}
+                            registry={actionRegistry}
+                            libraryCatalog={libraryProvider ? libraryCatalog : undefined}
+                            readOnly={!!aiStore.pendingProposal}
+                            onChange={(newDef) => workflowStore.setWorkflowDefOnly(newDef)}
+                            onAskAi={(step) => {
                                 aiStore.setChatPanelOpen(true);
-                                // Use setPendingAutoSend so this triggers an actual AI request,
-                                // not just a store mutation (addMessage alone has no AI effect)
-                                aiStore.setPendingAutoSend(`请介绍步骤「${taskRef}」(类型: ${taskType}) 的作用和配置建议`);
+                                // setPendingAutoSend 会真正发起 AI 请求（仅 addMessage 不会）
+                                aiStore.setPendingAutoSend(
+                                    `请介绍步骤「${step.name || step.taskReferenceName}」(引用名: ${step.taskReferenceName}) 的作用和配置建议`
+                                );
                             }}
                         />
                     </div>

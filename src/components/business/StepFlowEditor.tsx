@@ -28,6 +28,8 @@ export interface StepFlowEditorProps {
   libraryCatalog?: LibraryCatalog;
   /** 当前正在编辑的工作流层级：提供时选择器隐藏违反分层调用规则的流程库动作 */
   currentWorkflowLevel?: WorkflowLevel;
+  /** 提供时，步骤头部显示「🤖」按钮，点击请 AI 介绍该步骤（AI IDE 中使用） */
+  onAskAi?: (step: BusinessStep) => void;
 }
 
 export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
@@ -38,6 +40,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   workflowExecution,
   libraryCatalog,
   currentWorkflowLevel,
+  onAskAi,
 }) => {
   // Synchronize internal BusinessWorkflowModel from WorkflowDef
   const model: BusinessWorkflowModel = useMemo(() => {
@@ -821,6 +824,22 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
 
                   {/* Actions & Chevron */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                    {onAskAi && (
+                      <button
+                        onClick={() => onAskAi(step)}
+                        title="让 AI 介绍这个步骤的作用与配置建议"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontSize: 14,
+                          padding: '4px',
+                        }}
+                      >
+                        🤖
+                      </button>
+                    )}
                     {!readOnly && (
                       <>
                         <button

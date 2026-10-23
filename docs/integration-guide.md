@@ -215,6 +215,56 @@ const libraryProvider = createGovernanceLibraryProvider({ baseUrl: '', headers: 
 - `currentWorkflowLevel`（仅 `WorkflowIDE`）：当前正在编辑的流程层级。提供后动作选择器隐藏违反分层规则的库能力（L1 看不到 L2 / L3，L2 看不到 L3）；不传则不过滤。层级可以由 `parseWorkflowName(def.name)?.level` 得到。
 - 目录加载中 / 失败时，动作选择器与流程库面板显示「加载中 / 加载失败，点击重试」，**失败不阻塞编辑**。
 
+### 4.5 统一注册扩展点：`WorkflowIdeProvider` / `providers`（v1.3.0）
+
+页面里有多个 IDE、或后续还要接入更多扩展点时，不必每个组件都传一遍 props，可以在外层配置一次：
+
+```tsx
+import { WorkflowIdeProvider } from '@yiyi_zhang/reactflow-ui';
+
+const providers = { library: libraryProvider, telemetry: telemetrySink };
+
+<WorkflowIdeProvider providers={providers}>
+  <WorkflowIDE uiMode="business" />
+  <AiWorkflowIDE />
+</WorkflowIdeProvider>
+```
+
+`IdeProviders` 目前包含：`library`（`LibraryProvider`）、`onboarding`（`OnboardingProvider`，v1.3.0 仅提供契约类型，界面随后续批次提供）、`telemetry`（`TelemetrySink`）。也可以只在单个组件上传 `providers` prop，或在组件内通过 `useIdeProviders()` 读取外层配置。
+
+**解析顺序**（逐字段，高优先级缺少该字段时才落到下一层）：
+
+1. 组件上的专用 prop（如 `libraryProvider`）
+2. 组件的 `providers` prop
+3. 外层 `WorkflowIdeProvider`
+4. 无（该功能不显示入口）
+
+只传 `libraryProvider`、不使用 `WorkflowIdeProvider` 的现有写法行为不变。
+
+**稳定性**：按字段比较引用。宿主每次渲染都新建 `providers` 对象没有关系，只要里面的 provider 实例不变，就不会重新加载流程库目录；但 provider 本身（如 `createGovernanceLibraryProvider(...)`）应只创建一次（模块级、`useMemo` 或 `useState`），不要在渲染中反复创建，否则每次都会触发目录重载。
+
+#### 接入埋点：`TelemetrySink`
+
+```tsx
+import type { TelemetrySink, IdeEvent } from '@yiyi_zhang/reactflow-ui';
+
+const telemetrySink: TelemetrySink = {
+  // SDK 已按「5 秒或 20 条」攒批，页面隐藏（切换标签 / 关闭）时强制发送一次
+  track(events: IdeEvent[]) {
+    // 关闭页面时用 sendBeacon 更可靠；失败不影响界面（SDK 会吞掉异常，仅 console.warn 一次）
+    const body = JSON.stringify(events);
+    if (!navigator.sendBeacon?.('/api/onboarding/events', new Blob([body], { type: 'application/json' }))) {
+      void fetch('/api/onboarding/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
+    }
+  },
+};
+```
+
+- 本版本上报的事件：`ide_opened`（IDE 挂载）、`workflow_saved`（触发 `onSave`）、`step_added`（业务模式新增步骤，`props.source` 为 `library` 或 `builtin`）、`sandbox_run`（本地沙箱试跑，`props.result` 为执行状态或 `error`）、`ai_event`（仅 `props.type`，即 `onAiEvent` 的事件类型）。`trial_started`、`workflow_created`、`api_imported`、`promotion_*` 随后续批次接入。
+- **不含任何载荷**：事件只有名称、时间、IDE 类型、流程名与简单属性；SDK 会剔除 `props` 中非 string / number / boolean 的值，不采集参数值、表达式、提示词、对话内容与执行数据。
+- 没有 `telemetry` 时事件被直接丢弃，不产生定时器与页面监听。
+- 需要自定义批量参数或在 IDE 之外复用时，可用 `createTelemetryBuffer(sink, { flushIntervalMs, maxBatchSize })` 自行包装。
+
 ## 5. 用治理服务实现 `LibraryProvider`
 
 `LibraryProvider` 是流程库的统一数据源接口（`list` / `get` / 可选的 `search`）。治理服务提供以下接口，下面的 `createGovernanceLibraryProvider` 是对应的完整实现，可直接复制使用。

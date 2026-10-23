@@ -30,6 +30,10 @@ export interface StepFlowEditorProps {
   currentWorkflowLevel?: WorkflowLevel;
   /** 提供时，步骤头部显示「🤖」按钮，点击请 AI 介绍该步骤（AI IDE 中使用） */
   onAskAi?: (step: BusinessStep) => void;
+  /** 通过动作选择器新增步骤后回调（埋点用）：source = library（流程库能力）/ builtin（内置或宿主动作） */
+  onStepAdded?: (info: { source: 'library' | 'builtin' }) => void;
+  /** 本地沙箱试跑结束后回调（埋点用）：result 为执行状态，或 'error'（试跑抛错） */
+  onSandboxRun?: (result: string) => void;
 }
 
 export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
@@ -41,6 +45,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   libraryCatalog,
   currentWorkflowLevel,
   onAskAi,
+  onStepAdded,
+  onSandboxRun,
 }) => {
   // Synchronize internal BusinessWorkflowModel from WorkflowDef
   const model: BusinessWorkflowModel = useMemo(() => {
@@ -104,6 +110,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   };
 
   const handleAddAction = (action: ActionDefinition, atIndex: number) => {
+    onStepAdded?.({ source: action.kind === 'workflow' ? 'library' : 'builtin' });
     if (insertCallback) {
       insertCallback(action);
       setInsertCallback(null);
@@ -154,8 +161,10 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       }
 
       setSimResults(results);
+      onSandboxRun?.(String(instance.status));
     } catch (err) {
       console.error('[StepFlowEditor] Dry run error:', err);
+      onSandboxRun?.('error');
     } finally {
       setIsSimulating(false);
     }

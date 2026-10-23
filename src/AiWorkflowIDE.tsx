@@ -28,6 +28,9 @@ import { LibraryCatalog } from './library/catalog';
 import { toActions, toLibraryItems, toTaskSchemas } from './library/projections';
 import { useLibraryCatalogLoader, useLibraryCatalogSnapshot } from './library/useLibraryCatalog';
 import type { LibraryProvider } from './library/types';
+import type { IdeProviders } from './providers/types';
+import { useResolvedProviders } from './providers/WorkflowIdeProvider';
+import { useTelemetry } from './telemetry/useTelemetry';
 import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, WorkflowExecutionInput } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
 import { ToolRegistry } from './services/ai/toolRegistry';
@@ -98,6 +101,13 @@ export interface AiWorkflowIDEProps {
      * ```
      */
     libraryProvider?: LibraryProvider;
+
+    /**
+     * 统一扩展点集合（`library` / `onboarding` / `telemetry`）。
+     * 解析顺序：专用 prop（如 `libraryProvider`）> 本 prop > 外层 `WorkflowIdeProvider` > 无。
+     * 按字段比较引用，宿主每次渲染新建对象但 provider 实例不变时不会触发目录重载。
+     */
+    providers?: IdeProviders;
     /**
      * 流程库目录注入系统提示词的条数上限，默认 50（按层级 L3 -> L1 截断）。
      * 超出部分会提示 AI 改用 `search_workflow_library` 检索。
@@ -298,7 +308,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowExecution,
         aiConfig: propAiConfig,
         workflowLibrary: propLibrary,
-        libraryProvider,
+        libraryProvider: libraryProviderProp,
+        providers: providersProp,
         promptCatalogLimit,
         customTools: propCustomTools,
         validationRules: propValidationRules,
@@ -310,20 +321,52 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         layoutDirection,
         viewMode: propViewMode,
         height = '100%',
-        onSave,
+        onSave: onSaveProp,
         onWorkflowChange,
         onRequestImport,
         executionActions,
         onTriggerExecution,
         onPollExecution,
         onAiMetrics,
-        onAiEvent,
+        onAiEvent: onAiEventProp,
         aiPermissions,
         draftPersist = false,
         onDraftChange,
     } = props;
 
     const workflowStore = useWorkflowStore();
+
+    // 扩展点解析：libraryProvider prop > providers prop > 外层 WorkflowIdeProvider
+    const resolvedProviders = useResolvedProviders(providersProp, { library: libraryProviderProp });
+    const libraryProvider = resolvedProviders.library;
+
+    // 接入埋点（无 telemetry sink 时为空操作；只上报事件名与简单属性，不含内容）
+    const telemetrySink = resolvedProviders.telemetry;
+    const track = useTelemetry('ai', telemetrySink);
+    useEffect(() => {
+        track('ide_opened');
+    }, [track]);
+    const onSave = useMemo(() => {
+        if (!onSaveProp) return undefined;
+        return (def: WorkflowDef) => {
+            track('workflow_saved');
+            onSaveProp(def);
+        };
+    }, [onSaveProp, track]);
+    // 转发现有 onAiEvent：仅把 type 交给埋点；宿主回调保持原样
+    const onAiEvent = useMemo(() => {
+        if (!onAiEventProp && !telemetrySink) return undefined;
+        return (event: AiEvent) => {
+            track('ai_event', { type: event.type });
+            onAiEventProp?.(event);
+        };
+    }, [onAiEventProp, telemetrySink, track]);
+    const handleStepAdded = useCallback((info: { source: 'library' | 'builtin' }) => {
+        track('step_added', { source: info.source });
+    }, [track]);
+    const handleSandboxRun = useCallback((result: string) => {
+        track('sandbox_run', { result });
+    }, [track]);
 
     // Per-instance state (M3.2): each <AiWorkflowIDE> mount gets its own conversation,
     // library, and custom-tool registry instead of sharing a page-wide singleton —
@@ -832,6 +875,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                             workflowExecution={workflowStore.workflowInstance ?? undefined}
                             registry={actionRegistry}
                             libraryCatalog={libraryProvider ? libraryCatalog : undefined}
+                            onStepAdded={handleStepAdded}
+                            onSandboxRun={handleSandboxRun}
                             readOnly={!!aiStore.pendingProposal}
                             onChange={(newDef) => workflowStore.setWorkflowDefOnly(newDef)}
                             onAskAi={(step) => {

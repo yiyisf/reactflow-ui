@@ -6,6 +6,8 @@ import type { ViewMode } from '../types/workflow';
 import type { WorkflowDef } from '../types/conductor';
 import type { WorkflowLevel } from '../types/workflowLibrary';
 import { createMockGovernanceProvider } from './mockGovernance';
+import { createMockProviders } from './mockProviders';
+import { WorkflowIdeProvider } from '../providers/WorkflowIdeProvider';
 import { useTheme } from '../hooks/useTheme';
 import { ThemeControls } from '../components/ThemeControls';
 import { BrandLogo } from '../components/BrandLogo';
@@ -25,9 +27,9 @@ function DemoApp() {
   const [uiMode, setUiMode] = useState<'pro' | 'business'>('business');
   const [allowOperations, setAllowOperations] = useState(true);
 
-  // 流程库：演示用的模拟治理服务（有网络延迟，可模拟加载失败）。
-  // 同一个实例同时传给 WorkflowIDE 与 AiWorkflowIDE；更换实例即触发目录重新加载。
-  const [libraryProvider, setLibraryProvider] = useState(() => createMockGovernanceProvider());
+  // 扩展点：演示用的模拟实现（流程库 + 控制台埋点），经 WorkflowIdeProvider 一次配置、两个 IDE 共用。
+  // 流程库为带网络延迟、可模拟加载失败的模拟治理服务；更换 library 实例即触发目录重新加载。
+  const [providers, setProviders] = useState(() => createMockProviders());
   // 当前编辑的流程层级：用于演示分层调用规则（空 = 不限）
   const [workflowLevel, setWorkflowLevel] = useState<WorkflowLevel | ''>('');
 
@@ -35,7 +37,7 @@ function DemoApp() {
     const next = createMockGovernanceProvider();
     // 让第一次目录加载失败：界面显示「加载失败，点击重试」，点击重试后恢复正常
     if (action === 'fail') next.failNext();
-    setLibraryProvider(next);
+    setProviders((prev) => ({ ...prev, library: next }));
   }, []);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
@@ -381,6 +383,7 @@ function DemoApp() {
       <div className="app-content" style={{ flex: 1, position: 'relative' }}>
         {error && <div className="error-message">⚠️ {error}</div>}
 
+        <WorkflowIdeProvider providers={providers}>
         {useNewAiMode ? (
           <AiWorkflowIDE
             ref={ideRef}
@@ -390,7 +393,6 @@ function DemoApp() {
             themeColor={themeColor}
             layoutDirection="LR"
             aiConfig={aiConfig}
-            libraryProvider={libraryProvider}
             onSave={handleSave}
             onWorkflowChange={handleWorkflowChange}
             onRequestImport={() => {
@@ -414,7 +416,6 @@ function DemoApp() {
             searchQuery={searchQuery}
             viewMode={viewMode}
             aiConfig={aiConfig}
-            libraryProvider={libraryProvider}
             currentWorkflowLevel={workflowLevel || undefined}
             onSave={handleSave}
             onWorkflowChange={handleWorkflowChange}
@@ -437,6 +438,7 @@ function DemoApp() {
             } : undefined}
           />
         )}
+        </WorkflowIdeProvider>
       </div>
 
       {/* 全局居中 AI 服务配置弹窗 */}

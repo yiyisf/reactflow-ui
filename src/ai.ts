@@ -91,3 +91,20 @@ export type {
     SandboxDryRunOptions,
     TaskMockOverride,
 } from './utils/localSandboxEngine';
+
+// ── v1.3.0: 扩展点注册（IdeProviders）与接入埋点（TelemetrySink） ───────────
+export { WorkflowIdeProvider, useIdeProviders } from './providers/WorkflowIdeProvider';
+export type { WorkflowIdeProviderProps } from './providers/WorkflowIdeProvider';
+export { resolveProviders, stabilizeProviders } from './providers/resolve';
+export type { ProviderSources } from './providers/resolve';
+export type {
+    IdeProviders,
+    OnboardingProvider,
+    OnboardingContext,
+    ProductInfo,
+    StartTrialResult,
+    PromotionStatus,
+} from './providers/types';
+export { createTelemetryBuffer } from './telemetry/buffer';
+export type { TelemetryBuffer, TelemetryBufferOptions } from './telemetry/buffer';
+export type { TelemetrySink, IdeEvent, IdeEventName } from './telemetry/types';

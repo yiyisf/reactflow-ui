@@ -4,9 +4,21 @@
 
 ---
 
-## 🚧 v1.2.0：流程库就绪（发布准备中）
+## 🚧 v1.3.0：自助接入（发布准备中）
 
-**目标**：让内部项目基于真实治理服务使用流程库——业务模式按业务域选到库能力、引用时固定版本、升级前看差异；AI IDE 能检索并正确引用库能力。目标发布时间见 [`docs/v1.2.0-release-plan.md`](./docs/v1.2.0-release-plan.md)，当前变更见 `CHANGELOG.md` 的 `[Unreleased]`。
+**目标**：新团队在测试环境里不靠平台方陪跑，自己完成"登记产品 → 规范命名建流程 → 接上已有接口 → 试跑 → 申请上线"。目标发布时间 2026-11-13，见 [`docs/v1.3.0-release-plan.md`](./docs/v1.3.0-release-plan.md)，设计见 [`docs/design/v1.3.0-自助接入设计.md`](./docs/design/v1.3.0-自助接入设计.md)，当前变更见 `CHANGELOG.md` 的 `[Unreleased]`。
+
+- [x] **扩展点注册机制（B1）**：`IdeProviders`（`library` / `onboarding` / `telemetry`）、`WorkflowIdeProvider`、`useIdeProviders()`；逐字段解析（专用 prop > 组件 `providers` > 外层 > 无），按字段比较引用；Demo `createMockProviders()`
+- [x] **接入埋点 `TelemetrySink`（B1）**：5 秒或 20 条攒批、页面隐藏时 flush；不采集参数值、表达式、提示词与对话内容
+- [x] **自助接入向导（B2）**：`OnboardingProvider` 契约、`WorkflowNameBuilder`（五段式命名与实时校验）、`OnboardingWizard`、`PromotionPanel`（申请上线与审批进度）、空画布「开始试用」引导；Demo 模拟实现与 TEST / PROD 环境切换
+- [x] **接口导入（B3）**：OpenAPI 3 / Swagger 2 / Postman v2.1 / curl（均为 JSON，不支持 YAML）生成 HTTP 业务动作，敏感头替换为 `${workflow.input.xxx}` 占位；样例见 `public/sample-imports/`
+- [ ] **埋点铺设与收尾（B4）**：首批事件接入走查、接入指南与 CHANGELOG 更新、人工走查、宣传页、版本号定稿与发布
+
+---
+
+## ✅ v1.2.0：流程库就绪 (已发布 · 2026-10-23)
+
+**目标**：让内部项目基于真实治理服务使用流程库——业务模式按业务域选到库能力、引用时固定版本、升级前看差异；AI IDE 能检索并正确引用库能力。发布计划见 [`docs/v1.2.0-release-plan.md`](./docs/v1.2.0-release-plan.md)，变更见 `CHANGELOG.md` 的 `[1.2.0]`。
 
 - [x] **流程库数据源 `LibraryProvider`**：同一份规范化目录投影为业务动作、AI 任务 Schema 与 AI 流程库目录；`WorkflowIDE` / `AiWorkflowIDE` 新增 `libraryProvider` prop；默认 Conductor 实现 `createConductorLibraryProvider`
 - [x] **流程库能力动作**：由 Conductor 标准 `WorkflowDef` / `TaskDef` 及 `inputSchema` / `outputSchema` 生成业务动作，编译为 `SUB_WORKFLOW`；首次引用固定版本，库升级后不自动跟随
@@ -14,7 +26,7 @@
 - [x] **业务域与分层**：命名规范 `类型-层级-业务域-产品-功能`（`parseWorkflowName` / `validateWorkflowName`）、动作选择器按业务域分组、`currentWorkflowLevel` 分层过滤、AI 检索支持按业务域过滤、`promptCatalogLimit`
 - [x] **Demo 演示后端与宿主接入指南**：模拟治理服务（`src/demo/mockGovernance/`）与 [`docs/integration-guide.md`](./docs/integration-guide.md)
 - [x] **体验与质量**：下拉字段「插入数据」、弹窗跟随主题、多层嵌套控制流、卡片视图性能 / 按需订阅 / 撤销上限、类型检查成为 CI 门禁
-- [ ] **收尾**：补 `@types/node` 并移除类型检查排除项、人工走查、版本号与 CHANGELOG 定稿、发布
+- [x] **收尾**：人工走查、版本号与 CHANGELOG 定稿、发布
 
 ---
 

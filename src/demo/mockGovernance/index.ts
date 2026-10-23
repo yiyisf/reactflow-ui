@@ -4,3 +4,5 @@
 export { createMockGovernanceProvider, createMockServerError } from './mockGovernanceProvider';
 export type { MockGovernanceProvider, MockGovernanceProviderOptions } from './mockGovernanceProvider';
 export { DEMO_DOMAINS, DEMO_WORKFLOW_NAMES, createDemoLibraryData } from './libraryData';
+export { createMockOnboardingProvider, DEMO_USER, DEMO_FOREIGN_PRODUCTS } from './mockOnboardingProvider';
+export type { MockOnboardingProvider, MockOnboardingProviderOptions } from './mockOnboardingProvider';

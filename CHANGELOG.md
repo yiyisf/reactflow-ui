@@ -6,6 +6,12 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **扩展点注册机制**（v1.3.0 B1，设计见 `docs/design/v1.3.0-自助接入设计.md`）：新增 `IdeProviders`（`library` / `onboarding` / `telemetry`）、`WorkflowIdeProvider` 与 `useIdeProviders()`；`WorkflowIDE` / `AiWorkflowIDE` 新增可选 `providers` prop。逐字段解析：专用 prop（如 `libraryProvider`）> 组件 `providers` > 外层 `WorkflowIdeProvider` > 无；按字段比较引用，宿主每次渲染新建 `providers` 对象不会触发目录重载。只传 `libraryProvider` 的现有用法行为不变。新增纯函数 `resolveProviders` / `stabilizeProviders`，并导出 `OnboardingProvider` 及相关类型（`OnboardingContext`、`ProductInfo`、`StartTrialResult`、`PromotionStatus`，仅契约，界面随后续批次提供）。
+- **接入埋点 `TelemetrySink`**：新增 `IdeEvent` / `IdeEventName` / `TelemetrySink` 与 `createTelemetryBuffer`（5 秒或 20 条攒批，页面隐藏 / `pagehide` 时 flush，sink 异常不影响界面，仅 `console.warn` 一次；无 sink 时丢弃）。本批次上报 `ide_opened`、`workflow_saved`、`step_added`、`sandbox_run`，`AiWorkflowIDE` 额外把 `onAiEvent` 的类型作为 `ai_event` 转发（只含 `props.type`）。事件只含名称与简单属性，`props` 中非 string / number / boolean 的值会被剔除，不采集参数值、提示词、对话内容。`StepFlowEditor` 新增可选回调 `onStepAdded` / `onSandboxRun`。
+- Demo：新增 `createMockProviders()`（模拟治理服务流程库 + 控制台 `[telemetry]` 埋点），`DemoApp` 改用 `WorkflowIdeProvider`；工具栏「流程库」重新加载 / 模拟失败照常可用。
+- 接入指南新增 4.5 节：`WorkflowIdeProvider` / `providers` 的解析顺序、稳定性说明与 `TelemetrySink` 示例。
+
 ---
 
 ## [1.2.0] - 2026-10-23

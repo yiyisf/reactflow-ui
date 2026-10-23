@@ -18,6 +18,9 @@ import { LibraryCatalog } from './library/catalog';
 import { toActions } from './library/projections';
 import { useLibraryCatalogLoader, useLibraryCatalogSnapshot } from './library/useLibraryCatalog';
 import type { LibraryProvider } from './library/types';
+import type { IdeProviders } from './providers/types';
+import { useResolvedProviders } from './providers/WorkflowIdeProvider';
+import { useTelemetry } from './telemetry/useTelemetry';
 import { StepFlowEditor } from './components/business/StepFlowEditor';
 import { TemplateGallery } from './components/template/TemplateGallery';
 import './styles/tokens.css';
@@ -156,6 +159,13 @@ export interface WorkflowIDEProps {
     libraryProvider?: LibraryProvider;
 
     /**
+     * 统一扩展点集合（`library` / `onboarding` / `telemetry`）。
+     * 解析顺序：专用 prop（如 `libraryProvider`）> 本 prop > 外层 `WorkflowIdeProvider` > 无。
+     * 按字段比较引用，宿主每次渲染新建对象但 provider 实例不变时不会触发目录重载。
+     */
+    providers?: IdeProviders;
+
+    /**
      * 当前正在编辑的工作流层级（L1 / L2 / L3）。
      * 提供时，动作选择器隐藏违反分层调用规则的流程库动作（L1 不显示 L2/L3，L2 不显示 L3）；未提供则不过滤。
      */
@@ -220,15 +230,39 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     viewMode = 'developer',
     uiMode = 'pro',
     actions,
-    libraryProvider,
+    libraryProvider: libraryProviderProp,
+    providers: providersProp,
     currentWorkflowLevel,
-    onSave,
+    onSave: onSaveProp,
     onWorkflowChange,
     height = '100%',
     onTriggerExecution,
     onPollExecution,
     executionPollInterval = 3000,
 }, ref) => {
+    // 扩展点解析：libraryProvider prop > providers prop > 外层 WorkflowIdeProvider
+    const resolvedProviders = useResolvedProviders(providersProp, { library: libraryProviderProp });
+    const libraryProvider = resolvedProviders.library;
+
+    // 接入埋点（无 telemetry sink 时为空操作；只上报事件名与简单属性）
+    const track = useTelemetry('workflow', resolvedProviders.telemetry);
+    useEffect(() => {
+        track('ide_opened');
+    }, [track]);
+    const onSave = useMemo(() => {
+        if (!onSaveProp) return undefined;
+        return (def: WorkflowDef) => {
+            track('workflow_saved');
+            onSaveProp(def);
+        };
+    }, [onSaveProp, track]);
+    const handleStepAdded = useCallback((info: { source: 'library' | 'builtin' }) => {
+        track('step_added', { source: info.source });
+    }, [track]);
+    const handleSandboxRun = useCallback((result: string) => {
+        track('sandbox_run', { result });
+    }, [track]);
+
     // 业务模式下的视图切换：卡片流 (card) vs 全景拓扑 (canvas)
     const [businessViewLayout, setBusinessViewLayout] = useState<'card' | 'canvas'>('card');
     const [showTemplateGallery, setShowTemplateGallery] = useState(false);
@@ -578,6 +612,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         registry={actionRegistry}
                         libraryCatalog={libraryProvider ? libraryCatalog : undefined}
                         currentWorkflowLevel={currentWorkflowLevel}
+                        onStepAdded={handleStepAdded}
+                        onSandboxRun={handleSandboxRun}
                         readOnly={readOnly || mode === 'run'}
                         onChange={(newDef) => {
                             // 卡片视图下画布未挂载：只更新定义，避免每次按键都做整图布局

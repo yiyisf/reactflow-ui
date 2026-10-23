@@ -1,0 +1,100 @@
+{
+  "info": {
+    "_postman_id": "b3a1f6c0-0000-4000-8000-000000000001",
+    "name": "CMDB 资产",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{cmdbToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://test.cmdb.example.com/api/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "资产",
+      "item": [
+        {
+          "name": "查询资产列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assets?page=1&type=server",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assets"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "type",
+                  "value": "server"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "成功",
+              "code": 200,
+              "body": "{\"total\": 2, \"items\": [{\"id\": \"ast-001\", \"name\": \"web-01\"}]}"
+            }
+          ]
+        },
+        {
+          "name": "登记资产",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Trace-Id",
+                "value": "trace-{{traceId}}"
+              },
+              {
+                "key": "X-Debug",
+                "value": "1",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"web-02\",\n  \"type\": \"server\",\n  \"owner\": \"{{ownerEmail}}\",\n  \"cpuCores\": 8,\n  \"managed\": true,\n  \"tags\": [\"prod\", \"web\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/assets",
+            "description": "登记一台新资产"
+          }
+        }
+      ]
+    }
+  ]
+}

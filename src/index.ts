@@ -109,3 +109,27 @@ export type {
 export { createTelemetryBuffer } from './telemetry/buffer';
 export type { TelemetryBuffer, TelemetryBufferOptions } from './telemetry/buffer';
 export type { TelemetrySink, IdeEvent, IdeEventName } from './telemetry/types';
+
+// ── v1.3.0: 接口导入（OpenAPI 3 / Swagger 2 / Postman 2.1 / curl → HTTP 业务动作） ──
+export {
+    detectFormat,
+    parseApiText,
+    parseOpenApi3,
+    parseSwagger2,
+    parsePostman21,
+    parseCurl,
+    buildHttpAction,
+    appendImportedActions,
+    sanitizeHeaders,
+} from './import';
+export type {
+    ImportFormat,
+    DetectedFormat,
+    ImportedOperation,
+    ImportedParam,
+    ImportedBody,
+    ParseResult,
+    BuildHttpActionOptions,
+} from './import';
+export { ApiImportDialog } from './components/import/ApiImportDialog';
+export type { ApiImportDialogProps, ApiImportInsertInfo } from './components/import/ApiImportDialog';

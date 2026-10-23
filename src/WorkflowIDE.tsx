@@ -23,6 +23,9 @@ import { useResolvedProviders } from './providers/WorkflowIdeProvider';
 import { useTelemetry } from './telemetry/useTelemetry';
 import { StepFlowEditor } from './components/business/StepFlowEditor';
 import { TemplateGallery } from './components/template/TemplateGallery';
+import { ApiImportDialog } from './components/import/ApiImportDialog';
+import type { ApiImportInsertInfo } from './components/import/ApiImportDialog';
+import { appendImportedActions } from './import/insert';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
 
@@ -38,6 +41,8 @@ export interface WorkflowIDERef {
     save: () => void;
     /** 创建空白工作流 */
     createBlankWorkflow: (name?: string) => void;
+    /** 打开「导入接口」对话框（OpenAPI / Swagger / Postman / curl），供宿主或自助接入向导调用 */
+    openApiImport: () => void;
 }
 
 /**
@@ -266,6 +271,9 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     // 业务模式下的视图切换：卡片流 (card) vs 全景拓扑 (canvas)
     const [businessViewLayout, setBusinessViewLayout] = useState<'card' | 'canvas'>('card');
     const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+    // 接口导入：对话框开关；导入生成的动作仅在本会话内注册（登记为流程库能力属 v1.4.0）
+    const [showApiImport, setShowApiImport] = useState(false);
+    const [importedActions, setImportedActions] = useState<ActionDefinition[]>([]);
 
     // 流程库目录：每个 IDE 实例独立；provider 变化时重新加载，卸载时中止进行中的请求
     const [libraryCatalog] = useState(() => new LibraryCatalog());
@@ -275,9 +283,10 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     // 动作注册表：内置动作 + actions prop + 流程库动作（同名 Provider 优先，先 unregister 再注册）
     const actionRegistry = useMemo(() => {
         const libraryActions = libraryProvider ? toActions(libraryCatalog) : [];
-        if ((!actions || actions.length === 0) && libraryActions.length === 0) return defaultActionRegistry;
+        if ((!actions || actions.length === 0) && libraryActions.length === 0 && importedActions.length === 0) return defaultActionRegistry;
         const reg = new ActionRegistry(defaultActionRegistry.getAllActions());
         if (actions) reg.registerAll(actions);
+        reg.registerAll(importedActions);
         for (const a of libraryActions) {
             reg.unregister(a.id);
             reg.register(a);
@@ -285,7 +294,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         return reg;
         // catalogSnapshot.revision：目录加载完成 / 变化后重建
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [actions, libraryProvider, libraryCatalog, catalogSnapshot.revision]);
+    }, [actions, importedActions, libraryProvider, libraryCatalog, catalogSnapshot.revision]);
     const { setWorkflow, setWorkflowDefOnly, refreshGraph, graphStale, setTheme, setThemeColor, setLayoutDirection, setNodesLocked, selectedTask, setSelectedTask, edgeType, importExecutionJSON, setMode, setViewMode, isDetailPanelOpen, setIsDetailPanelOpen, selectTaskAction, workflowDef: storeWorkflowDef, isSimRunning, startSimulation, stopSimulation, mode, setShowRunPanel, showAnalysisPanel, setShowAnalysisPanel, executionData, workflowInstance } = useWorkflowStore(useShallow((s) => ({
             setWorkflow: s.setWorkflow,
             setWorkflowDefOnly: s.setWorkflowDefOnly,
@@ -377,6 +386,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             useWorkflowStore.getState().createBlankWorkflow(name);
             useWorkflowStore.temporal.getState().clear();
         },
+        openApiImport: () => setShowApiImport(true),
     }), [onSave]);
 
     // Notify consumer when workflowDef changes (skip initial load from props)
@@ -399,6 +409,19 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     useEffect(() => {
         if (!isCardView && graphStale) refreshGraph();
     }, [isCardView, graphStale, refreshGraph]);
+
+    // 接口导入确认：注册动作（业务卡片可正确渲染）并把步骤追加到流程末尾；
+    // 业务卡片视图只更新定义，画布 / 专业模式需要重新布局
+    const handleApiInsert = useCallback((newActions: ActionDefinition[], info: ApiImportInsertInfo) => {
+        if (newActions.length === 0) return;
+        const ids = new Set(newActions.map((a) => a.id));
+        setImportedActions((prev) => [...prev.filter((a) => !ids.has(a.id)), ...newActions]);
+        const next = appendImportedActions(useWorkflowStore.getState().workflowDef, newActions);
+        if (isCardView) setWorkflowDefOnly(next);
+        else setWorkflow(next, layoutDirection);
+        track('api_imported', { format: info.format, count: info.count });
+        for (let i = 0; i < newActions.length; i++) track('step_added', { source: 'import' });
+    }, [isCardView, setWorkflowDefOnly, setWorkflow, layoutDirection, track]);
 
     // Handle node click
     const handleNodeClick = (task: any) => {
@@ -464,6 +487,25 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 )}
 
                 <div style={{ flex: 1 }} />
+
+                {/* 导入接口（编辑态；业务 / 专业模式均可用） */}
+                {mode === 'edit' && !readOnly && (
+                    <button
+                        onClick={() => setShowApiImport(true)}
+                        style={{
+                            height: 28, padding: '0 10px',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-secondary)',
+                            borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                            display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
+                        }}
+                        title="从 OpenAPI / Swagger / Postman / curl 导入接口，生成 HTTP 步骤"
+                    >
+                        <span>🔌</span>
+                        <span>导入接口</span>
+                    </button>
+                )}
 
                 {/* 模板中心按钮（编辑/查看态下可用） */}
                 {mode !== 'run' && (
@@ -663,6 +705,14 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
 
             {/* P4.3: 执行分析面板（run 模式下悬浮） */}
             {mode === 'run' && <ExecutionSummaryPanel />}
+
+            {/* 接口导入对话框 */}
+            <ApiImportDialog
+                open={showApiImport}
+                onClose={() => setShowApiImport(false)}
+                onInsert={handleApiInsert}
+                existingActionIds={showApiImport ? actionRegistry.getAllActions().map((a) => a.id) : undefined}
+            />
 
             {/* 场景化工作流模板中心 */}
             <TemplateGallery

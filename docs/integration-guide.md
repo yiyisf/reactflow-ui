@@ -260,10 +260,26 @@ const telemetrySink: TelemetrySink = {
 };
 ```
 
-- 本版本上报的事件：`ide_opened`（IDE 挂载）、`workflow_saved`（触发 `onSave`）、`step_added`（业务模式新增步骤，`props.source` 为 `library` 或 `builtin`）、`sandbox_run`（本地沙箱试跑，`props.result` 为执行状态或 `error`）、`ai_event`（仅 `props.type`，即 `onAiEvent` 的事件类型）。`trial_started`、`workflow_created`、`api_imported`、`promotion_*` 随后续批次接入。
+- 本版本上报的事件：`ide_opened`（IDE 挂载）、`workflow_saved`（触发 `onSave`）、`step_added`（业务模式新增步骤，`props.source` 为 `library` 或 `builtin`）、`sandbox_run`（本地沙箱试跑，`props.result` 为执行状态或 `error`）、`ai_event`（仅 `props.type`，即 `onAiEvent` 的事件类型）。`trial_started`、`workflow_created`、`promotion_*` 随后续批次接入；`api_imported`（接口导入）已接入。
 - **不含任何载荷**：事件只有名称、时间、IDE 类型、流程名与简单属性；SDK 会剔除 `props` 中非 string / number / boolean 的值，不采集参数值、表达式、提示词、对话内容与执行数据。
 - 没有 `telemetry` 时事件被直接丢弃，不产生定时器与页面监听。
 - 需要自定义批量参数或在 IDE 之外复用时，可用 `createTelemetryBuffer(sink, { flushIntervalMs, maxBatchSize })` 自行包装。
+
+### 4.6 接口导入（v1.3.0）
+
+工具栏「导入接口」（编辑态，业务 / 专业模式均有）：粘贴或上传 → 自动识别格式 → 勾选接口 → 「插入 N 个步骤」。每个接口生成一个 HTTP 业务动作并追加到流程末尾（专业模式下追加为 `HTTP` 任务）。宿主也可用 `ref.current.openApiImport()` 打开，或单独使用 `ApiImportDialog` 的 `onInsert(actions, info)` 回调（配合 `appendImportedActions`）。
+
+| 格式 | 说明 |
+|---|---|
+| OpenAPI 3.x（JSON） | `servers[0].url`（含变量默认值）、本地 `$ref`、`security` 推断认证头 |
+| Swagger 2.0（JSON） | `schemes` / `host` / `basePath`、`definitions` 引用 |
+| Postman Collection v2.1（JSON） | 文件夹作为标签；`{{var}}` 转为 `${workflow.input.var}` |
+| curl | `-X`、`-H`、`-d` / `--data-raw` / `--data-binary`、`-u`、`-G`、行尾 `\` 续行 |
+
+- **字段与出参**：参数、请求体属性沿用 `buildFields`（`title` → 名称，`enum` → 下拉，均可插入数据）；出参取 2xx 响应 schema，键为 `response.body.<字段>`（Conductor `HTTP` 任务的真实输出路径）。`$ref` 解析防循环，最大深度 6。
+- **敏感头不落定义**：`Authorization`、`Cookie`、`Proxy-Authorization`、`X-Api-Key`、名称含 `token` / `secret` / `api-key` 的头与 curl `-u` 一律替换为 `${workflow.input.<名称>}` 占位（值需在流程入参中提供完整头内容，如 `Bearer xxx`），导入面板给出提示，建议改用凭据管理；curl / Postman 中名称敏感的查询参数与请求体字段默认值同样占位。步骤引用的 `workflow.input.*` 会自动补进流程入参声明。
+- **限制**：仅 JSON，**不支持 YAML**（提示「YAML 请先转为 JSON 后再导入」，不引入 YAML 依赖）；不支持 multipart / 表单上传 / Cookie 参数；导入的动作只在当前流程与本次会话的动作库中，刷新后已有步骤以「专业步骤」卡片保留（定义无损），**登记为流程库能力属 v1.4.0**。
+- 埋点：`api_imported`（`format`、`count`）与每个步骤一条 `step_added`（`source: 'import'`）。示例文件见仓库 `public/sample-imports/`。
 
 ## 5. 用治理服务实现 `LibraryProvider`
 

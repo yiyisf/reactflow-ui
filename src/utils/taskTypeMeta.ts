@@ -1,9 +1,9 @@
 /**
  * Task Type Meta — business-friendly labels for Conductor task types
  *
- * Shared by BusinessCanvas and ProposalPreviewCard so both surfaces speak the
- * same business language for the same task type (extracted from BusinessCanvas
- * during the UX Phase A proposal-preview work).
+ * Used by ProposalPreviewCard so AI proposals speak business language for each
+ * task type (originally extracted from the former BusinessCanvas, which the AI IDE
+ * business view replaced with StepFlowEditor in 1.2.x).
  */
 
 export interface TaskTypeMeta {

@@ -6,6 +6,12 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **AI IDE 的「业务视图」改用经典模式的业务卡片流**（`StepFlowEditor`）：原只读的步骤卡片（`BusinessCanvas`）移除。业务视图现在可直接编辑，并支持流程库能力（按业务域选择、版本固定与升级差异）、下拉字段插入数据、多层嵌套控制流与运行故事线。步骤头部的「🤖」按钮保留原有「请 AI 介绍该步骤」的能力；AI 方案待审阅时业务视图只读。业务视图下的编辑只更新定义，切回技术视图时再补建画布。
+- `StepFlowEditor` 新增可选 `onAskAi`。
+
+## [1.2.0] - 2026-10-23
+
 ### Added
 - **下拉字段支持「插入数据」**：可改为引用上游步骤输出或全局入参（运行时取值），也可切回选择；已保存的值为 `${...}` 表达式时自动进入动态取值。字段 `acceptsPills` 为 `false` 时不提供。
 - `/ai` 入口补充导出 `parseWorkflowName`、`validateWorkflowName`、`createConductorLibraryProvider`。

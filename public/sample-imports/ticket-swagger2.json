@@ -1,0 +1,231 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "工单服务",
+    "version": "1.0"
+  },
+  "host": "itsm.example.com:8443",
+  "basePath": "/api/v2/",
+  "schemes": [
+    "https",
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "basicAuth": {
+      "type": "basic"
+    }
+  },
+  "security": [
+    {
+      "basicAuth": []
+    }
+  ],
+  "paths": {
+    "/tickets": {
+      "get": {
+        "operationId": "listTickets",
+        "summary": "查询工单列表",
+        "tags": [
+          "工单"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "PENDING",
+              "CLOSED"
+            ],
+            "description": "工单状态"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "type": "integer",
+            "default": 20,
+            "maximum": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Ticket"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTicket",
+        "summary": "创建工单",
+        "tags": [
+          "工单"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TicketInput"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/Ticket"
+            }
+          }
+        }
+      }
+    },
+    "/tickets/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "type": "string",
+          "description": "工单号"
+        }
+      ],
+      "get": {
+        "operationId": "getTicket",
+        "summary": "查询工单详情",
+        "tags": [
+          "工单"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Ticket"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateTicket",
+        "summary": "更新工单",
+        "tags": [
+          "工单"
+        ],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TicketInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Ticket"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "closeTicket",
+        "summary": "关闭工单",
+        "tags": [
+          "工单"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      }
+    },
+    "Ticket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "工单号",
+          "example": "T-2026-0001"
+        },
+        "title": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "PENDING",
+            "CLOSED"
+          ]
+        },
+        "reporter": {
+          "$ref": "#/definitions/User"
+        },
+        "createdAt": {
+          "type": "string"
+        }
+      }
+    },
+    "TicketInput": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "title": "工单标题"
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "severity": {
+          "type": "integer",
+          "default": 3,
+          "enum": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "reporter": {
+          "$ref": "#/definitions/User"
+        }
+      }
+    }
+  }
+}

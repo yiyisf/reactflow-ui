@@ -230,7 +230,7 @@ const providers = { library: libraryProvider, telemetry: telemetrySink };
 </WorkflowIdeProvider>
 ```
 
-`IdeProviders` 目前包含：`library`（`LibraryProvider`）、`onboarding`（`OnboardingProvider`，v1.3.0 仅提供契约类型，界面随后续批次提供）、`telemetry`（`TelemetrySink`）。也可以只在单个组件上传 `providers` prop，或在组件内通过 `useIdeProviders()` 读取外层配置。
+`IdeProviders` 目前包含：`library`（`LibraryProvider`）、`onboarding`（`OnboardingProvider`，见 4.6）、`telemetry`（`TelemetrySink`）。也可以只在单个组件上传 `providers` prop，或在组件内通过 `useIdeProviders()` 读取外层配置。
 
 **解析顺序**（逐字段，高优先级缺少该字段时才落到下一层）：
 
@@ -260,10 +260,94 @@ const telemetrySink: TelemetrySink = {
 };
 ```
 
-- 本版本上报的事件：`ide_opened`（IDE 挂载）、`workflow_saved`（触发 `onSave`）、`step_added`（业务模式新增步骤，`props.source` 为 `library` 或 `builtin`）、`sandbox_run`（本地沙箱试跑，`props.result` 为执行状态或 `error`）、`ai_event`（仅 `props.type`，即 `onAiEvent` 的事件类型）。`trial_started`、`workflow_created`、`api_imported`、`promotion_*` 随后续批次接入。
+- 本版本上报的事件：`ide_opened`（IDE 挂载）、`workflow_saved`（触发 `onSave`）、`step_added`（业务模式新增步骤，`props.source` 为 `library` 或 `builtin`）、`sandbox_run`（本地沙箱试跑，`props.result` 为执行状态或 `error`）、`ai_event`（仅 `props.type`，即 `onAiEvent` 的事件类型）。自助接入相关：`trial_started`（`props.domain`）、`workflow_created`（`props.level`、`props.source`：`blank` / `template` / `import`）、`promotion_requested`（`props.targetType`）、`promotion_state`（`props.state`），均不含人员姓名与自由文本；接口导入：`api_imported`（`props.format`、`props.count`）。
 - **不含任何载荷**：事件只有名称、时间、IDE 类型、流程名与简单属性；SDK 会剔除 `props` 中非 string / number / boolean 的值，不采集参数值、表达式、提示词、对话内容与执行数据。
 - 没有 `telemetry` 时事件被直接丢弃，不产生定时器与页面监听。
 - 需要自定义批量参数或在 IDE 之外复用时，可用 `createTelemetryBuffer(sink, { flushIntervalMs, maxBatchSize })` 自行包装。
+
+### 4.6 自助接入：`OnboardingProvider`（v1.3.0）
+
+配置了 `providers.onboarding` 后，两个 IDE 的工具栏会出现「新建流程」与「申请上线」；`WorkflowIDE` 在测试环境开放试用（`trialEnabled`）且用户还没有所属产品时，空画布显示「开始试用」引导卡片。**不配置时没有任何变化。**
+
+- 「新建流程」打开 3 步向导：产品（选择已有产品，或在试用环境登记新产品）→ 命名（五段式 `类型-层级-业务域-产品-功能`，实时预览并校验）→ 起点（空白 / 模板中心 / 从接口导入，后两项仅在宿主提供对应入口时出现）。完成后生成骨架定义（`version: 1`、`schemaVersion: 2`、空 `tasks`）并设为当前流程。
+- 命名规则：试用环境（`trialEnabled`）类型固定为 `tmp`；生产环境可选 `custom` / `std`。业务域取自所选产品。
+- 层级写入后作为 `currentWorkflowLevel` 的默认值（宿主显式传了 `currentWorkflowLevel` 时以宿主为准）。
+- 「申请上线」仅在当前流程名称类型为 `tmp` 时可用：选择目标类型 → 预览正式名称（类型段替换）→ 提交 → 轮询进度（指数退避 2 秒起、30 秒封顶，到 `APPROVED` / `REJECTED` / `SYNCED` 停止，关闭面板即中止）。
+- 降级：任一接口失败时向导停在当前步并显示「重试」，已填内容保留；`startTrial` 返回 `conflict` 时提示联系负责人并列出负责人；生产环境不出现试用入口。
+
+契约与治理服务接口一一对应（类型见 `OnboardingProvider`）：
+
+| 方法 | 治理服务接口 | 说明 |
+|---|---|---|
+| `getContext(signal?)` | 由宿主从会话 / 配置取得（无独立接口时本地构造） | `env`（`TEST` / `PROD`）、当前用户、`trialEnabled`（生产为 `false`） |
+| `listDomains(signal?)` | `GET /api/library/domains` | 业务域全局列表 |
+| `listMyProducts(signal?)` | `GET /api/products/mine` | 我的产品（`name` 不含 `-`、`domain`、`status`、`role`） |
+| `startTrial({ productName, domain, systemCode? })` | `POST /api/onboarding/trial` | 登记产品并开通试用；产品已存在且当前用户不是成员时返回 `{ status: 'conflict', owners }` |
+| `requestPromotion({ workflowName, version, targetType })` | `POST /api/onboarding/promote` | 提交上线申请，返回 `requestId` |
+| `getPromotion(requestId, signal?)` | `GET /api/onboarding/promote/{id}` | `state`：`SUBMITTED` → `REVIEWING` → `APPROVED` / `REJECTED` → `SYNCED`，可带 `targetName`、`comment` |
+
+示例实现（认证头由宿主注入；路径、字段按你们治理服务的实际返回调整）：
+
+```ts
+import type { OnboardingProvider } from '@yiyi_zhang/reactflow-ui';
+
+export function createGovernanceOnboardingProvider(opts: {
+  baseUrl?: string;
+  headers?: () => Record<string, string>;
+  env: 'TEST' | 'PROD';
+  user: { id: string; name: string };
+}): OnboardingProvider {
+  const base = opts.baseUrl ?? '';
+  const call = async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
+    const res = await fetch(`${base}${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(opts.headers?.() ?? {}), ...(init.headers as Record<string, string> | undefined) },
+    });
+    if (!res.ok) throw new Error(`治理服务请求失败：HTTP ${res.status}`);
+    return res.json() as Promise<T>;
+  };
+  return {
+    // 生产不开放自助试用
+    getContext: async () => ({ env: opts.env, user: opts.user, trialEnabled: opts.env === 'TEST' }),
+    listDomains: (signal) => call('/api/library/domains', { signal }),
+    listMyProducts: (signal) => call('/api/products/mine', { signal }),
+    async startTrial(input) {
+      const res = await fetch(`${base}/api/onboarding/trial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(opts.headers?.() ?? {}) },
+        body: JSON.stringify(input),
+      });
+      // 约定：409 表示产品已存在且当前用户不是成员，响应体带负责人列表
+      if (res.status === 409) return { status: 'conflict', owners: (await res.json()).owners ?? [] };
+      if (!res.ok) throw new Error(`治理服务请求失败：HTTP ${res.status}`);
+      return { status: 'ok', product: await res.json() };
+    },
+    requestPromotion: (input) => call('/api/onboarding/promote', { method: 'POST', body: JSON.stringify(input) }),
+    getPromotion: (id, signal) => call(`/api/onboarding/promote/${encodeURIComponent(id)}`, { signal }),
+  };
+}
+
+// 只创建一次（模块级或 useMemo），不要在渲染中反复创建
+const providers = { library: libraryProvider, telemetry: telemetrySink, onboarding: createGovernanceOnboardingProvider({ env: 'TEST', user }) };
+```
+
+向导、命名生成器、申请上线面板也可以单独使用：`WorkflowNameBuilder`、`OnboardingWizard`、`PromotionPanel`，以及纯函数 `buildWorkflowName`、`suggestFuncSlug`、`buildSkeletonWorkflow`、`promotionTargetName`、`nextPollDelay`。`/ai` 入口同步导出。本地联调可使用 Demo 的 `createMockOnboardingProvider()`（见 `src/demo/mockGovernance/`）：Demo 顶栏可切换 TEST / PROD 环境、重置产品；登记 `cmdb` 会得到冲突，上线申请约经 3–4 次轮询走完，也可模拟驳回。
+
+### 4.7 接口导入（v1.3.0）
+
+工具栏「导入接口」（编辑态，业务 / 专业模式均有）：粘贴或上传 → 自动识别格式 → 勾选接口 → 「插入 N 个步骤」。每个接口生成一个 HTTP 业务动作并追加到流程末尾（专业模式下追加为 `HTTP` 任务）。宿主也可用 `ref.current.openApiImport()` 打开，或单独使用 `ApiImportDialog` 的 `onInsert(actions, info)` 回调（配合 `appendImportedActions`）。
+
+| 格式 | 说明 |
+|---|---|
+| OpenAPI 3.x（JSON） | `servers[0].url`（含变量默认值）、本地 `$ref`、`security` 推断认证头 |
+| Swagger 2.0（JSON） | `schemes` / `host` / `basePath`、`definitions` 引用 |
+| Postman Collection v2.1（JSON） | 文件夹作为标签；`{{var}}` 转为 `${workflow.input.var}` |
+| curl | `-X`、`-H`、`-d` / `--data-raw` / `--data-binary`、`-u`、`-G`、行尾 `\` 续行 |
+
+- **字段与出参**：参数、请求体属性沿用 `buildFields`（`title` → 名称，`enum` → 下拉，均可插入数据）；出参取 2xx 响应 schema，键为 `response.body.<字段>`（Conductor `HTTP` 任务的真实输出路径）。`$ref` 解析防循环，最大深度 6。
+- **敏感头不落定义**：`Authorization`、`Cookie`、`Proxy-Authorization`、`X-Api-Key`、名称含 `token` / `secret` / `api-key` 的头与 curl `-u` 一律替换为 `${workflow.input.<名称>}` 占位（值需在流程入参中提供完整头内容，如 `Bearer xxx`），导入面板给出提示，建议改用凭据管理；curl / Postman 中名称敏感的查询参数与请求体字段默认值同样占位。步骤引用的 `workflow.input.*` 会自动补进流程入参声明。
+- **限制**：仅 JSON，**不支持 YAML**（提示「YAML 请先转为 JSON 后再导入」，不引入 YAML 依赖）；不支持 multipart / 表单上传 / Cookie 参数；导入的动作只在当前流程与本次会话的动作库中，刷新后已有步骤以「专业步骤」卡片保留（定义无损），**登记为流程库能力属 v1.4.0**。
+- 埋点：`api_imported`（`format`、`count`）与每个步骤一条 `step_added`（`source: 'import'`）。示例文件见仓库 `public/sample-imports/`。
 
 ## 5. 用治理服务实现 `LibraryProvider`
 

@@ -106,6 +106,53 @@ export type {
     StartTrialResult,
     PromotionStatus,
 } from './providers/types';
+// 自助接入：向导 / 命名生成器 / 申请上线面板与纯函数
+export { WorkflowNameBuilder, OnboardingWizard, PromotionPanel, OnboardingGuideCard } from './components/onboarding';
+export type {
+    WorkflowNameBuilderProps,
+    OnboardingWizardProps,
+    OnboardingCreateResult,
+    PromotionPanelProps,
+    OnboardingGuideCardProps,
+} from './components/onboarding';
+export {
+    buildWorkflowName,
+    validateNameParts,
+    suggestFuncSlug,
+    promotionTargetName,
+    isPromotableName,
+    buildSkeletonWorkflow,
+    nextPollDelay,
+    isTerminalPromotionState,
+    buildPromotionTimeline,
+    promotionStateLabel,
+    pollPromotion,
+} from './onboarding';
+export type { WorkflowNameParts, PromotionTargetType, SkeletonInput, TimelineItem, PromotionState, StartSource } from './onboarding';
 export { createTelemetryBuffer } from './telemetry/buffer';
 export type { TelemetryBuffer, TelemetryBufferOptions } from './telemetry/buffer';
 export type { TelemetrySink, IdeEvent, IdeEventName } from './telemetry/types';
+
+// ── v1.3.0: 接口导入（OpenAPI 3 / Swagger 2 / Postman 2.1 / curl → HTTP 业务动作） ──
+export {
+    detectFormat,
+    parseApiText,
+    parseOpenApi3,
+    parseSwagger2,
+    parsePostman21,
+    parseCurl,
+    buildHttpAction,
+    appendImportedActions,
+    sanitizeHeaders,
+} from './import';
+export type {
+    ImportFormat,
+    DetectedFormat,
+    ImportedOperation,
+    ImportedParam,
+    ImportedBody,
+    ParseResult,
+    BuildHttpActionOptions,
+} from './import';
+export { ApiImportDialog } from './components/import/ApiImportDialog';
+export type { ApiImportDialogProps, ApiImportInsertInfo } from './components/import/ApiImportDialog';

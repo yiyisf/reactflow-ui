@@ -5,7 +5,9 @@ import { AiWorkflowIDE } from '../AiWorkflowIDE';
 import type { ViewMode } from '../types/workflow';
 import type { WorkflowDef } from '../types/conductor';
 import type { WorkflowLevel } from '../types/workflowLibrary';
-import { createMockGovernanceProvider } from './mockGovernance';
+import { createMockGovernanceProvider, createMockOnboardingProvider } from './mockGovernance';
+import type { MockOnboardingProvider } from './mockGovernance';
+import useWorkflowStore from '../store/workflowStore';
 import { createMockProviders } from './mockProviders';
 import { WorkflowIdeProvider } from '../providers/WorkflowIdeProvider';
 import { useTheme } from '../hooks/useTheme';
@@ -39,6 +41,25 @@ function DemoApp() {
     if (action === 'fail') next.failNext();
     setProviders((prev) => ({ ...prev, library: next }));
   }, []);
+
+  // 自助接入演示：切换环境（TEST 开放试用 / PROD 不开放）、重置产品（看到空画布的「开始试用」引导）
+  // provider 实例变化会让 IDE 重新加载自助接入信息；切环境时沿用当前产品
+  const [demoEnv, setDemoEnv] = useState<'TEST' | 'PROD'>('TEST');
+  const handleOnboardingEnv = useCallback((env: 'TEST' | 'PROD') => {
+    setDemoEnv(env);
+    setProviders((prev) => {
+      const cur = prev.onboarding as MockOnboardingProvider | undefined;
+      return { ...prev, onboarding: createMockOnboardingProvider({ env, initialProducts: cur?.products }) };
+    });
+  }, []);
+  const handleResetProducts = useCallback(() => {
+    setProviders((prev) => ({ ...prev, onboarding: createMockOnboardingProvider({ env: demoEnv, initialProducts: [] }) }));
+    // 同时清空画布：引导卡片只在空画布上出现
+    setWorkflowJson(null);
+    setCurrentDef(null);
+    setWorkflowExecution(null);
+    useWorkflowStore.setState({ workflowDef: null, nodes: [], edges: [] });
+  }, [demoEnv]);
 
   // 视图模式（运行态由 WorkflowIDE 内部强制 developer，此处仅控制定义态）
   const [viewMode] = useState<ViewMode>('developer');
@@ -278,6 +299,24 @@ function DemoApp() {
               <option value="reload">重新加载流程库</option>
               <option value="fail">模拟加载失败（点击重试可恢复）</option>
             </select>
+
+            {/* 自助接入演示控制 */}
+            <select
+              className="sample-select"
+              value={demoEnv}
+              onChange={(e) => handleOnboardingEnv(e.target.value as 'TEST' | 'PROD')}
+              title="自助接入演示环境：TEST 开放自助试用（命名类型固定 tmp）；PROD 不开放试用，新建流程可选 custom / std"
+            >
+              <option value="TEST">🧪 环境：TEST</option>
+              <option value="PROD">🏭 环境：PROD</option>
+            </select>
+            <button
+              className="mode-btn"
+              onClick={handleResetProducts}
+              title="清空演示用户的产品并清空画布，在 TEST 环境下可看到空画布的「开始试用」引导"
+            >
+              🔄 重置产品
+            </button>
 
             {!useNewAiMode && (
               <select

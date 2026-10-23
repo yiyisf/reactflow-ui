@@ -21,6 +21,7 @@ import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from '../types/c
 import { buildExecutionWaves } from '../utils/simulateWorkflow';
 import { refactorTaskReferenceName } from '../services/wlsp/workflowLsp';
 import { executeLocalSandboxDryRun } from '../utils/localSandboxEngine';
+import { notifySandboxRun, notifyStepAdded } from './sandboxRunObserver';
 
 /**
  * Recursively find all FORK_JOIN_DYNAMIC -> JOIN / EXCLUSIVE_JOIN pairs at any nesting level
@@ -682,6 +683,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         taskMap,
                         validationResults
                     });
+                    // 埋点：专业模式新增步骤（画布「+」与 Cmd+K 内联 Copilot 都经此处）
+                    notifyStepAdded('builtin');
                 },
 
                 removeNode: (nodeId: string) => {
@@ -1075,13 +1078,21 @@ const useWorkflowStore = create<WorkflowStore>()(
                 ) => {
                     const { workflowDef } = get();
                     if (!workflowDef) return;
-                    const instance = executeLocalSandboxDryRun(workflowDef, {
-                        workflowInput: mockInput,
-                        taskMocks,
-                        maxLoopIterations,
-                    });
+                    let instance;
+                    try {
+                        instance = executeLocalSandboxDryRun(workflowDef, {
+                            workflowInput: mockInput,
+                            taskMocks,
+                            maxLoopIterations,
+                        });
+                    } catch (err) {
+                        notifySandboxRun('error');
+                        throw err;
+                    }
                     get().importExecutionJSON(instance);
                     set({ showWaterfallPanel: true });
+                    // 埋点：专业模式试跑的统一出口（只传最终状态）
+                    notifySandboxRun(String(instance.status));
                 },
 
                 // Pillar 3: 画布级 Cmd+K 内联 Copilot

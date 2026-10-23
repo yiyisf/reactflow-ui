@@ -11,12 +11,15 @@ export interface TemplateSetupWizardProps {
   template: WorkflowTemplate;
   onApply: (configuredDef: WorkflowDef) => void;
   onClose: () => void;
+  /** 向导内试跑结束：最终状态或 'error'（埋点用，不含数据） */
+  onSandboxRun?: (result: string) => void;
 }
 
 export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
   template,
   onApply,
   onClose,
+  onSandboxRun,
 }) => {
   const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
   // 当前步骤：1=方案了解, 2=参数填空, 3=试跑验证与激活
@@ -56,6 +59,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
         taskMocks: scenario?.taskOutputs || {},
       });
 
+      onSandboxRun?.(String(instance.status));
       if (instance.status === 'COMPLETED') {
         setSimSummary(
           `全部 ${instance.tasks.length} 个步骤在浏览器本地顺利模拟通过，各上游数据与通知已正确串联。`
@@ -64,6 +68,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
         setSimSummary(`模拟运行结束，状态为: ${instance.status}`);
       }
     } catch (err: any) {
+      onSandboxRun?.('error');
       setSimSummary(`模拟试跑出错: ${err.message}`);
     } finally {
       setIsSimulating(false);

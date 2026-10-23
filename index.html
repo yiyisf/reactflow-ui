@@ -1692,8 +1692,8 @@
       <div class="fs-panel">
         <div class="two-col">
           <ol class="try-steps">
-            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>。顶栏的 <strong>环境</strong> 下拉默认是 <strong>TEST</strong>（开放自助试用）；切到 <strong>PROD</strong> 可以看到降级：没有“开始试用”，新建流程的类型可选 <code>custom</code> / <code>std</code>。</li>
-            <li>点顶栏 <strong>🔄 重置产品</strong>（在 TEST 下）：画布清空，出现 <strong>开始试用</strong> 引导卡片。登记产品时试试 <code>cmdb</code>，会得到“已被他人占用”及负责人列表。</li>
+            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>。顶栏 <strong>🧪 演示设置</strong> 里的 <strong>环境</strong> 默认是 <strong>TEST</strong>（开放自助试用）；切到 <strong>PROD</strong> 可以看到降级：没有“开始试用”，新建流程的类型可选 <code>custom</code> / <code>std</code>。</li>
+            <li>在 <strong>🧪 演示设置</strong> 里点 <strong>🔄 重置产品</strong>（在 TEST 下）：画布清空，出现 <strong>开始试用</strong> 引导卡片。登记产品时试试 <code>cmdb</code>，会得到“已被他人占用”及负责人列表。</li>
             <li>工具栏 <strong>新建流程</strong>：3 步向导（产品 → 命名 → 起点），完成后得到 <code>tmp-…</code> 骨架流程。</li>
             <li>用本地沙箱试跑，然后点 <strong>申请上线</strong>：选 <code>custom</code> / <code>std</code>，提交后进度约经 3–4 次轮询走完。</li>
             <li>工具栏 <strong>导入接口</strong>：上传下面任一样例文件（也可粘贴内容），勾选接口后插入；看 <code>Authorization</code> 是否变成了占位。
@@ -2371,7 +2371,7 @@
   var codeNotes = {
     register: '<code>providers</code> 对象每次渲染新建没关系：SDK 按字段比较引用，只有某个 provider 实例变了才重新加载对应数据。但 provider 本身（如 <code>createGovernanceLibraryProvider(...)</code>）应只创建一次。组件按父容器高度撑满，请给容器明确的高度。',
     override: '<code>WorkflowIdeProvider</code> 与 <code>useIdeProviders</code>、<code>IdeProviders</code> 类型均从主入口和 <code>/ai</code> 入口导出。',
-    demo: '演示站接的全是模拟实现：Demo 顶栏可切换 TEST / PROD 环境、重置产品；登记 <code>cmdb</code> 会得到冲突，上线申请约经 3–4 次轮询走完。契约与示例实现见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a> 4.5 – 4.6 节。'
+    demo: '演示站接的全是模拟实现：Demo 顶栏「🧪 演示设置」可切换 TEST / PROD 环境、重置产品；登记 <code>cmdb</code> 会得到冲突，上线申请约经 3–4 次轮询走完。契约与示例实现见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a> 4.5 – 4.6 节。'
   };
   var codeKey = 'register';
   function renderCode() {

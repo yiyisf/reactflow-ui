@@ -26,7 +26,8 @@
 - [x] **业务域与分层**：命名规范 `类型-层级-业务域-产品-功能`（`parseWorkflowName` / `validateWorkflowName`）、动作选择器按业务域分组、`currentWorkflowLevel` 分层过滤、AI 检索支持按业务域过滤、`promptCatalogLimit`
 - [x] **Demo 演示后端与宿主接入指南**：模拟治理服务（`src/demo/mockGovernance/`）与 [`docs/integration-guide.md`](./docs/integration-guide.md)
 - [x] **体验与质量**：下拉字段「插入数据」、弹窗跟随主题、多层嵌套控制流、卡片视图性能 / 按需订阅 / 撤销上限、类型检查成为 CI 门禁
-- [x] **收尾**：人工走查、版本号与 CHANGELOG 定稿、发布
+- [x] **收尾**：版本号与 CHANGELOG 定稿、发布
+- [ ] **顺延**：补 `@types/node` 并移除类型检查排除项（需在可访问 npm 的环境安装依赖）
 
 ---
 

@@ -4,15 +4,15 @@
 
 ---
 
-## 🚧 v1.3.0：自助接入（发布准备中）
+## ✅ v1.3.0：自助接入 (已发布 · 2026-10-24)
 
-**目标**：新团队在测试环境里不靠平台方陪跑，自己完成"登记产品 → 规范命名建流程 → 接上已有接口 → 试跑 → 申请上线"。目标发布时间 2026-11-13，见 [`docs/v1.3.0-release-plan.md`](./docs/v1.3.0-release-plan.md)，设计见 [`docs/design/v1.3.0-自助接入设计.md`](./docs/design/v1.3.0-自助接入设计.md)，当前变更见 `CHANGELOG.md` 的 `[Unreleased]`。
+**目标**：新团队在测试环境里不靠平台方陪跑，自己完成"登记产品 → 规范命名建流程 → 接上已有接口 → 试跑 → 申请上线"。发布计划见 [`docs/v1.3.0-release-plan.md`](./docs/v1.3.0-release-plan.md)，设计见 [`docs/design/v1.3.0-自助接入设计.md`](./docs/design/v1.3.0-自助接入设计.md)，变更见 `CHANGELOG.md` 的 `[1.3.0]`。
 
 - [x] **扩展点注册机制（B1）**：`IdeProviders`（`library` / `onboarding` / `telemetry`）、`WorkflowIdeProvider`、`useIdeProviders()`；逐字段解析（专用 prop > 组件 `providers` > 外层 > 无），按字段比较引用；Demo `createMockProviders()`
 - [x] **接入埋点 `TelemetrySink`（B1）**：5 秒或 20 条攒批、页面隐藏时 flush；不采集参数值、表达式、提示词与对话内容
 - [x] **自助接入向导（B2）**：`OnboardingProvider` 契约、`WorkflowNameBuilder`（五段式命名与实时校验）、`OnboardingWizard`、`PromotionPanel`（申请上线与审批进度）、空画布「开始试用」引导；Demo 模拟实现与 TEST / PROD 环境切换
 - [x] **接口导入（B3）**：OpenAPI 3 / Swagger 2 / Postman v2.1 / curl（均为 JSON，不支持 YAML）生成 HTTP 业务动作，敏感头替换为 `${workflow.input.xxx}` 占位；样例见 `public/sample-imports/`
-- [ ] **埋点铺设与收尾（B4）**：首批事件接入走查、接入指南与 CHANGELOG 更新、人工走查、宣传页、版本号定稿与发布
+- [x] **埋点铺设与收尾（B4）**：首批事件补齐（试跑三个入口、专业模式新增步骤）、StrictMode 去重、接入指南与 CHANGELOG、宣传页、发布
 
 ---
 

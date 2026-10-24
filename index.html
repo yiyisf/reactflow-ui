@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Conductor Workflow IDE v1.2.0：流程库就绪。标准能力一次沉淀，处处安全复用——LibraryProvider、版本固定与升级差异、业务域与分层、一个数据源两个 IDE。" />
+  <meta name="description" content="Conductor Workflow IDE v1.3.0：自助接入。新团队不靠陪跑，自己把第一个流程跑起来——登记产品、规范命名、接口导入、统一扩展点与接入埋点。" />
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
-  <title>Conductor Workflow IDE v1.2.0 · 流程库就绪 · 标准能力一次沉淀，处处安全复用</title>
+  <title>Conductor Workflow IDE v1.3.0 · 自助接入 · 新团队不靠陪跑，自己把第一个流程跑起来</title>
   <style>
-    /* STYLE: Bento Launchpad（沿用 v1.1.0 视觉语言与令牌，v1.2.0 叙事：流程库就绪） */
+    /* STYLE: Bento Launchpad（沿用 v1.1.0 视觉语言与令牌，v1.3.0 叙事：自助接入） */
     :root {
       --bg-dark: #06080F;
       --bg-card: #0E1322;
@@ -843,7 +843,7 @@
     }
 
     /* ==========================================================================
-       v1.2.0 新增：无障碍与新组件（沿用 1.1 的 Bento Launchpad 令牌与组件）
+       v1.2.0 起的无障碍与新组件（沿用 1.1 的 Bento Launchpad 令牌与组件）
        ========================================================================== */
     :root { --text-muted: #8493AA; } /* 提亮次要文字，保证小字号对比度 >= 4.5:1 */
 
@@ -1058,6 +1058,171 @@
       .nav-right .cta-btn { padding: 0.4rem 0.8rem; font-size: 0.76rem; }
       .mock-dialog { inset: 0.4rem; padding: 0.8rem; }
     }
+  
+    /* ==========================================================================
+       v1.3.0 新增：自助接入旅程、命名生成器、接口导入演示、埋点回放（沿用 1.2 令牌）
+       ========================================================================== */
+    .env-bar { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; margin-bottom: 1.2rem; font-size: 0.82rem; color: var(--text-body); }
+    .env-bar .seg-group { display: inline-flex; gap: 0.4rem; }
+    .acceptance-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.7rem; text-align: center; }
+
+    .journey { display: grid; grid-template-columns: 16.5rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+    .j-nav { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .j-step-btn {
+      width: 100%; text-align: left; display: flex; gap: 0.7rem; align-items: center; font: inherit; font-size: 0.86rem;
+      background: var(--bg-panel); border: 1px solid var(--border-dim); color: var(--text-body);
+      padding: 0.65rem 0.8rem; border-radius: 10px; cursor: pointer;
+    }
+    .j-step-btn:hover { border-color: rgba(16, 185, 129, 0.45); }
+    .j-step-btn .num {
+      flex: none; width: 1.8rem; height: 1.8rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.45); color: #A7F3D0; font-weight: 800; font-size: 0.8rem;
+    }
+    .j-step-btn strong { display: block; color: var(--text-white); font-size: 0.88rem; }
+    .j-step-btn small { display: block; color: var(--text-muted); font-size: 0.72rem; line-height: 1.4; }
+    .j-step-btn[aria-current="step"] { border-color: rgba(16, 185, 129, 0.75); background: rgba(16, 185, 129, 0.1); }
+    .j-step-btn.done .num { background: var(--brand-emerald); color: #04130F; border-color: var(--brand-emerald); }
+
+    .j-panel { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.3rem; min-width: 0; }
+    .j-panel[hidden] { display: none; }
+    .j-panel h3 { font-size: 1.15rem; margin-bottom: 0.3rem; color: var(--text-white); }
+    .j-lead { font-size: 0.85rem; color: var(--text-body); margin-bottom: 1rem; line-height: 1.7; }
+    .j-foot { display: flex; justify-content: space-between; gap: 0.6rem; margin-top: 1.2rem; flex-wrap: wrap; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+    .field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.78rem; min-width: 0; }
+    .field > label, .field > .lbl { color: var(--text-white); font-weight: 600; font-size: 0.8rem; }
+    .field small { color: var(--text-muted); font-size: 0.72rem; line-height: 1.5; }
+    .field.full { grid-column: 1 / -1; }
+    .input {
+      width: 100%; min-width: 0; font: inherit; font-size: 0.86rem; color: #E2E8F0; background: #0B1020;
+      border: 1px solid #2F3D5E; border-radius: 8px; padding: 0.5rem 0.7rem;
+    }
+    select.input { cursor: pointer; }
+    .input:disabled { opacity: 0.7; cursor: not-allowed; }
+    .input.mono { font-family: var(--font-mono); font-size: 0.82rem; }
+    textarea.input { font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.55; min-height: 9rem; resize: vertical; }
+    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; margin: 0.2rem 0 0; }
+    .chip { font-size: 0.76rem; background: #131A2B; border: 1px solid #1E293B; border-radius: 999px; padding: 0.15rem 0.7rem; color: #CBD5E1; }
+    .chip b { color: #6EE7B7; font-weight: 700; }
+    .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.9rem; }
+    .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .mini-btn:hover:not(:disabled) { border-color: rgba(16, 185, 129, 0.6); }
+    .result { margin-top: 0.9rem; padding: 0.7rem 0.9rem; border-radius: 10px; font-size: 0.82rem; line-height: 1.65; border: 1px solid var(--border-dim); background: #0B1020; color: var(--text-body); }
+    .result:empty { display: none; }
+    .result.ok { border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.1); color: #A7F3D0; }
+    .result.warn { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.1); color: #FCD34D; }
+    .result.err { border-color: rgba(244, 63, 94, 0.5); background: rgba(244, 63, 94, 0.1); color: #FDA4AF; }
+    .result ul { list-style: none; display: flex; flex-direction: column; gap: 0.2rem; }
+    .result li { padding-left: 1rem; position: relative; }
+    .result li::before { content: '·'; position: absolute; left: 0.2rem; }
+
+    .name-segs { margin: 0.7rem 0 0; }
+    .tag-sample { font-size: 0.68rem; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.05rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; white-space: nowrap; vertical-align: middle; }
+
+    .radio-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
+    .radio-card { position: relative; display: block; background: #0B1020; border: 1px solid var(--border-dim); border-radius: 10px; padding: 0.7rem 0.8rem; cursor: pointer; font-size: 0.8rem; color: var(--text-body); min-width: 0; }
+    .radio-card input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; }
+    .radio-card strong { display: block; color: var(--text-white); font-size: 0.88rem; margin-bottom: 0.1rem; }
+    .radio-card.on { border-color: rgba(16, 185, 129, 0.75); background: rgba(16, 185, 129, 0.1); }
+    .radio-card:focus-within { outline: 2px solid #34D399; outline-offset: 2px; }
+
+    .run-list { list-style: none; display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.9rem; }
+    .run-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; background: #131A2B; border: 1px solid #1E293B; border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.8rem; color: var(--text-body); }
+    .run-row .st { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 4px; }
+    .st.COMPLETED { background: rgba(16, 185, 129, 0.18); color: #6EE7B7; }
+    .st.FAILED { background: rgba(244, 63, 94, 0.18); color: #FDA4AF; }
+    .st.SKIPPED { background: rgba(100, 116, 139, 0.25); color: #CBD5E1; }
+    .run-row code { background: none; padding: 0; color: #C7D2FE; }
+    .check-line { display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: var(--text-body); margin-top: 0.8rem; }
+    .check-line input { accent-color: var(--brand-emerald); width: 1rem; height: 1rem; }
+
+    .tl { list-style: none; display: flex; flex-direction: column; gap: 0; margin: 1rem 0 0; position: relative; }
+    .tl li { position: relative; padding: 0 0 0.9rem 2rem; font-size: 0.82rem; color: var(--text-muted); min-height: 2.2rem; }
+    .tl li::before { content: ''; position: absolute; left: 0.43rem; top: 1.1rem; bottom: -0.1rem; width: 2px; background: var(--border-dim); }
+    .tl li:last-child::before { display: none; }
+    .tl li .dot { position: absolute; left: 0; top: 0.15rem; width: 0.95rem; height: 0.95rem; border-radius: 50%; border: 2px solid #475569; background: var(--bg-panel); }
+    .tl li.done .dot { background: var(--brand-emerald); border-color: var(--brand-emerald); }
+    .tl li.cur .dot { border-color: #FBBF24; background: #FBBF24; }
+    .tl li.rej .dot { border-color: #F43F5E; background: #F43F5E; }
+    .tl li.done, .tl li.cur, .tl li.rej { color: var(--text-white); }
+    .tl li code { background: none; padding: 0; color: #A7F3D0; font-weight: 700; }
+    .tl li small { display: block; color: var(--text-body); font-size: 0.75rem; }
+
+    .fmt-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .fmt-table th, .fmt-table td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); vertical-align: top; }
+    .fmt-table th { color: var(--text-white); }
+    .fmt-table .no { color: #FDA4AF; }
+    .table-scroll { overflow-x: auto; }
+
+    .import-demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem; }
+    .imp-out { background: #090D18; border: 1px solid var(--border-dim); border-radius: 12px; padding: 1rem; min-width: 0; font-size: 0.8rem; color: var(--text-body); }
+    .imp-out h4 { font-size: 0.82rem; color: var(--text-white); margin: 0.8rem 0 0.35rem; }
+    .imp-out h4:first-child { margin-top: 0; }
+    .method { display: inline-block; font-family: var(--font-mono); font-weight: 800; font-size: 0.78rem; padding: 0.1rem 0.55rem; border-radius: 5px; background: rgba(59, 130, 246, 0.18); color: #93C5FD; border: 1px solid rgba(59, 130, 246, 0.4); margin-right: 0.5rem; }
+    .method.POST { background: rgba(16, 185, 129, 0.16); color: #6EE7B7; border-color: rgba(16, 185, 129, 0.4); }
+    .method.DELETE { background: rgba(244, 63, 94, 0.16); color: #FDA4AF; border-color: rgba(244, 63, 94, 0.4); }
+    .method.PUT, .method.PATCH { background: rgba(245, 158, 11, 0.16); color: #FCD34D; border-color: rgba(245, 158, 11, 0.4); }
+    .url-line { font-family: var(--font-mono); font-size: 0.78rem; color: #E2E8F0; word-break: break-all; }
+    .hdr-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; table-layout: fixed; }
+    .hdr-table th, .hdr-table td { text-align: left; padding: 0.3rem 0.4rem; border-bottom: 1px dashed #1E293B; vertical-align: top; word-break: break-all; }
+    .hdr-table th { color: var(--text-muted); font-weight: 600; }
+    .hdr-table td:first-child { font-family: var(--font-mono); color: #CBD5E1; }
+    .sub { color: #FBBF24; font-family: var(--font-mono); font-weight: 700; }
+    .mask { color: var(--text-muted); font-family: var(--font-mono); text-decoration: line-through; }
+    pre.mini-code { font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; background: #05070D; border: 1px solid #1E293B; border-radius: 8px; padding: 0.6rem 0.75rem; white-space: pre-wrap; word-break: break-all; line-height: 1.55; max-height: 14rem; overflow: auto; }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 0; align-items: center; font-size: 0.78rem; color: var(--text-muted); }
+
+    .resolve { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 0.5rem; align-items: stretch; list-style: none; }
+    .resolve li.box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.7rem; font-size: 0.78rem; color: var(--text-body); min-width: 0; }
+    .resolve li.box b { display: block; color: var(--text-white); font-size: 0.82rem; margin-bottom: 0.2rem; }
+    .resolve li.box.last { border-style: dashed; }
+    .resolve li.arr { align-self: center; color: var(--brand-emerald); font-weight: 800; }
+    .ev-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .ev-table th, .ev-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); vertical-align: top; }
+    .ev-table th { color: var(--text-white); }
+    .ev-table td:first-child code { color: #A7F3D0; background: rgba(16, 185, 129, 0.12); }
+    .funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; list-style: none; margin-bottom: 1.2rem; counter-reset: f; }
+    .funnel li { counter-increment: f; background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.7rem 0.8rem; font-size: 0.78rem; color: var(--text-body); position: relative; }
+    .funnel li::before { content: counter(f); position: absolute; top: 0.5rem; right: 0.7rem; font-family: var(--font-mono); font-weight: 800; color: #475569; font-size: 1.2rem; }
+    .funnel li b { display: block; color: var(--text-white); font-size: 0.88rem; }
+    .funnel li code { background: none; padding: 0; color: #A7F3D0; font-size: 0.72rem; }
+    .term { background: #05070D; border: 1px solid #1E293B; border-radius: 10px; padding: 0.8rem 0.9rem; font-family: var(--font-mono); font-size: 0.74rem; color: #CBD5E1; min-height: 8rem; max-height: 16rem; overflow: auto; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+    .term .grp { color: #6EE7B7; font-weight: 700; }
+    .term .ev { color: #93C5FD; }
+    .term .empty { color: var(--text-muted); }
+    .no-collect { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin-top: 0.8rem; }
+    .no-collect li { font-size: 0.78rem; background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.35); color: #FDA4AF; padding: 0.15rem 0.7rem; border-radius: 999px; }
+    .roadmap-grid.three { grid-template-columns: repeat(3, 1fr); }
+    .try-steps .try-list { list-style: none; padding-left: 0; margin-top: 0.3rem; display: flex; flex-direction: column; gap: 0.2rem; }
+    .try-steps .try-list li { counter-increment: none; padding-left: 0; font-size: 0.82rem; }
+    .try-steps .try-list li::before { content: none; }
+    /* 行内代码在表格 / 说明里按词换行，不再在单词中间断开 */
+    p code, li code, td code, dd code { word-break: normal; overflow-wrap: anywhere; }
+    .hero-eyebrow { flex-wrap: wrap; justify-content: center; }
+    .bento-grid > *, .two-col > *, .import-demo > * { min-width: 0; }
+    @media (max-width: 960px) { .bento-grid { grid-template-columns: minmax(0, 1fr); } }
+    .ev-table { min-width: 34rem; }
+    .ev-table td:nth-child(3), .ev-table th:nth-child(3) { white-space: nowrap; }
+    .fmt-table { min-width: 28rem; }
+    .vd-menu a { padding: 0.45rem 0.7rem; }
+
+    @media (max-width: 960px) {
+      .journey { grid-template-columns: 1fr; }
+      .j-nav { flex-direction: row; flex-wrap: wrap; }
+      .j-nav > li { flex: 1 1 10rem; min-width: 0; }
+      .import-demo { grid-template-columns: 1fr; }
+      .resolve { grid-template-columns: 1fr; }
+      .resolve li.arr { transform: rotate(90deg); justify-self: center; }
+      .funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .roadmap-grid.three { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .form-grid, .radio-cards { grid-template-columns: 1fr; }
+      .j-nav > li { flex: 1 1 100%; }
+      .j-panel { padding: 1rem; }
+      .funnel { grid-template-columns: 1fr; }
+      .qs-tabs { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
@@ -1068,14 +1233,14 @@
       <a href="./" class="brand-logo" aria-label="Conductor Workflow IDE 首页">
         <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
           <defs>
-            <linearGradient id="nav12-bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#064E3B" /><stop offset="100%" stop-color="#090D18" /></linearGradient>
-            <linearGradient id="nav12-bd" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10B981" stop-opacity="0.8" /><stop offset="100%" stop-color="#06B6D4" stop-opacity="0.5" /></linearGradient>
-            <linearGradient id="nav12-top" x1="9" y1="16" x2="23" y2="10" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399" /><stop offset="100%" stop-color="#22D3EE" /></linearGradient>
-            <linearGradient id="nav12-bot" x1="9" y1="16" x2="23" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10B981" /><stop offset="100%" stop-color="#60A5FA" /></linearGradient>
+            <linearGradient id="nav13-bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#064E3B" /><stop offset="100%" stop-color="#090D18" /></linearGradient>
+            <linearGradient id="nav13-bd" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10B981" stop-opacity="0.8" /><stop offset="100%" stop-color="#06B6D4" stop-opacity="0.5" /></linearGradient>
+            <linearGradient id="nav13-top" x1="9" y1="16" x2="23" y2="10" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#34D399" /><stop offset="100%" stop-color="#22D3EE" /></linearGradient>
+            <linearGradient id="nav13-bot" x1="9" y1="16" x2="23" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#10B981" /><stop offset="100%" stop-color="#60A5FA" /></linearGradient>
           </defs>
-          <rect x="1.25" y="1.25" width="29.5" height="29.5" rx="8" fill="url(#nav12-bg)" stroke="url(#nav12-bd)" stroke-width="1.5" />
-          <path d="M 9.5 16 C 15 16, 15.5 10, 22.5 10" stroke="url(#nav12-top)" stroke-width="2.4" stroke-linecap="round" />
-          <path d="M 9.5 16 C 15 16, 15.5 22, 22.5 22" stroke="url(#nav12-bot)" stroke-width="2.4" stroke-linecap="round" />
+          <rect x="1.25" y="1.25" width="29.5" height="29.5" rx="8" fill="url(#nav13-bg)" stroke="url(#nav13-bd)" stroke-width="1.5" />
+          <path d="M 9.5 16 C 15 16, 15.5 10, 22.5 10" stroke="url(#nav13-top)" stroke-width="2.4" stroke-linecap="round" />
+          <path d="M 9.5 16 C 15 16, 15.5 22, 22.5 22" stroke="url(#nav13-bot)" stroke-width="2.4" stroke-linecap="round" />
           <circle cx="9.5" cy="16" r="3.4" fill="#10B981" /><circle cx="9.5" cy="16" r="1.4" fill="#F8FAFC" />
           <circle cx="22.5" cy="10" r="2.7" fill="#22D3EE" /><circle cx="22.5" cy="22" r="2.7" fill="#60A5FA" />
         </svg>
@@ -1083,15 +1248,16 @@
       </a>
 
       <details class="version-dropdown" id="version-dropdown">
-        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.2.0">⚡ v1.2.0 最新发布 <span class="vd-caret" aria-hidden="true">▾</span></summary>
+        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.3.0">⚡ v1.3.0 最新发布 <span class="vd-caret" aria-hidden="true">▾</span></summary>
         <div class="vd-menu">
-          <a href="./" class="active" aria-current="page" title="当前版本：v1.2.0 流程库就绪">⚡ v1.2.0 最新发布</a>
+          <a href="./" class="active" aria-current="page" title="当前版本：v1.3.0 自助接入">⚡ v1.3.0 最新发布</a>
+          <a href="./v1-2.html" title="查阅 v1.2.0 流程库就绪宣传页">📜 v1.2.0 历史回顾</a>
           <a href="./v1-1.html" title="查阅 v1.1.0 业务全融合宣传页">📜 v1.1.0 历史回顾</a>
           <a href="./v1-0.html" title="查阅 v1.0.0 确定性 IDE 历史首发页">📜 v1.0.0 历史回顾</a>
         </div>
       </details>
 
-      <span class="nav-tagline">流程库就绪 · 版本固定 · 业务域与分层 · 一个数据源两个 IDE</span>
+      <span class="nav-tagline">自助接入 · 接口导入 · 统一扩展点 · 接入埋点</span>
     </div>
 
     <div class="nav-right">
@@ -1104,24 +1270,23 @@
     <!-- ===================== Hero ===================== -->
     <section class="hero-section" aria-labelledby="hero-title">
       <div class="hero-eyebrow">
-        <span>⚡ Conductor Workflow IDE v1.2.0</span>
+        <span>⚡ Conductor Workflow IDE v1.3.0</span>
         <span style="opacity: 0.4;" aria-hidden="true">|</span>
-        <span>流程库就绪</span>
+        <span>自助接入</span>
       </div>
 
-      <h1 class="hero-title" id="hero-title">流程库就绪<br/>标准能力一次沉淀，处处安全复用</h1>
+      <h1 class="hero-title" id="hero-title">自助接入<br/>新团队不靠陪跑，自己把第一个流程跑起来</h1>
 
       <p class="hero-subtitle">
-        <strong>@yiyi_zhang/reactflow-ui</strong> 是供内部项目嵌入的<strong>工作流 IDE SDK</strong>：不直连后端，数据与能力经 Provider / 回调等扩展点接入。<br/>
-        v1.2.0 新增 <strong>流程库数据源 <code>LibraryProvider</code></strong>，让治理服务里的标准能力同时成为业务模式里的“积木”和 AI IDE 里可检索的目录。
+        <strong>@yiyi_zhang/reactflow-ui</strong> 是供内部项目嵌入的<strong>工作流 IDE SDK</strong>。v1.3.0 让一个从未接触过平台的团队，在测试环境里<strong>自己</strong>完成：登记产品 → 规范命名建流程 → 接上已有接口 → 试跑 → 申请上线。
       </p>
 
-      <ul class="hero-adds" aria-label="v1.2.0 新增内容">
-        <li><b>＋</b>流程库数据源</li>
-        <li><b>＋</b>版本固定与升级差异</li>
-        <li><b>＋</b>业务域与分层调用</li>
-        <li><b>＋</b>Demo 演示后端</li>
-        <li><b>＋</b>宿主接入指南</li>
+      <ul class="hero-adds" aria-label="v1.3.0 新增内容">
+        <li><b>＋</b>扩展点注册 <code>WorkflowIdeProvider</code></li>
+        <li><b>＋</b>自助接入向导与命名生成器</li>
+        <li><b>＋</b>申请上线与进度</li>
+        <li><b>＋</b>接口导入（OpenAPI / Swagger / Postman / curl）</li>
+        <li><b>＋</b>接入埋点 <code>TelemetrySink</code></li>
       </ul>
 
       <div class="install-wrap">
@@ -1133,293 +1298,374 @@
         </div>
         <div class="install-shell">
           <span class="prompt-char" aria-hidden="true">$</span>
-          <span id="cli-cmd">npm install @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom</span>
+          <span id="cli-cmd">npm install @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom</span>
           <button type="button" class="copy-cli-btn" id="copy-install">复制命令</button>
         </div>
       </div>
 
       <div class="hero-actions">
-        <a href="./app" class="cta-btn lg">🎮 在工作台里体验流程库</a>
+        <a href="#journey" class="cta-btn lg">▶ 先在页面里走一遍</a>
+        <a href="./app" class="ghost-btn lg">🎮 在工作台里亲手试</a>
         <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" class="ghost-btn lg" target="_blank" rel="noreferrer">📘 宿主接入指南</a>
       </div>
-      <p class="hero-note">演示站运行在<strong>模拟治理服务</strong>上，没有接真实后端；内部项目引入后通过 <code>libraryProvider</code> 对接各自的治理服务。</p>
+      <p class="hero-note">v1.3.0 目标发布时间为 2026-11-13，以 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/v1.3.0-release-plan.md" target="_blank" rel="noreferrer">发布计划</a> 为准，发布前 npm 上可能还没有该版本。演示站运行在<strong>模拟治理服务</strong>上，没有接真实后端；不接这些扩展点时，SDK 行为与 1.2.0 完全一致。</p>
     </section>
 
-    <section class="impact-strip" aria-label="演示流程库概览">
+    <section class="impact-strip" aria-label="v1.3.0 概览">
       <div class="impact-card">
-        <div class="impact-num">1 个</div>
-        <div class="impact-sub"><code>libraryProvider</code></div>
-        <div class="impact-desc">同时喂给 <code>WorkflowIDE</code> 与 <code>AiWorkflowIDE</code>，不再分别维护三份数据</div>
+        <div class="impact-num">5 步</div>
+        <div class="impact-sub">首个流程的自助路径</div>
+        <div class="impact-desc">登记产品 → 规范命名 → 选择起点 → 沙箱试跑 → 申请上线</div>
       </div>
       <div class="impact-card">
-        <div class="impact-num">12 个</div>
-        <div class="impact-sub">演示库能力</div>
-        <div class="impact-desc">Demo 内置，覆盖 9 个业务域与 L1 / L2 / L3，含完整中文 schema</div>
+        <div class="impact-num">4 种</div>
+        <div class="impact-sub">接口来源</div>
+        <div class="impact-desc">OpenAPI 3 / Swagger 2 / Postman v2.1 / curl，均为 JSON，不支持 YAML</div>
       </div>
       <div class="impact-card">
-        <div class="impact-num">5 段</div>
-        <div class="impact-sub">命名规范</div>
-        <div class="impact-desc"><code>类型-层级-业务域-产品-功能</code>，业务域由服务端提供、可调整</div>
+        <div class="impact-num">3 个</div>
+        <div class="impact-sub"><code>providers</code> 字段</div>
+        <div class="impact-desc"><code>library</code> / <code>onboarding</code> / <code>telemetry</code>，配置一次，所有 IDE 共用</div>
       </div>
       <div class="impact-card">
-        <div class="impact-num">v1 → v2</div>
-        <div class="impact-sub">升级前先看差异</div>
-        <div class="impact-desc">首次引用即固定版本，库升级后不自动跟随，由你确认再升级</div>
+        <div class="impact-num">10 个</div>
+        <div class="impact-sub">首批埋点事件</div>
+        <div class="impact-desc">只记“用了什么功能”，不采集参数值与对话内容</div>
       </div>
     </section>
 
-    <!-- ===================== 流程库 ===================== -->
-    <section class="section" id="library" aria-labelledby="library-title">
+    <!-- ===================== 五分钟走完第一个流程 ===================== -->
+    <section class="section" id="journey" aria-labelledby="journey-title">
       <div class="section-head">
-        <div class="section-eyebrow">LIBRARY</div>
-        <h2 class="section-title" id="library-title">流程库：像积木一样复用标准能力</h2>
-        <p class="section-desc">业务用户在动作选择器里挑选已治理的能力，而不是自己拼装 TaskDef。能力定义直接来自 Conductor 标准的 <code>WorkflowDef</code> / <code>TaskDef</code>，不需要额外的私有格式。</p>
-      </div>
-
-      <div class="bento-grid">
-        <div class="bento-card span-2">
-          <span class="bento-badge green">📚 从定义到积木</span>
-          <h3>一份标准定义，自动长成业务动作</h3>
-          <p>入参取自 <code>inputSchema</code>，出参取自 <code>outputSchema</code> / <code>outputParameters</code>；中文字段名与表单由 schema 的标题、描述、枚举、默认值自动生成，业务同学看到的是“配置项类型”而不是 <code>ciType</code>。</p>
-          <div class="bento-inner-box">
-            <div class="pipeline" role="group" aria-label="流程库能力的生成与编译过程">
-              <div class="pipe-box">
-                <h4>① Conductor 标准定义</h4>
-                <pre>WorkflowDef {
-  name: "std-L1-配置管理-cmdb-query_ci"
-  inputSchema:  { ciType, keyword … }
-  outputSchema: { ciList, total }
-}</pre>
-              </div>
-              <div class="pipe-arrow" aria-hidden="true">→</div>
-              <div class="pipe-box">
-                <h4>② 业务动作（表单自动生成）</h4>
-                <div class="form-line"><span>配置项类型 *</span><span>下拉 · 服务器…</span></div>
-                <div class="form-line"><span>关键字</span><span>文本</span></div>
-                <div class="form-line"><span>返回条数</span><span>数字 · 默认 20</span></div>
-              </div>
-              <div class="pipe-arrow" aria-hidden="true">→</div>
-              <div class="pipe-box">
-                <h4>③ 编译为 SUB_WORKFLOW</h4>
-                <pre>{ "type": "SUB_WORKFLOW",
-  "subWorkflowParam": {
-    "name": "…query_ci",
-    "version": 1 } }</pre>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bento-card">
-          <span class="bento-badge cyan">🧩 复用，而不是复制</span>
-          <h3>业务模式里直接挑</h3>
-          <ul class="tick">
-            <li>动作选择器按业务域分组，搜索跨全部能力</li>
-            <li>步骤记录 <code>libraryRef</code>，知道引用的是哪个能力的哪个版本</li>
-            <li>目录加载中 / 失败时显示“加载失败，点击重试”，<strong>失败不阻塞编辑</strong></li>
-            <li>不传 <code>libraryProvider</code> 时，<code>actions</code> / <code>workflowLibrary</code> / <code>taskSchemas</code> 行为不变</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===================== 版本固定 ===================== -->
-    <section class="section" id="pinning" aria-labelledby="pinning-title">
-      <div class="section-head">
-        <div class="section-eyebrow">VERSION PINNING</div>
-        <h2 class="section-title" id="pinning-title">版本固定，升级看得见</h2>
-        <p class="section-desc">首次引用时固定版本，库升级后<strong>不会</strong>自动跟随。有新版本只给出提示，看清差异、你确认之后才升级；固定版本不可用时，流程照常编译。</p>
+        <div class="section-eyebrow">SELF-SERVICE PATH</div>
+        <h2 class="section-title" id="journey-title">五分钟走完第一个流程</h2>
+        <p class="section-desc">下面是自助路径的<strong>交互示意</strong>（HTML/CSS/JS 模拟，不是真实应用，也不发任何请求）：命名校验的规则与消息与 SDK 的 <code>validateWorkflowName</code> 一致，审批状态与演示站的模拟实现一致。“5 分钟”是发布计划里的验收目标，不是实测数据。</p>
       </div>
 
       <div class="fs-panel">
-        <div class="pin-demo">
-          <div class="pin-controls">
-            <h3>点选三种状态，亲手试一试</h3>
-            <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.4rem;">右侧是业务模式步骤卡片的静态示意（HTML/CSS 模拟，不是真实应用）；数据取自 Demo 演示库。</p>
-            <div role="group" aria-label="选择步骤状态" style="display:flex; flex-direction:column; gap:0.5rem;">
-              <button type="button" class="state-btn" data-state="pinned" aria-pressed="true"><strong>已固定 v1</strong>引用后版本不再变化，库里发布 v2 也不受影响</button>
-              <button type="button" class="state-btn" data-state="upgrade" aria-pressed="false"><strong>⬆ 有新版本</strong>点徽标查看升级差异，确认后才升级</button>
-              <button type="button" class="state-btn" data-state="unavailable" aria-pressed="false"><strong>⚠ 版本不可用</strong>固定版本被撤回或能力已下线，编译结果不变</button>
-            </div>
+        <div class="env-bar">
+          <span id="env-label">演示环境</span>
+          <div class="seg-group" role="group" aria-labelledby="env-label">
+            <button type="button" class="seg-btn" data-env="TEST" aria-pressed="true">🧪 TEST</button>
+            <button type="button" class="seg-btn" data-env="PROD" aria-pressed="false">🏭 PROD</button>
           </div>
+          <span id="env-hint" style="font-size:0.76rem; color:var(--text-muted);">TEST 开放自助试用，流程名类型固定为 <code>tmp</code></span>
+        </div>
 
-          <div class="mock-app" id="mock-app">
-            <div class="mock-app-bar" aria-hidden="true"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span><span style="margin-left:6px;">业务模式 · 步骤卡片（示意）</span></div>
-            <div class="mock-step">
-              <div class="mock-step-head">
-                <span id="ms-icon" aria-hidden="true">🗂️</span>
-                <span class="mock-step-title" id="ms-title">查询配置项</span>
-                <span class="mock-step-name" id="ms-name">std-L1-配置管理-cmdb-query_ci</span>
+        <div class="journey">
+          <ol class="j-nav" aria-label="自助接入的五个步骤">
+            <li><button type="button" class="j-step-btn" data-step="0" aria-controls="jp-0" aria-current="step"><span class="num" aria-hidden="true">1</span><span><strong>登记产品</strong><small>开始试用 · 选业务域</small></span></button></li>
+            <li><button type="button" class="j-step-btn" data-step="1" aria-controls="jp-1"><span class="num" aria-hidden="true">2</span><span><strong>规范命名</strong><small>tmp-层级-业务域-产品-功能</small></span></button></li>
+            <li><button type="button" class="j-step-btn" data-step="2" aria-controls="jp-2"><span class="num" aria-hidden="true">3</span><span><strong>选择起点</strong><small>空白 / 模板 / 从接口导入</small></span></button></li>
+            <li><button type="button" class="j-step-btn" data-step="3" aria-controls="jp-3"><span class="num" aria-hidden="true">4</span><span><strong>沙箱试跑</strong><small>浏览器内，不依赖后端</small></span></button></li>
+            <li><button type="button" class="j-step-btn" data-step="4" aria-controls="jp-4"><span class="num" aria-hidden="true">5</span><span><strong>申请上线</strong><small>提交 → 审批进度</small></span></button></li>
+          </ol>
+
+          <div>
+            <!-- Step 1 -->
+            <div class="j-panel" id="jp-0" role="group" aria-labelledby="jp-0-t">
+              <h3 id="jp-0-t">① 登记产品 <span class="tag-sample">示意</span></h3>
+              <p class="j-lead">新团队先登记自己的产品，登记后自动成为负责人。产品名就是流程名里的“产品”段，所以<strong>不能含 <code>-</code></strong>；业务域由服务端提供（<code>listDomains</code>）。</p>
+              <div class="field full" style="margin-bottom:0.8rem;">
+                <span class="lbl" id="myprod-lbl">我的产品</span>
+                <ul class="chips" id="my-products" aria-labelledby="myprod-lbl"></ul>
               </div>
-              <div class="badge-row" id="ms-badges"></div>
-              <div class="mock-fields" aria-hidden="true">
-                <div class="mock-field"><small>配置项类型</small>服务器</div>
-                <div class="mock-field"><small>关键字</small>order</div>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="prod-name">产品名称</label>
+                  <input class="input" id="prod-name" type="text" autocomplete="off" placeholder="例如 order" aria-describedby="prod-hint" />
+                  <small id="prod-hint">试试：<code>cmdb</code>（已被他人占用）、<code>ecs</code>（已是你的）、含 <code>-</code> 的名字。</small>
+                </div>
+                <div class="field">
+                  <label for="prod-domain">业务域</label>
+                  <select class="input" id="prod-domain"></select>
+                  <small>演示库的 10 个业务域；真实环境由治理服务返回。</small>
+                </div>
               </div>
-              <div class="compile-box" id="ms-compile" aria-label="编译结果"></div>
+              <div class="btn-row"><button type="button" class="mini-btn primary" id="btn-register">登记产品，开始试用</button></div>
+              <div class="result" id="register-result" role="status" aria-live="polite"></div>
+              <div class="j-foot"><span></span><button type="button" class="mini-btn primary" data-go="1">下一步：规范命名 →</button></div>
             </div>
-            <p class="pin-note" id="ms-note" aria-live="polite"></p>
 
-            <div class="mock-dialog" id="mock-dialog" role="dialog" aria-labelledby="dlg-title" tabindex="-1">
-              <h4 id="dlg-title">流程库「std-L1-配置管理-cmdb-query_ci」已有新版本 v2（当前引用 v1）。</h4>
-              <div class="diff-group impact">【会影响已填内容】</div>
-              <ul>
-                <li>新增必填入参「租户编号（tenantId）」，需要补充填写</li>
-                <li>出参「costMs」已删除，下游步骤对它的引用将失效<span class="tag-demo">条件触发</span></li>
-              </ul>
-              <div class="diff-group plain">【其它变化】</div>
-              <ul><li>入参「配置项类型」新增可选值“容器”</li></ul>
-              <p class="dialog-foot">升级差异取自演示库 <code>query_ci</code> v1→v2。“下游引用将失效”仅在被删出参确有下游引用时出现；若升级删除了已填写的入参，还会提示“已填写的值将丢失”。</p>
-              <div class="dialog-actions">
-                <button type="button" class="mini-btn" id="dlg-cancel">取消</button>
-                <button type="button" class="mini-btn primary" id="dlg-ok">确认升级到 v2</button>
+            <!-- Step 2 -->
+            <div class="j-panel" id="jp-1" role="group" aria-labelledby="jp-1-t" hidden>
+              <h3 id="jp-1-t">② 规范命名 <span class="tag-sample">示意</span></h3>
+              <p class="j-lead">命名生成器（<code>WorkflowNameBuilder</code>）按 <code>类型-层级-业务域-产品-功能</code> 五段拼出名称，实时校验。<strong>完整名称框可以直接改</strong>，试试删掉一段、写错层级。</p>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="nb-type">类型</label>
+                  <select class="input" id="nb-type"></select>
+                  <small id="nb-type-hint"></small>
+                </div>
+                <div class="field">
+                  <label for="nb-level">层级</label>
+                  <select class="input" id="nb-level">
+                    <option value="L1">L1</option><option value="L2">L2</option><option value="L3">L3</option>
+                  </select>
+                  <small>写入后作为 <code>currentWorkflowLevel</code> 的默认值，动作选择器随之按分层过滤。</small>
+                </div>
+                <div class="field">
+                  <label for="nb-product">产品</label>
+                  <select class="input" id="nb-product"></select>
+                  <small>业务域取自所选产品：<span id="nb-domain-view" style="color:#6EE7B7; font-weight:700;"></span></small>
+                </div>
+                <div class="field">
+                  <label for="nb-desc">功能说明（可选）</label>
+                  <input class="input" id="nb-desc" type="text" autocomplete="off" placeholder="例如 Snapshot Check 或 磁盘告警处理" />
+                  <small>据此建议“功能”段：纯英文转小写 <code>snake_case</code>，含中文保持原样。</small>
+                </div>
+                <div class="field full">
+                  <label for="nb-func">功能</label>
+                  <input class="input mono" id="nb-func" type="text" autocomplete="off" placeholder="snake_case，例如 snapshot_check" />
+                </div>
+                <div class="field full">
+                  <label for="nb-full">完整名称（可直接编辑）</label>
+                  <input class="input mono" id="nb-full" type="text" autocomplete="off" spellcheck="false" aria-describedby="nb-result" />
+                </div>
               </div>
+              <ol class="name-parse name-segs" id="nb-segs" aria-label="名称解析结果"></ol>
+              <div class="result" id="nb-result" role="status" aria-live="polite"></div>
+              <div class="j-foot"><button type="button" class="mini-btn" data-go="0">← 上一步</button><button type="button" class="mini-btn primary" data-go="2">下一步：选择起点 →</button></div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="j-panel" id="jp-2" role="group" aria-labelledby="jp-2-t" hidden>
+              <h3 id="jp-2-t">③ 选择起点 <span class="tag-sample">示意</span></h3>
+              <p class="j-lead">向导的最后一步选起点，完成后生成<strong>骨架定义</strong>并设为当前流程（<code>version: 1</code>、<code>schemaVersion: 2</code>、空 <code>tasks</code>）。模板与接口导入两项，仅在宿主提供对应入口时出现。</p>
+              <div class="radio-cards" role="radiogroup" aria-label="选择起点">
+                <label class="radio-card on"><input type="radio" name="start" value="blank" checked /><strong>空白</strong>从空画布开始，自己添加步骤。</label>
+                <label class="radio-card"><input type="radio" name="start" value="template" /><strong>场景模板</strong>从模板中心选一个场景模板作为起点。</label>
+                <label class="radio-card"><input type="radio" name="start" value="import" /><strong>从接口导入</strong>粘贴 / 上传已有接口，直接生成 HTTP 步骤。</label>
+              </div>
+              <div class="result" id="start-result" role="status" aria-live="polite"></div>
+              <h4 style="font-size:0.84rem; color:var(--text-white); margin:0.9rem 0 0.4rem;">生成的骨架定义</h4>
+              <pre class="mini-code" id="skeleton" tabindex="0" aria-label="骨架定义 JSON"></pre>
+              <div class="j-foot"><button type="button" class="mini-btn" data-go="1">← 上一步</button><button type="button" class="mini-btn primary" data-go="3">下一步：沙箱试跑 →</button></div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="j-panel" id="jp-3" role="group" aria-labelledby="jp-3-t" hidden>
+              <h3 id="jp-3-t">④ 沙箱试跑 <span class="tag-sample">示意</span></h3>
+              <p class="j-lead">编辑后直接在浏览器里本地试跑（v1.0 起的确定性沙箱），不需要后端、不会碰生产。可以在配置台里设置 Mock 输出，或注入 <code>FAILED</code> / <code>TIMED_OUT</code> 故障。下面是一个<strong>虚构的 2 步流程</strong>的试跑效果。</p>
+              <div class="check-line"><input type="checkbox" id="inject-fail" /><label for="inject-fail">注入故障：让第 2 步失败</label></div>
+              <div class="btn-row"><button type="button" class="mini-btn primary" id="btn-run">▶ 试跑</button></div>
+              <ul class="run-list" id="run-list" aria-live="polite"></ul>
+              <div class="result" id="run-result" role="status" aria-live="polite"></div>
+              <div class="j-foot"><button type="button" class="mini-btn" data-go="2">← 上一步</button><button type="button" class="mini-btn primary" data-go="4">下一步：申请上线 →</button></div>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="j-panel" id="jp-4" role="group" aria-labelledby="jp-4-t" hidden>
+              <h3 id="jp-4-t">⑤ 申请上线 <span class="tag-sample">示意</span></h3>
+              <p class="j-lead">只有 <code>tmp</code> 类型的临时流程可以申请上线：选择目标类型，预览正式名称（类型段被替换），提交后在 IDE 里看审批进度。真实 SDK 用指数退避轮询（2 秒起，30 秒封顶），到 <code>APPROVED</code> / <code>REJECTED</code> / <code>SYNCED</code> 停止；这里每点一次“刷新进度”相当于一次轮询。</p>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="pr-name">流程名称</label>
+                  <input class="input mono" id="pr-name" type="text" readonly />
+                </div>
+                <div class="field">
+                  <label for="pr-target">目标类型</label>
+                  <select class="input" id="pr-target"><option value="custom">custom</option><option value="std">std</option></select>
+                </div>
+                <div class="field full">
+                  <label for="pr-final">正式名称预览</label>
+                  <input class="input mono" id="pr-final" type="text" readonly />
+                </div>
+              </div>
+              <div class="check-line"><input type="checkbox" id="pr-reject" /><label for="pr-reject">模拟被驳回（演示站的模拟实现支持，界面上暂无开关）</label></div>
+              <div class="btn-row">
+                <button type="button" class="mini-btn primary" id="btn-submit">提交上线申请</button>
+                <button type="button" class="mini-btn" id="btn-poll" disabled>刷新进度（模拟一次轮询）</button>
+                <button type="button" class="mini-btn" id="btn-restart" hidden>重新演示</button>
+              </div>
+              <div class="result" id="promo-result" role="status" aria-live="polite"></div>
+              <ol class="tl" id="promo-tl" aria-label="审批进度"></ol>
+              <div class="j-foot"><button type="button" class="mini-btn" data-go="3">← 上一步</button><span></span></div>
             </div>
           </div>
         </div>
       </div>
+      <p class="acceptance-note">任一接口失败时，向导停在当前步并显示“重试”，已填内容保留；产品被他人占用时提示联系负责人；生产环境不出现“开始试用”，类型段可选 <code>custom</code> / <code>std</code>。</p>
     </section>
 
-    <!-- ===================== 业务域与分层 ===================== -->
-    <section class="section" id="domains" aria-labelledby="domains-title">
+    <!-- ===================== 接口导入 ===================== -->
+    <section class="section" id="import" aria-labelledby="import-title">
       <div class="section-head">
-        <div class="section-eyebrow">DOMAIN &amp; LEVEL</div>
-        <h2 class="section-title" id="domains-title">业务域与分层</h2>
-        <p class="section-desc">用一条命名规范把“是什么、属于谁、能被谁调用”写进名字里；业务域列表由服务端提供，SDK 不写死，随时可调整。</p>
+        <div class="section-eyebrow">API IMPORT</div>
+        <h2 class="section-title" id="import-title">接口导入：已有接口，几步变成流程步骤</h2>
+        <p class="section-desc">工具栏“导入接口”：粘贴或上传 → 自动识别格式 → 勾选接口 → 插入。每个接口生成一个 HTTP 业务动作，编译为 Conductor <code>HTTP</code> 任务（<code>http_request.uri / method / headers / body</code>）。</p>
       </div>
 
       <div class="bento-grid" style="margin-bottom:1.5rem;">
         <div class="bento-card span-2">
-          <span class="bento-badge purple">🏷 命名规范</span>
-          <h3><code>类型-层级-业务域-产品-功能</code></h3>
-          <p><code>parseWorkflowName</code> 把名称切成 5 段；记录没有提供 <code>extension.domain</code> / <code>level</code> 时按名称兜底，显式值优先。段数不足 5，或类型、层级不合法时返回 <code>null</code>；<code>validateWorkflowName</code> 返回中文错误列表。</p>
-          <ol class="name-parse" aria-label="命名解析示例：std-L1-云资源-ecs-snapshot">
-            <li class="name-seg c1"><b>std</b><span>类型</span></li><li class="name-sep" aria-hidden="true">-</li>
-            <li class="name-seg c2"><b>L1</b><span>层级</span></li><li class="name-sep" aria-hidden="true">-</li>
-            <li class="name-seg c3"><b>云资源</b><span>业务域</span></li><li class="name-sep" aria-hidden="true">-</li>
-            <li class="name-seg c4"><b>ecs</b><span>产品</span></li><li class="name-sep" aria-hidden="true">-</li>
-            <li class="name-seg c5"><b>snapshot</b><span>功能</span></li>
-          </ol>
-          <p style="font-size:0.8rem;">类型取值：<code>std</code> / <code>proxy</code> / <code>tmp</code> / <code>custom</code>。示例为 Demo 演示库中的“云主机快照”。</p>
+          <span class="bento-badge green">📥 四种来源</span>
+          <h3>粘贴就能认出格式</h3>
+          <div class="table-scroll">
+            <table class="fmt-table">
+              <thead><tr><th scope="col">格式</th><th scope="col">1.3.0</th><th scope="col">说明</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">OpenAPI 3.x（JSON）</th><td>✓</td><td>选择一个或多个 operation；<code>servers[0].url</code>、本地 <code>$ref</code>、<code>security</code> 推断认证头</td></tr>
+                <tr><th scope="row">Swagger 2.0（JSON）</th><td>✓</td><td><code>schemes</code> / <code>host</code> / <code>basePath</code>、<code>definitions</code> 引用</td></tr>
+                <tr><th scope="row">Postman Collection v2.1（JSON）</th><td>✓</td><td>文件夹作为标签；<code>{{var}}</code> 转为 <code>${workflow.input.var}</code></td></tr>
+                <tr><th scope="row">curl 命令</th><td>✓</td><td>方法、URL、头、<code>-d</code> / <code>--data-raw</code> 请求体、<code>-u</code>、行尾 <code>\</code> 续行</td></tr>
+                <tr><th scope="row">YAML 格式的 OpenAPI</th><td class="no">✗</td><td>暂不支持：<strong>请先转为 JSON</strong> 再导入（不引入 YAML 依赖）</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div class="bento-card">
-          <span class="bento-badge orange">🔒 分层调用规则</span>
-          <h3>高层可调低层，不可反向</h3>
-          <table class="rule-table">
-            <thead><tr><th scope="col">当前流程</th><th scope="col">可引用</th></tr></thead>
-            <tbody>
-              <tr><th scope="row">L1</th><td>L1</td></tr>
-              <tr><th scope="row">L2</th><td>L2 / L1</td></tr>
-              <tr><th scope="row">L3</th><td>L3 / L2 / L1</td></tr>
-            </tbody>
-          </table>
-          <p style="margin-top:0.8rem; font-size:0.8rem;">给 <code>WorkflowIDE</code> 传 <code>currentWorkflowLevel</code> 后，动作选择器自动隐藏违反规则的能力；已下线条目不出现在选择器，已引用的步骤照常显示与编译。</p>
+          <span class="bento-badge orange">🔐 敏感头不落定义</span>
+          <h3>凭据永远不写进流程</h3>
+          <ul class="tick">
+            <li><code>Authorization</code> / <code>Cookie</code> / <code>X-Api-Key</code>、名称含 token、secret、api-key 的头，以及 curl <code>-u</code>，一律换成 <code>${workflow.input.xxx}</code> 占位</li>
+            <li>导入面板提示改用凭据管理；步骤引用的 <code>workflow.input.*</code> 自动补进流程入参</li>
+            <li>出参取 2xx 响应 schema，键为 <code>response.body.&lt;字段&gt;</code></li>
+          </ul>
         </div>
       </div>
 
       <div class="fs-panel">
         <div class="fs-panel-header">
-          <h3 class="fs-title">🧭 动作选择器示意：按业务域分组 + 层级过滤</h3>
-          <span class="badge-diff after">演示库 · 11 个可选能力</span>
+          <h3 class="fs-title">🧪 粘贴 curl，看它怎么被识别 <span class="tag-sample">示意</span></h3>
         </div>
-        <div class="level-bar" role="group" aria-label="模拟 currentWorkflowLevel">
-          <span>currentWorkflowLevel =</span>
-          <button type="button" class="seg-btn" data-level="" aria-pressed="true">不限</button>
-          <button type="button" class="seg-btn" data-level="L1" aria-pressed="false">L1</button>
-          <button type="button" class="seg-btn" data-level="L2" aria-pressed="false">L2</button>
-          <button type="button" class="seg-btn" data-level="L3" aria-pressed="false">L3</button>
-        </div>
-        <div class="picker-groups" id="picker-groups"></div>
-        <p class="picker-status" id="picker-status" aria-live="polite"></p>
-      </div>
-    </section>
-
-    <!-- ===================== 一个数据源，两个 IDE ===================== -->
-    <section class="section" id="one-source" aria-labelledby="one-source-title">
-      <div class="section-head">
-        <div class="section-eyebrow">ONE SOURCE · TWO IDEs</div>
-        <h2 class="section-title" id="one-source-title">一个数据源，两个 IDE</h2>
-        <p class="section-desc">同一份规范化目录（<code>LibraryCatalog</code>）投影成业务动作、AI 任务 Schema 与 AI 流程库目录。宿主只需要接一次。</p>
-      </div>
-
-      <div class="fs-panel" style="margin-bottom:1.5rem;">
-        <div class="fanout">
-          <div class="fan-col">
-            <div class="fan-box"><h4>👔 业务 IDE · <code>WorkflowIDE</code></h4>目录经 <code>toActions</code> 变成动作选择器里的业务动作，带业务域分组、层级过滤、版本徽标。</div>
+        <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.8rem;">这是<strong>简化版</strong>的浏览器内演示：只解析常见写法，内容不会上传。真实解析由 SDK 的 <code>parseCurl</code> / <code>detectFormat</code> 完成，覆盖更全。</p>
+        <div class="import-demo">
+          <div>
+            <div class="field">
+              <label for="curl-in">粘贴 curl 命令（或 JSON / YAML 片段）</label>
+              <textarea class="input" id="curl-in" spellcheck="false" aria-describedby="curl-hint"></textarea>
+              <small id="curl-hint">所有内容仅在本页内存里处理；示例里的凭据都是虚构占位。</small>
+            </div>
+            <div class="preset-row" role="group" aria-label="填入示例">
+              <span>填入示例：</span>
+              <button type="button" class="mini-btn" data-preset="bearer">Bearer + JSON 体</button>
+              <button type="button" class="mini-btn" data-preset="basic">-u 基本认证 + 查询 token</button>
+              <button type="button" class="mini-btn" data-preset="openapi">OpenAPI JSON</button>
+              <button type="button" class="mini-btn" data-preset="yaml">YAML</button>
+            </div>
           </div>
-          <div class="fan-center" role="group" aria-label="共享的 LibraryProvider">
-            <code>libraryProvider</code>
-            <p>list / get / 可选 search<br/>引用稳定，变化即重新加载</p>
-          </div>
-          <div class="fan-col">
-            <div class="fan-box"><h4>✨ AI IDE · <code>AiWorkflowIDE</code></h4>目录经 <code>toTaskSchemas</code> / <code>toLibraryItems</code> 并入 AI 的 Schema、目录与检索工具。</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bento-grid">
-        <div class="bento-card">
-          <span class="bento-badge cyan">🔎 AI 检索</span>
-          <h3>目录与检索</h3>
-          <p><code>search_workflow_library</code> 支持按<strong>业务域</strong>过滤。Provider 实现了 <code>search</code> 时检索走服务端，否则在本地目录内匹配（结果最多展示 50 条）。</p>
-        </div>
-        <div class="bento-card">
-          <span class="bento-badge green">📌 自动固定</span>
-          <h3>AI 生成的子流程不乱填版本</h3>
-          <p>AI 新建的 <code>SUB_WORKFLOW</code> 引用自动固定为目录当前最新版本；画布上已有的步骤与已有版本号一律不被改动。</p>
-        </div>
-        <div class="bento-card">
-          <span class="bento-badge orange">📏 大目录</span>
-          <h3><code>promptCatalogLimit</code></h3>
-          <p>默认 50。目录注入系统提示词时按层级 L3 → L1 截断，超出部分提示 AI 改用检索工具，治理平台 1000+ 工作流也不会撑爆提示词。</p>
+          <div class="imp-out" id="curl-out" aria-live="polite"></div>
         </div>
       </div>
     </section>
 
-    <!-- ===================== 接入即用 ===================== -->
-    <section class="section" id="integrate" aria-labelledby="integrate-title">
+    <!-- ===================== 统一扩展点 ===================== -->
+    <section class="section" id="providers" aria-labelledby="providers-title">
       <div class="section-head">
-        <div class="section-eyebrow">INTEGRATE</div>
-        <h2 class="section-title" id="integrate-title">接入即用</h2>
-        <p class="section-desc">一个 Provider，两个 IDE。治理服务版实现与接口约定见接入指南第 5 节，示例代码随 CI 做类型检查。</p>
+        <div class="section-eyebrow">EXTENSION POINTS</div>
+        <h2 class="section-title" id="providers-title">统一扩展点：配置一次，处处生效</h2>
+        <p class="section-desc">此前每加一个能力就要在两个 IDE 上各传一遍 props。现在用 <code>WorkflowIdeProvider</code> 在外层配置 <code>providers</code>，页面里所有 IDE 实例共用；每个功能自己检查对应 provider 在不在，不在就不显示入口。</p>
       </div>
 
       <div class="quickstart-box">
         <div class="qs-tabs" role="group" aria-label="选择代码示例">
-          <button type="button" class="qs-tab active" data-code="shared" aria-pressed="true">同一个 Provider</button>
-          <button type="button" class="qs-tab" data-code="api" aria-pressed="false">治理服务接口约定</button>
-          <button type="button" class="qs-tab" data-code="conductor" aria-pressed="false">Conductor 默认实现</button>
+          <button type="button" class="qs-tab active" data-code="register" aria-pressed="true">注册 providers</button>
+          <button type="button" class="qs-tab" data-code="override" aria-pressed="false">单个组件覆盖</button>
+          <button type="button" class="qs-tab" data-code="demo" aria-pressed="false">Demo 的模拟实现</button>
         </div>
         <div class="code-container">
           <pre class="code-body" id="qs-code-body" tabindex="0" aria-label="代码示例"></pre>
           <button type="button" class="copy-code-btn" id="copy-code">复制代码</button>
         </div>
         <p class="qs-note" id="qs-note"></p>
-        <p class="qs-note">演示站的 <code>WorkflowIDE</code> / <code>AiWorkflowIDE</code> 接的是<strong>模拟治理服务</strong>（<code>createMockGovernanceProvider</code>：带网络延迟、可注入加载失败）。完整接入步骤见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a>。</p>
+      </div>
+
+      <h3 style="font-size:1.05rem; margin:2rem 0 0.8rem; text-align:center;">解析顺序：逐字段，高优先级缺这个字段才落到下一层</h3>
+      <ol class="resolve" aria-label="providers 解析顺序">
+        <li class="box"><b>① 组件专用 prop</b>如 <code>libraryProvider</code></li>
+        <li class="arr" aria-hidden="true">→</li>
+        <li class="box"><b>② 组件 <code>providers</code> prop</b>只覆盖这个组件</li>
+        <li class="arr" aria-hidden="true">→</li>
+        <li class="box"><b>③ 外层 <code>WorkflowIdeProvider</code></b>页面级默认配置</li>
+        <li class="arr" aria-hidden="true">→</li>
+        <li class="box last"><b>④ 无</b>该功能不显示入口</li>
+      </ol>
+
+      <div class="bento-grid" style="margin-top:1.5rem;">
+        <div class="bento-card span-2">
+          <span class="bento-badge cyan">🔌 OnboardingProvider ↔ 治理服务</span>
+          <h3>契约与治理服务接口一一对应</h3>
+          <div class="table-scroll">
+            <table class="fmt-table">
+              <thead><tr><th scope="col">方法</th><th scope="col">治理服务接口</th><th scope="col">说明</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>listDomains</code></th><td><code>GET /api/library/domains</code></td><td>业务域全局列表</td></tr>
+                <tr><th scope="row"><code>listMyProducts</code></th><td><code>GET /api/products/mine</code></td><td>我的产品（名称、业务域、状态、角色）</td></tr>
+                <tr><th scope="row"><code>startTrial</code></th><td><code>POST /api/onboarding/trial</code></td><td>登记产品并开通试用；已被他人占用返回 <code>conflict</code> 与负责人</td></tr>
+                <tr><th scope="row"><code>requestPromotion</code></th><td><code>POST /api/onboarding/promote</code></td><td>提交上线申请，返回 <code>requestId</code></td></tr>
+                <tr><th scope="row"><code>getPromotion</code></th><td><code>GET /api/onboarding/promote/{id}</code></td><td><code>SUBMITTED</code> → <code>REVIEWING</code> → <code>APPROVED</code> / <code>REJECTED</code> → <code>SYNCED</code></td></tr>
+                <tr><th scope="row"><code>getContext</code></th><td>由宿主从会话 / 配置取得</td><td><code>env</code>、当前用户、<code>trialEnabled</code>（生产为 <code>false</code>）</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="bento-card">
+          <span class="bento-badge purple">🛡 升级无感</span>
+          <h3>不接就不变</h3>
+          <ul class="tick">
+            <li>只传 <code>libraryProvider</code>、不用 <code>WorkflowIdeProvider</code> 的现有写法，行为与 1.2.0 一致</li>
+            <li>没有 <code>onboarding</code> 就没有“新建流程”“申请上线”“开始试用”</li>
+            <li>按字段比较引用：每次渲染新建 <code>providers</code> 对象没关系，但 provider 实例要只创建一次，否则目录会反复重载</li>
+          </ul>
+        </div>
       </div>
     </section>
 
-    <!-- ===================== 体验与质量 ===================== -->
-    <section class="section" id="quality" aria-labelledby="quality-title">
+    <!-- ===================== 埋点 ===================== -->
+    <section class="section" id="telemetry" aria-labelledby="telemetry-title">
       <div class="section-head">
-        <div class="section-eyebrow">POLISH</div>
-        <h2 class="section-title" id="quality-title">体验与质量</h2>
-        <p class="section-desc">走查中发现的问题和一批性能、工程质量收尾，全部来自 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG</a>。</p>
+        <div class="section-eyebrow">TELEMETRY</div>
+        <h2 class="section-title" id="telemetry-title">埋点：看得见的推广漏斗</h2>
+        <p class="section-desc">推广进度不再靠手工统计。<code>TelemetrySink.track(events)</code> 由 SDK 按“5 秒或 20 条”攒批、页面隐藏时 flush，宿主把事件送到自己的事件接口即可；没有 sink 时事件直接丢弃。</p>
       </div>
-      <ul class="quality-grid">
-        <li class="q-item"><h3><span aria-hidden="true">🔗</span>下拉字段「插入数据」</h3><p>下拉字段可改为引用上游步骤输出或全局入参，也可切回选择；已保存 <code>${…}</code> 时自动进入动态取值。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🎨</span>弹窗跟随主题</h3><p>动作选择、沙箱配置、参数联想弹窗不再在暗色下透明；动作选择弹窗的筛选拆为“分类”“业务域”两行。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">⚡</span>卡片视图更跟手</h3><p>编辑只更新定义，不再每次按键都做整图布局，切回画布时再补建。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🎯</span>按需订阅</h3><p>Store 订阅改为按需（<code>useShallow</code>），逐节点组件不再因无关状态变化而重渲染。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">↩️</span>撤销历史上限</h3><p>撤销历史上限 100 条，历史比较先做引用相等判断，避免每次都序列化整份定义。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🪆</span>多层嵌套控制流</h3><p>分支 / 并行泳道 / 循环体内支持任意层级嵌套控制流。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">⌨️</span>输入不再丢焦点</h3><p>步骤 ID 不再随时间变化，编辑时不再重建卡片、收起展开项。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🧹</span>展开不再重复信息</h3><p>去掉表单顶部与步骤头部重复的名称 / 描述横幅，保留敏感操作提示。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🛡</span>类型检查门禁</h3><p>CI 新增阻塞式全量类型检查，并修复了测试与演示代码中原有的类型错误。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🤖</span>AI 版本更稳</h3><p>AI 生成子工作流不再随意填版本，新建引用固定为目录当前最新版本。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🔢</span>版本串解析修复</h3><p>流程库面板插入子工作流时，不再把 <code>"1.2.0"</code> 这类版本串错误解析成 <code>120</code>。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">💬</span>统一对话框</h3><p>控制流卡片的原生 <code>alert</code> / <code>confirm</code> 改用项目自带对话框，重复的子步骤列表代码合并为 <code>StepListEditor</code>。</p></li>
-      </ul>
+
+      <ol class="funnel" aria-label="接入漏斗阶段">
+        <li><b>开始试用</b><code>trial_started</code></li>
+        <li><b>首份草稿</b><code>workflow_created</code></li>
+        <li><b>首次试跑</b><code>sandbox_run</code></li>
+        <li><b>上线</b><code>promotion_requested</code> · <code>promotion_state</code></li>
+      </ol>
+
+      <div class="bento-grid" style="margin-bottom:0;">
+        <div class="bento-card span-2">
+          <span class="bento-badge green">📊 首批事件（设计 §5.2）</span>
+          <h3>事件与用途</h3>
+          <div class="table-scroll">
+            <table class="ev-table">
+              <thead><tr><th scope="col">事件</th><th scope="col">触发</th><th scope="col">用途</th></tr></thead>
+              <tbody>
+                <tr><td><code>ide_opened</code></td><td>IDE 挂载</td><td>活跃度</td></tr>
+                <tr><td><code>trial_started</code></td><td>向导完成产品登记</td><td>漏斗：开始试用</td></tr>
+                <tr><td><code>workflow_created</code></td><td>向导生成骨架</td><td>漏斗：首份草稿</td></tr>
+                <tr><td><code>step_added</code></td><td>插入步骤（<code>props.source</code>：builtin / library / import / template）</td><td>能力复用情况</td></tr>
+                <tr><td><code>api_imported</code></td><td>接口导入（<code>props.count</code>、<code>props.format</code>）</td><td>接口导入使用率</td></tr>
+                <tr><td><code>sandbox_run</code></td><td>本地沙箱试跑（<code>props.result</code>）</td><td>漏斗：首次试跑</td></tr>
+                <tr><td><code>workflow_saved</code></td><td>触发 <code>onSave</code></td><td>保存</td></tr>
+                <tr><td><code>promotion_requested</code> / <code>promotion_state</code></td><td>申请上线 / 状态变化</td><td>漏斗：上线</td></tr>
+                <tr><td><code>ai_event</code></td><td>透传现有 <code>onAiEvent</code> 的类型（不含内容）</td><td>AI 使用情况</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="bento-card">
+          <span class="bento-badge orange">🚫 不采集</span>
+          <h3>只记“用了什么”</h3>
+          <p>事件只有名称、时间、IDE 类型、流程名与简单属性（<code>props</code> 里非 string / number / boolean 的值会被剔除）。</p>
+          <ul class="no-collect" aria-label="不采集的内容">
+            <li>参数值</li><li>表达式</li><li>提示词</li><li>对话内容</li><li>执行数据</li>
+          </ul>
+          <p style="margin-top:0.9rem; font-size:0.8rem;">生产首跑（KPI 口径）由服务端按执行数据判定，SDK 不上报“首跑成功”。</p>
+        </div>
+      </div>
+
+      <div class="fs-panel" style="margin-top:1.5rem;">
+        <div class="fs-panel-header">
+          <h3 class="fs-title">🖥 回放一次示意事件流 <span class="tag-sample">示意</span></h3>
+          <button type="button" class="mini-btn primary" id="btn-events">回放</button>
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.8rem;">演示站里同样的事件会按批次打印到浏览器控制台（<code>[telemetry]</code>）。下面按上面“五分钟走完”的名称回放一批示意事件，注意里面<strong>没有任何参数值</strong>。</p>
+        <pre class="term" id="term" tabindex="0" aria-label="示意事件流" aria-live="polite"><span class="empty">点击“回放”查看示意事件流……</span></pre>
+      </div>
     </section>
 
     <!-- ===================== 接下来 ===================== -->
@@ -1427,39 +1673,44 @@
       <div class="section-head">
         <div class="section-eyebrow">WHAT'S NEXT</div>
         <h2 class="section-title" id="next-title">接下来</h2>
-        <p class="section-desc">小步发版，每个小版本一个主题。每个新扩展点都会同时提供契约文档和 Demo 用的模拟实现，不接扩展点时行为不变。完整计划见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">docs/roadmap.md</a>。</p>
+        <p class="section-desc">小步发版，每个小版本一个主题；每个新扩展点同时提供契约文档和 Demo 用的模拟实现。导入的接口目前只存在于当前流程，<strong>登记为流程库能力</strong>要经审核，放在 v1.4.0 与发布审核流一起做。完整计划见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">docs/roadmap.md</a>。</p>
       </div>
-      <ul class="roadmap-grid">
-        <li class="rm-card"><div class="ver">v1.3.0</div><h3>自助接入</h3><div class="when">目标 2026-11-13</div><p>扩展点注册机制、自助接入向导（<code>OnboardingProvider</code>，含命名生成器）、接口导入（OpenAPI / curl → HTTP 任务）、接入漏斗埋点（<code>TelemetrySink</code>）。</p></li>
+      <ul class="roadmap-grid three">
         <li class="rm-card"><div class="ver">v1.4.0</div><h3>放心上线</h3><div class="when">目标 2026-12-11</div><p>发布审核流（<code>ReviewProvider</code>）、影子运行与一键回滚、AI 产出体检报告、默认可靠性模板、系统价值报告。</p></li>
         <li class="rm-card"><div class="ver">v1.5.0</div><h3>持续好用</h3><div class="when">目标 2027 Q1</div><p>Schema 助手（<code>ExecutionSampleProvider</code>）、模板中心接入组织模板源（<code>TemplateProvider</code>）、新手引导与“解释这个流程”。</p></li>
         <li class="rm-card labs"><div class="ver">Labs</div><h3>前沿探索</h3><div class="when">与稳定线并行 · 不承诺兼容</div><p>先做可验证的意图到流程、历史回放回归；之后探索能力即工具（MCP）、智能体编排、执行自愈、流程挖掘、类型化数据流、流程即代码。</p></li>
       </ul>
-      <p class="hero-note" style="text-align:center;">v1.2.0 目标发布时间为 2026-10-30，以 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/v1.2.0-release-plan.md" target="_blank" rel="noreferrer">发布计划</a> 为准。</p>
     </section>
 
     <!-- ===================== CTA ===================== -->
     <section class="section" id="try" aria-labelledby="try-title">
       <div class="section-head">
         <div class="section-eyebrow">TRY IT</div>
-        <h2 class="section-title" id="try-title">三分钟，在工作台里走一遍</h2>
-        <p class="section-desc">工作台跑在模拟治理服务上，所有流程库能力都是合成的演示数据。</p>
+        <h2 class="section-title" id="try-title">在工作台里亲手走一遍</h2>
+        <p class="section-desc">工作台跑在模拟治理服务上，所有数据都是合成的演示数据。下面的按钮名称取自当前演示站，界面调整时以工作台为准。</p>
       </div>
       <div class="fs-panel">
         <div class="two-col">
           <ol class="try-steps">
-            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>，使用默认的 <strong>👔 业务模式</strong>，并保持 <strong>💻 经典模式</strong>（层级控制只在经典模式下出现）。</li>
-            <li>在“📁 示例工作流...”下拉里选 <strong>📚 引用库能力（有新版本 / 版本不可用）</strong>。</li>
-            <li>展开步骤，看每个库能力的固定版本徽标；点 <strong>⬆ 有新版本</strong> 查看升级差异，确认后才会升级；<strong>⚠ 版本不可用</strong> 的步骤保持原样编译。</li>
-            <li>试试工具栏 <strong>📚 流程库...</strong>：“重新加载流程库”，或“模拟加载失败”后点击重试。</li>
-            <li>用 <strong>层级：不限 / L1 / L2 / L3</strong> 切换当前流程层级，再打开动作选择器添加步骤，观察被隐藏的高层能力。</li>
-            <li>切到 <strong>✨ AI 模式</strong>，让 AI 检索并引用库能力（可按业务域），生成的子工作流会带上固定版本。</li>
+            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>。顶栏 <strong>🧪 演示设置</strong> 里的 <strong>环境</strong> 默认是 <strong>TEST</strong>（开放自助试用）；切到 <strong>PROD</strong> 可以看到降级：没有“开始试用”，新建流程的类型可选 <code>custom</code> / <code>std</code>。</li>
+            <li>在 <strong>🧪 演示设置</strong> 里点 <strong>🔄 重置产品</strong>（在 TEST 下）：画布清空，出现 <strong>开始试用</strong> 引导卡片。登记产品时试试 <code>cmdb</code>，会得到“已被他人占用”及负责人列表。</li>
+            <li>工具栏 <strong>新建流程</strong>：3 步向导（产品 → 命名 → 起点），完成后得到 <code>tmp-…</code> 骨架流程。</li>
+            <li>用本地沙箱试跑，然后点 <strong>申请上线</strong>：选 <code>custom</code> / <code>std</code>，提交后进度约经 3–4 次轮询走完。</li>
+            <li>工具栏 <strong>导入接口</strong>：上传下面任一样例文件（也可粘贴内容），勾选接口后插入；看 <code>Authorization</code> 是否变成了占位。
+              <ul class="try-list">
+                <li><a class="link-inline" href="./sample-imports/cmdb-openapi3.json" download><code>cmdb-openapi3.json</code></a>（OpenAPI 3）</li>
+                <li><a class="link-inline" href="./sample-imports/ticket-swagger2.json" download><code>ticket-swagger2.json</code></a>（Swagger 2）</li>
+                <li><a class="link-inline" href="./sample-imports/cmdb-postman.json" download><code>cmdb-postman.json</code></a>（Postman v2.1）</li>
+              </ul>
+            </li>
+            <li>打开浏览器开发者工具的控制台，观察按批次打印的 <code>[telemetry]</code> 事件。</li>
           </ol>
           <ul class="link-list">
-            <li><a href="./app">🎮 打开工作台 /app<small>业务模式 + 演示库</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">📝 CHANGELOG<small>[Unreleased] 即 1.2.0 的全部变更</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">📘 宿主接入指南<small>docs/integration-guide.md</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">🧭 演进路线图<small>docs/roadmap.md</small></a></li>
+            <li><a href="./app">🎮 打开工作台 /app<small>TEST / PROD 环境 · 重置产品 · 导入接口</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/design/v1.3.0-%E8%87%AA%E5%8A%A9%E6%8E%A5%E5%85%A5%E8%AE%BE%E8%AE%A1.md" target="_blank" rel="noreferrer">🧭 v1.3.0 设计文档<small>docs/design/v1.3.0-自助接入设计.md</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">📘 宿主接入指南<small>第 4.5 – 4.7 节：providers、自助接入、接口导入</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">📝 CHANGELOG<small>[Unreleased] 即 1.3.0 的变更</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">🗺 演进路线图<small>docs/roadmap.md</small></a></li>
           </ul>
         </div>
       </div>
@@ -1468,7 +1719,8 @@
 
   <footer>
     <nav aria-label="页脚导航" style="margin-bottom: 1rem;">
-      <a href="./">⚡ v1.2.0 宣传页</a>
+      <a href="./">⚡ v1.3.0 最新宣传页</a>
+      <a href="./v1-2.html">📜 v1.2.0 历史页</a>
       <a href="./v1-1.html">📜 v1.1.0 历史页</a>
       <a href="./v1-0.html">📜 v1.0.0 历史首发页</a>
       <a href="./app">🎮 在线演练场</a>
@@ -1479,184 +1731,709 @@
   </footer>
 
   <script>
-    // ---- 安装命令切换 ----
-    const pmCmds = {
-      npm: 'npm install @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom',
-      pnpm: 'pnpm add @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom',
-      yarn: 'yarn add @yiyi_zhang/reactflow-ui@1.2.0 reactflow react react-dom',
-      import: "import { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';"
-    };
-    document.querySelectorAll('.pm-tab').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.pm-tab').forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
-        btn.classList.add('active');
-        btn.setAttribute('aria-pressed', 'true');
-        const cmd = document.getElementById('cli-cmd');
-        cmd.textContent = pmCmds[btn.dataset.pm];
-        cmd.style.whiteSpace = btn.dataset.pm === 'import' ? 'pre-wrap' : '';
-      });
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function setResult(node, kind, content) {
+    node.className = 'result' + (kind ? ' ' + kind : '');
+    clear(node);
+    if (content == null) return;
+    if (typeof content === 'string') node.textContent = content;
+    else node.appendChild(content);
+  }
+  function listOf(items) {
+    var ul = document.createElement('ul');
+    items.forEach(function (t) { ul.appendChild(el('li', '', t)); });
+    return ul;
+  }
+
+  // ======================================================================
+  // 安装命令切换 / 复制
+  // ======================================================================
+  var pmCmds = {
+    npm: 'npm install @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom',
+    pnpm: 'pnpm add @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom',
+    yarn: 'yarn add @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom',
+    'import': "import { WorkflowIDE, WorkflowIdeProvider } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';"
+  };
+  document.querySelectorAll('.pm-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.pm-tab').forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+      var cmd = $('cli-cmd');
+      cmd.textContent = pmCmds[btn.dataset.pm];
+      cmd.style.whiteSpace = btn.dataset.pm === 'import' ? 'pre-wrap' : '';
     });
+  });
+  function copyText(text, btn, doneText) {
+    var orig = btn.textContent;
+    var reset = function () { setTimeout(function () { btn.textContent = orig; }, 1500); };
+    var fail = function () { btn.textContent = '请手动复制'; reset(); };
+    try {
+      navigator.clipboard.writeText(text).then(function () { btn.textContent = doneText; reset(); }, fail);
+    } catch (e) { fail(); }
+  }
+  $('copy-install').addEventListener('click', function (e) { copyText($('cli-cmd').textContent, e.currentTarget, '✓ 已复制'); });
 
-    function copyText(text, btn, doneText) {
-      const orig = btn.textContent;
-      const done = () => { btn.textContent = doneText; setTimeout(() => { btn.textContent = orig; }, 1500); };
-      try {
-        navigator.clipboard.writeText(text).then(done, () => { btn.textContent = '请手动复制'; setTimeout(() => { btn.textContent = orig; }, 1500); });
-      } catch (e) { btn.textContent = '请手动复制'; setTimeout(() => { btn.textContent = orig; }, 1500); }
+  // 版本下拉：Esc 关闭并回到触发器
+  var vd = $('version-dropdown');
+  vd.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && vd.open) { vd.open = false; vd.querySelector('summary').focus(); }
+  });
+  document.addEventListener('click', function (e) { if (vd.open && !vd.contains(e.target)) vd.open = false; });
+
+  // ======================================================================
+  // 命名规范：与 src/library/naming.ts、src/onboarding/naming.ts 的规则和消息一致
+  // ======================================================================
+  var TYPES = ['std', 'proxy', 'tmp', 'custom'];
+  var LEVELS = ['L1', 'L2', 'L3'];
+  var DOMAINS = ['云资源', '配置管理', '监控运维', '数据服务', '通知协助', '安全服务', '服务管理', '运维操作', '系统工具', '应用管理'];
+
+  function parseWorkflowName(name) {
+    if (typeof name !== 'string') return null;
+    var p = name.split('-');
+    if (p.length < 5) return null;
+    if (TYPES.indexOf(p[0]) < 0 || LEVELS.indexOf(p[1]) < 0) return null;
+    return { type: p[0], level: p[1], domain: p[2], product: p[3], func: p.slice(4).join('-') };
+  }
+  function validateWorkflowName(name, allowedDomains) {
+    var errors = [];
+    if (typeof name !== 'string' || name.trim() === '') return ['流程名称不能为空'];
+    var p = name.split('-');
+    if (p.length < 5) errors.push('流程名称需为「类型-层级-业务域-产品-功能」5 段，以 - 分隔');
+    if (TYPES.indexOf(p[0]) < 0) errors.push('类型「' + p[0] + '」不合法，应为 ' + TYPES.join(' / ') + ' 之一');
+    if (p.length > 1 && LEVELS.indexOf(p[1]) < 0) errors.push('层级「' + p[1] + '」不合法，应为 L1 / L2 / L3 之一');
+    if (p.length >= 5) {
+      if (p[2] === '') errors.push('业务域不能为空');
+      else if (allowedDomains && allowedDomains.indexOf(p[2]) < 0) errors.push('业务域「' + p[2] + '」不在允许的列表中（' + allowedDomains.join('、') + '）');
+      if (p[3] === '') errors.push('产品不能为空');
+      if (p.slice(4).join('-') === '') errors.push('功能不能为空');
     }
-    document.getElementById('copy-install').addEventListener('click', (e) => copyText(document.getElementById('cli-cmd').textContent, e.currentTarget, '✓ 已复制'));
+    return errors;
+  }
+  function cleanSegment(s) { return (s || '').replace(/-/g, '').trim(); }
+  function buildWorkflowName(t, l, d, p, f) {
+    return [t, l, cleanSegment(d), cleanSegment(p), (f || '').trim()].join('-');
+  }
+  function suggestFuncSlug(text) {
+    var raw = (text || '').trim();
+    if (!raw) return '';
+    if (/[㐀-鿿]/.test(raw)) return raw.replace(/-/g, '').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+    return raw.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+  function promotionTargetName(tmpName, targetType) {
+    if (!parseWorkflowName(tmpName)) return null;
+    return targetType + tmpName.slice(tmpName.indexOf('-'));
+  }
 
-    // ---- 版本固定演示 ----
-    const QUERY_CI = 'std-L1-配置管理-cmdb-query_ci';
-    const SNAPSHOT = 'std-L1-云资源-ecs-snapshot';
-    const pinStates = {
-      pinned: {
-        icon: '🗂️', title: '查询配置项', name: QUERY_CI, version: 1,
-        badges: '<span class="lib-badge" title="已固定版本 v1，库升级后不会自动变化">📚 流程库 v1</span>',
-        note: '已固定 v1：即使库里已发布 v2，这一步的编译结果也不会变化。'
-      },
-      upgrade: {
-        icon: '🗂️', title: '查询配置项', name: QUERY_CI, version: 1,
-        badges: '<span class="lib-badge" title="已固定版本 v1">📚 流程库 v1</span><button type="button" class="lib-badge up" id="upgrade-badge" aria-haspopup="dialog" title="查看升级差异并升级到库中最新版本">⬆ 有新版本 v2</button>',
-        note: '库里有 v2，但当前步骤仍按 v1 编译。点击黄色徽标查看升级差异。'
-      },
-      unavailable: {
-        icon: '📸', title: '云主机快照', name: SNAPSHOT, version: 1,
-        badges: '<span class="lib-badge" title="已固定版本 v1">📚 流程库 v1</span><span class="lib-badge bad" title="固定版本在库中不存在、已撤回或已下线">⚠ 版本不可用</span>',
-        note: '演示库里 v1 已被治理服务撤回。步骤保持原样编译，不会自动改版本，由你决定如何处理。'
+  // ======================================================================
+  // 旅程状态
+  // ======================================================================
+  var S = {
+    env: 'TEST',
+    step: 0,
+    products: [{ name: 'ecs', domain: '云资源', role: 'OWNER' }],
+    product: 'ecs',
+    registered: false,
+    descTouched: false,
+    funcTouched: false,
+    name: '',
+    start: 'blank',
+    done: {},
+    promo: null,
+    promoTerminal: false
+  };
+  var FOREIGN = { cmdb: ['李四', '王五'] };
+  var panels = [0, 1, 2, 3, 4].map(function (i) { return $('jp-' + i); });
+  var stepBtns = document.querySelectorAll('.j-step-btn');
+
+  function currentProduct() {
+    for (var i = 0; i < S.products.length; i++) if (S.products[i].name === S.product) return S.products[i];
+    return S.products[0];
+  }
+  function markDone(i) { S.done[i] = true; renderNav(); }
+  function renderNav() {
+    stepBtns.forEach(function (b) {
+      var i = Number(b.dataset.step);
+      b.classList.toggle('done', !!S.done[i]);
+      if (i === S.step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+    });
+  }
+  function go(n, focusPanel) {
+    if (n > S.step && (S.step === 0 || S.step === 2 || (S.step === 1 && validateWorkflowName(S.name, DOMAINS).length === 0))) S.done[S.step] = true;
+    S.step = n;
+    panels.forEach(function (p, i) { p.hidden = i !== n; });
+    renderNav();
+    if (n === 1) renderBuilderChrome();
+    if (n === 2) renderStart();
+    if (n === 4) renderPromoHead();
+    if (focusPanel) { var h = panels[n].querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); } }
+  }
+  stepBtns.forEach(function (b) { b.addEventListener('click', function () { go(Number(b.dataset.step), true); }); });
+  document.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { go(Number(b.dataset.go), true); }); });
+
+  // ---- 环境切换 ----
+  function setEnv(env) {
+    S.env = env;
+    document.querySelectorAll('[data-env]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.env === env)); });
+    $('env-hint').innerHTML = env === 'TEST'
+      ? 'TEST 开放自助试用，流程名类型固定为 <code>tmp</code>'
+      : 'PROD 不开放自助试用（<code>trialEnabled = false</code>），新建流程的类型可选 <code>custom</code> / <code>std</code>';
+    renderRegisterGate();
+    buildTypeOptions();
+    syncFromBuilder();
+    renderPromoHead();
+  }
+  document.querySelectorAll('[data-env]').forEach(function (b) { b.addEventListener('click', function () { setEnv(b.dataset.env); }); });
+
+  // ======================================================================
+  // 步骤 1：登记产品
+  // ======================================================================
+  DOMAINS.forEach(function (d) { var o = el('option', '', d); o.value = d; $('prod-domain').appendChild(o); });
+  function renderProducts() {
+    var ul = $('my-products');
+    clear(ul);
+    S.products.forEach(function (p) {
+      var li = el('li', 'chip');
+      li.appendChild(el('b', '', p.name));
+      li.appendChild(document.createTextNode(' · ' + p.domain + ' · ' + p.role));
+      ul.appendChild(li);
+    });
+    var sel = $('nb-product');
+    clear(sel);
+    S.products.forEach(function (p) { var o = el('option', '', p.name); o.value = p.name; sel.appendChild(o); });
+    sel.value = S.product;
+  }
+  function renderRegisterGate() {
+    var prod = S.env === 'PROD';
+    $('btn-register').disabled = prod;
+    $('prod-name').disabled = prod;
+    $('prod-domain').disabled = prod;
+    if (prod) setResult($('register-result'), 'warn', '生产环境不开放自助试用：请在测试环境登记产品，或直接使用你已有的产品（上面的列表）。');
+    else if (!S.registered) setResult($('register-result'), '', null);
+  }
+  $('btn-register').addEventListener('click', function () {
+    var name = $('prod-name').value.trim();
+    var domain = $('prod-domain').value;
+    var out = $('register-result');
+    if (!name) { setResult(out, 'err', '请先填写产品名称。'); return; }
+    if (name.indexOf('-') >= 0) { setResult(out, 'err', '产品名称不合法：不能包含 -（会破坏五段命名的切分）。'); return; }
+    for (var i = 0; i < S.products.length; i++) {
+      if (S.products[i].name === name) {
+        S.product = name; renderProducts(); syncFromBuilder(); markDone(0);
+        setResult(out, 'ok', '「' + name + '」已经是你名下的产品，直接沿用。');
+        return;
       }
-    };
-    let pinState = 'pinned';
-    let upgraded = false;
-    const $ = (id) => document.getElementById(id);
-
-    function renderCompile(name, version, changed) {
-      $('ms-compile').innerHTML = '{ "type": "SUB_WORKFLOW",\n  "subWorkflowParam": { "name": "' + name + '",\n    "version": <span class="hl">' + version + '</span> } }' + (changed ? '  // 已升级' : '');
     }
-    function renderPin() {
-      const s = pinStates[pinState];
-      $('ms-icon').textContent = s.icon;
-      $('ms-title').textContent = s.title;
-      $('ms-name').textContent = s.name;
-      if (pinState === 'upgrade' && upgraded) {
-        $('ms-badges').innerHTML = '<span class="lib-badge" title="已固定版本 v2">📚 流程库 v2</span><span class="lib-badge ok">✓ 已升级</span>';
-        renderCompile(s.name, 2, true);
-        $('ms-note').textContent = '升级由你确认后才发生：同时清理已删除入参的值、补上新增入参的默认值；新增的必填入参仍需你自己填写。';
-      } else {
-        $('ms-badges').innerHTML = s.badges;
-        renderCompile(s.name, s.version, false);
-        $('ms-note').textContent = s.note;
+    if (FOREIGN[name]) {
+      setResult(out, 'warn', '产品「' + name + '」已存在，请联系负责人加入：' + FOREIGN[name].join('、') + '。（对应 startTrial 返回 conflict 与 owners）');
+      return;
+    }
+    S.products.push({ name: name, domain: domain, role: 'OWNER' });
+    S.product = name;
+    S.registered = true;
+    renderProducts(); syncFromBuilder(); markDone(0);
+    setResult(out, 'ok', '已登记「' + name + '」（业务域：' + domain + '），你是负责人，可以开始试用。上报 trial_started。');
+  });
+
+  // ======================================================================
+  // 步骤 2：命名生成器
+  // ======================================================================
+  function buildTypeOptions() {
+    var sel = $('nb-type');
+    clear(sel);
+    var opts = S.env === 'TEST' ? ['tmp'] : ['custom', 'std'];
+    opts.forEach(function (t) { var o = el('option', '', t); o.value = t; sel.appendChild(o); });
+    sel.disabled = S.env === 'TEST';
+    $('nb-type-hint').textContent = S.env === 'TEST' ? '试用环境类型固定为 tmp（临时流程，可申请上线）。' : '生产环境可选 custom / std。';
+  }
+  function renderBuilderChrome() {
+    $('nb-domain-view').textContent = currentProduct().domain;
+  }
+  function syncFromBuilder() {
+    var p = currentProduct();
+    $('nb-domain-view').textContent = p.domain;
+    S.name = buildWorkflowName($('nb-type').value, $('nb-level').value, p.domain, p.name, $('nb-func').value);
+    $('nb-full').value = S.name;
+    validateFull();
+  }
+  function validateFull() {
+    var name = $('nb-full').value;
+    S.name = name;
+    var errors = validateWorkflowName(name, DOMAINS);
+    var out = $('nb-result');
+    if (errors.length) {
+      var wrap = document.createElement('div');
+      wrap.appendChild(el('strong', '', 'validateWorkflowName 返回 ' + errors.length + ' 个错误：'));
+      wrap.appendChild(listOf(errors));
+      setResult(out, 'err', wrap);
+      markUndone(1);
+    } else {
+      setResult(out, 'ok', '✓ validateWorkflowName 通过：0 个错误。保存前 SDK 会用它提示命名问题（不阻断，服务端做权威校验）。');
+      if (S.step === 1) markDone(1);
+    }
+    renderSegs(name);
+  }
+  function markUndone(i) { delete S.done[i]; renderNav(); }
+  function renderSegs(name) {
+    var ol = $('nb-segs');
+    clear(ol);
+    var parsed = parseWorkflowName(name);
+    if (!parsed) return;
+    var segs = [['type', '类型', 'c1'], ['level', '层级', 'c2'], ['domain', '业务域', 'c3'], ['product', '产品', 'c4'], ['func', '功能', 'c5']];
+    segs.forEach(function (s, i) {
+      var li = el('li', 'name-seg ' + s[2]);
+      li.appendChild(el('b', '', parsed[s[0]] === '' ? '（空）' : parsed[s[0]]));
+      li.appendChild(el('span', '', s[1]));
+      ol.appendChild(li);
+      if (i < segs.length - 1) { var sep = el('li', 'name-sep', '-'); sep.setAttribute('aria-hidden', 'true'); ol.appendChild(sep); }
+    });
+  }
+  $('nb-type').addEventListener('change', syncFromBuilder);
+  $('nb-level').addEventListener('change', syncFromBuilder);
+  $('nb-product').addEventListener('change', function () { S.product = $('nb-product').value; syncFromBuilder(); });
+  $('nb-desc').addEventListener('input', function () {
+    if (!S.funcTouched) $('nb-func').value = suggestFuncSlug($('nb-desc').value);
+    syncFromBuilder();
+  });
+  $('nb-func').addEventListener('input', function () { S.funcTouched = true; syncFromBuilder(); });
+  $('nb-full').addEventListener('input', validateFull);
+
+  // ======================================================================
+  // 步骤 3：选择起点
+  // ======================================================================
+  var startNotes = {
+    blank: '空白：直接得到下面的骨架，从空画布开始加步骤。上报 workflow_created { source: "blank" }。',
+    template: '场景模板：打开模板中心，选定场景模板后以它为起点。仅在宿主提供模板入口时出现。上报 workflow_created { source: "template" }。',
+    'import': '从接口导入：打开“导入接口”，把已有接口生成的 HTTP 步骤追加到骨架上，仅在宿主提供导入入口时出现。上报 workflow_created { source: "import" }，插入时再上报 api_imported。'
+  };
+  function renderStart() {
+    document.querySelectorAll('.radio-card').forEach(function (c) { c.classList.toggle('on', c.querySelector('input').checked); });
+    var node = document.createElement('span');
+    node.appendChild(document.createTextNode(startNotes[S.start]));
+    if (S.start === 'import') {
+      node.appendChild(document.createTextNode(' '));
+      var a = el('a', 'link-inline', '先看看接口导入的演示 ↓');
+      a.href = '#import';
+      node.appendChild(a);
+    }
+    setResult($('start-result'), 'ok', node);
+    $('skeleton').textContent = JSON.stringify({
+      name: S.name,
+      description: $('nb-desc').value.trim(),
+      version: 1,
+      schemaVersion: 2,
+      tasks: [],
+      inputParameters: [],
+      outputParameters: {}
+    }, null, 2);
+  }
+  document.querySelectorAll('input[name="start"]').forEach(function (r) {
+    r.addEventListener('change', function () { S.start = r.value; renderStart(); });
+  });
+
+  // ======================================================================
+  // 步骤 4：沙箱试跑（示意）
+  // ======================================================================
+  var RUN_STEPS = [
+    { label: '查询配置项', type: 'SUB_WORKFLOW' },
+    { label: '发送群消息', type: 'SIMPLE' }
+  ];
+  S.runResult = null;
+  $('btn-run').addEventListener('click', function () {
+    var fail = $('inject-fail').checked;
+    var list = $('run-list');
+    clear(list);
+    RUN_STEPS.forEach(function (s, i) {
+      var st = fail && i === 1 ? 'FAILED' : 'COMPLETED';
+      var li = el('li', 'run-row');
+      li.appendChild(el('span', 'st ' + st, st));
+      li.appendChild(el('span', '', (i + 1) + '. ' + s.label));
+      li.appendChild(el('code', '', s.type));
+      list.appendChild(li);
+    });
+    S.runResult = fail ? 'FAILED' : 'COMPLETED';
+    if (fail) setResult($('run-result'), 'err', '流程 FAILED：第 2 步为注入的故障。可在沙箱配置台里取消注入，或改 Mock 输出后重跑。上报 sandbox_run { result: "FAILED" }。');
+    else { setResult($('run-result'), 'ok', '流程 COMPLETED，全程在浏览器里完成，没有请求后端。上报 sandbox_run { result: "COMPLETED" }。'); markDone(3); }
+  });
+
+  // ======================================================================
+  // 步骤 5：申请上线（示意）
+  // ======================================================================
+  var PROMO_COMMENT = { APPROVED: '审批通过', REJECTED: '演示驳回：功能说明不完整，请补充后重新申请' };
+  var PROMO_LABEL = { SUBMITTED: '已提交', REVIEWING: '审核中', APPROVED: '已通过', REJECTED: '已驳回' };
+  function isPromotable() { var p = parseWorkflowName(S.name); return !!p && p.type === 'tmp'; }
+  function renderPromoHead() {
+    $('pr-name').value = S.name;
+    var tn = promotionTargetName(S.name, $('pr-target').value);
+    $('pr-final').value = tn || '（名称不符合五段规范）';
+    if (S.promo) return;
+    var ok = isPromotable();
+    $('btn-submit').disabled = !ok;
+    if (!ok) {
+      var p = parseWorkflowName(S.name);
+      setResult($('promo-result'), 'warn', p
+        ? '只有 tmp 类型的临时流程可以申请上线；当前类型是 ' + p.type + '（生产环境创建的 custom / std 流程不走这条路径）。'
+        : '当前流程名称还不符合五段规范，请先回到第 2 步修正。');
+    } else setResult($('promo-result'), '', null);
+    renderTimeline();
+  }
+  function timelineStates() {
+    var rej = S.promo ? S.promo.reject : $('pr-reject').checked;
+    return rej ? ['SUBMITTED', 'REVIEWING', 'REJECTED'] : ['SUBMITTED', 'REVIEWING', 'APPROVED'];
+  }
+  function renderTimeline() {
+    var ol = $('promo-tl');
+    clear(ol);
+    var states = timelineStates();
+    var curIdx = S.promo ? S.promo.idx : -2;
+    states.forEach(function (s, i) {
+      var cls = '';
+      if (i < curIdx) cls = 'done';
+      else if (i === curIdx) cls = s === 'REJECTED' ? 'rej' : (s === 'APPROVED' ? 'done' : 'cur');
+      var li = el('li', cls);
+      li.appendChild(el('span', 'dot'));
+      var c = el('code', '', s);
+      li.appendChild(c);
+      li.appendChild(document.createTextNode(' ' + PROMO_LABEL[s]));
+      if (i === curIdx && (s === 'APPROVED' || s === 'REJECTED')) {
+        var sm = el('small', '', PROMO_COMMENT[s] + (s === 'APPROVED' ? '；正式名称：' + S.promo.target : ''));
+        li.appendChild(sm);
+        if (s === 'APPROVED') li.appendChild(el('small', '', '之后由服务端同步到生产（SYNCED）。'));
       }
-      const ub = $('upgrade-badge');
-      if (ub) ub.addEventListener('click', openDialog);
-    }
-    function openDialog() {
-      const d = $('mock-dialog');
-      d.classList.add('open');
-      d.focus();
-    }
-    function closeDialog(returnFocus) {
-      $('mock-dialog').classList.remove('open');
-      if (returnFocus) { const ub = $('upgrade-badge'); if (ub) ub.focus(); }
-    }
-    document.querySelectorAll('.state-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.state-btn').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-        btn.setAttribute('aria-pressed', 'true');
-        pinState = btn.dataset.state;
-        upgraded = false;
-        closeDialog(false);
-        renderPin();
-      });
+      if (i === curIdx) li.setAttribute('aria-current', 'step');
+      ol.appendChild(li);
     });
-    $('dlg-cancel').addEventListener('click', () => closeDialog(true));
-    $('dlg-ok').addEventListener('click', () => { upgraded = true; closeDialog(false); renderPin(); });
-    $('mock-dialog').addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { e.stopPropagation(); closeDialog(true); }
-    });
-    renderPin();
+  }
+  ['pr-target', 'pr-reject'].forEach(function (id) { $(id).addEventListener('change', function () { if (!S.promo) { renderPromoHead(); } }); });
+  $('btn-submit').addEventListener('click', function () {
+    var target = $('pr-target').value;
+    S.promo = { idx: -1, polls: 0, reject: $('pr-reject').checked, target: promotionTargetName(S.name, target), targetType: target };
+    S.promoTerminal = false;
+    $('btn-submit').disabled = true;
+    $('pr-target').disabled = true; $('pr-reject').disabled = true;
+    $('btn-poll').disabled = false;
+    $('btn-restart').hidden = false;
+    setResult($('promo-result'), '', '申请已提交（requestId: promo-1）。上报 promotion_requested { targetType: "' + target + '" }。点“刷新进度”模拟一次轮询。');
+    renderTimeline();
+    $('btn-poll').focus();
+  });
+  $('btn-poll').addEventListener('click', function () {
+    if (!S.promo || S.promoTerminal) return;
+    var states = timelineStates();
+    S.promo.idx = Math.min(S.promo.polls, states.length - 1);
+    S.promo.polls += 1;
+    var s = states[S.promo.idx];
+    var out = $('promo-result');
+    if (s === 'APPROVED') {
+      S.promoTerminal = true; $('btn-poll').disabled = true; markDone(4);
+      setResult(out, 'ok', '🎉 申请已通过，正式名称 ' + S.promo.target + '。五步走完：登记 → 命名 → 起点 → 试跑 → 上线申请。上报 promotion_state { state: "APPROVED" }。');
+    } else if (s === 'REJECTED') {
+      S.promoTerminal = true; $('btn-poll').disabled = true;
+      setResult(out, 'err', '申请被驳回：' + PROMO_COMMENT.REJECTED + '。修改流程后可重新申请上线。上报 promotion_state { state: "REJECTED" }。');
+    } else {
+      setResult(out, 'warn', '当前状态 ' + s + '（' + PROMO_LABEL[s] + '）。真实 SDK 会按退避间隔继续轮询，直到终态。上报 promotion_state { state: "' + s + '" }。');
+    }
+    renderTimeline();
+  });
+  $('btn-restart').addEventListener('click', function () {
+    S.promo = null; S.promoTerminal = false;
+    $('pr-target').disabled = false; $('pr-reject').disabled = false;
+    $('btn-poll').disabled = true; $('btn-restart').hidden = true;
+    delete S.done[4];
+    renderPromoHead(); renderNav();
+    $('btn-submit').focus();
+  });
 
-    // ---- 动作选择器：业务域分组 + 层级过滤 ----
-    const RANK = { L1: 1, L2: 2, L3: 3 };
-    const pickerItems = [
-      { domain: '云资源', level: 'L1', name: '创建云主机', icon: '🖥️' },
-      { domain: '云资源', level: 'L1', name: '云主机快照', icon: '📸' },
-      { domain: '监控运维', level: 'L1', name: '查询监控指标', icon: '📈' },
-      { domain: '监控运维', level: 'L2', name: '告警自动扩容', icon: '📊' },
-      { domain: '通知协助', level: 'L1', name: '发送短信', icon: '📱' },
-      { domain: '通知协助', level: 'L1', name: '发送群消息卡片', icon: '💬' },
-      { domain: '配置管理', level: 'L1', name: '查询配置项', icon: '🗂️' },
-      { domain: '运维操作', level: 'L2', name: '漏洞修复', icon: '🛠️' },
-      { domain: '应用管理', level: 'L3', name: '应用全量发布', icon: '🚀' },
-      { domain: '安全服务', level: 'L1', name: '临时授权', icon: '🔑' },
-      { domain: '数据服务', level: 'L1', name: '导出报表', icon: '📄' }
-    ];
-    let currentLevel = '';
-    function renderPicker() {
-      const visible = pickerItems.filter((it) => !currentLevel || RANK[it.level] <= RANK[currentLevel]);
-      const domains = [];
-      pickerItems.forEach((it) => { if (!domains.includes(it.domain)) domains.push(it.domain); });
-      const root = $('picker-groups');
-      root.innerHTML = '';
-      domains.forEach((d) => {
-        const items = visible.filter((it) => it.domain === d);
-        if (!items.length) return;
-        const g = document.createElement('div');
-        g.className = 'picker-group';
-        const h = document.createElement('h4');
-        h.textContent = d;
-        const ul = document.createElement('ul');
-        ul.className = 'picker-items';
-        items.forEach((it) => {
-          const li = document.createElement('li');
-          li.className = 'picker-item';
-          const ic = document.createElement('span'); ic.setAttribute('aria-hidden', 'true'); ic.textContent = it.icon;
-          const nm = document.createElement('span'); nm.textContent = it.name;
-          const lv = document.createElement('span'); lv.className = 'lv ' + it.level; lv.textContent = it.level;
-          li.append(ic, nm, lv);
+  // ======================================================================
+  // 接口导入演示（简化版 curl 解析，示意）
+  // ======================================================================
+  var PRESETS = {
+    bearer: "curl -X POST 'https://itsm.example.com/api/tickets?notify=true' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer sample-token-123' \\\n  -d '{\"title\":\"磁盘告警\",\"priority\":\"high\"}'",
+    basic: 'curl -u admin:sample-password "https://monitor.example.com/api/metrics?name=cpu&access_token=sample-abc&limit=10"',
+    openapi: '{\n  "openapi": "3.0.3",\n  "info": { "title": "CMDB 资产管理", "version": "1.0.0" },\n  "paths": {\n    "/assets": {\n      "get": { "summary": "查询资产列表" },\n      "post": { "summary": "新增资产" }\n    }\n  }\n}',
+    yaml: 'openapi: 3.0.3\ninfo:\n  title: CMDB 资产管理\n  version: 1.0.0\npaths: {}'
+  };
+  var SENSITIVE_HEADER = /^(authorization|cookie|set-cookie|proxy-authorization|x-api-key)$/i;
+  var SENSITIVE_NAME = /token|secret|api[-_]?key|passw(or)?d/i;
+  function isSensitiveHeader(n) { return SENSITIVE_HEADER.test(n.trim()) || SENSITIVE_NAME.test(n); }
+  function camelName(s) {
+    return s.split(/[^A-Za-z0-9]+/).filter(Boolean).map(function (w, i) {
+      return i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    }).join('');
+  }
+  function placeholder(n) { return '$' + '{workflow.input.' + camelName(n) + '}'; }
+
+  function tokenize(src) {
+    var s = src.replace(/\\\r?\n/g, ' ');
+    var out = [], cur = '', q = null, has = false;
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      if (q) {
+        if (c === q) q = null;
+        else if (q === '"' && c === '\\' && '"\\$`'.indexOf(s.charAt(i + 1)) >= 0) { cur += s.charAt(i + 1); i++; }
+        else cur += c;
+      } else if (/\s/.test(c)) {
+        if (has) { out.push(cur); cur = ''; has = false; }
+      } else if (c === '$' && s.charAt(i + 1) === "'" && !has) {
+        continue;
+      } else if (c === "'" || c === '"') { q = c; has = true; }
+      else if (c === '\\') { cur += s.charAt(i + 1); i++; has = true; }
+      else { cur += c; has = true; }
+    }
+    if (has) out.push(cur);
+    return out;
+  }
+
+  var VALUE_FLAGS = { '-A': 1, '-b': 1, '-e': 1, '-o': 1, '-m': 1, '-x': 1, '-F': 1, '--max-time': 1, '--output': 1, '--user-agent': 1, '--referer': 1, '--proxy': 1, '--cookie': 1 };
+  function parseCurlSimple(text) {
+    var t = tokenize(text);
+    while (t.length && (t[0] === '$' || t[0] === 'sudo')) t.shift();
+    if (!t.length || t[0] !== 'curl') return { error: '不是 curl 命令（应以 curl 开头）' };
+    var r = { method: null, url: null, headers: [], data: [], auth: null, get: false, cookie: null };
+    for (var i = 1; i < t.length; i++) {
+      var a = t[i];
+      var val = function () { i++; return t[i]; };
+      if (a === '-X' || a === '--request') r.method = (val() || '').toUpperCase();
+      else if (/^-X.+/.test(a)) r.method = a.slice(2).toUpperCase();
+      else if (a === '-H' || a === '--header') { var h = val() || ''; var k = h.indexOf(':'); if (k > 0) r.headers.push([h.slice(0, k).trim(), h.slice(k + 1).trim()]); }
+      else if (a === '-d' || a === '--data' || a === '--data-raw' || a === '--data-binary') r.data.push(val() || '');
+      else if (a === '-u' || a === '--user') r.auth = val() || '';
+      else if (a === '--url') r.url = val();
+      else if (a === '-G' || a === '--get') r.get = true;
+      else if (VALUE_FLAGS[a]) val();
+      else if (/^-/.test(a)) continue;
+      else if (!r.url) r.url = a;
+    }
+    if (!r.url) return { error: '没有找到请求地址（URL）' };
+    if (!/^https?:\/\//i.test(r.url)) r.url = 'https://' + r.url;
+    r.method = r.method || (r.data.length && !r.get ? 'POST' : 'GET');
+    return r;
+  }
+
+  function renderCurl(text) {
+    var out = $('curl-out');
+    clear(out);
+    var trimmed = text.trim();
+    if (!trimmed) { out.appendChild(el('p', '', '在左侧粘贴内容，或点上方“填入示例”。')); return; }
+
+    // 格式识别（简化）
+    if (/^\s*(openapi|swagger)\s*:/m.test(trimmed) && trimmed.charAt(0) !== '{') {
+      out.appendChild(el('h4', '', '识别结果'));
+      var e = el('div', 'result err', '检测到 YAML：YAML 请先转为 JSON 后再导入。1.3.0 不引入 YAML 依赖。');
+      out.appendChild(e);
+      return;
+    }
+    if (trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') {
+      var doc = null;
+      try { doc = JSON.parse(trimmed); } catch (err) { /* 非法 JSON */ }
+      out.appendChild(el('h4', '', '识别结果'));
+      if (!doc) { out.appendChild(el('div', 'result err', 'JSON 解析失败，请检查格式。')); return; }
+      var fmt = null;
+      if (doc.openapi && String(doc.openapi).charAt(0) === '3') fmt = 'OpenAPI 3.x（JSON）';
+      else if (doc.swagger === '2.0') fmt = 'Swagger 2.0（JSON）';
+      else if (doc.info && doc.item && /postman/i.test(JSON.stringify(doc.info))) fmt = 'Postman Collection v2.1（JSON）';
+      if (!fmt) { out.appendChild(el('div', 'result warn', '无法识别的 JSON：不是 OpenAPI 3 / Swagger 2 / Postman v2.1。')); return; }
+      out.appendChild(el('div', 'result ok', '识别为 ' + fmt + '。真实导入面板会列出全部接口供勾选，下面是从 paths 里读到的接口：'));
+      var ops = [];
+      Object.keys(doc.paths || {}).forEach(function (p) {
+        Object.keys(doc.paths[p]).forEach(function (m) { if (/^(get|post|put|delete|patch)$/i.test(m)) ops.push([m.toUpperCase(), p, (doc.paths[p][m] || {}).summary || '']); });
+      });
+      if (ops.length) {
+        var ul = document.createElement('ul'); ul.style.listStyle = 'none'; ul.style.marginTop = '0.6rem';
+        ops.forEach(function (o) {
+          var li = el('li', '', ''); li.style.margin = '0.3rem 0';
+          li.appendChild(el('span', 'method ' + o[0], o[0]));
+          li.appendChild(el('span', 'url-line', o[1]));
+          if (o[2]) li.appendChild(document.createTextNode('  ' + o[2]));
           ul.appendChild(li);
         });
-        g.append(h, ul);
-        root.appendChild(g);
-      });
-      const hidden = pickerItems.length - visible.length;
-      $('picker-status').textContent = currentLevel
-        ? '当前流程为 ' + currentLevel + '：显示 ' + visible.length + ' 个能力，隐藏 ' + hidden + ' 个违反分层规则的能力。'
-        : '未设置 currentWorkflowLevel：不做层级过滤，显示全部 ' + visible.length + ' 个能力。业务域按目录中首次出现的顺序排列，无业务域的归“其他”并排在最后。';
+        out.appendChild(ul);
+      }
+      return;
     }
-    document.querySelectorAll('.seg-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.seg-btn').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-        btn.setAttribute('aria-pressed', 'true');
-        currentLevel = btn.dataset.level;
-        renderPicker();
-      });
-    });
-    renderPicker();
 
-    // ---- 接入代码示例 ----
-    const codeSnippets = {"shared": "import { useMemo } from 'react';\nimport { WorkflowIDE } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';\n// 治理服务版 LibraryProvider，完整实现见接入指南第 5 节\nimport { createGovernanceLibraryProvider } from './governanceLibraryProvider';\n\nexport function WorkflowStudio({ mode }: { mode: 'business' | 'ai' }) {\n  // 同一个 Provider 同时喂给两个 IDE；引用必须稳定\n  const libraryProvider = useMemo(\n    () => createGovernanceLibraryProvider({\n      baseUrl: '',\n      headers: () => ({ Authorization: `Bearer ${getToken()}` }),\n    }),\n    [],\n  );\n\n  return (\n    <div style={{ height: '100vh' }}>\n      {mode === 'ai' ? (\n        <AiWorkflowIDE\n          libraryProvider={libraryProvider}\n          promptCatalogLimit={50} // 默认 50，超出部分由 AI 检索\n          aiConfig={{ apiKey: '', transport: { type: 'endpoint', url: '/api/ai/chat' } }}\n        />\n      ) : (\n        <WorkflowIDE\n          uiMode=\"business\"\n          libraryProvider={libraryProvider}\n          currentWorkflowLevel=\"L2\" // L2 看不到 L3 能力\n          onSave={saveToGovernance}\n        />\n      )}\n    </div>\n  );\n}", "api": "// 治理服务需要提供的流程库接口（权限在服务端判断）\n\nGET /api/library/catalog?kind=WORKFLOW,TASK\n  → LibraryListResult\n    已发布与已下线（deprecated: true）的能力，每个名称给当前版本；\n    inputSchema / outputSchema 要完整；支持 ETag / If-None-Match → 304\n\nGET /api/library/workflows/{name}/versions/{version}\n  → LibraryWorkflowRecord（完整定义）\n    版本不存在 / 已撤回 / 无权限：统一 404（对应前端的「版本不可用」）\n\nGET /api/library/search?q=&level=&domain=&limit=\n  → LibraryWorkflowRecord[]\n    服务端检索，后续提供，默认不启用（enableSearch）", "conductor": "import { createConductorLibraryProvider } from '@yiyi_zhang/reactflow-ui';\n\n// 仅限本地开发 / 没有治理服务的环境；内部项目请用治理服务版\nconst libraryProvider = createConductorLibraryProvider({\n  baseUrl: 'https://conductor.example.com/api',\n  headers: () => ({ Authorization: `Bearer ${getToken()}` }), // 组件库不保存凭据\n  filter: (def) => def.name.startsWith('std-'),                // 限定流程库范围\n  resolveExtension: (def) => lookupExtension(def.name),        // 补充层级 / 业务域 / 分类 / 下线标记\n});"};
-    const codeNotes = {
-      shared: 'Provider 必须保持引用稳定：<code>libraryProvider</code> 的引用一变化，IDE 就会丢弃已加载的目录并重新请求。组件按父容器高度撑满，请给容器明确的高度。',
-      api: '权限全部在服务端判断，前端不做任何权限过滤。示例实现见仓库 <code>src/demo/examples/governanceLibraryProvider.ts</code>（ETag 缓存、404 → <code>null</code>、认证头注入、<code>AbortSignal</code>）。',
-      conductor: '<code>createConductorLibraryProvider</code> 直接读取 Conductor OSS 元数据接口，绕过治理服务的权限与发布 / 下线 / 撤回状态，<strong>仅适合本地开发或没有治理服务的环境</strong>；内部项目请使用治理服务版。'
-    };
-    let codeKey = 'shared';
-    function renderCode() {
-      $('qs-code-body').textContent = codeSnippets[codeKey];
-      $('qs-note').innerHTML = codeNotes[codeKey];
+    var r = parseCurlSimple(text);
+    if (r.error) { out.appendChild(el('h4', '', '识别结果')); out.appendChild(el('div', 'result err', r.error)); return; }
+
+    var warnings = [];
+    var u = r.url, qs = '';
+    var qi = u.indexOf('?');
+    if (qi >= 0) { qs = u.slice(qi + 1); u = u.slice(0, qi); }
+    var qparts = qs ? qs.split('&').filter(Boolean).map(function (kv) {
+      var k = kv.indexOf('='); return k < 0 ? [kv, ''] : [kv.slice(0, k), kv.slice(k + 1)];
+    }) : [];
+    var qsOut = qparts.map(function (kv) { return isSensitiveHeader(kv[0]) ? [kv[0], placeholder(kv[0]), true, kv[1]] : [kv[0], kv[1], false, kv[1]]; });
+
+    var hdrs = r.headers.map(function (h) {
+      if (isSensitiveHeader(h[0]) && h[1].indexOf('$' + '{') < 0) {
+        warnings.push('请求头 ' + h[0] + ' 含敏感信息，已替换为 ' + placeholder(h[0]) + '；请在流程入参中提供（值需包含完整头内容，如 Bearer xxx），或改用凭据管理，不会写入流程定义');
+        return [h[0], placeholder(h[0]), true];
+      }
+      return [h[0], h[1], false];
+    });
+    if (r.auth != null) {
+      warnings.push('curl -u 含账号密码，已替换为 Authorization: ' + placeholder('Authorization') + '；不会写入流程定义');
+      hdrs.push(['Authorization', placeholder('Authorization'), true]);
     }
-    document.querySelectorAll('.qs-tab').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.qs-tab').forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
-        btn.classList.add('active');
-        btn.setAttribute('aria-pressed', 'true');
-        codeKey = btn.dataset.code;
-        renderCode();
+    qsOut.forEach(function (q) { if (q[2]) warnings.push('查询参数 ' + q[0] + ' 名称敏感，默认值已替换为 ' + q[1]); });
+
+    var rawBody = r.data.join('&');
+    var bodyOut = rawBody, bodyObj = null;
+    if (rawBody) {
+      try {
+        bodyObj = JSON.parse(rawBody);
+        if (bodyObj && typeof bodyObj === 'object' && !Array.isArray(bodyObj)) {
+          Object.keys(bodyObj).forEach(function (k) {
+            if (SENSITIVE_NAME.test(k)) { bodyObj[k] = placeholder(k); warnings.push('请求体字段 ' + k + ' 名称敏感，默认值已替换为 ' + placeholder(k)); }
+          });
+          bodyOut = JSON.stringify(bodyObj, null, 2);
+        }
+      } catch (err) { bodyObj = null; }
+    }
+
+    out.appendChild(el('h4', '', '识别结果'));
+    var line = el('div', '');
+    line.appendChild(el('span', 'method ' + r.method, r.method));
+    line.appendChild(el('span', 'url-line', u));
+    out.appendChild(line);
+
+    if (hdrs.length) {
+      out.appendChild(el('h4', '', '请求头'));
+      var tb = document.createElement('table'); tb.className = 'hdr-table';
+      var thead = document.createElement('thead'); var hr = document.createElement('tr');
+      ['名称', '导入前 → 导入后'].forEach(function (x) { var th = el('th', '', x); th.scope = 'col'; hr.appendChild(th); });
+      thead.appendChild(hr); tb.appendChild(thead);
+      var tbody = document.createElement('tbody');
+      hdrs.forEach(function (h) {
+        var tr = document.createElement('tr');
+        tr.appendChild(el('td', '', h[0]));
+        var td = document.createElement('td');
+        if (h[2]) { td.appendChild(el('span', 'mask', '••••••')); td.appendChild(document.createTextNode(' → ')); td.appendChild(el('span', 'sub', h[1])); }
+        else td.textContent = h[1];
+        tr.appendChild(td); tbody.appendChild(tr);
+      });
+      tb.appendChild(tbody); out.appendChild(tb);
+    }
+    if (qsOut.length) {
+      out.appendChild(el('h4', '', '查询参数'));
+      var tq = document.createElement('table'); tq.className = 'hdr-table';
+      var qb = document.createElement('tbody');
+      qsOut.forEach(function (q) {
+        var tr = document.createElement('tr');
+        tr.appendChild(el('td', '', q[0]));
+        var td = document.createElement('td');
+        if (q[2]) { td.appendChild(el('span', 'mask', '••••••')); td.appendChild(document.createTextNode(' → ')); td.appendChild(el('span', 'sub', q[1])); }
+        else td.textContent = q[1];
+        tr.appendChild(td); qb.appendChild(tr);
+      });
+      tq.appendChild(qb); out.appendChild(tq);
+    }
+    if (rawBody) { out.appendChild(el('h4', '', '请求体')); out.appendChild(el('pre', 'mini-code', bodyOut)); }
+
+    // 编译为 Conductor HTTP 任务（示意）
+    var headersObj = {};
+    hdrs.forEach(function (h) { headersObj[h[0]] = h[1]; });
+    var uri = u + (qsOut.length ? '?' + qsOut.map(function (q) { return q[0] + '=' + q[1]; }).join('&') : '');
+    var req = { uri: uri, method: r.method };
+    if (hdrs.length) req.headers = headersObj;
+    if (rawBody) req.body = bodyObj && typeof bodyObj === 'object' ? bodyObj : rawBody;
+    out.appendChild(el('h4', '', '编译为 HTTP 任务（示意）'));
+    out.appendChild(el('pre', 'mini-code', JSON.stringify({ type: 'HTTP', inputParameters: { http_request: req } }, null, 2)));
+
+    if (warnings.length) {
+      var w = el('div', 'result warn'); w.appendChild(listOf(warnings)); out.appendChild(w);
+    }
+  }
+  $('curl-in').addEventListener('input', function () { renderCurl($('curl-in').value); });
+  document.querySelectorAll('[data-preset]').forEach(function (b) {
+    b.addEventListener('click', function () { $('curl-in').value = PRESETS[b.dataset.preset]; renderCurl($('curl-in').value); });
+  });
+  $('curl-in').value = PRESETS.bearer;
+  renderCurl($('curl-in').value);
+
+  // ======================================================================
+  // 扩展点代码示例
+  // ======================================================================
+  var codeSnippets = {
+    register: "import { WorkflowIDE, WorkflowIdeProvider } from '@yiyi_zhang/reactflow-ui';\nimport type { IdeProviders } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';\n\n// provider 实例只创建一次（模块级 / useMemo），不要在渲染中反复创建\nconst providers: IdeProviders = {\n  library: libraryProvider,       // 1.2.0 已有：流程库\n  onboarding: onboardingProvider, // 1.3.0：新建流程向导 + 申请上线\n  telemetry: telemetrySink,       // 1.3.0：接入漏斗埋点\n};\n\nexport function WorkflowStudio({ mode }: { mode: 'business' | 'ai' }) {\n  return (\n    <WorkflowIdeProvider providers={providers}>\n      <div style={{ height: '100vh' }}>\n        {mode === 'ai' ? (\n          <AiWorkflowIDE aiConfig={aiConfig} />\n        ) : (\n          <WorkflowIDE uiMode=\"business\" onSave={saveToGovernance} />\n        )}\n      </div>\n    </WorkflowIdeProvider>\n  );\n}",
+    override: "// 解析顺序（逐字段）：\n// 组件专用 prop > 组件 providers prop > 外层 WorkflowIdeProvider > 无\n\n// 只覆盖 library，onboarding / telemetry 仍取外层\n<WorkflowIDE libraryProvider={anotherLibrary} />\n\n// 只覆盖这个组件的 telemetry\n<WorkflowIDE providers={{ telemetry: anotherSink }} />\n\n// 组件内读取外层配置\nimport { useIdeProviders } from '@yiyi_zhang/reactflow-ui';\nconst providers = useIdeProviders();\n\n// 只传 libraryProvider、不用 WorkflowIdeProvider：行为与 1.2.0 一致\n<WorkflowIDE libraryProvider={libraryProvider} />",
+    demo: "// Demo（src/demo/mockProviders.ts，只供演示站使用，不进入包产物）\nconst providers = createMockProviders();\n// = {\n//   library: createMockGovernanceProvider(),   // 模拟流程库\n//   onboarding: createMockOnboardingProvider(), // 模拟自助接入：内存产品 / 冲突 / 失败注入 / 上线进度\n//   telemetry: consoleSink,                     // 控制台按批次打印 [telemetry]\n// }\n\n// 内部项目按治理服务契约实现，不改 SDK 代码：\n//   library    → 治理服务 /api/library/*\n//   onboarding → /api/library/domains、/api/products/mine、\n//                /api/onboarding/trial、/api/onboarding/promote\n//   telemetry  → 事件接收接口（可用 navigator.sendBeacon）"
+  };
+  var codeNotes = {
+    register: '<code>providers</code> 对象每次渲染新建没关系：SDK 按字段比较引用，只有某个 provider 实例变了才重新加载对应数据。但 provider 本身（如 <code>createGovernanceLibraryProvider(...)</code>）应只创建一次。组件按父容器高度撑满，请给容器明确的高度。',
+    override: '<code>WorkflowIdeProvider</code> 与 <code>useIdeProviders</code>、<code>IdeProviders</code> 类型均从主入口和 <code>/ai</code> 入口导出。',
+    demo: '演示站接的全是模拟实现：Demo 顶栏「🧪 演示设置」可切换 TEST / PROD 环境、重置产品；登记 <code>cmdb</code> 会得到冲突，上线申请约经 3–4 次轮询走完。契约与示例实现见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a> 4.5 – 4.6 节。'
+  };
+  var codeKey = 'register';
+  function renderCode() {
+    $('qs-code-body').textContent = codeSnippets[codeKey];
+    $('qs-note').innerHTML = codeNotes[codeKey];
+  }
+  document.querySelectorAll('.qs-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.qs-tab').forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+      btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
+      codeKey = btn.dataset.code; renderCode();
+    });
+  });
+  $('copy-code').addEventListener('click', function (e) { copyText(codeSnippets[codeKey], e.currentTarget, '✓ 已复制代码'); });
+  renderCode();
+
+  // ======================================================================
+  // 示意事件流
+  // ======================================================================
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  function stamp(d) { return two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds()); }
+  function fmtProps(o) {
+    return '{ ' + Object.keys(o).map(function (k) { var v = o[k]; return k + ': ' + (typeof v === 'string' ? "'" + v + "'" : v); }).join(', ') + ' }';
+  }
+  $('btn-events').addEventListener('click', function () {
+    var term = $('term');
+    clear(term);
+    var wf = S.name || 'tmp-L1-云资源-ecs-snapshot_check';
+    var dom = currentProduct().domain;
+    var t = new Date();
+    var batches = [
+      [['ide_opened', {}], ['trial_started', { domain: dom }], ['workflow_created', { level: $('nb-level').value, source: S.start }]],
+      [['api_imported', { format: 'curl', count: 1 }], ['step_added', { source: 'import' }], ['sandbox_run', { result: S.runResult || 'COMPLETED' }]],
+      [['promotion_requested', { targetType: $('pr-target').value }], ['promotion_state', { state: 'APPROVED' }]]
+    ];
+    var offset = 0;
+    batches.forEach(function (b, bi) {
+      term.appendChild(el('span', 'grp', '▸ [telemetry] ' + b.length + ' 条事件' + (bi === 0 ? '（5 秒攒批）' : bi === 1 ? '（下一批）' : '（页面隐藏时 flush）') + '\n'));
+      b.forEach(function (ev) {
+        offset += 7;
+        var props = ev[1];
+        var text = '  ' + stamp(new Date(t.getTime() + offset * 1000)) + ' ';
+        term.appendChild(document.createTextNode(text));
+        term.appendChild(el('span', 'ev', ev[0]));
+        var meta = { ide: 'workflow', workflowName: wf };
+        Object.keys(props).forEach(function (k) { meta[k] = props[k]; });
+        term.appendChild(document.createTextNode(' ' + fmtProps(meta) + '\n'));
       });
     });
-    $('copy-code').addEventListener('click', (e) => copyText(codeSnippets[codeKey], e.currentTarget, '✓ 已复制代码'));
-    renderCode();
+    term.appendChild(el('span', 'empty', '（示意：没有任何参数值、表达式或对话内容）'));
+  });
+
+  // 初始化
+  renderProducts();
+  buildTypeOptions();
+  $('nb-desc').value = 'Snapshot Check';
+  $('nb-func').value = suggestFuncSlug('Snapshot Check');
+  syncFromBuilder();
+  renderRegisterGate();
+  renderPromoHead();
+  renderNav();
+})();
   </script>
 </body>
 </html>

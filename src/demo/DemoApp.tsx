@@ -11,10 +11,10 @@ import useWorkflowStore from '../store/workflowStore';
 import { createMockProviders } from './mockProviders';
 import { WorkflowIdeProvider } from '../providers/WorkflowIdeProvider';
 import { useTheme } from '../hooks/useTheme';
-import { ThemeControls } from '../components/ThemeControls';
-import { BrandLogo } from '../components/BrandLogo';
+import { DemoHeader } from './header/DemoHeader';
 import '../styles/tokens.css';
 import './DemoApp.css';
+import './header/DemoHeader.css';
 import '../styles/executionStyles.css';
 
 function DemoApp() {
@@ -35,10 +35,14 @@ function DemoApp() {
   // 当前编辑的流程层级：用于演示分层调用规则（空 = 不限）
   const [workflowLevel, setWorkflowLevel] = useState<WorkflowLevel | ''>('');
 
-  const handleLibraryAction = useCallback((action: string) => {
+  // 是否处于「已模拟流程库加载失败」状态（仅用于演示设置按钮上的提示点；重新加载后清除）
+  const [libraryFailed, setLibraryFailed] = useState(false);
+
+  const handleLibraryAction = useCallback((action: 'reload' | 'fail') => {
     const next = createMockGovernanceProvider();
     // 让第一次目录加载失败：界面显示「加载失败，点击重试」，点击重试后恢复正常
     if (action === 'fail') next.failNext();
+    setLibraryFailed(action === 'fail');
     setProviders((prev) => ({ ...prev, library: next }));
   }, []);
 
@@ -180,6 +184,21 @@ function DemoApp() {
     }
   }, []);
 
+  // 示例下拉：def:xxx 为编辑态流程，exec:xxx 为运行态实例
+  const handleSamplePick = useCallback((val: string) => {
+    if (!val) return;
+    const [kind, name] = val.split(':');
+    if (kind === 'def') loadSampleWorkflow(name);
+    else if (kind === 'exec') loadExecutionExample(name);
+  }, [loadSampleWorkflow, loadExecutionExample]);
+
+  const handleNewBlank = useCallback(() => {
+    setWorkflowJson(null);
+    setCurrentDef(null);
+    setWorkflowExecution(null);
+    ideRef.current?.createBlankWorkflow();
+  }, []);
+
   return (
     <div
       className={`app ${themeMode === 'light' ? 'light-theme' : ''}`}
@@ -187,237 +206,34 @@ function DemoApp() {
       data-brand={themeColor}
       style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}
     >
-      <header className="app-header">
-        <div className="header-content">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
-            <h1 className="app-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '9px' }}>
-              <BrandLogo size={26} />
-              Conductor IDE <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: 500 }}>v1.2</span>
-            </h1>
-
-            {/* 搜索框 */}
-            {(currentDef || workflowJson) && (
-              <div className="search-container">
-                <span className="search-icon">🔍</span>
-                <input
-                  type="text"
-                  placeholder="搜索任务..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
-                />
-                {searchQuery && (
-                  <button className="search-clear" onClick={() => setSearchQuery('')}>✕</button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="header-actions">
-
-
-            {workflowExecution && !useNewAiMode && (
-              <>
-                <button
-                  className={`mode-btn ${!allowOperations ? 'active' : ''}`}
-                  onClick={() => setAllowOperations(prev => !prev)}
-                  title={allowOperations ? "切换至操作受限状态" : "切换至允许操作状态"}
-                  style={{
-                    background: !allowOperations ? 'rgba(239, 68, 68, 0.15)' : undefined,
-                    borderColor: !allowOperations ? 'rgba(239, 68, 68, 0.4)' : undefined,
-                    color: !allowOperations ? 'var(--status-failed)' : undefined,
-                  }}
-                >
-                  {allowOperations ? '🔓 操作授权' : '🔒 受限'}
-                </button>
-                <div className="divider"></div>
-              </>
-            )}
-
-            <button
-              className={`mode-btn ${isReadOnly ? 'active' : ''}`}
-              onClick={() => setIsReadOnly(!isReadOnly)}
-              title={isReadOnly ? "切换到编辑模式" : "切换到只读模式"}
-            >
-              {isReadOnly ? '👁️ 只读' : '✏️ 编辑'}
-            </button>
-
-            <button
-              className={`mode-btn ${useNewAiMode ? 'active' : ''}`}
-              onClick={() => setUseNewAiMode(!useNewAiMode)}
-              title={useNewAiMode ? "切换回经典设计器" : "体验全新 AI 工作流设计器"}
-              style={{
-                background: useNewAiMode ? 'var(--color-accent)' : undefined,
-                color: useNewAiMode ? '#fff' : undefined,
-              }}
-            >
-              {useNewAiMode ? '✨ AI 模式' : '💻 经典模式'}
-            </button>
-
-            <button
-              className={`mode-btn ${uiMode === 'business' ? 'active' : ''}`}
-              onClick={() => setUiMode(uiMode === 'business' ? 'pro' : 'business')}
-              title={uiMode === 'business' ? "切换为专业开发者模式 (查看完整 DAG/JSON)" : "切换为普通使用者模式 (卡片流/数据胶囊/云平台动作)"}
-              style={{
-                background: uiMode === 'business' ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.25))' : undefined,
-                borderColor: uiMode === 'business' ? '#10b981' : undefined,
-                color: uiMode === 'business' ? '#10b981' : undefined,
-                fontWeight: 600,
-              }}
-            >
-              {uiMode === 'business' ? '👔 业务模式' : '💻 开发者模式'}
-            </button>
-
-            <a
-              href={import.meta.env.BASE_URL}
-              className="mode-btn"
-              title="查看 Conductor Workflow IDE v1.2.0「流程库就绪」发布宣传页"
-              style={{
-                textDecoration: 'none',
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))',
-                borderColor: 'rgba(16, 185, 129, 0.5)',
-                color: 'var(--text-primary)',
-                fontWeight: 600,
-              }}
-            >
-              ⚡ v1.2 宣传页
-            </a>
-
-            <div className="divider"></div>
-
-            {/* 流程库演示控制：模拟治理服务的加载失败与层级过滤 */}
-            <select
-              className="sample-select"
-              onChange={(e) => {
-                handleLibraryAction(e.target.value);
-                e.target.value = '';
-              }}
-              defaultValue=""
-              title="流程库由演示用的模拟治理服务提供（约 0.4 秒延迟）；可模拟目录加载失败，查看错误提示与重试"
-            >
-              <option value="" disabled>📚 流程库...</option>
-              <option value="reload">重新加载流程库</option>
-              <option value="fail">模拟加载失败（点击重试可恢复）</option>
-            </select>
-
-            {/* 自助接入演示控制 */}
-            <select
-              className="sample-select"
-              value={demoEnv}
-              onChange={(e) => handleOnboardingEnv(e.target.value as 'TEST' | 'PROD')}
-              title="自助接入演示环境：TEST 开放自助试用（命名类型固定 tmp）；PROD 不开放试用，新建流程可选 custom / std"
-            >
-              <option value="TEST">🧪 环境：TEST</option>
-              <option value="PROD">🏭 环境：PROD</option>
-            </select>
-            <button
-              className="mode-btn"
-              onClick={handleResetProducts}
-              title="清空演示用户的产品并清空画布，在 TEST 环境下可看到空画布的「开始试用」引导"
-            >
-              🔄 重置产品
-            </button>
-
-            {!useNewAiMode && (
-              <select
-                className="sample-select"
-                value={workflowLevel}
-                onChange={(e) => setWorkflowLevel(e.target.value as WorkflowLevel | '')}
-                title="当前编辑流程的层级：L1 看不到 L2/L3 能力，L2 看不到 L3 能力（业务模式的动作选择器生效）"
-              >
-                <option value="">层级：不限</option>
-                <option value="L1">层级：L1</option>
-                <option value="L2">层级：L2</option>
-                <option value="L3">层级：L3</option>
-              </select>
-            )}
-
-            <div className="divider"></div>
-
-            {/* 合并工作流示例下拉选择器 */}
-            <select
-              className="sample-select"
-              onChange={(e) => {
-                const val = e.target.value;
-                if (!val) return;
-                const [kind, name] = val.split(':');
-                if (kind === 'def') loadSampleWorkflow(name);
-                else if (kind === 'exec') loadExecutionExample(name);
-                e.target.value = '';
-              }}
-              defaultValue=""
-              title="载入官方示例工作流（包含编辑态与运行态案例）"
-            >
-              <option value="" disabled>📁 示例工作流...</option>
-              <optgroup label="── 📚 流程库 ──">
-                <option value="def:library-capabilities-demo">📚 引用库能力（有新版本 / 版本不可用）</option>
-              </optgroup>
-              <optgroup label="── ☁️ 云平台业务流程 ──">
-                <option value="def:ecs-lifecycle-automation">☁️ 云主机全生命周期自动化 (业务模式)</option>
-              </optgroup>
-              <optgroup label="── 编辑态流程 ──">
-                <option value="def:simple-workflow">简单流程 (Simple)</option>
-                <option value="def:decision-workflow">分支流程 (Decision)</option>
-                <option value="def:fork-join-workflow">并行流程 (Fork/Join)</option>
-                <option value="def:complex-workflow">复杂综合流程</option>
-              </optgroup>
-              <optgroup label="── 运行态实例 ──">
-                <option value="exec:human-approval">▶ HUMAN 审批 (RUNNING)</option>
-                <option value="exec:mixed-status">✗ CI/CD 流水线 (FAILED)</option>
-                <option value="exec:loop-iterations">✓ DO_WHILE 循环 (3次)</option>
-                <option value="exec:retry-tasks">✓ 任务重试机制</option>
-                <option value="exec:fork-dynamic">✓ 动态并行 FORK</option>
-                <option value="exec:switch-branches">✓ SWITCH 分支执行</option>
-              </optgroup>
-            </select>
-
-            {/* 文件管理快捷按钮 */}
-            <button
-              className="mode-btn"
-              onClick={() => {
-                setWorkflowJson(null);
-                setCurrentDef(null);
-                setWorkflowExecution(null);
-                ideRef.current?.createBlankWorkflow();
-              }}
-              title="新建空白工作流"
-            >
-              📄 新建
-            </button>
-
-            <label className="upload-btn">
-              <input type="file" accept=".json" onChange={handleFileUpload} style={{ display: 'none' }} />
-              📤 导入
-            </label>
-
-            {(currentDef || workflowJson) && (
-              <button
-                className="mode-btn"
-                onClick={handleExport}
-                title="导出当前工作流 JSON"
-              >
-                📥 导出
-              </button>
-            )}
-
-            <div className="divider"></div>
-
-            <ThemeControls />
-
-            <button
-              className="mode-btn"
-              onClick={() => { setAiDraft(aiConfig); setShowAiConfig(true); }}
-              title="配置 AI 服务（API Key / Base URL / 模型）"
-              style={{
-                background: aiConfig.apiKey ? 'var(--color-success)' : undefined,
-                color: aiConfig.apiKey ? '#fff' : undefined,
-              }}
-            >
-              🤖 AI {aiConfig.apiKey ? '已配置 ✓' : '配置'}
-            </button>
-          </div>
-        </div>
-      </header>
+      <DemoHeader
+        baseUrl={import.meta.env.BASE_URL}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        hasWorkflow={!!(currentDef || workflowJson)}
+        useNewAiMode={useNewAiMode}
+        onAiModeChange={setUseNewAiMode}
+        uiMode={uiMode}
+        onUiModeChange={setUiMode}
+        isReadOnly={isReadOnly}
+        onReadOnlyChange={setIsReadOnly}
+        showAllowOperations={!!workflowExecution && !useNewAiMode}
+        allowOperations={allowOperations}
+        onAllowOperationsChange={setAllowOperations}
+        libraryFailed={libraryFailed}
+        onLibraryAction={handleLibraryAction}
+        demoEnv={demoEnv}
+        onEnvChange={handleOnboardingEnv}
+        onResetProducts={handleResetProducts}
+        workflowLevel={workflowLevel}
+        onLevelChange={setWorkflowLevel}
+        onSamplePick={handleSamplePick}
+        onNewBlank={handleNewBlank}
+        onUpload={handleFileUpload}
+        onExport={handleExport}
+        aiConfigured={!!aiConfig.apiKey}
+        onOpenAiConfig={() => { setAiDraft(aiConfig); setShowAiConfig(true); }}
+      />
 
       <div className="app-content" style={{ flex: 1, position: 'relative' }}>
         {error && <div className="error-message">⚠️ {error}</div>}

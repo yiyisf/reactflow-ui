@@ -260,8 +260,27 @@ const telemetrySink: TelemetrySink = {
 };
 ```
 
-- 本版本上报的事件：`ide_opened`（IDE 挂载）、`workflow_saved`（触发 `onSave`）、`step_added`（业务模式新增步骤，`props.source` 为 `library` 或 `builtin`）、`sandbox_run`（本地沙箱试跑，`props.result` 为执行状态或 `error`）、`ai_event`（仅 `props.type`，即 `onAiEvent` 的事件类型）。自助接入相关：`trial_started`（`props.domain`）、`workflow_created`（`props.level`、`props.source`：`blank` / `template` / `import`）、`promotion_requested`（`props.targetType`）、`promotion_state`（`props.state`），均不含人员姓名与自由文本；接口导入：`api_imported`（`props.format`、`props.count`）。
+每条事件都带 `name`、`at`（毫秒时间戳）、`ide`（`workflow` / `ai`）和可选的 `workflowName`；下表是各事件的 `props` 与上报它的 IDE：
+
+| 事件 | 触发时机 | `props` | `WorkflowIDE` | `AiWorkflowIDE` |
+|---|---|---|---|---|
+| `ide_opened` | IDE 挂载（每个实例只报一次，StrictMode 下也不重复） | 无 | 是 | 是 |
+| `trial_started` | 向导完成产品登记 | `domain`：产品所属业务域 | 是 | 是 |
+| `workflow_created` | 向导生成骨架流程 | `level`：流程层级；`source`：`blank` / `template` / `import` | 是 | 是（起点只有 `blank`） |
+| `step_added` | 新增步骤 | `source`：`builtin`（内置动作；专业模式画布新增也记为此值）/ `library`（流程库能力）/ `import`（接口导入，每个步骤一条）/ `template`（模板带入，每个顶层任务一条） | 全部 | `builtin` / `library` |
+| `api_imported` | 接口导入确认 | `format`：`openapi3` / `swagger2` / `postman21` / `curl`；`count`：导入接口数 | 是 | 否（该 IDE 暂无接口导入入口） |
+| `sandbox_run` | 本地沙箱试跑结束 | `result`：最终执行状态或 `error`；`entry`：`business`（业务卡片「试跑」）/ `template`（模板中心快捷试跑与向导内试跑）/ `pro`（专业模式一键试跑与沙箱配置弹窗） | 全部 | `business` / `pro` |
+| `workflow_saved` | 触发 `onSave`（宿主传了 `onSave` 才有） | 无 | 是 | 是 |
+| `promotion_requested` | 提交上线申请 | `targetType`：`custom` / `std` | 是 | 是 |
+| `promotion_state` | 上线申请状态变化 | `state`：`SUBMITTED` / `REVIEWING` / `APPROVED` / `REJECTED` / `SYNCED` | 是 | 是 |
+| `ai_event` | 透传 `onAiEvent` 的事件类型 | `type`：AI 事件类型 | 否 | 是 |
+
+- 以上事件都不含人员姓名与自由文本。`ai_event` 只有 `props.type`，没有提示词与回复内容。
+- 同一次试跑只会上报一条 `sandbox_run`：三个入口（业务卡片 / 模板中心 / 专业模式）互不重叠。
+- 已知缺口：专业模式的「模拟运行」动画（`startSimulation`，仅画布上的流转演示，不执行沙箱）不上报；库内置动作之外的画布节点类型（如控制流）新增时同样记为 `builtin`。
 - **不含任何载荷**：事件只有名称、时间、IDE 类型、流程名与简单属性；SDK 会剔除 `props` 中非 string / number / boolean 的值，不采集参数值、表达式、提示词、对话内容与执行数据。
+
+> **数据安全**：`workflowName` 是流程名（按命名规范 `类型-层级-业务域-产品-功能` 生成，不含参数值）；除此之外，事件里不会出现任何输入输出数据、HTTP 地址 / 请求头 / 凭据、表达式或对话内容。宿主的 `TelemetrySink` 收到的就是上面这些字段，请不要再追加这类内容；接口导入遇到的敏感头只以 `${workflow.input.xxx}` 占位，也不会进入埋点。生产首跑成功率由服务端按执行数据统计，SDK 不上报「首跑成功」。
 - 没有 `telemetry` 时事件被直接丢弃，不产生定时器与页面监听。
 - 需要自定义批量参数或在 IDE 之外复用时，可用 `createTelemetryBuffer(sink, { flushIntervalMs, maxBatchSize })` 自行包装。
 

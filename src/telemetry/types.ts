@@ -4,18 +4,24 @@
  * 只采集「用了什么功能」，不采集参数值、表达式、提示词、对话内容、执行数据。
  */
 
-/** 事件名（首批）。部分事件由后续批次接入，这里先保留在联合类型中。 */
-export type IdeEventName =
-    | 'ide_opened'
-    | 'trial_started'
-    | 'workflow_created'
-    | 'step_added'
-    | 'api_imported'
-    | 'sandbox_run'
-    | 'workflow_saved'
-    | 'promotion_requested'
-    | 'promotion_state'
-    | 'ai_event';
+/**
+ * 事件名清单（首批，与设计文档 5.2 节、接入指南「接入埋点」表一致；
+ * 单测会校验三处同步，新增事件时请一并更新文档）。
+ */
+export const IDE_EVENT_NAMES = [
+    'ide_opened',
+    'trial_started',
+    'workflow_created',
+    'step_added',
+    'api_imported',
+    'sandbox_run',
+    'workflow_saved',
+    'promotion_requested',
+    'promotion_state',
+    'ai_event',
+] as const;
+
+export type IdeEventName = typeof IDE_EVENT_NAMES[number];
 
 export interface IdeEvent {
     name: IdeEventName;

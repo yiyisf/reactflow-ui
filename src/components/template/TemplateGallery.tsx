@@ -13,6 +13,8 @@ export interface TemplateGalleryProps {
   onClose: () => void;
   onSelectTemplate: (configuredDef: WorkflowDef) => void;
   templateStore?: TemplateStore;
+  /** 试跑结束（快捷试跑或向导内试跑）：参数为最终状态或 'error'，用于接入埋点，不含数据 */
+  onSandboxRun?: (result: string) => void;
 }
 
 export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
@@ -20,6 +22,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   onClose,
   onSelectTemplate,
   templateStore = defaultTemplateStore,
+  onSandboxRun,
 }) => {
   const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all');
@@ -45,10 +48,12 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         taskMocks: scenario?.taskOutputs || {},
       });
 
+      onSandboxRun?.(String(instance.status));
       setQuickTestNotice(
         `《${template.title}》在本地沙盒试跑通过！共执行 ${instance.tasks.length} 个任务节点，状态: ${instance.status}。点击「使用模板」即可完成填空并上屏编辑。`
       );
     } catch (err: any) {
+      onSandboxRun?.('error');
       setQuickTestNotice(`试跑出错: ${err.message}`);
     }
   };
@@ -375,6 +380,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
       {activeWizardTemplate && (
         <TemplateSetupWizard
           template={activeWizardTemplate}
+          onSandboxRun={onSandboxRun}
           onClose={() => setActiveWizardTemplate(null)}
           onApply={(configuredDef) => {
             setActiveWizardTemplate(null);

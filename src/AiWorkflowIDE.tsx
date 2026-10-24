@@ -30,7 +30,7 @@ import { useLibraryCatalogLoader, useLibraryCatalogSnapshot } from './library/us
 import type { LibraryProvider } from './library/types';
 import type { IdeProviders } from './providers/types';
 import { useResolvedProviders } from './providers/WorkflowIdeProvider';
-import { useTelemetry } from './telemetry/useTelemetry';
+import { useTelemetry, useIdeOpenedOnce, useProStoreTelemetry } from './telemetry/useTelemetry';
 import type { ExecutionActions, ThemeMode, ThemeColor, LayoutDirection, ViewMode, WorkflowExecutionInput } from './types/workflow';
 import type { CustomTool } from './services/ai/toolRegistry';
 import { ToolRegistry } from './services/ai/toolRegistry';
@@ -344,9 +344,10 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     // 接入埋点（无 telemetry sink 时为空操作；只上报事件名与简单属性，不含内容）
     const telemetrySink = resolvedProviders.telemetry;
     const track = useTelemetry('ai', telemetrySink);
-    useEffect(() => {
-        track('ide_opened');
-    }, [track]);
+    // ide_opened 每个实例只上报一次（StrictMode 双执行 effect 也不重复）
+    useIdeOpenedOnce(track);
+    // 专业模式（技术视图画布）本地试跑统一经 store.runLocalSandboxDryRun
+    useProStoreTelemetry(track);
     const onSave = useMemo(() => {
         if (!onSaveProp) return undefined;
         return (def: WorkflowDef) => {
@@ -372,7 +373,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         track('step_added', { source: info.source });
     }, [track]);
     const handleSandboxRun = useCallback((result: string) => {
-        track('sandbox_run', { result });
+        track('sandbox_run', { result, entry: 'business' });
     }, [track]);
 
     // Per-instance state (M3.2): each <AiWorkflowIDE> mount gets its own conversation,

@@ -20,7 +20,7 @@ import { useLibraryCatalogLoader, useLibraryCatalogSnapshot } from './library/us
 import type { LibraryProvider } from './library/types';
 import type { IdeProviders } from './providers/types';
 import { useResolvedProviders } from './providers/WorkflowIdeProvider';
-import { useTelemetry } from './telemetry/useTelemetry';
+import { useTelemetry, useIdeOpenedOnce, useProStoreTelemetry } from './telemetry/useTelemetry';
 import { StepFlowEditor } from './components/business/StepFlowEditor';
 import { TemplateGallery } from './components/template/TemplateGallery';
 import { ApiImportDialog } from './components/import/ApiImportDialog';
@@ -257,9 +257,10 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
 
     // 接入埋点（无 telemetry sink 时为空操作；只上报事件名与简单属性）
     const track = useTelemetry('workflow', resolvedProviders.telemetry);
-    useEffect(() => {
-        track('ide_opened');
-    }, [track]);
+    // ide_opened 每个实例只上报一次（StrictMode 双执行 effect 也不重复）
+    useIdeOpenedOnce(track);
+    // 专业模式本地试跑（ActionBar / SandboxConfigModal 都经 store.runLocalSandboxDryRun）
+    useProStoreTelemetry(track);
     const onSave = useMemo(() => {
         if (!onSaveProp) return undefined;
         return (def: WorkflowDef) => {
@@ -271,7 +272,11 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         track('step_added', { source: info.source });
     }, [track]);
     const handleSandboxRun = useCallback((result: string) => {
-        track('sandbox_run', { result });
+        track('sandbox_run', { result, entry: 'business' });
+    }, [track]);
+    // 模板中心的试跑（快捷试跑 / 向导内试跑）
+    const handleTemplateSandboxRun = useCallback((result: string) => {
+        track('sandbox_run', { result, entry: 'template' });
     }, [track]);
 
     // 业务模式下的视图切换：卡片流 (card) vs 全景拓扑 (canvas)
@@ -738,7 +743,10 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             <TemplateGallery
                 isOpen={showTemplateGallery}
                 onClose={() => { setShowTemplateGallery(false); onboarding.takePendingIdentity(); }}
+                onSandboxRun={handleTemplateSandboxRun}
                 onSelectTemplate={(configuredDef) => {
+                    // 模板带来的步骤：每个顶层任务一条 step_added（source: template）
+                    for (let i = 0; i < (configuredDef.tasks?.length ?? 0); i++) track('step_added', { source: 'template' });
                     // 经自助接入向导选了模板：保留向导按规范生成的名称与说明
                     const identity = onboarding.takePendingIdentity();
                     setWorkflow(

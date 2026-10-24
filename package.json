@@ -23,6 +23,9 @@
     "url": "https://github.com/yiyisf/reactflow-ui/issues"
   },
   "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
   "main": "./dist/reactflow-ui.umd.js",
   "module": "./dist/reactflow-ui.es.js",
   "types": "./dist/index.d.ts",

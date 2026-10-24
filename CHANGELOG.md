@@ -6,6 +6,10 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ## [Unreleased]
 
+---
+
+## [1.3.0] - 2026-10-24
+
 > 主题：自助接入 —— 新团队在测试环境里自己完成「登记产品 → 规范命名建流程 → 接上已有接口 → 试跑 → 申请上线」。设计见 `docs/design/v1.3.0-自助接入设计.md`。
 
 ### Added
@@ -13,7 +17,7 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **自助接入向导**：配置 `providers.onboarding` 后，两个 IDE 工具栏出现「新建流程」（3 步向导：产品 → 命名 → 起点）与「申请上线」（仅 `tmp` 类型流程可用，选择 `custom` / `std`、预览正式名称、指数退避轮询审批进度，2 秒起 30 秒封顶）；`WorkflowIDE` 在测试环境开放试用且用户无所属产品时，空画布显示「开始试用」引导卡片。命名遵循 `类型-层级-业务域-产品-功能`，试用环境类型固定 `tmp`，生产环境可选 `custom` / `std`；向导选择的层级在宿主未传 `currentWorkflowLevel` 时作为默认值。接口失败可重试且保留已填内容，产品被他人占用时提示联系负责人。不配置 `onboarding` 时行为与之前完全一致。新增导出 `OnboardingProvider` 及相关类型（`OnboardingContext`、`ProductInfo`、`StartTrialResult`、`PromotionStatus`）、`WorkflowNameBuilder`、`OnboardingWizard`、`PromotionPanel`、`OnboardingGuideCard` 与纯函数 `buildWorkflowName` / `suggestFuncSlug` / `buildSkeletonWorkflow` / `promotionTargetName` / `nextPollDelay` 等（`/ai` 入口同步）。
 - **接口导入**：工具栏「导入接口」（业务 / 专业模式均可用）粘贴或上传 OpenAPI 3 / Swagger 2 / Postman Collection v2.1（JSON）或 curl 命令，勾选接口后生成 HTTP 业务动作并追加为步骤（编译为 Conductor `HTTP` 任务，重新打开仍还原为同一动作）。字段沿用 `buildFields`、出参沿用 `buildOutputs`（键为 `response.body.<字段>`）。**敏感头不落定义**：`Authorization` / `Cookie` / `X-Api-Key` / 名称含 token、secret、api-key 的头与 curl `-u` 一律替换为 `${workflow.input.xxx}` 占位并提示。仅支持 JSON，YAML 提示先转 JSON；导入结果只在当前流程与本会话动作库内，登记为流程库能力属 v1.4.0。新增纯函数 `detectFormat` / `parseApiText` / `parseOpenApi3` / `parseSwagger2` / `parsePostman21` / `parseCurl` / `buildHttpAction` / `appendImportedActions`、组件 `ApiImportDialog`（`onInsert` 回调，便于向导复用）与 `WorkflowIDERef.openApiImport()`。Demo 样例见 `public/sample-imports/`。
 - **接入埋点 `TelemetrySink`**：新增 `IdeEvent` / `IdeEventName` / `TelemetrySink` 与 `createTelemetryBuffer`（5 秒或 20 条攒批，页面隐藏 / `pagehide` 时 flush，sink 异常不影响界面，仅 `console.warn` 一次；无 sink 时丢弃）。首批 10 个事件：`ide_opened`、`trial_started`、`workflow_created`、`step_added`、`api_imported`、`sandbox_run`、`workflow_saved`、`promotion_requested`、`promotion_state`、`ai_event`，各事件的 `props` 与上报它的 IDE 见接入指南。事件只含名称、时间、IDE 类型、流程名与简单属性，`props` 中非 string / number / boolean 的值会被剔除，不采集参数值、表达式、提示词、对话内容与执行数据。`sandbox_run` 带 `props.entry`（`business` / `template` / `pro`），覆盖业务卡片、模板中心（快捷试跑与向导内试跑）与专业模式（一键试跑与沙箱配置弹窗）三个入口，同一次试跑只报一条；`step_added` 覆盖 `builtin`（含专业模式画布新增）/ `library` / `import` / `template`。`StepFlowEditor` 新增可选回调 `onStepAdded` / `onSandboxRun`，`TemplateGallery` 新增可选 `onSandboxRun`。
-- **Demo**：`createMockProviders()`（模拟治理服务流程库 + 自助接入 + 控制台 `[telemetry]` 埋点），`DemoApp` 改用 `WorkflowIdeProvider`；工具栏「流程库」重新加载 / 模拟失败照常可用；`createMockOnboardingProvider()`（内存产品、冲突、失败注入、上线申请逐步推进与驳回）；顶栏新增 TEST / PROD 环境切换与「重置产品」。
+- **Demo**：`createMockProviders()`（模拟治理服务流程库 + 自助接入 + 控制台 `[telemetry]` 埋点），`DemoApp` 改用 `WorkflowIdeProvider`；工具栏「流程库」重新加载 / 模拟失败照常可用；`createMockOnboardingProvider()`（内存产品、冲突、失败注入、上线申请逐步推进与驳回）；顶栏重新整理：常用的模式切换常驻，演示用开关（只读、允许操作、流程库加载、TEST / PROD 环境、重置产品、层级）收进「🧪 演示设置」面板，文件操作收进「文件」菜单，窄屏不再横向溢出。
 - **文档**：接入指南新增 4.5 节（`WorkflowIdeProvider` / `providers` 的解析顺序、稳定性、`TelemetrySink` 示例、事件与 `props` 一览及数据安全说明）与 4.6 节（`OnboardingProvider` 契约、与治理服务接口对照、示例实现）；发布计划补全 v1.3.0 人工走查清单。
 - **测试守卫**：`IdeEventName` 清单（`IDE_EVENT_NAMES`）与设计文档、接入指南事件表必须一致；扫描所有 `track(...)` 调用，事件名必须在清单内、清单内事件必须有上报、`props` 取值只能来自白名单。
 

@@ -64,7 +64,7 @@ export function DemoHeader(p: DemoHeaderProps) {
           <h1 className="app-title dh-brand">
             <BrandLogo size={26} />
             <span className="dh-brand-text">Conductor IDE</span>
-            <span className="dh-version">v1.2</span>
+            <span className="dh-version">v1.3</span>
           </h1>
 
           <div className="dh-segmented" role="group" aria-label="设计器模式">
@@ -344,8 +344,8 @@ export function DemoHeader(p: DemoHeaderProps) {
           <a
             href={p.baseUrl}
             className="mode-btn dh-launch"
-            title="查看 Conductor Workflow IDE v1.2.0「流程库就绪」发布宣传页"
-            aria-label="v1.2 宣传页"
+            title="查看 Conductor Workflow IDE v1.3.0「自助接入」发布宣传页"
+            aria-label="v1.3 宣传页"
           >
             <span aria-hidden="true">⚡</span>
           </a>

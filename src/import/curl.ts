@@ -89,8 +89,17 @@ const LONG_VALUE_FLAGS = new Set([
     '--request', '--header', '--data', '--data-raw', '--data-binary', '--data-ascii', '--data-urlencode', '--json',
     '--user', '--url', '--cookie', '--user-agent', '--output', '--max-time', '--connect-timeout', '--referer',
     '--proxy', '--form', '--cert', '--key', '--cacert', '--retry', '--write-out', '--upload-file', '--resolve',
+    '--cookie-jar', '--dump-header', '--range', '--config', '--proxy-user', '--limit-rate', '--max-filesize',
+    '--interface', '--retry-delay', '--retry-max-time', '--cert-type', '--key-type', '--pass', '--oauth2-bearer',
+    '--aws-sigv4', '--unix-socket', '--abstract-unix-socket', '--form-string', '--continue-at', '--speed-limit',
+    '--speed-time', '--time-cond', '--local-port', '--keepalive-time', '--capath', '--ciphers', '--connect-to',
+    '--expect100-timeout', '--variable', '--proto', '--proto-redir', '--request-target', '--max-redirs',
 ]);
-const SHORT_VALUE_FLAGS = new Set(['X', 'H', 'd', 'u', 'b', 'A', 'e', 'F', 'o', 'm', 'x', 'w', 'E', 'T']);
+/** Short flags that take a value (curl: `-X POST`, `-XPOST`, or the last letter of a cluster such as `-sX POST`). */
+const SHORT_VALUE_FLAGS = new Set([
+    'X', 'H', 'd', 'u', 'b', 'A', 'e', 'F', 'o', 'm', 'x', 'w', 'E', 'T',
+    'c', 'D', 'r', 'C', 'K', 'U', 'Y', 'y', 'z', 't', 'P', 'Q',
+]);
 
 /** 提示用的 curl 示例（对话框 placeholder 使用） */
 export const CURL_SAMPLE = `curl -X POST 'https://api.example.com/v1/tickets' \\
@@ -117,6 +126,7 @@ export function parseCurl(command: string): ParseResult {
             useGet: false,
             head: false,
             basicAuth: false,
+            bearer: false,
             cookie: false,
             unsupportedBody: undefined as string | undefined,
         };
@@ -154,6 +164,9 @@ export function parseCurl(command: string): ParseResult {
                 case '-u': case '--user':
                     st.basicAuth = true;
                     break;
+                case '--oauth2-bearer':
+                    st.bearer = true;
+                    break;
                 case '-b': case '--cookie':
                     st.cookie = true;
                     break;
@@ -182,16 +195,20 @@ export function parseCurl(command: string): ParseResult {
                     handle(name, value);
                 }
             } else if (t.startsWith('-') && t.length > 1) {
-                const letter = t[1];
-                if (SHORT_VALUE_FLAGS.has(letter)) {
-                    const value = t.length > 2 ? t.slice(2) : tokens[++i];
-                    handle(`-${letter}`, value);
-                } else if (t.slice(1).includes('G')) {
-                    st.useGet = true;
-                } else if (t.slice(1).includes('I')) {
-                    st.head = true;
+                // R6: short flags can be clustered (`-sX POST`, `-sH 'Authorization: …'`, `-sXPOST`). Walk the letters;
+                // the first value-taking letter takes the rest of the token, or the next token when nothing is left.
+                for (let j = 1; j < t.length; j++) {
+                    const letter = t[j];
+                    if (SHORT_VALUE_FLAGS.has(letter)) {
+                        const rest = t.slice(j + 1);
+                        const value = rest.length > 0 ? rest : tokens[++i];
+                        handle(`-${letter}`, value);
+                        break;
+                    }
+                    if (letter === 'G') st.useGet = true;
+                    else if (letter === 'I') st.head = true;
+                    // 其余（-s -S -L -k -v -i …）不影响请求内容
                 }
-                // 其余（-s -S -L -k -v -i …）不影响请求内容
             } else if (st.url === undefined) {
                 st.url = t;
             }
@@ -211,7 +228,7 @@ export function parseCurl(command: string): ParseResult {
             st.basicAuth = true;
         }
 
-        if (st.basicAuth) headers.Authorization = '';
+        if (st.basicAuth || (st.bearer && !findHeader(headers, 'authorization'))) headers.Authorization = '';
         if (st.cookie && !findHeader(headers, 'cookie')) headers.Cookie = '';
 
         const parts = splitUrl(url);

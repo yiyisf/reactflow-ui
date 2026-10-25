@@ -3,96 +3,27 @@ import type { WorkflowInstance, TaskInstance } from '../../types/conductor';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import { FriendlyErrorCard } from './FriendlyErrorCard';
 import { CmIcon } from '../icons/CmIcon';
+import { getStatusMeta } from '../../utils/statusMeta';
+import { generateStorySentence, runHeadline } from '../../utils/runStory';
+import { translateTechnicalError, type FriendlyErrorDiagnosis } from '../../utils/friendlyErrorTranslator';
 
 export interface RunStoryTimelineProps {
   instance: WorkflowInstance;
   registry?: ActionRegistry;
   onInspectStep?: (taskRef: string) => void;
-}
-
-/**
- * 根据任务输出数据与动作定义生成通俗易懂的中文故事线描述
- */
-function generateStorySentence(task: TaskInstance, registry: ActionRegistry): string {
-  const out = task.outputData || {};
-  const actionId = task.workflowTask?.inputParameters?._actionId;
-  const action = actionId ? registry.getAction(actionId) : undefined;
-
-  if (task.status === 'FAILED' || task.status === 'FAILED_WITH_TERMINAL_ERROR') {
-    return `执行中断于此步骤，已触发异常诊断自愈建议。`;
-  }
-
-  if (actionId === 'ecs.create_instance') {
-    const ip = out.privateIp ? ` · 分配内网 IP: ${out.privateIp}` : '';
-    const id = out.instanceId ? ` · 实例 ID: ${out.instanceId}` : '';
-    return `成功在可用区初始化并启动云主机${id}${ip}。`;
-  }
-
-  if (actionId === 'ecs.query_instance') {
-    return `已查询获取主机实时状态 (${out.status || 'RUNNING'})，公网 IP: ${out.publicIp || '未绑定'}。`;
-  }
-
-  if (actionId === 'ecs.run_command') {
-    return `远程运维脚本已成功在主机内执行完毕，命令批次: ${out.commandId || 'cmd-ok'}。`;
-  }
-
-  if (actionId === 'ecs.create_snapshot') {
-    return `系统盘安全增量快照已成功归档，快照 ID: ${out.snapshotId || 's-done'}。`;
-  }
-
-  if (actionId === 'ecs.stop_instance') {
-    return `云主机已安全关闭电源，当前状态: STOPPED。`;
-  }
-
-  if (actionId === 'ecs.start_instance') {
-    return `云主机已开机并启动系统服务，当前状态: RUNNING。`;
-  }
-
-  if (actionId === 'ecs.modify_spec') {
-    return `云主机硬件规格已在线变更生效 (${out.oldSpec || ''} → ${out.newSpec || ''})。`;
-  }
-
-  if (actionId === 'ecs.get_monitor_metrics') {
-    return `采集到实时负载：CPU 利用率 ${out.cpuUsagePercent ?? 20}%，系统运行平稳。`;
-  }
-
-  if (actionId === 'notify.send_message') {
-    return `运维协同卡片已成功推送至指定协同通知群，状态: DELIVERED。`;
-  }
-
-  if (actionId === 'control.wait' || task.taskType === 'WAIT') {
-    return `系统安全缓冲等待完成，底层服务就绪。`;
-  }
-
-  if (actionId === 'human.approval' || task.taskType === 'HUMAN') {
-    return `责任人 (${out.reviewer || 'devops_lead'}) 已完成审核批准。`;
-  }
-
-  if (task.taskType === 'DECISION' || task.taskType === 'SWITCH') {
-    const caseHit = out.selectedCase || out.case || out.output || '';
-    return `条件分支路由完成：评估参数命中分支 [${caseHit || '主干分支'}]，正向下分流执行。`;
-  }
-
-  if (task.taskType === 'FORK_JOIN' || task.taskType === 'FORK_JOIN_DYNAMIC') {
-    return `并行并发已触发：多条独立业务泳道同时展开并发执行。`;
-  }
-
-  if (task.taskType === 'JOIN') {
-    return `并行汇聚同步完成：所有并发泳道已全部成功执行完毕，工作流汇合向下推进。`;
-  }
-
-  if (task.taskType === 'DO_WHILE') {
-    const iter = task.iteration || out.iteration || 1;
-    return `循环迭代处理完成：已执行 ${iter} 轮循环，评估跳出条件已满足。`;
-  }
-
-  return `${action?.name || task.taskDefName || task.referenceTaskName} 执行完毕。`;
+  /**
+   * Handles the fix button of a failed step's diagnosis card (reauth / retry / change_spec / contact_admin).
+   * `inspect_upstream` is handled here through `onInspectStep` (it jumps to the previous step). Without a handler the
+   * button is not shown.
+   */
+  onErrorAction?: (actionKey: FriendlyErrorDiagnosis['actionKey'], taskRef: string) => void;
 }
 
 export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
   instance,
   registry = defaultActionRegistry,
   onInspectStep,
+  onErrorAction,
 }) => {
   const [expandedDetailsMap, setExpandedDetailsMap] = useState<Record<string, boolean>>({});
 
@@ -104,10 +35,22 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
   };
 
   const tasks = instance.tasks || [];
-  const isFailed = instance.status === 'FAILED' || instance.status === 'TIMED_OUT';
-  const totalDurationMs =
-    instance.endTime && instance.startTime ? instance.endTime - instance.startTime : 0;
-  const durationSec = (totalDurationMs / 1000).toFixed(1);
+  // B11: the banner follows the real workflow status (running / terminated / paused are not "all done").
+  const headline = runHeadline(instance);
+  const wfMeta = getStatusMeta(instance.status);
+  const toneColor = wfMeta.color;
+
+  /** Error-card button handler for a step, or undefined when nothing can handle it (B13: no dead buttons). */
+  const errorActionFor = (task: TaskInstance, idx: number, actionKey: FriendlyErrorDiagnosis['actionKey']) => {
+    if (!actionKey) return undefined;
+    if (actionKey === 'inspect_upstream') {
+      const upstream = tasks.slice(0, idx).reverse().find((t) => t.referenceTaskName);
+      if (!onInspectStep || !upstream) return undefined;
+      return () => onInspectStep(upstream.referenceTaskName);
+    }
+    if (!onErrorAction) return undefined;
+    return () => onErrorAction(actionKey, task.referenceTaskName);
+  };
 
   return (
     <div
@@ -127,27 +70,28 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
         style={{
           padding: '12px 18px',
           borderRadius: 10,
-          background: isFailed ? 'color-mix(in srgb, var(--cm-status-failed) 10%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 10%, transparent)',
-          border: `1px solid ${isFailed ? 'color-mix(in srgb, var(--cm-status-failed) 30%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 30%, transparent)'}`,
+          background: `color-mix(in srgb, ${toneColor} 10%, transparent)`,
+          border: `1px solid color-mix(in srgb, ${toneColor} 30%, transparent)`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {isFailed ? <CmIcon name="x" size={22} style={{ color: 'var(--status-failed)' }} /> : <CmIcon name="approval" size={22} style={{ color: 'var(--status-completed)' }} />}
+          {React.createElement(wfMeta.icon, { size: 22, strokeWidth: 1.75, 'aria-hidden': true, style: { color: toneColor } })}
           <div>
             <div
               style={{
                 fontWeight: 700,
                 fontSize: 14,
-                color: isFailed ? 'var(--status-failed)' : 'var(--status-completed)',
+                color: toneColor,
               }}
             >
-              {isFailed ? '工作流执行中断' : '工作流全部步骤顺利执行完毕'}
+              {headline.title}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-              执行 ID: {instance.workflowId} · 共执行 {tasks.length} 个步骤 · 总耗时约 {durationSec} 秒
+              执行 ID: <span style={{ fontFamily: 'var(--cm-font-mono)' }}>{instance.workflowId}</span> · 共 {tasks.length} 个步骤
+              {headline.durationSec !== undefined && ` · 总耗时约 ${headline.durationSec} 秒`}
             </div>
           </div>
         </div>
@@ -158,11 +102,12 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
             padding: '2px 8px',
             borderRadius: 4,
             fontWeight: 600,
-            background: isFailed ? 'color-mix(in srgb, var(--cm-status-failed) 15%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 15%, transparent)',
-            color: isFailed ? 'var(--status-failed)' : 'var(--status-completed)',
+            background: `color-mix(in srgb, ${toneColor} 15%, transparent)`,
+            color: toneColor,
           }}
+          title={instance.status}
         >
-          {instance.status}
+          {wfMeta.label}
         </span>
       </div>
 
@@ -186,10 +131,16 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               : task.taskType === 'HUMAN'
               ? 'user'
               : 'settings');
-          const isTaskFailed = task.status === 'FAILED' || task.status === 'FAILED_WITH_TERMINAL_ERROR';
+          const stepMeta = getStatusMeta(task.status);
+          const isTaskFailed = stepMeta.isFailure;
           const isExpanded = Boolean(expandedDetailsMap[task.referenceTaskName]);
+          const stepName = action?.name || task.taskDefName || task.referenceTaskName;
 
-          const storySentence = generateStorySentence(task, registry);
+          // B12: sentence from the real output; B11: the badge uses the real status.
+          const storySentence = generateStorySentence(task, { actionId, actionName: action?.name, allTasks: tasks });
+          const rawError = task.reasonForIncompletion || (isTaskFailed ? `步骤状态为 ${task.status}，没有返回失败原因` : undefined);
+          const diagnosisKey = isTaskFailed ? translateTechnicalError(rawError, undefined, stepName).actionKey : undefined;
+          const onCardAction = errorActionFor(task, idx, diagnosisKey);
           const timeStr = task.startTime ? new Date(task.startTime).toLocaleTimeString() : '--:--:--';
           const taskDuration =
             task.endTime && task.startTime ? `${((task.endTime - task.startTime) / 1000).toFixed(2)}s` : '';
@@ -213,23 +164,30 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               {/* 头部摘要行 */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {isTaskFailed ? <CmIcon name="x" size={18} style={{ color: 'var(--status-failed)' }} /> : <CmIcon name={taskIcon} size={18} />}
+                  {stepMeta.status === 'COMPLETED'
+                    ? <CmIcon name={taskIcon} size={18} />
+                    : React.createElement(stepMeta.icon, { size: 18, strokeWidth: 1.75, 'aria-hidden': true, style: { color: stepMeta.color } })}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
-                        步骤 #{idx + 1}: {action?.name || task.taskDefName || task.referenceTaskName}
+                        步骤 #{idx + 1}: {stepName}
                       </span>
                       <span
                         style={{
                           fontSize: 10,
                           padding: '1px 5px',
                           borderRadius: 3,
-                          background: isTaskFailed ? 'color-mix(in srgb, var(--cm-status-failed) 15%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 15%, transparent)',
-                          color: isTaskFailed ? 'var(--status-failed)' : 'var(--status-completed)',
+                          background: `color-mix(in srgb, ${stepMeta.color} 15%, transparent)`,
+                          color: stepMeta.color,
                           fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
                         }}
+                        title={task.status}
                       >
-                        {isTaskFailed ? '执行失败' : '执行完成'}
+                        {React.createElement(stepMeta.icon, { size: 10, strokeWidth: 1.75, 'aria-hidden': true })}
+                        {stepMeta.label}
                       </span>
                     </div>
 
@@ -288,8 +246,9 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               {isTaskFailed && (
                 <div style={{ marginTop: 4 }}>
                   <FriendlyErrorCard
-                    rawError={task.reasonForIncompletion || '底层任务状态异常终止'}
-                    taskName={action?.name || task.referenceTaskName}
+                    rawError={rawError}
+                    taskName={stepName}
+                    onActionClick={onCardAction}
                   />
                 </div>
               )}

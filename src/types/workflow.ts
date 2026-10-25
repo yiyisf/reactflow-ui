@@ -231,6 +231,10 @@ export interface WorkflowState {
         affectedTasks: string[];
         timestamp: number;
     } | null;
+    /** 本地沙箱：试运行进行中（脚本在 Web Worker 中异步执行） */
+    sandboxRunning: boolean;
+    /** 本地沙箱：最近一次需要提示用户的消息（空流程、执行出错），界面显示后调用 clearSandboxNotice */
+    sandboxNotice: { text: string; type: 'error' | 'info'; timestamp: number } | null;
     /** 运行态：是否显示底部并发瀑布流与时空回放面板 */
     showWaterfallPanel: boolean;
     /** 运行态：时空旅行回放游标时间戳 (ms)，为 null 表示展示最终实时态 */
@@ -299,6 +303,8 @@ export interface WorkflowActions {
     setShowDataLineage: (show: boolean) => void;
     /** W-LSP: 清除重构提示文案 */
     clearRefactorNotice: () => void;
+    /** 本地沙箱：清除提示消息 */
+    clearSandboxNotice: () => void;
     /** 运行态：切换底部并发瀑布流面板 */
     setShowWaterfallPanel: (show: boolean) => void;
     /** 运行态：设置时空旅行时间戳 */
@@ -307,12 +313,15 @@ export interface WorkflowActions {
     setLoopIteration: (loopRef: string, iteration: number) => void;
     /** AI 共驾：打开/关闭画布原位 Cmd+K 浮窗 */
     setInlineCopilotTaskRef: (taskRef: string | null) => void;
-    /** 本地沙箱：在浏览器内执行零延迟确定性试运行并进入调试视图 */
+    /**
+     * 本地沙箱：在浏览器内试运行并进入运行视图。INLINE / JQ / SWITCH / DO_WHILE 等无外部依赖的任务真实执行，
+     * 调用外部系统的任务使用模拟数据。脚本在隔离的 Web Worker 中运行，因此是异步的。
+     */
     runLocalSandboxDryRun: (
         mockInput?: Record<string, any>,
         taskMocks?: Record<string, any>,
         maxLoopIterations?: number
-    ) => void;
+    ) => Promise<void>;
 }
 
 /**

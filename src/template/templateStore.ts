@@ -6,6 +6,8 @@ import { BUILTIN_WORKFLOW_TEMPLATES } from './builtin/templates';
  */
 export class TemplateStore {
   private templates: Map<string, WorkflowTemplate> = new Map();
+  private version = 0;
+  private listeners = new Set<() => void>();
 
   constructor(initialTemplates: WorkflowTemplate[] = []) {
     this.registerAll(initialTemplates);
@@ -16,7 +18,20 @@ export class TemplateStore {
    */
   register(template: WorkflowTemplate): void {
     this.templates.set(template.id, template);
+    this.version += 1;
+    this.listeners.forEach((fn) => fn());
   }
+
+  /** 每次注册后递增；界面据此刷新（R17） */
+  getVersion = (): number => this.version;
+
+  /** 订阅模板变化（兼容 React useSyncExternalStore）；返回取消订阅函数 */
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
 
   /**
    * 批量注册工作流模板

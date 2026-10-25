@@ -134,11 +134,11 @@ describe('上线申请', () => {
     expect(last.requestId).toBe(requestId);
   });
 
-  it('pollPromotion 对接：在 APPROVED 停止并带 targetName', async () => {
+  it('pollPromotion 对接：轮询到 SYNCED 停止并带 targetName', async () => {
     const o = fast();
     const { requestId } = await o.requestPromotion({ workflowName: NAME, version: 1, targetType: 'custom' });
     const final = await pollPromotion({ provider: o, requestId, sleep: noSleep });
-    expect(final.state).toBe('APPROVED');
+    expect(final.state).toBe('SYNCED');
     expect(final.targetName).toBe('custom-L2-云资源-ecs-create_vm');
   });
 
@@ -160,7 +160,7 @@ describe('上线申请', () => {
     const b = await o.requestPromotion({ workflowName: NAME, version: 1, targetType: 'custom' });
     const fa = await pollPromotion({ provider: o, requestId: a.requestId, sleep: noSleep });
     const fb = await pollPromotion({ provider: o, requestId: b.requestId, sleep: noSleep });
-    expect(fa.state).toBe('APPROVED');
+    expect(fa.state).toBe('SYNCED');
     expect(fb.state).toBe('REJECTED');
   });
 

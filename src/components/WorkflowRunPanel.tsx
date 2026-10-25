@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { parseWorkflowInputParams, WorkflowInputParam } from '../types/conductor';
 import { WorkflowInstance } from '../types/conductor';
 import './WorkflowRunPanel.css';
 import { X } from 'lucide-react';
+import { startExecutionPolling, type ExecutionPoller } from '../utils/executionPoller';
 
 export interface WorkflowRunPanelProps {
     onTriggerExecution?: (
@@ -15,8 +16,6 @@ export interface WorkflowRunPanelProps {
     onPollExecution?: (workflowId: string) => Promise<WorkflowInstance | null>;
     executionPollInterval?: number;
 }
-
-const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED', 'TIMED_OUT', 'TERMINATED']);
 
 const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
     onTriggerExecution,
@@ -40,6 +39,23 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
     const [submitError, setSubmitError] = useState('');
 
     const params: WorkflowInputParam[] = parseWorkflowInputParams(workflowDef?.inputParameters);
+
+    // R2: one poller at a time. Cancelled on unmount, on re-trigger and when the user leaves run mode.
+    const pollerRef = useRef<ExecutionPoller | null>(null);
+    useEffect(() => {
+        const unsubscribe = useWorkflowStore.subscribe((state, prev) => {
+            if (prev.mode === 'run' && state.mode !== 'run' && pollerRef.current) {
+                pollerRef.current.cancel();
+                pollerRef.current = null;
+                if (state.runState === 'polling') state.setRunState('idle');
+            }
+        });
+        return () => {
+            unsubscribe();
+            pollerRef.current?.cancel();
+            pollerRef.current = null;
+        };
+    }, []);
 
     // Reset state when panel opens
     useEffect(() => {
@@ -127,7 +143,7 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
 
         setIsSubmitting(true);
         setSubmitError('');
-        setRunState('triggering');
+        setRunState('triggering', null, null);
 
         try {
             const { workflowId } = await onTriggerExecution(
@@ -144,30 +160,19 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
 
             if (!onPollExecution) return;
 
-            // Exponential back-off polling
-            let interval = executionPollInterval;
-            const MAX_INTERVAL = 15000;
-            let pollTimer: ReturnType<typeof setTimeout>;
-
-            const poll = async () => {
-                try {
-                    const instance = await onPollExecution(workflowId);
-                    if (instance) {
-                        importExecutionJSON(instance);
-                        if (TERMINAL_STATUSES.has(instance.status)) {
-                            setRunState('done', workflowId);
-                            return;
-                        }
-                    }
-                } catch { /* ignore individual poll errors */ }
-
-                interval = Math.min(interval * 1.5, MAX_INTERVAL);
-                pollTimer = setTimeout(poll, interval);
-            };
-
-            pollTimer = setTimeout(poll, interval);
-            // Store cleanup reference on the store for potential cancellation
-            (useWorkflowStore.getState() as any).__pollTimer = pollTimer;
+            pollerRef.current?.cancel();
+            pollerRef.current = startExecutionPolling<WorkflowInstance>({
+                workflowId,
+                poll: (id) => onPollExecution(id),
+                interval: executionPollInterval,
+                maxInterval: 15000,
+                maxFailures: 5,
+                // Never pull a user who went back to editing into run mode.
+                shouldContinue: () => useWorkflowStore.getState().mode === 'run',
+                onInstance: (instance) => importExecutionJSON(instance),
+                onDone: () => setRunState('done', workflowId, null),
+                onGiveUp: (message) => setRunState('error', workflowId, message),
+            });
         } catch (err: any) {
             const msg = err?.message || '执行触发失败，请检查配置后重试';
             setRunState('error', null, msg);

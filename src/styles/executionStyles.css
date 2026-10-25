@@ -188,8 +188,22 @@
     color: var(--text-primary);
 }
 
-.execution-status-badge.failed {
+.execution-status-badge.failed,
+.execution-status-badge.failed-with-terminal-error,
+.execution-status-badge.terminated {
     background: var(--status-failed);
+}
+
+.execution-status-badge.running {
+    background: var(--status-in-progress);
+}
+
+.execution-status-badge.running .badge-icon {
+    animation: status-spin 1.5s linear infinite;
+}
+
+.execution-status-badge.paused {
+    background: var(--status-timed-out);
 }
 
 .execution-status-badge.timed-out {

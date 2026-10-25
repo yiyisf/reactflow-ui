@@ -297,6 +297,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
     const selectedTask = useWorkflowStore(s => s.selectedTask);
+    // 沙箱实例只在浏览器里，修复动作（重跑 / 跳过 / 重试）调宿主接口会找不到它
+    const isSandboxInstance = useWorkflowStore(s => s.workflowInstance?.isSandbox === true);
     const selectTaskAction = useWorkflowStore(s => s.selectTaskAction);
     const mode = useWorkflowStore(s => s.mode);
     const workflowInstance = useWorkflowStore(s => s.workflowInstance);
@@ -414,10 +416,12 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     }, [onPollExecution, aiStore]);
 
     const canEditForRepair = aiPermissions?.canEdit !== false;
+    // 沙箱实例只在浏览器里：重跑 / 跳过 / 重试要调宿主接口，对它不可用（修改定义仍可用）
+    const hostActions = isSandboxInstance ? undefined : executionActions;
     const repairCapabilities: RepairCapabilities = {
-        onRerunFromTask: executionActions?.onRerunFromTask,
-        onSkipTask: executionActions?.onSkipTask,
-        onRetry: executionActions?.onRetry,
+        onRerunFromTask: hostActions?.onRerunFromTask,
+        onSkipTask: hostActions?.onSkipTask,
+        onRetry: hostActions?.onRetry,
         canEditDefinition: canEditForRepair,
     };
 
@@ -425,9 +429,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         // Each action is judged by its own callback; a non-executable one does nothing and
         // reports nothing (no repair:executed, no polling).
         if (!isRepairActionExecutable(action, {
-            onRerunFromTask: executionActions?.onRerunFromTask,
-            onSkipTask: executionActions?.onSkipTask,
-            onRetry: executionActions?.onRetry,
+            onRerunFromTask: useWorkflowStore.getState().workflowInstance?.isSandbox ? undefined : executionActions?.onRerunFromTask,
+            onSkipTask: useWorkflowStore.getState().workflowInstance?.isSandbox ? undefined : executionActions?.onSkipTask,
+            onRetry: useWorkflowStore.getState().workflowInstance?.isSandbox ? undefined : executionActions?.onRetry,
             canEditDefinition: canEditForRepair,
         })) return;
         // RepairCard only calls runtime actions after the user's inline second-click confirmation —

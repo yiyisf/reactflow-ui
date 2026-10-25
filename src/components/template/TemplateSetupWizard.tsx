@@ -234,7 +234,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gridTemplateColumns: `repeat(${template.roi.popularityCount !== undefined ? 3 : 2}, 1fr)`,
                   gap: 12,
                 }}
               >
@@ -266,19 +266,22 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 8,
-                    background: 'color-mix(in srgb, var(--cm-status-warning) 10%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--cm-status-warning) 25%, transparent)',
-                  }}
-                >
-                  <div style={{ fontSize: 11, color: 'var(--cm-status-warning)' }}><CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />累计被采用</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cm-status-warning)', marginTop: 4 }}>
-                    {template.roi.popularityCount ?? 1200} 次
+                {/* 只显示模板数据真实提供的采用次数，不编造 */}
+                {template.roi.popularityCount !== undefined && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      background: 'color-mix(in srgb, var(--cm-status-warning) 10%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--cm-status-warning) 25%, transparent)',
+                    }}
+                  >
+                    <div style={{ fontSize: 11, color: 'var(--cm-status-warning)' }}><CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />累计被采用</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cm-status-warning)', marginTop: 4 }}>
+                      {template.roi.popularityCount} 次
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* 核心业务价值说明 */}

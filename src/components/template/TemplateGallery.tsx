@@ -315,17 +315,20 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                   >
                     <CmIcon name="zap" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />单次约省 {tpl.roi.minutesSavedPerRun} 分钟
                   </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      padding: '2px 7px',
-                      borderRadius: 4,
-                      background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                      color: 'var(--color-accent)',
-                    }}
-                  >
-                    <CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />已使用 {tpl.roi.popularityCount ?? 1000} 次
-                  </span>
+                  {/* 只显示模板数据真实提供的使用次数，不编造 */}
+                  {tpl.roi.popularityCount !== undefined && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                        color: 'var(--color-accent)',
+                      }}
+                    >
+                      <CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />已使用 {tpl.roi.popularityCount} 次
+                    </span>
+                  )}
                 </div>
 
                 {/* 操作按钮组 */}

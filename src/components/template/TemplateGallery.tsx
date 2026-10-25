@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -19,6 +19,9 @@ export interface TemplateGalleryProps {
   onSandboxRun?: (result: string) => void;
 }
 
+const noSubscribe = () => () => {};
+const zeroVersion = () => 0;
+
 export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   isOpen,
   onClose,
@@ -34,9 +37,15 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   // 快捷试跑提示弹窗
   const [quickTestNotice, setQuickTestNotice] = useState<string | null>(null);
 
+  // R17: re-run the search when templates are registered (e.g. one just published from a run)
+  // Hosts may pass an older store object without subscribe/getVersion: fall back to a static snapshot.
+  const subscribe = templateStore.subscribe ?? noSubscribe;
+  const getVersion = templateStore.getVersion ?? zeroVersion;
+  const storeVersion = useSyncExternalStore(subscribe, getVersion, getVersion);
   const templates = useMemo(() => {
+    void storeVersion; // change signal for the mutable store
     return templateStore.search(searchQuery, selectedCategory);
-  }, [templateStore, searchQuery, selectedCategory]);
+  }, [templateStore, searchQuery, selectedCategory, storeVersion]);
 
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;

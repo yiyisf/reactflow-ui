@@ -260,6 +260,10 @@ export interface TaskInstance {
     externalInputPayloadStoragePath?: string;
     externalOutputPayloadStoragePath?: string;
     workflowTask?: TaskDef;
+    /** 仅浏览器沙箱：本任务是真实执行、使用模拟数据，还是未执行（同步接口不执行脚本等） */
+    sandboxExecution?: 'executed' | 'mocked' | 'not_executed';
+    /** 仅浏览器沙箱：执行中的提示（未取到值的引用、走默认分支的原因等） */
+    sandboxWarnings?: string[];
 }
 
 /**
@@ -294,4 +298,6 @@ export interface WorkflowInstance {
     startTime?: number; // Added missing property
     createdBy?: string;
     updatedBy?: string;
+    /** 浏览器沙箱试运行产生的实例（模拟数据，不存在于服务端） */
+    isSandbox?: boolean;
 }

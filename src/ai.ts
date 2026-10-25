@@ -84,13 +84,18 @@ export type {
 } from './services/wlsp/workflowLsp';
 export {
     executeLocalSandboxDryRun,
+    executeLocalSandboxDryRunAsync,
     buildDefaultWorkflowMockInput,
     generateDefaultTaskOutputPreview,
 } from './utils/localSandboxEngine';
 export type {
     SandboxDryRunOptions,
+    SandboxAsyncOptions,
     TaskMockOverride,
 } from './utils/localSandboxEngine';
+export { runJq, JqError } from './utils/sandbox/jq';
+export { createWorkerScriptEvaluator } from './utils/sandbox/scriptRunner';
+export type { ScriptEvaluator, ScriptResult, WorkerScriptEvaluator } from './utils/sandbox/scriptRunner';
 
 // ── v1.3.0: 扩展点注册（IdeProviders）与接入埋点（TelemetrySink） ───────────
 export { WorkflowIdeProvider, useIdeProviders } from './providers/WorkflowIdeProvider';

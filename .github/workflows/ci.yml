@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Design tokens are up to date
+        run: npm run tokens:check
+
       - name: Lint
         run: npm run lint
 

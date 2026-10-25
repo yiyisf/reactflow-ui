@@ -1,31 +1,30 @@
+/* CMASTER design tokens (--cm-*), generated from design/tokens.json. Legacy variables below alias them. */
+@import './cmaster-tokens.css';
+
 :root {
     /* ----------------------------------------------------
        Theme: Brand Colors (Global)
        ---------------------------------------------------- */
     --color-brand-blue: #3b82f6;
     /* Tech Blue */
-    --color-brand-orange: #E75213;
+    --color-brand-orange: var(--cm-brand-500);
     /* Molten Core */
 
     /* ----------------------------------------------------
        Theme: Functional Colors (Global)
        ---------------------------------------------------- */
-    --color-success: #10b981;
-    --color-warning: #f59e0b;
-    --color-error: #ef4444;
-    --color-info: #3b82f6;
 
     /* ----------------------------------------------------
        Layer: Base Tokens (Mode Agnostic Defaults)
        ---------------------------------------------------- */
-    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --font-sans: var(--cm-font-sans);
+    --font-mono: var(--cm-font-mono);
 
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
-    --node-radius: 12px;
+    --radius-sm: var(--cm-radius-sm);
+    --radius-md: var(--cm-radius-md);
+    --radius-lg: var(--cm-radius-lg);
+    --radius-xl: var(--cm-radius-xl);
+    --node-radius: var(--cm-radius-lg);
 
     --z-dropdown: 1000;
     --z-sticky: 1100;
@@ -37,37 +36,40 @@
     --color-accent-rgb: 59, 130, 246;
 }
 
+/* Functional colors follow the active mode, so they are re-declared on every [data-mode] root. */
+:root,
+[data-mode] {
+    --color-success: var(--cm-status-success);
+    --color-warning: var(--cm-status-warning);
+    --color-error: var(--cm-status-failed);
+    --color-info: var(--cm-data);
+}
+
 /* ------------------------------------------------------------------
    MODE: DARK (Default)
    ------------------------------------------------------------------ */
 [data-mode='dark'] {
-    /* Backgrounds */
-    --bg-primary: #0f172a;
-    /* Dark Blue/Black */
-    --bg-secondary: #1e293b;
-    /* Slate 800 */
-    --bg-tertiary: #334155;
-    /* Slate 700 */
+    /* Backgrounds (CMASTER navy) */
+    --bg-primary: var(--cm-surface-0);
+    --bg-secondary: var(--cm-surface-2);
+    --bg-tertiary: var(--cm-surface-3);
     --bg-highlight: rgba(255, 255, 255, 0.05);
 
-    /* Glass Effect */
-    --glass-surface: rgba(30, 41, 59, 0.78);
-    --glass-bg: rgba(30, 41, 59, 0.72);
-    --glass-bg-accent: rgba(30, 41, 59, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.16);
+    /* Glass Effect (surface-2 #0f1526 at partial opacity) */
+    --glass-surface: rgba(15, 21, 38, 0.80);
+    --glass-bg: rgba(15, 21, 38, 0.74);
+    --glass-bg-accent: rgba(15, 21, 38, 0.88);
+    --glass-border: rgba(255, 255, 255, 0.10);
 
     /* Typography */
-    --text-primary: #f8fafc;
-    /* Slate 50 */
-    --text-secondary: #b0bec5;
-    /* Improved contrast: ~5.2:1 on dark bg */
-    --text-muted: #8896a3;
-    /* Improved contrast: ~4.5:1 on dark bg */
-    --text-inverse: #0f172a;
+    --text-primary: var(--cm-text-primary);
+    --text-secondary: var(--cm-text-secondary);
+    --text-muted: var(--cm-text-muted);
+    --text-inverse: var(--cm-canvas);
 
     /* Borders */
-    --border-primary: rgba(255, 255, 255, 0.16);
-    --border-secondary: rgba(255, 255, 255, 0.30);
+    --border-primary: var(--cm-border-default);
+    --border-secondary: var(--cm-border-strong);
 
     /* Node shadows — 深色模式下加强阴影可见度 */
     --node-shadow: 0 6px 22px rgba(0, 0, 0, 0.50), 0 2px 6px rgba(0, 0, 0, 0.32);
@@ -79,40 +81,35 @@
    ------------------------------------------------------------------ */
 [data-mode='light'] {
     /* Backgrounds */
-    --bg-primary: #f8fafc;
-    /* Slate 50 */
-    --bg-secondary: #ffffff;
-    /* White */
-    --bg-tertiary: #f1f5f9;
-    /* Slate 100 */
-    --bg-highlight: rgba(0, 0, 0, 0.04);
+    --bg-primary: var(--cm-surface-0);
+    --bg-secondary: var(--cm-surface-2);
+    --bg-tertiary: var(--cm-surface-3);
+    --bg-highlight: rgba(11, 16, 32, 0.04);
 
     /* Glass Effect */
     --glass-surface: rgba(255, 255, 255, 0.88);
     --glass-bg: rgba(255, 255, 255, 0.92);
     --glass-bg-accent: rgba(255, 255, 255, 0.96);
-    --glass-border: rgba(15, 23, 42, 0.12);
+    --glass-border: rgba(11, 16, 32, 0.12);
 
     /* Typography */
-    --text-primary: #0f172a;
-    /* Slate 900 */
-    --text-secondary: #475569;
-    /* Slate 600 */
-    --text-muted: #94a3b8;
-    /* Slate 400 */
+    --text-primary: var(--cm-text-primary);
+    --text-secondary: var(--cm-text-secondary);
+    --text-muted: var(--cm-text-muted);
     --text-inverse: #ffffff;
 
     /* Borders */
-    --border-primary: rgba(15, 23, 42, 0.12);
-    --border-secondary: rgba(15, 23, 42, 0.24);
+    --border-primary: var(--cm-border-default);
+    --border-secondary: var(--cm-border-strong);
 
     /* Node shadows — 浅色模式下保持适中阴影 */
-    --node-shadow: 0 4px 16px rgba(15, 23, 42, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06);
-    --node-shadow-hover: 0 8px 24px rgba(15, 23, 42, 0.15), 0 2px 6px rgba(15, 23, 42, 0.09);
+    --node-shadow: 0 4px 16px rgba(11, 16, 32, 0.10), 0 1px 4px rgba(11, 16, 32, 0.06);
+    --node-shadow-hover: 0 8px 24px rgba(11, 16, 32, 0.15), 0 2px 6px rgba(11, 16, 32, 0.09);
 }
 
 /* ------------------------------------------------------------------
-   BRAND: BLUE (Tech Blue)
+   BRAND: BLUE (Tech Blue) — deprecated: the CMASTER design system converges on orange.
+   Kept so existing hosts passing themeColor="blue" keep working.
    ------------------------------------------------------------------ */
 [data-brand='blue'] {
     /* Mode-Aware Branding */
@@ -144,27 +141,22 @@
    BRAND: ORANGE (Molten Core)
    ------------------------------------------------------------------ */
 [data-brand='orange'] {
-    /* Dark Mode Defaults */
-    --color-accent: #E75213;
-    --color-accent-rgb: 231, 82, 19;
-    --node-glow-color: rgba(231, 82, 19, 0.45);
-    /* Custom Orange */
-    --color-accent-hover: #fb923c;
-    /* Orange 400 */
-    --color-accent-text: #fdba74;
-    /* Orange 300 */
-    --color-accent-bg: rgba(231, 82, 19, 0.15);
+    /* CMASTER orange (brand-500). Fills use --color-accent; orange text uses --color-accent-text. */
+    --color-accent: var(--cm-brand-500);
+    --color-accent-rgb: 255, 106, 19;
+    --node-glow-color: rgba(255, 106, 19, 0.45);
+    --color-accent-hover: var(--cm-brand-400);
+    --color-accent-text: var(--cm-brand-text);
+    --color-accent-bg: var(--cm-brand-tint);
 }
 
 [data-brand='orange'][data-mode='light'] {
-    --color-accent: #ea580c;
-    --color-accent-rgb: 234, 88, 12;
-    --node-glow-color: rgba(234, 88, 12, 0.35);
-    /* Orange 600 */
+    /* brand-600 keeps orange fills and lines readable on white */
+    --color-accent: var(--cm-brand-600);
+    --color-accent-rgb: 229, 84, 10;
+    --node-glow-color: rgba(229, 84, 10, 0.35);
     --color-accent-hover: #c2410c;
-    /* Orange 700 */
-    --color-accent-text: #9a3412;
-    /* Orange 800 */
+    --color-accent-text: var(--cm-brand-text);
 }
 
 /* ------------------------------------------------------------------

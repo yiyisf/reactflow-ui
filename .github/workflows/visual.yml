@@ -1,0 +1,44 @@
+name: Visual regression
+
+# Screenshots of the demo IDE (both themes x three view modes) and of the CMASTER golden examples
+# (design/examples), compared against baselines in tests/visual/__screenshots__.
+# Runs inside the official Playwright image so browser build and fonts match the baselines exactly.
+# Intended visual change? Run the "Visual baselines" workflow on your branch to regenerate them.
+
+on:
+  pull_request:
+    branches: [master, main]
+  push:
+    branches: [master, main]
+
+env:
+  PLAYWRIGHT_VERSION: 1.56.1
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Test runner pinned to the container's browser build; --no-save keeps package-lock.json untouched.
+      - name: Install Playwright test runner
+        run: npm i --no-save @playwright/test@${PLAYWRIGHT_VERSION}
+
+      - name: Run visual tests
+        run: npx playwright test
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

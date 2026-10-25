@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>社媒方图 · Glacier</title>
+<!--
+  CMASTER golden example: 社媒方图 · Glacier
+  Demonstrates: 代码胶囊 + 流程链视觉主体
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (dark, palette glacier). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div data-mode="dark" style="--a: #22d3ee; --hi: #a5f3fc; --on: #04222a; --glow: #22d3ee3d; --g0: #f3f6fb; position: relative; width: 1080px; height: 1080px; overflow: hidden; box-sizing: border-box; padding: 72px; display: flex; flex-direction: column; gap: 36px; background: radial-gradient(ellipse 85% 50% at 100% -5%, var(--glow), transparent 70%), radial-gradient(ellipse 50% 40% at 0% 100%, var(--cm-aurora-ai), transparent 65%), var(--cm-canvas); background-color: var(--cm-canvas); background-image: radial-gradient(ellipse 85% 50% at 100% -5%, var(--glow), transparent 70%), radial-gradient(var(--cm-canvas-grid) 1.5px, transparent 1.5px); background-size: auto, 20px 20px; color: var(--cm-text-primary); font-family: var(--cm-font-sans);">
+
+  <svg width="1080" height="1080" viewBox="0 0 1080 1080" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none;">
+    <circle cx="1160" cy="300" r="420" fill="none" stroke-width="3" style="stroke: var(--a); opacity: .4;"></circle>
+    <circle cx="740" cy="300" r="13" style="fill: var(--a);"></circle>
+    <circle cx="830" cy="560" r="11" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+  </svg>
+
+  <div style="position: relative; display: flex; align-items: center; gap: 14px;">
+    <svg width="40" height="40" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-canvas)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg>
+    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.02em;"><span style="color: #ff6a13;">C</span>MASTER</span>
+    <span style="margin-left: 6px; padding: 7px 16px; border-radius: 999px; border: 1.5px solid var(--a); color: var(--a); font: 500 18px/1 var(--cm-font-mono); letter-spacing: .1em;">集成小课堂 02 / 04</span>
+  </div>
+
+  <div style="position: relative; display: flex; flex-direction: column; gap: 18px;">
+    <span style="font: 500 22px/28px var(--cm-font-mono); letter-spacing: .18em; color: var(--a);">API IMPORT</span>
+    <h1 style="margin: 0; font-size: 76px; line-height: 88px; font-weight: 800; letter-spacing: -0.02em;">粘贴一段 curl<br><span style="background-image: linear-gradient(90deg, var(--g0), var(--hi)); -webkit-background-clip: text; background-clip: text; color: transparent;">直接变成流程步骤</span></h1>
+  </div>
+
+  <div style="position: relative; display: flex; flex-direction: column; gap: 0; margin-top: 8px;">
+    <div style="border-radius: 22px 22px 0 0; border: 1px solid var(--cm-border-default); background: var(--cm-surface-2); padding: 24px 28px; font: 22px/36px var(--cm-font-mono); color: var(--cm-text-secondary);"><span style="color: var(--a);">$</span> curl -X POST <span style="color: var(--cm-cat-data);">'https://itsm.example.com/api/tickets'</span><br>&#160;&#160;-H <span style="color: var(--cm-cat-data);">'Authorization: Bearer ••••••'</span></div>
+    <div style="display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-left: 1px solid var(--cm-border-default); border-right: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font-size: 22px; color: var(--a); font-weight: 600;"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;"><path d="M12 5v14M6 13l6 6 6-6"></path></svg>自动识别 · 凭据替换为流程入参</div>
+    <div style="border-radius: 0 0 22px 22px; border: 1.5px solid var(--a); background: var(--cm-surface-2); box-shadow: 0 0 0 5px var(--glow); padding: 22px 28px; display: flex; align-items: center; gap: 18px;">
+      <span style="width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--cm-surface-3); color: var(--cm-cat-task);"><svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"></path></svg></span>
+      <div style="display: flex; flex-direction: column; gap: 4px;"><b style="font-size: 30px; line-height: 38px;">创建工单</b><span style="font: 20px/28px var(--cm-font-mono); color: var(--cm-text-muted);">create_ticket · HTTP · POST</span></div>
+      <span style="margin-left: auto; padding: 8px 14px; border-radius: 10px; background: var(--cm-data-tint); color: var(--cm-data); font: 500 20px var(--cm-font-mono);">${workflow.input.authorization}</span>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 12px; flex-wrap: wrap; margin-top: auto;">
+    <span style="padding: 10px 18px; border-radius: 10px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font: 500 22px var(--cm-font-mono);">OpenAPI 3</span>
+    <span style="padding: 10px 18px; border-radius: 10px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font: 500 22px var(--cm-font-mono);">Swagger 2</span>
+    <span style="padding: 10px 18px; border-radius: 10px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font: 500 22px var(--cm-font-mono);">Postman v2.1</span>
+    <span style="padding: 10px 18px; border-radius: 10px; border: 1.5px solid var(--a); color: var(--a); background: var(--cm-surface-1); font: 500 22px var(--cm-font-mono);">curl</span>
+    <span style="margin-left: auto; align-self: center; font-size: 22px; color: var(--cm-text-muted);">v1.3.0 起可用</span>
+  </div>
+</div>
+</body>
+</html>

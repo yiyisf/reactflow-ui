@@ -24,4 +24,10 @@ coverage
 *.sln
 *.sw?
 Optimizing Workflow Visualizer.md
-.claude/
+# Local Claude Code state stays untracked; shared project skills are versioned.
+.claude/*
+!.claude/skills/
+
+# Playwright
+playwright-report/
+test-results/

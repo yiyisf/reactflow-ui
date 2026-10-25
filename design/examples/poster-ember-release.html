@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>竖版海报 · Ember</title>
+<!--
+  CMASTER golden example: 竖版海报 · Ember
+  Demonstrates: posters.md 不变的东西、轨道图形、行动区
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (light, palette ember). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div data-mode="light" style="--a: #c2410c; --hi: #c2410c; --on: #ffffff; --glow: #c2410c3d; --g0: #c2410c; position: relative; width: 1080px; height: 1920px; overflow: hidden; box-sizing: border-box; padding: 96px; display: flex; flex-direction: column; gap: 56px; background: radial-gradient(ellipse 95% 45% at 75% -6%, var(--glow), transparent 70%), radial-gradient(ellipse 60% 30% at -5% 62%, var(--cm-aurora-ai), transparent 65%), var(--cm-canvas); background-color: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans);">
+
+  <svg width="1080" height="1920" viewBox="0 0 1080 1920" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none;">
+    <circle cx="1180" cy="760" r="620" fill="none" stroke-width="3" style="stroke: var(--a); opacity: .4;"></circle>
+    <circle cx="1180" cy="760" r="470" fill="none" stroke-width="1.5" style="stroke: var(--a); opacity: .18;"></circle>
+    <circle cx="623" cy="487" r="14" style="fill: var(--a);"></circle>
+    <circle cx="566" cy="760" r="12" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+    <circle cx="660" cy="1093" r="12" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+  </svg>
+
+  <div style="position: relative; display: flex; align-items: center; gap: 16px;">
+    <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-canvas)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg>
+    <span style="font-size: 34px; font-weight: 800; letter-spacing: -0.02em;"><span style="color: #ff6a13;">C</span>MASTER</span>
+    <span style="margin-left: 8px; padding: 8px 18px; border-radius: 999px; border: 1.5px solid var(--a); color: var(--a); font: 500 20px/1 var(--cm-font-mono); letter-spacing: .08em;">v1.3.0</span>
+  </div>
+
+  <div style="position: relative; display: flex; flex-direction: column; gap: 32px;">
+    <span style="font: 500 22px/28px var(--cm-font-mono); letter-spacing: .18em; color: var(--a);">SELF-SERVICE ONBOARDING</span>
+    <h1 style="margin: 0; font-size: 112px; line-height: 120px; font-weight: 800; letter-spacing: -0.03em;">新团队<br><span style="background-image: linear-gradient(90deg, var(--g0), var(--hi)); -webkit-background-clip: text; background-clip: text; color: transparent;">自己跑通</span><br>第一个流程</h1>
+    <p style="margin: 0; max-width: 760px; font-size: 32px; line-height: 48px; font-weight: 500; color: var(--cm-text-secondary);">登记产品、规范命名、导入接口、沙箱试跑、申请上线，全在测试环境里自助完成。</p>
+  </div>
+
+  <div style="position: relative; border-radius: 28px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); box-shadow: var(--cm-shadow-dialog); overflow: hidden; transform: rotate(-2deg); margin: 8px 24px 0 0;">
+    <div style="height: 2px; background: linear-gradient(90deg, transparent, var(--a), transparent);"></div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 20px 28px; border-bottom: 1px solid var(--cm-border-subtle);">
+      <span style="width: 12px; height: 12px; border-radius: 999px; background: var(--cm-border-strong);"></span><span style="width: 12px; height: 12px; border-radius: 999px; background: var(--cm-border-strong);"></span>
+      <span style="font-size: 22px; font-weight: 600; margin-left: 8px;">新建流程向导</span>
+      <span style="margin-left: auto; font: 500 18px var(--cm-font-mono); color: var(--cm-text-muted);">TEST</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; padding: 28px;">
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);"><span style="width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font: 600 18px var(--cm-font-mono); color: var(--on); background: var(--a);">✓</span><b style="font-size: 22px;">登记产品</b></div>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);"><span style="width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font: 600 18px var(--cm-font-mono); color: var(--on); background: var(--a);">✓</span><b style="font-size: 22px;">规范命名</b></div>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: var(--cm-surface-2); border: 1.5px solid var(--a); box-shadow: 0 0 0 4px var(--glow);"><span style="width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font: 600 18px var(--cm-font-mono); color: var(--on); background: var(--a);">3</span><b style="font-size: 22px;">选择起点</b></div>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);"><span style="width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font: 600 18px var(--cm-font-mono); color: var(--cm-text-secondary); background: var(--cm-surface-3);">4</span><b style="font-size: 22px; color: var(--cm-text-secondary);">沙箱试跑</b></div>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);"><span style="width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font: 600 18px var(--cm-font-mono); color: var(--cm-text-secondary); background: var(--cm-surface-3);">5</span><b style="font-size: 22px; color: var(--cm-text-secondary);">申请上线</b></div>
+    </div>
+    <div style="padding: 0 28px 28px; display: flex; gap: 12px; align-items: center;">
+      <span style="font-size: 20px; color: var(--cm-text-muted);">流程名</span>
+      <span style="padding: 8px 14px; border-radius: 10px; background: var(--cm-surface-3); border: 1px solid var(--cm-border-default); font: 500 22px var(--cm-font-mono);">tmp-业务-云资源-order-create</span>
+      <span style="margin-left: auto; font-size: 20px; font-weight: 600; color: var(--cm-status-success);">✓ 命名规范校验通过</span>
+    </div>
+  </div>
+
+  <div style="position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: auto;">
+    <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 88px; line-height: 92px; font-weight: 800; letter-spacing: -0.04em;">5<span style="font-size: 32px; color: var(--a); margin-left: 6px;">步</span></span><span style="font-size: 22px; line-height: 32px; color: var(--cm-text-muted);">首个流程自助路径</span></div>
+    <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 88px; line-height: 92px; font-weight: 800; letter-spacing: -0.04em;">4<span style="font-size: 32px; color: var(--a); margin-left: 6px;">种</span></span><span style="font-size: 22px; line-height: 32px; color: var(--cm-text-muted);">接口来源一键导入</span></div>
+    <div style="display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 88px; line-height: 92px; font-weight: 800; letter-spacing: -0.04em;">10<span style="font-size: 32px; color: var(--a); margin-left: 6px;">个</span></span><span style="font-size: 22px; line-height: 32px; color: var(--cm-text-muted);">业务域开箱可选</span></div>
+  </div>
+
+  <div style="position: relative; display: flex; align-items: center; gap: 32px; padding-top: 40px; border-top: 1px solid var(--cm-border-default);">
+    <div style="display: flex; flex-direction: column; gap: 18px; flex-grow: 1;">
+      <span style="font-size: 40px; line-height: 48px; font-weight: 700;">拖一拖，流程就跑起来</span>
+      <span style="align-self: flex-start; padding: 18px 28px; border-radius: 14px; background: var(--a); color: var(--on); font-size: 30px; font-weight: 800; box-shadow: 0 12px 36px var(--glow);">联系人 zhang · 进入工作台</span>
+      <span style="font-size: 22px; line-height: 32px; color: var(--cm-text-muted);">适用：一线运维同事 · 需要串联多系统的开发</span>
+    </div>
+    <div style="width: 176px; height: 176px; flex: none; border-radius: 16px; background: #ffffff; display: grid; place-items: center; color: #5b6880; font-size: 22px;">[二维码]</div>
+  </div>
+</div>
+</body>
+</html>

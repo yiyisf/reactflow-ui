@@ -82,7 +82,7 @@ describe('startExecutionPolling (R2)', () => {
         const delivered: string[] = [];
         const p = startExecutionPolling({
             workflowId: 'w4',
-            poll: () => new Promise((r) => { resolve = r; }),
+            poll: () => new Promise<{ status: string }>((r) => { resolve = r; }),
             onInstance: (i) => delivered.push(i.status),
             setTimer: t.setTimer, clearTimer: t.clearTimer,
         });

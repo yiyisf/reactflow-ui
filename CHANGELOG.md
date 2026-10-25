@@ -39,6 +39,28 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。
 
+### Fixed（v1.3.1 · 运行视图与 1.3.0 收尾）
+- **R1** 真实运行或加载示例后执行状态栏不再崩溃（hook 移到提前 return 之前）。
+- **R2** 执行轮询可取消：卸载、再次发起、回到编辑态时停止；请求出错或返回空连续 5 次后停止，并在状态栏说明原因与处理方式；不再把正在编辑的用户拉回运行态。新增 `src/utils/executionPoller.ts`。
+- **R3 / R5** 循环轮次只作用于节点所在的循环，同一轮内取最后一次尝试；`ref__N` 只登记到所属任务一次，迭代与重试分开计算（`StepInfo` 新增 `iterationCount`，`retryCount` 只表示重试）。新增 `src/utils/executionImport.ts`。
+- **R4** 切换节点时清空上一个任务选中的尝试；详情面板只显示属于当前任务的尝试。
+- **R6** curl 组合短参数（`-sX POST`、`-sH '…'`、`-sXPOST`）按字母拆分，token 不会再被当成 URL；补充更多带值参数（如 `--cookie-jar`、`-c`），`--oauth2-bearer` 生成 Authorization 占位。
+- **R7** 请求体任意层级的敏感字段（如 `credentials.password`）都替换为 `${workflow.input.…}` 占位。
+- **R8** 「新建流程」会替换画布上已有流程时先确认，替换可以撤销（只有空画布才清空撤销历史）。
+- **R9** 循环里的动态并行按迭代后缀配对 fork / join，能看到每轮的子任务（画布显示最后一轮，`fork__N` 键保存各轮）。
+- **R12** 上线进度轮询到「已同步到生产」或「已驳回」才停止（`isTerminalPromotionState('APPROVED')` 现在返回 `false`）；已提交的申请按流程名称与版本保存在控制器里，重新打开面板接着轮询，不会重复提交。`PromotionPanel` 新增可选 `resumeRequest` / `onRequestChange`。
+- **R14** 敏感名单补充 access key、signature、subscription key（`Ocp-Apim-Subscription-Key`）、credential、session（只匹配以 session / session_id / session_token / session_key 结尾的名称）；OpenAPI 敏感参数不再用 example 或字面默认值。
+- **R15** 启用自助接入时，保存前按命名规范检查流程名称，不合规时在工具栏下方给出可关闭的提示，不阻断保存。
+- **R16** 接口导入：只有全部接口都能显示时才默认全选；全选只作用于显示的行；超出显示上限时提示「另有 N 个未显示，请用搜索缩小范围」。
+- **R17** 「提取为模板」文案改为只在本页可用；`TemplateStore` 新增 `getVersion()` / `subscribe()`，模板中心在注册新模板后立即刷新；沙箱试运行的结果不再显示「提取为模板」。
+- **R18 / B11** 新增共用状态映射 `src/utils/statusMeta.ts`（覆盖全部 Conductor 任务与工作流状态：颜色 token + 图标 + 中文词），用于节点角标、执行状态栏、任务详情、执行分析、瀑布图与运行故事线；故事线不再把运行中、已超时、已跳过、已终止写成「执行完成」。
+- **B12** 运行故事线的描述按真实输出生成，缺数据时不写（不再出现固定的「系统运行平稳」「已完成审核批准」、默认 CPU 20%、默认审批人等）。新增 `src/utils/runStory.ts`。
+- **B13** 故事线错误卡片的按钮：「查看上游」跳到上一步（需 `onInspectStep`），其他动作交给新的可选 `onErrorAction`；没有处理方时不显示按钮。
+- OpenAPI 声明多个 servers 时提示用了哪一个及其他地址；operationId 已带方法前缀时不再重复（`get_item` 不再变成 `get_get_item`；导入生成的动作 id 随之变化）。
+- 自助接入向导生成的骨架流程写入 `ownerEmail`（取 `OnboardingContext.user.email`，新增可选字段）；经向导选模板时保留该邮箱。
+- 同一页面同时挂载 WorkflowIDE 与 AiWorkflowIDE 时，`sandbox_run` / `step_added` 只上报一次（只通知最近订阅的实例）。
+- 专业模式「模拟运行」改名「流转预览」，播放结束后清除高亮；模板向导的沙箱结果提示改为「沙箱试运行结束」并显示中文状态。
+
 ---
 
 ## [1.3.0] - 2026-10-24

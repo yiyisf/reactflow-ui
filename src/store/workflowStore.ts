@@ -22,6 +22,7 @@ import { buildExecutionWaves } from '../utils/simulateWorkflow';
 import { refactorTaskReferenceName } from '../services/wlsp/workflowLsp';
 import { executeLocalSandboxDryRun } from '../utils/localSandboxEngine';
 import { notifySandboxRun, notifyStepAdded } from './sandboxRunObserver';
+import { buildExecutionData, collectDynamicForkChildren } from '../utils/executionImport';
 
 /**
  * Recursively find all FORK_JOIN_DYNAMIC -> JOIN / EXCLUSIVE_JOIN pairs at any nesting level
@@ -252,87 +253,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                         get().setWorkflow(workflowDef);
                     }
 
+                    // R5 / R9: group `ref__N` loop records under their base ref once; pair dynamic forks per iteration.
                     const finalTaskMap = get().taskMap;
-                    const executionData: Record<string, TaskExecutionData> = {};
-
-                    const registerAttempt = (targetRef: string, task: any, inferredIteration?: number) => {
-                        const attemptObj: TaskInstance =
-                            inferredIteration !== undefined && task.iteration === undefined
-                                ? { ...task, iteration: inferredIteration }
-                                : (task as TaskInstance);
-                        if (!executionData[targetRef]) {
-                            executionData[targetRef] = {
-                                taskReferenceName: targetRef,
-                                status: attemptObj.status as ExecutionStatus,
-                                attempts: [],
-                                startTime: attemptObj.startTime,
-                                endTime: attemptObj.endTime,
-                                output: attemptObj.outputData,
-                                input: attemptObj.inputData,
-                                reasonForIncompletion: attemptObj.reasonForIncompletion,
-                                iteration: attemptObj.iteration,
-                            };
-                        }
-                        executionData[targetRef].attempts.push(attemptObj);
-                    };
-
-                    tasks.forEach((task: any) => {
-                        const ref = task.referenceTaskName;
-                        if (!ref) return;
-                        // Match Conductor DO_WHILE suffix convention: e.g. "step_a__1", "step_a__2"
-                        const iterSuffixMatch = ref.match(/^(.+)__(\d+)$/);
-                        if (iterSuffixMatch && finalTaskMap[iterSuffixMatch[1]]) {
-                            const baseRef = iterSuffixMatch[1];
-                            const iterNum = parseInt(iterSuffixMatch[2], 10);
-                            registerAttempt(baseRef, task, iterNum);
-                        }
-                        registerAttempt(ref, task);
-                    });
-
-                    // 后处理：对每个 ref 的 attempts 排序，并计算正确的状态和 totalIterations
-                    Object.values(executionData).forEach(data => {
-                        const hasIterations = data.attempts.some(a => a.iteration !== undefined && a.iteration > 0);
-                        if (hasIterations) {
-                            data.attempts.sort((a, b) => (a.iteration ?? 0) - (b.iteration ?? 0));
-                            data.totalIterations = data.attempts.reduce((max, a) => Math.max(max, a.iteration ?? 0), 0);
-                            data.startTime = data.attempts[0]?.startTime;
-                        } else {
-                            data.attempts.sort((a, b) => (a.retryCount ?? 0) - (b.retryCount ?? 0));
-                        }
-                        const last = data.attempts[data.attempts.length - 1];
-                        if (last) {
-                            data.status = last.status as ExecutionStatus;
-                            data.endTime = last.endTime;
-                            data.output = last.outputData;
-                            data.input = last.inputData;
-                            data.reasonForIncompletion = last.reasonForIncompletion;
-                            data.iteration = last.iteration;
-                        }
-                    });
-
-                    // 递归找所有层级（含分支/循环内部）的 FORK_JOIN_DYNAMIC → JOIN 配对
-                    const currentDef = get().workflowDef;
-                    const allDefTasks = currentDef?.tasks || [];
-                    const forkJoinPairs = collectForkJoinDynamicPairs(allDefTasks);
-
-                    const dynamicRuntimeTasksByFork: Record<string, TaskInstance[]> = {};
-                    forkJoinPairs.forEach(({ forkRef, joinRef }) => {
-                        const forkIdx = tasks.findIndex((t: any) => t.referenceTaskName === forkRef);
-                        const joinIdx = tasks.findIndex((t: any) => t.referenceTaskName === joinRef);
-                        if (forkIdx < 0 || joinIdx < 0) return;
-
-                        const seenRefs = new Set<string>();
-                        dynamicRuntimeTasksByFork[forkRef] = tasks
-                            .slice(forkIdx + 1, joinIdx)
-                            .filter((t: any) => {
-                                if (!t.referenceTaskName || !t.taskId) return false;
-                                if (finalTaskMap[t.referenceTaskName]) return false;
-                                if (seenRefs.has(t.referenceTaskName)) return false;
-                                seenRefs.add(t.referenceTaskName);
-                                return true;
-                            })
-                            .map((t: any) => t as TaskInstance);
-                    });
+                    const executionData = buildExecutionData(tasks as TaskInstance[], finalTaskMap);
+                    const forkJoinPairs = collectForkJoinDynamicPairs(get().workflowDef?.tasks || []);
+                    const dynamicRuntimeTasksByFork = collectDynamicForkChildren(tasks as TaskInstance[], forkJoinPairs, finalTaskMap);
 
                     set({
                         executionData,
@@ -344,7 +269,13 @@ const useWorkflowStore = create<WorkflowStore>()(
                     });
                 },
 
-                setSelectedTask: (task: TaskDef | null) => set({ selectedTask: task ? { ...task } : null }),
+                // R4: a different task must not keep the previous task's selected attempt.
+                setSelectedTask: (task: TaskDef | null) => set((state) => ({
+                    selectedTask: task ? { ...task } : null,
+                    selectedTaskInstance: task && state.selectedTask?.taskReferenceName === task.taskReferenceName
+                        ? state.selectedTaskInstance
+                        : null,
+                })),
 
                 setIsDetailPanelOpen: (isOpen: boolean) => set({ isDetailPanelOpen: isOpen }),
 

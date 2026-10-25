@@ -2,24 +2,18 @@ import { useState, useRef, useEffect } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ExecutionActions } from '../types/workflow';
+import { getStatusMeta } from '../utils/statusMeta';
+import { countIterations, countRetries } from '../utils/executionImport';
 
 interface ExecutionTaskPanelProps {
     executionActions?: ExecutionActions;
 }
 
-const STATUS_COLOR: Record<string, string> = {
-    COMPLETED: 'var(--status-completed)',
-    FAILED: 'var(--status-failed)',
-    FAILED_WITH_TERMINAL_ERROR: 'var(--status-failed-terminal)',
-    IN_PROGRESS: 'var(--status-in-progress)',
-    SCHEDULED: 'var(--status-scheduled)',
-    TIMED_OUT: 'var(--status-timed-out)',
-    CANCELED: 'var(--status-canceled)',
-    SKIPPED: 'var(--status-skipped)',
-};
-
 const getStatusColor = (status?: string) =>
-    STATUS_COLOR[status ?? ''] ?? 'var(--text-secondary)';
+    status ? getStatusMeta(status).color : 'var(--text-secondary)';
+
+/** `color-mix` tint of a status colour (a hex alpha suffix does not work on `var(...)`). */
+const tint = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
 const formatDuration = (start?: number, end?: number) => {
     if (!start) return '-';
@@ -62,13 +56,21 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
     if (!selectedTask || (!taskExecution && !isGlobal)) return null;
 
     const attempts = taskExecution?.attempts ?? [];
-    const currentInstance = selectedTaskInstance ?? attempts[attempts.length - 1];
+    // R4: only honour the selected attempt when it belongs to this task.
+    const currentInstance = (selectedTaskInstance && attempts.some(a => a.taskId === selectedTaskInstance.taskId)
+        ? selectedTaskInstance
+        : undefined) ?? attempts[attempts.length - 1];
+    // R5: iterations and retries are counted separately.
+    const retryTotal = countRetries(attempts);
+    const iterationTotal = countIterations(attempts);
 
     const wfId = workflowInstance?.workflowId ?? '';
     const wfStatus = workflowInstance?.status;
     const taskStatus = taskExecution?.status;
 
     const displayStatus = isGlobal ? wfStatus : (currentInstance?.status ?? taskStatus);
+    const statusMeta = displayStatus ? getStatusMeta(displayStatus) : null;
+    const StatusIcon = statusMeta?.icon;
     const displayStart = isGlobal ? workflowInstance?.startTime : currentInstance?.startTime;
     const displayEnd = isGlobal ? workflowInstance?.endTime : currentInstance?.endTime;
     const displayError = isGlobal
@@ -141,7 +143,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                         {isGlobal ? 'WORKFLOW' : (selectedTask.type || 'TASK')}
                     </div>
 
-                    {displayStatus && (
+                    {displayStatus && statusMeta && StatusIcon && (
                         <div style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -150,12 +152,13 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                             borderRadius: 4,
                             fontSize: 10,
                             fontWeight: 700,
-                            background: `${getStatusColor(displayStatus)}18`,
+                            background: tint(getStatusColor(displayStatus), 10),
                             color: getStatusColor(displayStatus),
                             letterSpacing: '0.5px',
                             flexShrink: 0,
                         }}>
-                            ● {displayStatus}
+                            <StatusIcon size={12} strokeWidth={1.75} aria-hidden="true" />
+                            <span title={displayStatus}>{statusMeta?.label}</span>
                         </div>
                     )}
 
@@ -187,7 +190,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                     flexShrink: 0,
                 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: secondaryText, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        执行记录（{attempts.length} 次{attempts.some(a => a.iteration) ? ' / 迭代' : '尝试'}）
+                        执行记录（{attempts.length} 次{iterationTotal > 0 ? `，${iterationTotal} 轮迭代` : '尝试'}{retryTotal > 0 ? `，重试 ${retryTotal} 次` : ''}）
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {attempts.map((inst, idx) => {
@@ -208,7 +211,9 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                         transition: 'all 0.15s',
                                     }}
                                 >
-                                    {inst.iteration ? `迭代 ${inst.iteration}` : `尝试 ${idx + 1}`}
+                                    {inst.iteration
+                                        ? `迭代 ${inst.iteration}${inst.retryCount ? ` · 重试 ${inst.retryCount}` : ''}`
+                                        : `尝试 ${idx + 1}`}
                                 </button>
                             );
                         })}
@@ -291,12 +296,12 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                         </div>
 
                         {/* 重试次数（仅多次尝试时） */}
-                        {attempts.length > 1 && (
+                        {retryTotal > 0 && (
                             <div style={{
                                 marginBottom: 20,
                                 padding: '10px 14px',
-                                background: `${getStatusColor(taskStatus)}10`,
-                                border: `1px solid ${getStatusColor(taskStatus)}30`,
+                                background: tint(getStatusColor(taskStatus), 6),
+                                border: `1px solid ${tint(getStatusColor(taskStatus), 20)}`,
                                 borderRadius: 8,
                                 fontSize: 12,
                                 color: getStatusColor(taskStatus),
@@ -307,7 +312,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                                     <path d="M13 2v4h-4" /><path d="M13 6A7 7 0 1 1 9.5 2.5" />
                                 </svg>
-                                已重试 {attempts.length - 1} 次，共 {attempts.length} 次尝试
+                                已重试 {retryTotal} 次，共 {attempts.length} 次尝试{iterationTotal > 0 ? `（${iterationTotal} 轮迭代）` : ''}
                             </div>
                         )}
 

@@ -8,6 +8,14 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 > 主题：CMASTER 设计系统落地的第一步 —— 设计规范进仓库，并让人和 AI 都按同一套规则产出、被同一套检查把关。规范入口见 `design/README.md`。
 
+### Fixed（v1.3.1 · 沙箱）
+- **沙箱真实执行无外部依赖的任务**（S1–S8）：新增 `executeLocalSandboxDryRunAsync(def, options)`，IDE 的沙箱试运行、业务模式试跑、模板中心与模板向导都改用它。按 Conductor 语义真实执行：`INLINE` / `LAMBDA`（JavaScript，`$` 为解析后的入参，输出 `{ result }`，抛错则任务失败）；`JSON_JQ_TRANSFORM`（内置 jq 子集：路径、迭代、管道、构造、算术比较、`//`、`if`、`as $x`、`reduce`、字符串插值与常用函数，输出 `{ result, resultList }`；不支持的语法直接报错说明，不再只认 `.path`）；`SWITCH`（`value-param` 取 `expression` 指向的入参，`javascript` / `graaljs` 执行表达式，没有匹配的分支走 `defaultCase`，原来会走第一个分支）；`DECISION`（`caseValueParam` / `caseExpression`）；`DO_WHILE`（每轮后执行 `loopCondition`，`$` 含 `<循环ref>.iteration` 与各子任务输出，"最大轮次"改为安全上限，默认 20，到上限条件仍为真则停止并标为部分完成）；`FORK_JOIN_DYNAMIC`（按 `dynamicForkTasksParam` / `dynamicForkTasksInputParamName` 或 `forkTaskName` + `forkTaskInputs` 生成并行任务，`JOIN` 汇总其输出）；`TERMINATE`、`SET_VARIABLE`、`WAIT`、`NOOP`。HTTP、SIMPLE、HUMAN、EVENT、SUB_WORKFLOW、DYNAMIC 等调用外部系统的任务仍返回模拟数据（可在配置台覆盖）。
+- **脚本隔离**：脚本在专用 Web Worker 中运行，移除了 `fetch`、`XMLHttpRequest`、`WebSocket`、`importScripts`、`indexedDB` 等网络与存储接口；单个脚本默认 2 秒超时（`scriptTimeoutMs`），死循环会被终止并使任务失败，不会卡住页面。页面 CSP 不允许 blob: Worker 时，脚本标为未执行并说明原因。宿主可通过 `scriptEvaluator` 注入自己的执行器。
+- **引用解析**：`${...}` 支持数组下标（`${a.output.items[0].id}`）与 `${<ref>.input.x}`；取不到值的引用记入任务的 `sandboxWarnings`。默认模拟入参只包含声明的入参与流程实际引用的字段（S9）。
+- **结果可区分**：`TaskInstance` 新增可选字段 `sandboxExecution`（`executed` / `mocked` / `not_executed`）与 `sandboxWarnings`，`WorkflowInstance` 新增 `isSandbox`。运行视图工具栏显示"沙箱试运行 · 模拟数据"，任务详情显示"真实执行 / 模拟数据 / 未执行"与提示；沙箱实例不再显示宿主的终止、重试、重启、跳过、从此重跑与 AI 修复动作（R10）。
+- 沙箱结果经 `setMode('run')` 进入运行态，画布重新解析，不再残留"+"占位节点（R11）。空流程点击试运行提示"先添加步骤"，不再上报埋点；执行出错时弹出提示（R13）。`store.runLocalSandboxDryRun` 改为返回 `Promise<void>`，运行中按钮显示"试运行中"并禁用。
+- 兼容：同步接口 `executeLocalSandboxDryRun` 保留，但不再伪造脚本结果——`INLINE` 标为已跳过（`not_executed`），`javascript` 条件走默认分支并给出提示，`DO_WHILE` 按 `maxLoopIterations`（默认 2）运行。新增导出 `executeLocalSandboxDryRunAsync`、`SandboxAsyncOptions`、`runJq`、`JqError`、`createWorkerScriptEvaluator` 及相关类型。`TERMINATE` 的 `terminationStatus: COMPLETED` 现在让工作流以 `COMPLETED` 结束（与 Conductor 一致）。
+
 ### Added
 - **CMASTER 设计 tokens 编译**：`design/tokens.json` 为唯一来源，`npm run tokens:build` 生成 `src/styles/cmaster-tokens.css`（`--cm-*` 变量，`data-mode="dark" | "light"` 双主题）与 `src/styles/cmasterTokens.ts`（含 5 套活动主题色）；`npm run tokens:check` 进 CI，生成物过期即失败。新增单测 `cmasterTokens.test.ts`：两个主题下文字与地色对比度 ≥ 4.5:1、状态色与焦点环 ≥ 3:1、橙底文字与活动主题按钮文字 ≥ 4.5:1、标志橙在所有主题不变。
 - **AI 协作约定**：根目录 `CLAUDE.md`（硬规则与完成前检查）、`AGENTS.md`、项目 skill `.claude/skills/cmaster-design`（按任务类型指向规范与黄金示例，含交付前检查清单）；`design/` 收录品牌手册、IDE 布局、文档站、宣传页、海报与社媒规范，24 个组件规范、参考样式 `reference/components.css`、9 个黄金示例与 Logo。
@@ -56,6 +64,28 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 ### Fixed
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。
+
+### Fixed（v1.3.1 · 运行视图与 1.3.0 收尾）
+- **R1** 真实运行或加载示例后执行状态栏不再崩溃（hook 移到提前 return 之前）。
+- **R2** 执行轮询可取消：卸载、再次发起、回到编辑态时停止；请求出错或返回空连续 5 次后停止，并在状态栏说明原因与处理方式；不再把正在编辑的用户拉回运行态。新增 `src/utils/executionPoller.ts`。
+- **R3 / R5** 循环轮次只作用于节点所在的循环，同一轮内取最后一次尝试；`ref__N` 只登记到所属任务一次，迭代与重试分开计算（`StepInfo` 新增 `iterationCount`，`retryCount` 只表示重试）。新增 `src/utils/executionImport.ts`。
+- **R4** 切换节点时清空上一个任务选中的尝试；详情面板只显示属于当前任务的尝试。
+- **R6** curl 组合短参数（`-sX POST`、`-sH '…'`、`-sXPOST`）按字母拆分，token 不会再被当成 URL；补充更多带值参数（如 `--cookie-jar`、`-c`），`--oauth2-bearer` 生成 Authorization 占位。
+- **R7** 请求体任意层级的敏感字段（如 `credentials.password`）都替换为 `${workflow.input.…}` 占位。
+- **R8** 「新建流程」会替换画布上已有流程时先确认，替换可以撤销（只有空画布才清空撤销历史）。
+- **R9** 循环里的动态并行按迭代后缀配对 fork / join，能看到每轮的子任务（画布显示最后一轮，`fork__N` 键保存各轮）。
+- **R12** 上线进度轮询到「已同步到生产」或「已驳回」才停止（`isTerminalPromotionState('APPROVED')` 现在返回 `false`）；已提交的申请按流程名称与版本保存在控制器里，重新打开面板接着轮询，不会重复提交。`PromotionPanel` 新增可选 `resumeRequest` / `onRequestChange`。
+- **R14** 敏感名单补充 access key、signature、subscription key（`Ocp-Apim-Subscription-Key`）、credential、session（只匹配以 session / session_id / session_token / session_key 结尾的名称）；OpenAPI 敏感参数不再用 example 或字面默认值。
+- **R15** 启用自助接入时，保存前按命名规范检查流程名称，不合规时在工具栏下方给出可关闭的提示，不阻断保存。
+- **R16** 接口导入：只有全部接口都能显示时才默认全选；全选只作用于显示的行；超出显示上限时提示「另有 N 个未显示，请用搜索缩小范围」。
+- **R17** 「提取为模板」文案改为只在本页可用；`TemplateStore` 新增 `getVersion()` / `subscribe()`，模板中心在注册新模板后立即刷新；沙箱试运行的结果不再显示「提取为模板」。
+- **R18 / B11** 新增共用状态映射 `src/utils/statusMeta.ts`（覆盖全部 Conductor 任务与工作流状态：颜色 token + 图标 + 中文词），用于节点角标、执行状态栏、任务详情、执行分析、瀑布图与运行故事线；故事线不再把运行中、已超时、已跳过、已终止写成「执行完成」。
+- **B12** 运行故事线的描述按真实输出生成，缺数据时不写（不再出现固定的「系统运行平稳」「已完成审核批准」、默认 CPU 20%、默认审批人等）。新增 `src/utils/runStory.ts`。
+- **B13** 故事线错误卡片的按钮：「查看上游」跳到上一步（需 `onInspectStep`），其他动作交给新的可选 `onErrorAction`；没有处理方时不显示按钮。
+- OpenAPI 声明多个 servers 时提示用了哪一个及其他地址；operationId 已带方法前缀时不再重复（`get_item` 不再变成 `get_get_item`；导入生成的动作 id 随之变化）。
+- 自助接入向导生成的骨架流程写入 `ownerEmail`（取 `OnboardingContext.user.email`，新增可选字段）；经向导选模板时保留该邮箱。
+- 同一页面同时挂载 WorkflowIDE 与 AiWorkflowIDE 时，`sandbox_run` / `step_added` 只上报一次（只通知最近订阅的实例）。
+- 专业模式「模拟运行」改名「流转预览」，播放结束后清除高亮；模板向导的沙箱结果提示改为「沙箱试运行结束」并显示中文状态。
 
 ---
 

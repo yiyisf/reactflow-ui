@@ -6,6 +6,7 @@ import {
   promotionTargetName,
   isPromotableName,
   validateNameParts,
+  saveNameHint,
 } from './naming';
 import {
   nextPollDelay,
@@ -116,7 +117,7 @@ describe('promotion 状态与时间线', () => {
   it('终态判断', () => {
     expect(isTerminalPromotionState('SUBMITTED')).toBe(false);
     expect(isTerminalPromotionState('REVIEWING')).toBe(false);
-    expect(isTerminalPromotionState('APPROVED')).toBe(true);
+    expect(isTerminalPromotionState('APPROVED')).toBe(false);
     expect(isTerminalPromotionState('REJECTED')).toBe(true);
     expect(isTerminalPromotionState('SYNCED')).toBe(true);
   });
@@ -130,6 +131,10 @@ describe('promotion 状态与时间线', () => {
     const t = buildPromotionTimeline('REJECTED');
     expect(t.map((x) => x.status)).toEqual(['done', 'done', 'failed']);
     expect(t.map((x) => x.state)).toEqual(['SUBMITTED', 'REVIEWING', 'REJECTED']);
+  });
+
+  it('审批通过：等待同步（第三项完成、第四项进行中）', () => {
+    expect(buildPromotionTimeline('APPROVED').map((t) => t.status)).toEqual(['done', 'done', 'done', 'current']);
   });
 
   it('已同步：全部完成', () => {
@@ -151,8 +156,8 @@ describe('pollPromotion', () => {
     };
   }
 
-  it('按退避间隔轮询到终态，并回调每次状态', async () => {
-    const provider = seqProvider(['SUBMITTED', 'REVIEWING', 'APPROVED']);
+  it('按退避间隔轮询到终态，并回调每次状态（APPROVED 之后继续到 SYNCED）', async () => {
+    const provider = seqProvider(['SUBMITTED', 'REVIEWING', 'APPROVED', 'SYNCED']);
     const delays: number[] = [];
     const seen: string[] = [];
     const final = await pollPromotion({
@@ -161,10 +166,17 @@ describe('pollPromotion', () => {
       onUpdate: (s) => seen.push(s.state),
       sleep: async (ms) => { delays.push(ms); },
     });
-    expect(final.state).toBe('APPROVED');
-    expect(seen).toEqual(['SUBMITTED', 'REVIEWING', 'APPROVED']);
-    expect(delays).toEqual([2000, 4000]);
-    expect(provider.calls).toBe(3);
+    expect(final.state).toBe('SYNCED');
+    expect(seen).toEqual(['SUBMITTED', 'REVIEWING', 'APPROVED', 'SYNCED']);
+    expect(delays).toEqual([2000, 4000, 8000]);
+    expect(provider.calls).toBe(4);
+  });
+
+  it('REJECTED 是终态', async () => {
+    const provider = seqProvider(['SUBMITTED', 'REJECTED', 'SYNCED']);
+    const final = await pollPromotion({ provider, requestId: 'r', sleep: async () => {} });
+    expect(final.state).toBe('REJECTED');
+    expect(provider.calls).toBe(2);
   });
 
   it('请求失败时抛出', async () => {
@@ -252,5 +264,25 @@ describe('wizardState', () => {
     expect(prevStep('product')).toBe('product');
     expect(availableSources({ hasTemplate: false, hasImport: false })).toEqual(['blank']);
     expect(availableSources({ hasTemplate: true, hasImport: true })).toEqual(['blank', 'template', 'import']);
+  });
+});
+
+describe('saveNameHint（R15 保存前命名提示）', () => {
+  it('合规名称不提示', () => {
+    expect(saveNameHint('tmp-L2-云资源-ecs-create_vm')).toBeNull();
+    expect(saveNameHint('tmp-L2-云资源-ecs-create_vm', ['云资源'])).toBeNull();
+  });
+
+  it('不合规时说明问题，并说明已保存', () => {
+    const hint = saveNameHint('my_flow');
+    expect(hint).not.toBeNull();
+    expect(hint!).toContain('已保存');
+    expect(hint!).toContain('my_flow');
+    expect(hint!).toContain('5 段');
+  });
+
+  it('业务域不在白名单时提示；空白名单不校验业务域', () => {
+    expect(saveNameHint('tmp-L2-网络-ecs-x', ['云资源'])).toContain('业务域');
+    expect(saveNameHint('tmp-L2-网络-ecs-x', [])).toBeNull();
   });
 });

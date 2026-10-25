@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -6,7 +6,7 @@ import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { TemplateStore, defaultTemplateStore } from '../../template/templateStore';
 import { TemplateSetupWizard } from './TemplateSetupWizard';
-import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { executeLocalSandboxDryRunAsync } from '../../utils/localSandboxEngine';
 import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
@@ -18,6 +18,9 @@ export interface TemplateGalleryProps {
   /** 试跑结束（快捷试跑或向导内试跑）：参数为最终状态或 'error'，用于接入埋点，不含数据 */
   onSandboxRun?: (result: string) => void;
 }
+
+const noSubscribe = () => () => {};
+const zeroVersion = () => 0;
 
 export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   isOpen,
@@ -34,18 +37,24 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   // 快捷试跑提示弹窗
   const [quickTestNotice, setQuickTestNotice] = useState<string | null>(null);
 
+  // R17: re-run the search when templates are registered (e.g. one just published from a run)
+  // Hosts may pass an older store object without subscribe/getVersion: fall back to a static snapshot.
+  const subscribe = templateStore.subscribe ?? noSubscribe;
+  const getVersion = templateStore.getVersion ?? zeroVersion;
+  const storeVersion = useSyncExternalStore(subscribe, getVersion, getVersion);
   const templates = useMemo(() => {
+    void storeVersion; // change signal for the mutable store
     return templateStore.search(searchQuery, selectedCategory);
-  }, [templateStore, searchQuery, selectedCategory]);
+  }, [templateStore, searchQuery, selectedCategory, storeVersion]);
 
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
 
   // 点击【试跑演示】直接在本地沙盒执行并展示结果
-  const handleQuickPreviewRun = (template: WorkflowTemplate) => {
+  const handleQuickPreviewRun = async (template: WorkflowTemplate) => {
     try {
       const scenario = template.mockDataset.scenarios[0];
-      const instance = executeLocalSandboxDryRun(template.definition, {
+      const instance = await executeLocalSandboxDryRunAsync(template.definition, {
         workflowInput: scenario?.workflowInput || {},
         taskMocks: scenario?.taskOutputs || {},
       });
@@ -334,7 +343,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                 {/* 操作按钮组 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                   <button
-                    onClick={() => handleQuickPreviewRun(tpl)}
+                    onClick={() => { void handleQuickPreviewRun(tpl); }}
                     style={{
                       flex: 1,
                       padding: '6px 10px',

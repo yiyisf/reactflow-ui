@@ -13,9 +13,12 @@ export function nextPollDelay(attempt: number): number {
 
 export type PromotionState = PromotionStatus['state'];
 
-/** 终态：不会再变化，轮询据此停止 */
+/**
+ * 终态：不会再变化，轮询据此停止。只有 SYNCED（已同步到生产）与 REJECTED（已驳回）是终态；
+ * APPROVED 之后还要同步，轮询继续（R12）。
+ */
 export function isTerminalPromotionState(state: PromotionState): boolean {
-  return state === 'APPROVED' || state === 'REJECTED' || state === 'SYNCED';
+  return state === 'REJECTED' || state === 'SYNCED';
 }
 
 export interface TimelineItem {
@@ -49,7 +52,9 @@ export function buildPromotionTimeline(state: PromotionState | null): TimelineIt
   return path.map((s, i) => {
     let status: TimelineItem['status'];
     if (s === 'REJECTED' && state === 'REJECTED') status = 'failed';
-    else if (at === i) status = isTerminalPromotionState(s) ? 'done' : 'current';
+    // 审批通过是已完成的一步，接着进行的是同步到生产
+    else if (at === i) status = isTerminalPromotionState(s) || s === 'APPROVED' ? 'done' : 'current';
+    else if (state === 'APPROVED' && s === 'SYNCED') status = 'current';
     else if (i < at) status = 'done';
     else status = 'pending';
     return { state: s, label: STATE_LABEL[s], status };
@@ -93,8 +98,8 @@ export interface PollOptions {
 }
 
 /**
- * 轮询上线申请直到终态（APPROVED / REJECTED / SYNCED）：先立即查一次，之后按 nextPollDelay 退避。
- * APPROVED 视为终态（审批已有结论），轮询随之停止。
+ * 轮询上线申请直到终态（SYNCED / REJECTED）：先立即查一次，之后按 nextPollDelay 退避。
+ * APPROVED 不是终态：审批通过后继续轮询，直到同步到生产（SYNCED）。
  * 请求失败直接抛出（由界面显示「重试」）；signal 中止时抛 AbortError。
  */
 export async function pollPromotion(opts: PollOptions): Promise<PromotionStatus> {

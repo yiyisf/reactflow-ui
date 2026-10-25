@@ -24,13 +24,18 @@ export type {
 // ── v1.0.0: Deterministic In-Browser Sandbox Dry-Run Engine ──────────────────
 export {
     executeLocalSandboxDryRun,
+    executeLocalSandboxDryRunAsync,
     buildDefaultWorkflowMockInput,
     generateDefaultTaskOutputPreview,
 } from './utils/localSandboxEngine';
 export type {
     SandboxDryRunOptions,
+    SandboxAsyncOptions,
     TaskMockOverride,
 } from './utils/localSandboxEngine';
+export { runJq, JqError } from './utils/sandbox/jq';
+export { createWorkerScriptEvaluator } from './utils/sandbox/scriptRunner';
+export type { ScriptEvaluator, ScriptResult, WorkerScriptEvaluator } from './utils/sandbox/scriptRunner';
 
 // ── v1.1.0: Zero-Code Business Mode & Action Store ───────────────────────────
 export * from './actions/types';

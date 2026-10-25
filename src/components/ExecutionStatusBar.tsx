@@ -1,14 +1,17 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useReactFlow } from 'reactflow';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
-import { FolderOpen, Play, Search } from 'lucide-react';
+import { CircleAlert, FolderOpen, Play, Search } from 'lucide-react';
+import { getStatusMeta } from '../utils/statusMeta';
 
 /**
  * 运行态状态栏组件
  */
 const ExecutionStatusBar = () => {
-    const { executionData, loadSampleExecution, importExecutionJSON, workflowInstance, setSelectedTask, nodes } = useWorkflowStore(useShallow((s) => ({
+    const { executionData, loadSampleExecution, importExecutionJSON, workflowInstance, setSelectedTask, nodes, runState, executionError } = useWorkflowStore(useShallow((s) => ({
+            runState: s.runState,
+            executionError: s.executionError,
             executionData: s.executionData,
             loadSampleExecution: s.loadSampleExecution,
             importExecutionJSON: s.importExecutionJSON,
@@ -34,6 +37,36 @@ const ExecutionStatusBar = () => {
         }
     };
 
+    // 统计状态。All hooks run before the early return below (R1: a hook after it crashed the bar after the first load).
+    const { completedCount, failedRefs, inProgressCount } = useMemo(() => {
+        const statsArr = Object.values(executionData ?? {});
+        return {
+            completedCount: statsArr.filter(t => t.status === 'COMPLETED').length,
+            failedRefs: statsArr.filter(t => getStatusMeta(t.status).isFailure),
+            inProgressCount: statsArr.filter(t => getStatusMeta(t.status).isActive).length,
+        };
+    }, [executionData]);
+    const failedCount = failedRefs.length;
+
+    const handleFocusFailed = useCallback(() => {
+        if (failedCount === 0) return;
+        const failedRefNames = new Set(failedRefs.map(t => t.taskReferenceName));
+        const failedNodeIds = nodes
+            .filter(n => failedRefNames.has(n.data?.taskReferenceName))
+            .map(n => n.id);
+        if (failedNodeIds.length > 0) {
+            fitView({ nodes: failedNodeIds.map(id => ({ id })), duration: 500, padding: 0.3 });
+        }
+    }, [failedRefs, nodes, fitView, failedCount]);
+
+    // R2: polling gave up — say so instead of silently showing a stale run.
+    const pollError = runState === 'error' && executionError ? (
+        <div className="status-item" role="alert" style={{ color: 'var(--cm-status-failed)', display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: 420 }} title={executionError}>
+            <CircleAlert size={14} strokeWidth={1.75} aria-hidden="true" />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{executionError}</span>
+        </div>
+    ) : null;
+
     // 如果没有执行数据，显示启动按钮
     if (!executionData) {
         return (
@@ -46,8 +79,9 @@ const ExecutionStatusBar = () => {
                     style={{ display: 'none' }}
                 />
                 <div className="status-item">
-                    <span className="status-label">准备就绪</span>
+                    <span className="status-label">{runState === 'polling' ? '已发起运行，正在获取状态…' : '准备就绪'}</span>
                 </div>
+                {pollError}
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         onClick={loadSampleExecution}
@@ -88,30 +122,15 @@ const ExecutionStatusBar = () => {
         );
     }
 
-    // 统计状态
-    const statsArr = Object.values(executionData);
-    const completedCount = statsArr.filter(t => t.status === 'COMPLETED').length;
-    const failedRefs = statsArr.filter(t => t.status === 'FAILED' || t.status === 'FAILED_WITH_TERMINAL_ERROR' || t.status === 'TIMED_OUT');
-    const failedCount = failedRefs.length;
-    const inProgressCount = statsArr.filter(t => t.status === 'IN_PROGRESS' || t.status === 'SCHEDULED').length;
-
-    const handleFocusFailed = useCallback(() => {
-        if (failedCount === 0) return;
-        const failedRefNames = new Set(failedRefs.map(t => t.taskReferenceName));
-        const failedNodeIds = nodes
-            .filter(n => failedRefNames.has(n.data?.taskReferenceName))
-            .map(n => n.id);
-        if (failedNodeIds.length > 0) {
-            fitView({ nodes: failedNodeIds.map(id => ({ id })), duration: 500, padding: 0.3 });
-        }
-    }, [failedRefs, nodes, fitView, failedCount]);
+    const wfMeta = getStatusMeta(workflowInstance?.status ?? 'RUNNING');
+    const WfIcon = wfMeta.icon;
 
     return (
         <div className="execution-status-bar">
             {workflowInstance && (
                 <>
                     <div className="status-item">
-                        <span className="status-label"> Workflow ID:</span>
+                        <span className="status-label">运行 ID:</span>
                         <span className="status-value highlight" style={{ color: 'var(--text-primary)', opacity: 0.8 }}>{workflowInstance.workflowId}</span>
                     </div>
                     <div className="status-divider" />
@@ -119,9 +138,9 @@ const ExecutionStatusBar = () => {
             )}
             <div className="status-item">
                 <span className="status-label">状态:</span>
-                <span className="status-value highlight" style={{
-                    color: workflowInstance?.status === 'COMPLETED' ? 'var(--status-completed)' : 'var(--status-in-progress)'
-                }}>{workflowInstance?.status || '运行中'}</span>
+                <span className="status-value highlight" style={{ color: wfMeta.color, display: 'inline-flex', alignItems: 'center', gap: 4 }} title={workflowInstance?.status}>
+                    <WfIcon size={14} strokeWidth={1.75} aria-hidden="true" />{wfMeta.label}
+                </span>
             </div>
             <div className="status-divider" />
             <div className="status-item">
@@ -147,6 +166,7 @@ const ExecutionStatusBar = () => {
                 <span className="status-label" style={{ color: 'var(--status-in-progress)' }}>处理中:</span>
                 <span className="status-value" style={{ color: 'var(--status-in-progress)' }}>{inProgressCount}</span>
             </div>
+            {pollError}
             <div className="status-divider" />
             <div style={{ display: 'flex', gap: '8px' }}>
                 <button

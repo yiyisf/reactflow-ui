@@ -295,6 +295,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const workflowDef = useWorkflowStore(s => s.workflowDef);
     const selectedTask = useWorkflowStore(s => s.selectedTask);
+    // 沙箱实例只在浏览器里，修复动作（重跑 / 跳过 / 重试）调宿主接口会找不到它
+    const isSandboxInstance = useWorkflowStore(s => s.workflowInstance?.isSandbox === true);
     const selectTaskAction = useWorkflowStore(s => s.selectTaskAction);
     const mode = useWorkflowStore(s => s.mode);
     const workflowInstance = useWorkflowStore(s => s.workflowInstance);
@@ -729,7 +731,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         {pendingRepair && !isStreaming && (
                             <RepairCard
                                 repair={pendingRepair}
-                                canExecute={!!(executionActions?.onRerunFromTask || executionActions?.onSkipTask || executionActions?.onRetry)}
+                                canExecute={!isSandboxInstance && !!(executionActions?.onRerunFromTask || executionActions?.onSkipTask || executionActions?.onRetry)}
                                 onExecuteAction={handleRepairAction}
                                 onDismiss={handleDismissRepair}
                             />

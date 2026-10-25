@@ -6,7 +6,7 @@
 import type { ImportedBody, ImportedOperation, ImportedParam, JsonSchema, ParseResult } from './types';
 import { collectWarnings, finishOperation } from './common';
 import { derefObject, resolveSchema } from './schema';
-import { inputPlaceholder, isSensitiveHeader } from './sensitive';
+import { inputPlaceholder, isSensitiveHeader, isSensitiveName } from './sensitive';
 import { HTTP_METHODS, inferSchema, isPlainObject, slugify, uniqueId } from './util';
 
 type Version = 2 | 3;
@@ -24,6 +24,12 @@ function resolveServerUrl(servers: unknown, warnings: string[]): string {
         return '';
     }
     const server = servers[0];
+    // P2: several servers → say which one was used and what the others are.
+    const others = servers.slice(1).filter((x): x is Record<string, any> => isPlainObject(x) && typeof x.url === 'string');
+    if (others.length > 0) {
+        const label = (x: Record<string, any>) => (typeof x.description === 'string' && x.description.trim() ? `${x.url}（${x.description.trim()}）` : x.url);
+        warnings.push(`文档声明了 ${others.length + 1} 个服务地址，已使用第一个 ${label(server)}；其他地址：${others.map(label).join('、')}。如需换用，请在步骤里修改服务地址`);
+    }
     const vars = isPlainObject(server.variables) ? server.variables : {};
     const url = (server.url as string).replace(/\{([^}]+)\}/g, (whole, name: string) => {
         const v = vars[name];
@@ -196,13 +202,23 @@ function buildOperations(doc: Record<string, any>, version: Version): ParseResul
                         continue;
                     }
                     const schema = resolveSchema(version === 3 ? p.schema ?? { type: 'string' } : swaggerParamSchema(p), doc, warnings);
-                    if (schema.default === undefined && p.example !== undefined && version === 3) schema.default = p.example;
+                    // R14: a sensitive parameter never takes the document's example (or a literal default) as its value.
+                    const sensitive = isSensitiveName(p.name);
+                    let defaultValue: string | undefined;
+                    if (sensitive) {
+                        if (schema.default !== undefined && !String(schema.default).includes('${')) delete schema.default;
+                        defaultValue = inputPlaceholder(p.name);
+                        warnings.push(`参数 ${p.name} 疑似敏感信息，不使用文档示例值，已默认取自 ${defaultValue}，请在流程入参中提供`);
+                    } else if (schema.default === undefined && p.example !== undefined && version === 3) {
+                        schema.default = p.example;
+                    }
                     params.push({
                         name: p.name,
                         in: loc,
                         required: loc === 'path' ? true : p.required === true,
                         schema: Object.keys(schema).length > 0 ? schema : { type: 'string' },
                         description: typeof p.description === 'string' ? p.description : undefined,
+                        ...(defaultValue !== undefined ? { defaultValue } : {}),
                     });
                 } else if (loc === 'body' && version === 2) {
                     const consumes: unknown = node.consumes ?? doc.consumes;
@@ -236,7 +252,9 @@ function buildOperations(doc: Record<string, any>, version: Version): ParseResul
             for (const q of sec.queryParams) if (!params.some((x) => x.in === 'query' && x.name === q.name)) params.push(q);
 
             const slug = typeof node.operationId === 'string' && node.operationId ? slugify(node.operationId) : slugify(path.replace(/[{}]/g, ''));
-            const id = uniqueId(`${method}_${slug}`, used);
+            // P2: operationId `getItem` / `get_item` already starts with the method; do not produce `get_get_item`.
+            const unprefixed = slug.startsWith(`${method}_`) && slug.length > method.length + 1 ? slug.slice(method.length + 1) : slug;
+            const id = uniqueId(`${method}_${unprefixed}`, used);
 
             ops.push(
                 finishOperation({

@@ -77,7 +77,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
         },
       };
 
-      // 注册至全局模板中心
+      // 注册至本页模板中心（内存，刷新后不保留；宿主可在 onPublished 里自行保存）
       defaultTemplateStore.register(finalTemplate);
 
       if (onPublished) {
@@ -463,7 +463,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 color: 'var(--cm-status-success)',
               }}
             >
-              <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已自动从该运行实例生成无害化保真沙盒数据集，上架后支持其他用户零授权一键试跑。
+              <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已从这次运行生成脱敏后的试跑数据。发布后可在本页的模板中心一键试跑；模板只保存在当前页面，刷新后不保留，如需给其他人使用，请联系管理员接入模板库。
             </div>
           </div>
         </div>
@@ -488,7 +488,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {publishedSuccess && (
               <span style={{ fontSize: 12, color: 'var(--cm-status-success)', fontWeight: 600 }}>
-                <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已成功上架到模板中心！
+                <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已发布到本页模板中心
               </span>
             )}
 
@@ -525,7 +525,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
               }}
             >
               <span><Rocket size={14} strokeWidth={1.75} aria-hidden="true" /></span>
-              <span>{isPublishing ? '发布中...' : '注册并发布到模板中心'}</span>
+              <span>{isPublishing ? '发布中…' : '发布到本页模板中心'}</span>
             </button>
           </div>
         </div>

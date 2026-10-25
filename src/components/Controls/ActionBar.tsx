@@ -32,7 +32,7 @@ const Divider: React.FC = () => (
 );
 
 const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthCheck, onShowSettings, executionActions }) => {
-    const { mode, setMode, validationResults, workflowInstance, workflowDef, showDataLineage, setShowDataLineage, showWaterfallPanel, setShowWaterfallPanel, runLocalSandboxDryRun, inlineCopilotTaskRef, setInlineCopilotTaskRef, selectedTask } = useWorkflowStore(useShallow((s) => ({
+    const { mode, setMode, validationResults, workflowInstance, workflowDef, showDataLineage, setShowDataLineage, showWaterfallPanel, setShowWaterfallPanel, runLocalSandboxDryRun, sandboxRunning, inlineCopilotTaskRef, setInlineCopilotTaskRef, selectedTask } = useWorkflowStore(useShallow((s) => ({
             mode: s.mode,
             setMode: s.setMode,
             validationResults: s.validationResults,
@@ -43,6 +43,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
             showWaterfallPanel: s.showWaterfallPanel,
             setShowWaterfallPanel: s.setShowWaterfallPanel,
             runLocalSandboxDryRun: s.runLocalSandboxDryRun,
+            sandboxRunning: s.sandboxRunning,
             inlineCopilotTaskRef: s.inlineCopilotTaskRef,
             setInlineCopilotTaskRef: s.setInlineCopilotTaskRef,
             selectedTask: s.selectedTask,
@@ -78,6 +79,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
     const isPaused = status === 'PAUSED';
     const isTerminal = status === 'FAILED' || status === 'TIMED_OUT' || status === 'TERMINATED';
     const isCompleted = status === 'COMPLETED';
+    const isSandbox = workflowInstance?.isSandbox === true;
     const canRestart = workflowDef?.restartable === true && (isTerminal || isCompleted);
 
     // 操作权限：allowOperations 未设置或为 true 时允许，false 时禁用所有操作
@@ -169,9 +171,10 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     <div style={{ display: 'inline-flex', alignItems: 'center' }}>
                         <ControlButton
                             icon={<Icon as={FlaskConical} />}
-                            label="沙箱试运行"
-                            title="一键启动浏览器本地确定性沙箱试运行 (0ms Dry-Run)"
-                            onClick={() => runLocalSandboxDryRun()}
+                            label={sandboxRunning ? '试运行中' : '沙箱试运行'}
+                            title="在浏览器里试运行：INLINE、JQ、SWITCH、DO_WHILE 等任务真实执行，HTTP 等调用外部系统的任务使用模拟数据"
+                            onClick={() => { void runLocalSandboxDryRun(); }}
+                            disabled={sandboxRunning}
                             variant="primary"
                             style={{
                                 borderRadius: '7px 0 0 7px',
@@ -196,6 +199,29 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
             {mode === 'run' && (
                 <>
                     <Divider />
+                    {isSandbox && (
+                        <span
+                            role="note"
+                            title="这是浏览器沙箱的试运行结果，不是服务端的真实执行；调用外部系统的任务使用了模拟数据"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                height: '28px',
+                                padding: '0 10px',
+                                borderRadius: 'var(--cm-radius-sm)',
+                                border: '1px solid color-mix(in srgb, var(--cm-data) 45%, transparent)',
+                                background: 'var(--cm-data-tint)',
+                                color: 'var(--cm-data)',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            <Icon as={FlaskConical} />
+                            沙箱试运行 · 模拟数据
+                        </span>
+                    )}
                     <ControlButton
                         icon={<Icon as={SlidersHorizontal} />}
                         label="模拟数据重跑"
@@ -223,7 +249,8 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                 onClose={() => setShowSandboxModal(false)}
             />
 
-            {mode === 'run' && workflowInstance && executionActions && (
+            {/* 宿主操作只对真实实例开放：沙箱实例的 ID 在服务端不存在 */}
+            {mode === 'run' && workflowInstance && executionActions && !isSandbox && (
                 <>
                     {/* 继续（PAUSED → RUNNING） */}
                     {isPaused && executionActions.onResume && (

@@ -53,9 +53,10 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
           </span>
         </div>
 
-        {diagnosis.actionLabel && (
+        {/* B13: only show the fix button when the host can act on it (no dead buttons). */}
+        {diagnosis.actionLabel && onActionClick && (
           <button
-            onClick={() => onActionClick?.(diagnosis.actionKey)}
+            onClick={() => onActionClick(diagnosis.actionKey)}
             style={{
               padding: '4px 10px',
               borderRadius: 6,

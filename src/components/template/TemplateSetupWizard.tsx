@@ -5,9 +5,10 @@ import { useShallow } from 'zustand/react/shallow';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate } from '../../template/types';
 import { applyTemplateVariables } from '../../template/applyTemplate';
-import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { executeLocalSandboxDryRunAsync } from '../../utils/localSandboxEngine';
 import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
+import { statusLabel } from '../../utils/statusMeta';
 
 export interface TemplateSetupWizardProps {
   template: WorkflowTemplate;
@@ -50,13 +51,13 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
   };
 
   // 执行沙盒免授权试跑
-  const handleRunSandboxTest = () => {
+  const handleRunSandboxTest = async () => {
     setIsSimulating(true);
     try {
       const configuredDef = applyTemplateVariables(template, variableValues);
       const scenario = template.mockDataset.scenarios[0];
 
-      const instance = executeLocalSandboxDryRun(configuredDef, {
+      const instance = await executeLocalSandboxDryRunAsync(configuredDef, {
         workflowInput: scenario?.workflowInput || {},
         taskMocks: scenario?.taskOutputs || {},
       });
@@ -67,7 +68,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
           `全部 ${instance.tasks.length} 个步骤在浏览器本地顺利模拟通过，各上游数据与通知已正确串联。`
         );
       } else {
-        setSimSummary(`模拟运行结束，状态为: ${instance.status}`);
+        setSimSummary(`沙箱试运行结束，状态：${statusLabel(instance.status)}`);
       }
     } catch (err: any) {
       onSandboxRun?.('error');
@@ -457,7 +458,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 </div>
 
                 <button
-                  onClick={handleRunSandboxTest}
+                  onClick={() => { void handleRunSandboxTest(); }}
                   disabled={isSimulating}
                   style={{
                     padding: '6px 14px',

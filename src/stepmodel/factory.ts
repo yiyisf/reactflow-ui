@@ -1,6 +1,15 @@
 import type { ActionDefinition } from '../actions/types';
 import type { BusinessStep } from './types';
 
+/** 新建条件分支时，判断取值所在的入参名（inputParameters[caseValue]） */
+export const DEFAULT_CASE_PARAM = 'caseValue';
+
+/** 新建循环的默认继续条件：按本循环自身的已执行轮次判断，最多执行 3 轮 */
+export const DEFAULT_LOOP_MAX_ITERATIONS = 3;
+export function defaultLoopCondition(loopRef: string, maxIterations = DEFAULT_LOOP_MAX_ITERATIONS): string {
+  return `if ($.${loopRef}['iteration'] < ${maxIterations}) { true; } else { false; }`;
+}
+
 /**
  * 根据动作定义创建一个新的业务步骤。
  * 控制流动作（分支 / 并行 / 循环）会生成带 controlType 的容器步骤，
@@ -11,15 +20,15 @@ export function createStepFromAction(action: ActionDefinition): BusinessStep {
   const newStepRef = `${action.id.replace(/\./g, '_')}_${suffix}`;
 
   if (action.id === 'control.decision') {
+    // 判断取值默认留空：用户需绑定一个数据胶囊（如上游输出 / 全局入参），否则运行时总是走默认分支（校验会提示）
     return {
       id: `step_${newStepRef}`,
       actionId: 'control_decision',
       taskReferenceName: newStepRef,
       name: '条件分支路由',
-      description: '根据输入参数或上下文表达式分流执行',
-      values: { caseParam: 'status' },
+      values: { [DEFAULT_CASE_PARAM]: '' },
       controlType: 'decision',
-      caseParam: 'status',
+      caseParam: DEFAULT_CASE_PARAM,
       branches: [
         { caseKey: 'SUCCESS', caseLabel: '分支: SUCCESS', steps: [] },
         { caseKey: '__default__', caseLabel: '默认分支 (Default)', steps: [] },
@@ -34,7 +43,6 @@ export function createStepFromAction(action: ActionDefinition): BusinessStep {
       actionId: 'control_fork',
       taskReferenceName: newStepRef,
       name: '并行并发组',
-      description: '同时并发执行多条独立业务泳道',
       values: {},
       controlType: 'fork',
       forkLanes: [
@@ -51,10 +59,9 @@ export function createStepFromAction(action: ActionDefinition): BusinessStep {
       actionId: 'control_loop',
       taskReferenceName: newStepRef,
       name: '循环迭代处理',
-      description: '重复循环执行内部步骤，直到满足退出条件',
-      values: { loopCondition: '$.status == "PENDING"' },
+      values: {},
       controlType: 'loop',
-      loopCondition: '$.status == "PENDING"',
+      loopCondition: defaultLoopCondition(newStepRef),
       loopSteps: [],
       isProFallback: false,
     };

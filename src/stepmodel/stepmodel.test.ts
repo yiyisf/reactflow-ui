@@ -385,3 +385,193 @@ describe('步骤 ID 稳定性', () => {
     expect(back.steps[0].id).toBe(step.id);
   });
 });
+
+describe('v1.3.1 业务模式往返无损（B1–B8 / B19 / B20）', () => {
+  const R = defaultActionRegistry;
+  const wf = (tasks: any[]) => ({ name: 'wf', version: 1, schemaVersion: 2, tasks }) as any;
+  const roundTrip = (def: any) => compileStepModelToWorkflowDef(decompileWorkflowDefToStepModel(def));
+  const simple = (ref: string) => ({ name: ref, taskReferenceName: ref, type: 'SIMPLE' as const, inputParameters: {} });
+
+  it('B1 新建条件分支：判断取值绑定到 inputParameters[caseParam]，编译后可再反编译回来', () => {
+    const step = createStepFromAction(R.getAction('control.decision')!);
+    step.values = { ...step.values, [step.caseParam!]: '${workflow.input.env}' };
+    const def = compileStepModelToWorkflowDef({ name: 'wf', steps: [step] });
+    const task = def.tasks[0];
+    expect(task.type).toBe('DECISION');
+    expect(task.inputParameters?.[task.caseValueParam!]).toBe('${workflow.input.env}');
+    const back = decompileWorkflowDefToStepModel(def).steps[0];
+    expect(back.caseParam).toBe(step.caseParam);
+    expect(back.values[back.caseParam!]).toBe('${workflow.input.env}');
+  });
+
+  it('B2 空默认分支往返后仍然存在；B3 删除默认分支后不会复活旧步骤', () => {
+    const def = wf([
+      { name: 'sw', taskReferenceName: 'sw', type: 'DECISION', caseValueParam: 'k', inputParameters: { k: '${workflow.input.k}' }, decisionCases: { A: [simple('a')] }, defaultCase: [] },
+    ]);
+    const model = decompileWorkflowDefToStepModel(def);
+    expect(model.steps[0].branches!.map((b) => b.caseKey)).toEqual(['A', '__default__']);
+    const again = decompileWorkflowDefToStepModel(compileStepModelToWorkflowDef(model));
+    expect(again.steps[0].branches!.map((b) => b.caseKey)).toEqual(['A', '__default__']);
+
+    const withDefault = decompileWorkflowDefToStepModel(
+      wf([{ ...def.tasks[0], defaultCase: [simple('fallback')] }])
+    );
+    withDefault.steps[0].branches = withDefault.steps[0].branches!.filter((b) => b.caseKey !== '__default__');
+    expect(compileStepModelToWorkflowDef(withDefault).tasks[0].defaultCase).toEqual([]);
+  });
+
+  it('B19 SWITCH value-param：expression 作为判断参数，往返不变且可编辑', () => {
+    const sw = {
+      name: 'route_by_env', taskReferenceName: 'sw', type: 'SWITCH', evaluatorType: 'value-param', expression: 'env',
+      inputParameters: { env: '${workflow.input.env}' },
+      decisionCases: { prod: [simple('a')] }, defaultCase: [simple('b')],
+    };
+    const model = decompileWorkflowDefToStepModel(wf([sw]));
+    expect(model.steps[0].caseParam).toBe('env');
+    expect(model.steps[0].caseExpression).toBeUndefined();
+    expect(compileStepModelToWorkflowDef(model).tasks[0]).toEqual(sw);
+
+    model.steps[0].caseParam = 'region';
+    model.steps[0].values = { region: '${workflow.input.region}' };
+    const edited = compileStepModelToWorkflowDef(model).tasks[0];
+    expect(edited.expression).toBe('region');
+    expect(edited.inputParameters).toEqual({ region: '${workflow.input.region}' });
+  });
+
+  it('B19 SWITCH javascript：脚本表达式往返不变；清空后如实写空，不回退旧值', () => {
+    const sw = {
+      name: 'js_switch', taskReferenceName: 'jsw', type: 'SWITCH', evaluatorType: 'javascript',
+      expression: '$.amount > 100 ? "big" : "small"', inputParameters: { amount: '${workflow.input.amount}' },
+      decisionCases: { big: [simple('a')] }, defaultCase: [],
+    };
+    const model = decompileWorkflowDefToStepModel(wf([sw]));
+    expect(model.steps[0].caseExpression).toBe(sw.expression);
+    expect(compileStepModelToWorkflowDef(model).tasks[0]).toEqual(sw);
+    model.steps[0].caseExpression = '';
+    expect(compileStepModelToWorkflowDef(model).tasks[0].expression).toBe('');
+  });
+
+  it('B19 DECISION caseExpression 与 caseValueParam 互斥，编辑哪个写哪个', () => {
+    const model = decompileWorkflowDefToStepModel(
+      wf([{ name: 'd', taskReferenceName: 'd', type: 'DECISION', caseExpression: '$.x', decisionCases: {}, defaultCase: [] }])
+    );
+    expect(model.steps[0].caseExpression).toBe('$.x');
+    model.steps[0].caseExpression = undefined;
+    model.steps[0].caseParam = 'k';
+    const t = compileStepModelToWorkflowDef(model).tasks[0];
+    expect(t.caseValueParam).toBe('k');
+    expect('caseExpression' in t).toBe(false);
+  });
+
+  it('B4 FORK_JOIN_DYNAMIC + JOIN 往返后保持两个任务，且不凭空生成 forkTasks', () => {
+    const fd = { name: 'dyn', taskReferenceName: 'dyn', type: 'FORK_JOIN_DYNAMIC', dynamicForkTasksParam: 't', dynamicForkTasksInputParamName: 'i', inputParameters: { t: '${x.output.t}', i: '${x.output.i}' } };
+    const jn = { name: 'jn', taskReferenceName: 'jn', type: 'JOIN' };
+    const model = decompileWorkflowDefToStepModel(wf([fd, jn]));
+    expect(model.steps).toHaveLength(1);
+    expect(model.steps[0].isProFallback).toBe(true);
+    expect(model.steps[0].pairedJoinTaskRef).toBe('jn');
+    const out = compileStepModelToWorkflowDef(model);
+    expect(out.tasks).toEqual([fd, jn]);
+  });
+
+  it('JOIN 的原始字段（name / joinMode 等）往返保留', () => {
+    const f = { name: 'f', taskReferenceName: 'f', type: 'FORK_JOIN', forkTasks: [[simple('a')], [simple('b')]] };
+    const j = { name: 'my_join', taskReferenceName: 'j', type: 'JOIN', joinOn: ['a', 'b'] };
+    expect(roundTrip(wf([f, j])).tasks[1]).toEqual(j);
+  });
+
+  it('B5 原始 WAIT（until / 等待信号）保留为专业步骤，不被改写成"等待 10 秒"', () => {
+    const until = { name: 'w1', taskReferenceName: 'w1', type: 'WAIT', inputParameters: { until: '2026-12-01 09:00 GMT+8' } };
+    const signal = { name: 'w2', taskReferenceName: 'w2', type: 'WAIT' };
+    const model = decompileWorkflowDefToStepModel(wf([until, signal]));
+    expect(model.steps.every((s) => s.isProFallback)).toBe(true);
+    expect(compileStepModelToWorkflowDef(model).tasks).toEqual([until, signal]);
+
+    const dur = decompileWorkflowDefToStepModel(wf([{ name: 'w3', taskReferenceName: 'w3', type: 'WAIT', inputParameters: { duration: '30s' } }]));
+    expect(dur.steps[0].actionId).toBe('control.wait');
+    expect(dur.steps[0].values.duration).toBe('30s');
+  });
+
+  it('B6 已识别动作往返保留 optional / retryCount / timeoutSeconds / startDelay / description 与额外配置', () => {
+    const t = {
+      name: 'ecs_query_instance', taskReferenceName: 'q', type: 'HTTP', optional: true, retryCount: 5,
+      timeoutSeconds: 30, startDelay: 2, description: '查询生产主机',
+      inputParameters: { _actionId: 'ecs.query_instance', instanceId: 'i-1', http_request: { uri: 'https://x', headers: { 'X-Token': '${workflow.input.token}' } } },
+    };
+    const out = roundTrip(wf([t])).tasks[0];
+    expect(out).toMatchObject({ optional: true, retryCount: 5, timeoutSeconds: 30, startDelay: 2, description: '查询生产主机', name: 'ecs_query_instance' });
+    expect(out.inputParameters?.http_request?.headers).toEqual({ 'X-Token': '${workflow.input.token}' });
+  });
+
+  it('B7 控制流步骤 name 与 description 分开，多次往返不改名、不生成合成描述', () => {
+    const def = wf([
+      { name: 'route', taskReferenceName: 'r', type: 'DECISION', caseValueParam: 'k', inputParameters: { k: '' }, decisionCases: {}, defaultCase: [] },
+      { name: 'par', taskReferenceName: 'p', type: 'FORK_JOIN', description: '并行备份', forkTasks: [[simple('a')]] },
+      { name: 'par_join', taskReferenceName: 'pj', type: 'JOIN', joinOn: ['a'] },
+      { name: 'poll', taskReferenceName: 'l', type: 'DO_WHILE', loopCondition: 'false', loopOver: [simple('c')] },
+    ]);
+    const once = roundTrip(def);
+    const twice = roundTrip(once);
+    expect(twice.tasks).toEqual(def.tasks);
+  });
+
+  it('步骤改名写入 description，用于区分两个同类步骤，往返后名称不变', () => {
+    const a = createStepFromAction(R.getAction('ecs.create_instance')!);
+    a.name = '创建 Web 主机';
+    const def = compileStepModelToWorkflowDef({ name: 'wf', steps: [a] });
+    expect(def.tasks[0].description).toBe('创建 Web 主机');
+    expect(def.tasks[0].name).toBe('ecs_create_instance');
+    expect(decompileWorkflowDefToStepModel(def).steps[0].name).toBe('创建 Web 主机');
+    // 未改名时显示动作名
+    const b = createStepFromAction(R.getAction('ecs.create_instance')!);
+    const backB = decompileWorkflowDefToStepModel(compileStepModelToWorkflowDef({ name: 'wf', steps: [b] }));
+    expect(backB.steps[0].name).toBe('创建云主机');
+  });
+
+  it('B8 数字字段插入数据胶囊后原样保留；清空回落默认值而不是 0', () => {
+    const c = createStepFromAction(R.getAction('ecs.create_instance')!);
+    c.values.systemDiskSize = '${workflow.input.disk}';
+    const t = compileStepModelToWorkflowDef({ name: 'wf', steps: [c] }).tasks[0];
+    expect(t.inputParameters?.systemDiskSize).toBe('${workflow.input.disk}');
+    const back = decompileWorkflowDefToStepModel({ name: 'wf', tasks: [t] } as any).steps[0];
+    expect(back.values.systemDiskSize).toBe('${workflow.input.disk}');
+
+    const s = createStepFromAction(R.getAction('ecs.create_snapshot')!);
+    s.values.retentionDays = '';
+    expect(compileStepModelToWorkflowDef({ name: 'wf', steps: [s] }).tasks[0].inputParameters?.retentionDays).toBe(7);
+    s.values.retentionDays = 0;
+    expect(compileStepModelToWorkflowDef({ name: 'wf', steps: [s] }).tasks[0].inputParameters?.retentionDays).toBe(0);
+    s.values.retentionDays = '14';
+    expect(compileStepModelToWorkflowDef({ name: 'wf', steps: [s] }).tasks[0].inputParameters?.retentionDays).toBe(14);
+  });
+
+  it('对象类型入参往返保持对象（不变成 "[object Object]"）', () => {
+    const t = { name: 'custom_worker', taskReferenceName: 'cw', type: 'SIMPLE', inputParameters: { payload: { a: 1, list: [1, 2] } } };
+    const out = roundTrip(wf([t])).tasks[0];
+    expect(out.inputParameters?.payload).toEqual({ a: 1, list: [1, 2] });
+  });
+
+  it('B19 新建循环的默认条件引用循环自身的轮次，确保会结束', () => {
+    const l = createStepFromAction(R.getAction('control.loop')!);
+    const t = compileStepModelToWorkflowDef({ name: 'wf', steps: [l] }).tasks[0];
+    expect(t.loopCondition).toContain(`$.${l.taskReferenceName}['iteration']`);
+    expect(t.inputParameters).toEqual({});
+    l.loopCondition = '';
+    expect(compileStepModelToWorkflowDef({ name: 'wf', steps: [l] }).tasks[0].loopCondition).toBe('');
+  });
+
+  it('B20 人工审批超时编译为任务级 timeoutSeconds + timeoutPolicy', () => {
+    const h = createStepFromAction(R.getAction('human.approval')!);
+    h.values.timeoutMinutes = 30;
+    const t = compileStepModelToWorkflowDef({ name: 'wf', steps: [h] }).tasks[0];
+    expect(t.timeoutSeconds).toBe(1800);
+    expect(t.timeoutPolicy).toBe('TIME_OUT_WF');
+    // 往返后仍能识别为审批动作，超时设置不丢
+    const again = roundTrip({ name: 'wf', tasks: [t] });
+    expect(again.tasks[0].timeoutSeconds).toBe(1800);
+  });
+
+  it('已有工作流的空描述往返后保持为空，不补合成描述', () => {
+    expect(roundTrip({ name: 'w', version: 1, description: '', tasks: [] }).description).toBe('');
+  });
+});

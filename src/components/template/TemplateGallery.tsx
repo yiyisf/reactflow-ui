@@ -7,6 +7,7 @@ import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { TemplateStore, defaultTemplateStore } from '../../template/templateStore';
 import { TemplateSetupWizard } from './TemplateSetupWizard';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { CmIcon } from '../icons/CmIcon';
 
 export interface TemplateGalleryProps {
   isOpen: boolean;
@@ -106,7 +107,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 24 }}>📁</span>
+            <span style={{ display: 'inline-flex' }}><CmIcon name="folder" size={22} /></span>
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary, #f8fafc)' }}>
                 场景化工作流模板中心
@@ -148,10 +149,10 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[
               { id: 'all', label: '全部场景 (8)' },
-              { id: 'compute', label: '🖥️ 交付与计算' },
-              { id: 'security', label: '💾 安全与容灾' },
-              { id: 'ops', label: '⚡ 运维与自愈' },
-              { id: 'cost', label: '🌙 节能与降本' },
+              { id: 'compute', label: '交付与计算' },
+              { id: 'security', label: '安全与容灾' },
+              { id: 'ops', label: '运维与自愈' },
+              { id: 'cost', label: '节能与降本' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -208,7 +209,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               justifyContent: 'space-between',
             }}
           >
-            <div>✨ {quickTestNotice}</div>
+            <div><CmIcon name="sparkles" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />{quickTestNotice}</div>
             <button
               onClick={() => setQuickTestNotice(null)}
               style={{
@@ -264,7 +265,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 26 }}>{tpl.icon}</span>
+                    <CmIcon name={tpl.icon} size={24} />
                     <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary, #f8fafc)' }}>
                       {tpl.title}
                     </span>
@@ -310,7 +311,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       fontWeight: 600,
                     }}
                   >
-                    ⚡ 单次约省 {tpl.roi.minutesSavedPerRun} 分钟
+                    <CmIcon name="zap" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />单次约省 {tpl.roi.minutesSavedPerRun} 分钟
                   </span>
                   <span
                     style={{
@@ -321,7 +322,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       color: '#60a5fa',
                     }}
                   >
-                    🔥 已使用 {tpl.roi.popularityCount ?? 1000} 次
+                    <CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />已使用 {tpl.roi.popularityCount ?? 1000} 次
                   </span>
                 </div>
 
@@ -344,7 +345,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       gap: 4,
                     }}
                   >
-                    <span>▶</span>
+                    <span><CmIcon name="play" size={16} /></span>
                     <span>试跑演示</span>
                   </button>
 
@@ -366,7 +367,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       gap: 4,
                     }}
                   >
-                    <span>⚡</span>
+                    <span><CmIcon name="zap" size={16} /></span>
                     <span>使用此模板</span>
                   </button>
                 </div>

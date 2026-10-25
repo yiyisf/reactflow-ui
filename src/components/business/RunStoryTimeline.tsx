@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { WorkflowInstance, TaskInstance } from '../../types/conductor';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import { FriendlyErrorCard } from './FriendlyErrorCard';
+import { CmIcon } from '../icons/CmIcon';
 
 export interface RunStoryTimelineProps {
   instance: WorkflowInstance;
@@ -134,7 +135,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 24 }}>{isFailed ? '❌' : '🎉'}</span>
+          {isFailed ? <CmIcon name="x" size={22} style={{ color: 'var(--status-failed)' }} /> : <CmIcon name="approval" size={22} style={{ color: 'var(--status-completed)' }} />}
           <div>
             <div
               style={{
@@ -173,18 +174,18 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
           const taskIcon =
             action?.icon ||
             (task.taskType === 'DECISION' || task.taskType === 'SWITCH'
-              ? '🔀'
+              ? 'shuffle'
               : task.taskType === 'FORK_JOIN' || task.taskType === 'FORK_JOIN_DYNAMIC'
-              ? '⚡'
+              ? 'zap'
               : task.taskType === 'JOIN'
-              ? '🔗'
+              ? 'merge'
               : task.taskType === 'DO_WHILE'
-              ? '🔁'
+              ? 'repeat'
               : task.taskType === 'WAIT'
-              ? '⏳'
+              ? 'hourglass'
               : task.taskType === 'HUMAN'
-              ? '👤'
-              : '⚙️');
+              ? 'user'
+              : 'settings');
           const isTaskFailed = task.status === 'FAILED' || task.status === 'FAILED_WITH_TERMINAL_ERROR';
           const isExpanded = Boolean(expandedDetailsMap[task.referenceTaskName]);
 
@@ -212,7 +213,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               {/* 头部摘要行 */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 18 }}>{isTaskFailed ? '❌' : taskIcon}</span>
+                  {isTaskFailed ? <CmIcon name="x" size={18} style={{ color: 'var(--status-failed)' }} /> : <CmIcon name={taskIcon} size={18} />}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>

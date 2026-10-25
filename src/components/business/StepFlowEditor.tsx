@@ -17,6 +17,7 @@ import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
 import type { LibraryCatalog } from '../../library/catalog';
 import { applyUpgradeToValues, collectReferencedOutputKeys } from '../../library/diff';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
+import { CmIcon } from '../icons/CmIcon';
 
 export interface StepFlowEditorProps {
   workflowDef: WorkflowDef | null;
@@ -28,7 +29,7 @@ export interface StepFlowEditorProps {
   libraryCatalog?: LibraryCatalog;
   /** 当前正在编辑的工作流层级：提供时选择器隐藏违反分层调用规则的流程库动作 */
   currentWorkflowLevel?: WorkflowLevel;
-  /** 提供时，步骤头部显示「🤖」按钮，点击请 AI 介绍该步骤（AI IDE 中使用） */
+  /** 提供时，步骤头部显示「AI 介绍」按钮，点击请 AI 介绍该步骤（AI IDE 中使用） */
   onAskAi?: (step: BusinessStep) => void;
   /** 通过动作选择器新增步骤后回调（埋点用）：source = library（流程库能力）/ builtin（内置或宿主动作） */
   onStepAdded?: (info: { source: 'library' | 'builtin' }) => void;
@@ -195,7 +196,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>📋</span>
+          <span style={{ fontSize: 18 }}><CmIcon name="clipboard" size={16} /></span>
           <div>
             <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary, #f8fafc)' }}>
               {model.name || '云平台业务流程'}
@@ -230,7 +231,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 cursor: 'pointer',
               }}
             >
-              📋 步骤配置
+              <CmIcon name="clipboard" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />步骤配置
             </button>
             <button
               onClick={() => setActiveTab('story')}
@@ -245,7 +246,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 cursor: 'pointer',
               }}
             >
-              📖 运行故事线 ({lastSimInstance.tasks.length}步)
+              <CmIcon name="book" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />运行故事线 ({lastSimInstance.tasks.length}步)
             </button>
           </div>
         )}
@@ -286,7 +287,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               transition: 'all 0.15s ease',
             }}
           >
-            <span>{isSimulating ? '⏳ 模拟中...' : '▶ 浏览器本地试跑 (零风险)'}</span>
+            <span>{isSimulating ? '模拟中...' : '浏览器本地试跑 (零风险)'}</span>
           </button>
         </div>
       </div>
@@ -334,7 +335,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               gap: 14,
             }}
           >
-            <span style={{ fontSize: 42 }}>⚡</span>
+            <span style={{ display: 'inline-flex', color: 'var(--color-accent)' }}><CmIcon name="zap" size={36} /></span>
             <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-primary, #f8fafc)' }}>
               尚未添加任何业务动作
             </div>
@@ -414,7 +415,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            color: idx === 0 ? 'var(--border-primary)' : 'var(--text-secondary)',
                             cursor: idx === 0 ? 'default' : 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -429,7 +430,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === steps.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            color: idx === steps.length - 1 ? 'var(--border-primary)' : 'var(--text-secondary)',
                             cursor: idx === steps.length - 1 ? 'default' : 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -449,7 +450,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                             padding: '2px 4px',
                           }}
                         >
-                          🗑️
+                          <CmIcon name="trash" size={16} />
                         </button>
                       </div>
                     )}
@@ -519,7 +520,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            color: idx === 0 ? 'var(--border-primary)' : 'var(--text-secondary)',
                             cursor: idx === 0 ? 'default' : 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -534,7 +535,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === steps.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            color: idx === steps.length - 1 ? 'var(--border-primary)' : 'var(--text-secondary)',
                             cursor: idx === steps.length - 1 ? 'default' : 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -554,7 +555,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                             padding: '2px 4px',
                           }}
                         >
-                          🗑️
+                          <CmIcon name="trash" size={16} />
                         </button>
                       </div>
                     )}
@@ -624,7 +625,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            color: idx === 0 ? 'var(--border-primary)' : 'var(--text-secondary)',
                             cursor: idx === 0 ? 'default' : 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -639,7 +640,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === steps.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary)',
+                            color: idx === steps.length - 1 ? 'var(--border-primary)' : 'var(--text-secondary)',
                             cursor: idx === steps.length - 1 ? 'default' : 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -659,7 +660,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                             padding: '2px 4px',
                           }}
                         >
-                          🗑️
+                          <CmIcon name="trash" size={16} />
                         </button>
                       </div>
                     )}
@@ -760,7 +761,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                       #{idx + 1}
                     </div>
 
-                    <span style={{ fontSize: 20 }}>{action?.icon || '⚙️'}</span>
+                    <CmIcon name={action?.icon} size={20} />
 
                     <div style={{ overflow: 'hidden' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -778,7 +779,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                               fontWeight: 600,
                             }}
                           >
-                            ⚠️ 敏感
+                            <CmIcon name="alert" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />敏感
                           </span>
                         )}
                         <LibraryVersionBadge
@@ -812,7 +813,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                               fontWeight: 600,
                             }}
                           >
-                            ✓ 试跑成功
+                            <CmIcon name="approval" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />试跑成功
                           </span>
                         )}
                       </div>
@@ -846,7 +847,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           padding: '4px',
                         }}
                       >
-                        🤖
+                        <CmIcon name="sparkles" size={16} />
                       </button>
                     )}
                     {!readOnly && (
@@ -893,7 +894,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                             padding: '4px',
                           }}
                         >
-                          🗑️
+                          <CmIcon name="trash" size={16} />
                         </button>
                       </>
                     )}

@@ -64,6 +64,7 @@ export interface WorkflowTemplate {
   /** 所属业务分类 */
   category: TemplateCategory;
   /** 模板视觉图标 Emoji */
+  /** CMASTER icon name (components/icons/iconRegistry.ts, e.g. 'rocket'); legacy emoji still render via aliases. */
   icon: string;
   /** 一句话核心业务价值主张（拒绝技术罗列，讲清节省的时间与业务成效） */
   valueProposition: string;

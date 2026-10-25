@@ -9,7 +9,7 @@ describe('getTaskTypeMeta', () => {
     it('falls back to a generic entry using the type name as the label for unknown types', () => {
         const meta = getTaskTypeMeta('SOME_FUTURE_TYPE');
         expect(meta.label).toBe('SOME_FUTURE_TYPE');
-        expect(meta.icon).toBe('⚙️');
+        expect(meta.icon).toBe('settings');
     });
 });
 

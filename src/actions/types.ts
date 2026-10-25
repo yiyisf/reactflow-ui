@@ -67,6 +67,7 @@ export interface ActionDefinition {
   id: string;
   name: string;
   category: ActionCategory;
+  /** CMASTER icon name (components/icons/iconRegistry.ts, e.g. 'server'); legacy emoji still render via aliases. */
   icon: string;
   description: string;
   connector?: string;

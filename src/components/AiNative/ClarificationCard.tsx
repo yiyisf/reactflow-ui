@@ -1,5 +1,7 @@
 import React from 'react';
 import type { PendingClarification } from '../../store/aiStore';
+import { CmIcon } from '../icons/CmIcon';
+import { resolveIconName } from '../icons/iconRegistry';
 
 interface ClarificationCardProps {
     clarification: PendingClarification;
@@ -21,13 +23,13 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({ clarification, on
                         className="ai-clarification-option"
                         onClick={() => onSelect(opt.label)}
                     >
-                        {opt.icon && <span className="ai-clarification-option-icon">{opt.icon}</span>}
+                        {resolveIconName(opt.icon) && <span className="ai-clarification-option-icon"><CmIcon name={opt.icon} size={14} /></span>}
                         <span className="ai-clarification-option-label">{opt.label}</span>
                         <span className="ai-clarification-option-desc">{opt.description}</span>
                     </button>
                 ))}
                 <button className="ai-clarification-option custom" onClick={onCustom}>
-                    <span className="ai-clarification-option-icon">✏️</span>
+                    <span className="ai-clarification-option-icon"><CmIcon name="pencil" size={16} /></span>
                     <span className="ai-clarification-option-label">自定义描述</span>
                     <span className="ai-clarification-option-desc">手动输入您的具体需求</span>
                 </button>

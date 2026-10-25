@@ -49,6 +49,13 @@
     --color-on-danger: var(--cm-on-danger);
 }
 
+/* Each themed root resets inherited text colour. Without this, a host page whose body resolves
+   --text-primary outside any [data-mode] (dark default) passes near-white text into a light IDE,
+   and every currentColor icon (CmIcon, Lucide) disappears on white cards. */
+[data-mode] {
+    color: var(--text-primary);
+}
+
 /* ------------------------------------------------------------------
    MODE: DARK (Default)
    ------------------------------------------------------------------ */

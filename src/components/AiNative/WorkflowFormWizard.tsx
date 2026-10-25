@@ -4,6 +4,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import type { WorkflowDef, TaskDef } from '../../types/conductor';
+import { CmIcon } from '../icons/CmIcon';
 
 interface WizardStepType {
     id: string;
@@ -15,13 +16,13 @@ interface WizardStepType {
 }
 
 const STEP_TYPES: WizardStepType[] = [
-    { id: 'human', type: 'HUMAN', name: '', description: '需要人工操作、审批或填写信息', icon: '👤', businessLabel: '人工审批' },
-    { id: 'http', type: 'HTTP', name: '', description: '调用外部系统接口或服务', icon: '🌐', businessLabel: '调用服务' },
-    { id: 'notify', type: 'EVENT', name: '', description: '发送通知（邮件/短信/消息）', icon: '📧', businessLabel: '发送通知' },
-    { id: 'condition', type: 'SWITCH', name: '', description: '根据条件走不同的路径', icon: '🔀', businessLabel: '条件判断' },
-    { id: 'wait', type: 'WAIT', name: '', description: '等待一段时间或某个事件', icon: '⏳', businessLabel: '等待' },
-    { id: 'subprocess', type: 'SUB_WORKFLOW', name: '', description: '嵌套调用另一个已有流程', icon: '📦', businessLabel: '子流程' },
-    { id: 'auto', type: 'SIMPLE', name: '', description: '系统自动处理的任务', icon: '⚙️', businessLabel: '自动任务' },
+    { id: 'human', type: 'HUMAN', name: '', description: '需要人工操作、审批或填写信息', icon: 'user', businessLabel: '人工审批' },
+    { id: 'http', type: 'HTTP', name: '', description: '调用外部系统接口或服务', icon: 'globe', businessLabel: '调用服务' },
+    { id: 'notify', type: 'EVENT', name: '', description: '发送通知（邮件/短信/消息）', icon: 'mail', businessLabel: '发送通知' },
+    { id: 'condition', type: 'SWITCH', name: '', description: '根据条件走不同的路径', icon: 'shuffle', businessLabel: '条件判断' },
+    { id: 'wait', type: 'WAIT', name: '', description: '等待一段时间或某个事件', icon: 'hourglass', businessLabel: '等待' },
+    { id: 'subprocess', type: 'SUB_WORKFLOW', name: '', description: '嵌套调用另一个已有流程', icon: 'package', businessLabel: '子流程' },
+    { id: 'auto', type: 'SIMPLE', name: '', description: '系统自动处理的任务', icon: 'settings', businessLabel: '自动任务' },
 ];
 
 interface FormStep {
@@ -49,9 +50,9 @@ interface WorkflowFormWizardProps {
 }
 
 const WIZARD_STAGES = [
-    { id: 'basic', label: '基本信息', icon: '📋' },
-    { id: 'steps', label: '流程步骤', icon: '📝' },
-    { id: 'review', label: '预览确认', icon: '✅' },
+    { id: 'basic', label: '基本信息', icon: 'clipboard' },
+    { id: 'steps', label: '流程步骤', icon: 'pencil' },
+    { id: 'review', label: '预览确认', icon: 'approval' },
 ];
 
 function generateRef(name: string, index: number): string {
@@ -204,7 +205,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
             <div className="wizard-dialog">
                 {/* Header */}
                 <div className="wizard-header">
-                    <div className="wizard-title">✨ 创建新工作流</div>
+                    <div className="wizard-title"><CmIcon name="sparkles" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />创建新工作流</div>
                     <button className="wizard-close-btn" onClick={onCancel}>✕</button>
                 </div>
 
@@ -215,7 +216,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                             <div className={`wizard-step ${i === stage ? 'active' : ''} ${i < stage ? 'done' : ''}`}
                                  onClick={() => i < stage && setStage(i)}>
                                 <div className="wizard-step-circle">
-                                    {i < stage ? '✓' : <span>{s.icon}</span>}
+                                    {i < stage ? <CmIcon name="approval" size={14} /> : <CmIcon name={s.icon} size={14} />}
                                 </div>
                                 <div className="wizard-step-label">{s.label}</div>
                             </div>
@@ -255,16 +256,16 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                 <label className="wizard-label">触发方式</label>
                                 <div className="wizard-trigger-options">
                                     {[
-                                        { id: 'manual', icon: '👆', label: '手动触发', desc: '由用户主动发起' },
-                                        { id: 'scheduled', icon: '⏰', label: '定时触发', desc: '按计划自动执行' },
-                                        { id: 'event', icon: '📡', label: '事件触发', desc: '由系统事件驱动' },
+                                        { id: 'manual', icon: 'pointer', label: '手动触发', desc: '由用户主动发起' },
+                                        { id: 'scheduled', icon: 'clock', label: '定时触发', desc: '按计划自动执行' },
+                                        { id: 'event', icon: 'radio', label: '事件触发', desc: '由系统事件驱动' },
                                     ].map(opt => (
                                         <button
                                             key={opt.id}
                                             className={`wizard-trigger-option ${formData.triggerType === opt.id ? 'selected' : ''}`}
                                             onClick={() => updateBasic('triggerType', opt.id)}
                                         >
-                                            <span className="wizard-trigger-icon">{opt.icon}</span>
+                                            <span className="wizard-trigger-icon"><CmIcon name={opt.icon} size={18} /></span>
                                             <span className="wizard-trigger-label">{opt.label}</span>
                                             <span className="wizard-trigger-desc">{opt.desc}</span>
                                         </button>
@@ -295,7 +296,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                             )}
                             {onAskAi && (
                                 <button className="wizard-ai-hint" onClick={() => onAskAi(`帮我设计「${formData.name || '新流程'}」的工作流步骤`)}>
-                                    💡 让 AI 帮我设计步骤
+                                    <CmIcon name="lightbulb" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />让 AI 帮我设计步骤
                                 </button>
                             )}
                         </div>
@@ -311,7 +312,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                     <div className="wizard-picker-types">
                                         {STEP_TYPES.map(st => (
                                             <button key={st.id} className="wizard-type-btn" onClick={() => addStep(st)}>
-                                                <span className="wizard-type-icon">{st.icon}</span>
+                                                <span className="wizard-type-icon"><CmIcon name={st.icon} size={18} /></span>
                                                 <span className="wizard-type-label">{st.businessLabel}</span>
                                             </button>
                                         ))}
@@ -341,7 +342,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                             onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
                                         >
                                             <div className="wizard-step-item-drag">⠿</div>
-                                            <div className="wizard-step-item-icon">{step.stepType.icon}</div>
+                                            <div className="wizard-step-item-icon"><CmIcon name={step.stepType.icon} size={16} /></div>
                                             <div className="wizard-step-item-content">
                                                 <input
                                                     className="wizard-step-name-input"
@@ -364,7 +365,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                     ))}
                                     {/* Flow end indicator */}
                                     {formData.steps.length > 0 && (
-                                        <div className="wizard-step-end">🏁 流程结束</div>
+                                        <div className="wizard-step-end"><CmIcon name="flag" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />流程结束</div>
                                     )}
                                 </div>
                             </div>
@@ -393,7 +394,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                             <div className="wizard-review-step-num" style={{ background: step.stepType.type === 'HUMAN' ? '#ec4899' : '#3b82f6' }}>
                                                 {i + 1}
                                             </div>
-                                            <div className="wizard-review-step-icon">{step.stepType.icon}</div>
+                                            <div className="wizard-review-step-icon"><CmIcon name={step.stepType.icon} size={16} /></div>
                                             <div className="wizard-review-step-info">
                                                 <div className="wizard-review-step-name">{step.name}</div>
                                                 <div className="wizard-review-step-type">{step.stepType.description}</div>
@@ -422,7 +423,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                         </button>
                     ) : (
                         <button className="wizard-btn primary" onClick={handleComplete}>
-                            ✓ 创建工作流
+                            <CmIcon name="approval" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />创建工作流
                         </button>
                     )}
                 </div>

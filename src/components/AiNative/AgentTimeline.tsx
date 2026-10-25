@@ -12,6 +12,7 @@ import type { TimelineEntry } from '../../store/aiStore';
 import type { SynthesisPhase } from '../../services/ai/workflowSynthesizer';
 import { collectAllTasksInOrder } from '../../services/ai/workflowSynthesizer';
 import type { WorkflowDef } from '../../types/conductor';
+import { CmIcon } from '../icons/CmIcon';
 
 interface AgentTimelineProps {
     entries: TimelineEntry[];
@@ -87,7 +88,7 @@ const AgentTimeline: React.FC<AgentTimelineProps> = ({
             )}
             {entries.map(entry => (
                 <div key={entry.id} className={`ai-agent-timeline-item ${entry.icon}`}>
-                    <span className="ai-agent-timeline-icon">{entry.icon === 'warning' ? '⚠' : '✓'}</span>
+                    <span className="ai-agent-timeline-icon"><CmIcon name={entry.icon === 'warning' ? 'alert' : 'approval'} size={13} /></span>
                     <span className="ai-agent-timeline-label">{entry.label}</span>
                 </div>
             ))}

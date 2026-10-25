@@ -77,12 +77,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     onRequestImport,
     executionActions,
 }) => {
-    const { nodes, edges, onNodesChange, onEdgesChange, onConnect, mode, viewMode, selectedTask, setSelectedTask, selectTaskAction, theme, edgeType, addNode, nodesLocked, executionData, validationResults, isDetailPanelOpen, setIsDetailPanelOpen, workflowDef, setWorkflow, dynamicRuntimeTasksByFork, layoutDirection, simState, isSimRunning, workflowLoadKey, showDataLineage } = useWorkflowStore(useShallow((s) => ({
+    const { nodes, edges, onNodesChange, onEdgesChange, mode, viewMode, selectedTask, setSelectedTask, selectTaskAction, theme, edgeType, addNode, nodesLocked, executionData, validationResults, isDetailPanelOpen, setIsDetailPanelOpen, workflowDef, setWorkflow, dynamicRuntimeTasksByFork, layoutDirection, simState, isSimRunning, workflowLoadKey, showDataLineage } = useWorkflowStore(useShallow((s) => ({
             nodes: s.nodes,
             edges: s.edges,
             onNodesChange: s.onNodesChange,
             onEdgesChange: s.onEdgesChange,
-            onConnect: s.onConnect,
             mode: s.mode,
             viewMode: s.viewMode,
             selectedTask: s.selectedTask,
@@ -681,7 +680,6 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 edges={ghostOverlay?.edges ?? [...processedEdges, ...dataLineageEdges]}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 onNodeClick={(_: any, node: any) => {
@@ -712,7 +710,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 }}
                 fitView
                 nodesDraggable={!nodesLocked}
-                nodesConnectable={!nodesLocked}
+                /* E11：连线由 Conductor 定义推导，手拉的连线无法写回定义，因此关闭 */
+                nodesConnectable={false}
+                /* E10：关闭 ReactFlow 内置删除（只删画布不删定义），统一走 useShortcuts → removeNode */
+                deleteKeyCode={null}
                 elementsSelectable={true}
                 minZoom={0.2}
                 maxZoom={2}

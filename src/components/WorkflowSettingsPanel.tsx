@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
-import { WorkflowDef, WorkflowInputParam, parseWorkflowInputParams } from '../types/conductor';
+import { WorkflowDef, WorkflowInputParam, parseWorkflowInputParams, serializeWorkflowInputParams } from '../types/conductor';
 import { X } from 'lucide-react';
 
 interface WorkflowSettingsPanelProps {
@@ -232,11 +232,14 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
     );
 
     const renderParamsTab = () => {
-        const inputParams: WorkflowInputParam[] = parseWorkflowInputParams((localDef as any)?.inputParameters);
+        const inputParams: WorkflowInputParam[] = parseWorkflowInputParams((localDef as any)?.inputParameters, localDef);
 
+        // E22：inputParameters 只存参数名（Conductor 只接受 List<String>），类型等写入 inputSchema / inputTemplate
         const updateInputParams = (params: WorkflowInputParam[]) => {
-            if (isReadOnly) return;
-            handleChange('inputParameters', params);
+            if (isReadOnly || !localDef) return;
+            const patch = serializeWorkflowInputParams(params, localDef);
+            setLocalDef({ ...localDef, ...patch });
+            updateWorkflowProperties(patch);
         };
 
         const addParam = () => {

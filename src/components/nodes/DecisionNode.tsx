@@ -9,6 +9,7 @@ import { useNodeExecution } from '../../hooks/useNodeExecution';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
 import { truncate, getNodeHeader } from '../../utils/nodeMeta';
 import PromptDialog from '../PromptDialog';
+import { validateBranchName } from '../../utils/taskEditing';
 import ConfirmDialog from '../ConfirmDialog';
 import { Pencil } from 'lucide-react';
 
@@ -379,7 +380,8 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
 
                 {/* 开发者模式：在菱形下方显示分支表达式 */}
                 {viewMode === 'developer' && (() => {
-                    const expr = data.task?.caseExpression
+                    const expr = (data.task?.type === 'SWITCH' ? data.task?.expression : undefined)
+                        || data.task?.caseExpression
                         || (data.task?.inputParameters?.expression as string);
                     const param = data.task?.caseValueParam;
                     if (!expr && !param) return null;
@@ -430,6 +432,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     defaultValue={`case_${branches.length + 1}`}
                     placeholder="例如：approved、rejected、pending"
                     confirmText="添加"
+                    validate={(v) => validateBranchName(data.task, v)}
                     onConfirm={handleAddConfirm}
                     onCancel={closeDialog}
                 />
@@ -443,6 +446,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     defaultValue={dialog.branch}
                     placeholder="输入新的分支条件值"
                     confirmText="重命名"
+                    validate={(v) => validateBranchName(data.task, v, dialog.branch)}
                     onConfirm={handleRenameConfirm}
                     onCancel={closeDialog}
                 />

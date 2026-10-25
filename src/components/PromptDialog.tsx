@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
+import { CircleAlert } from 'lucide-react';
 
 interface PromptDialogProps {
     title: string;
@@ -13,6 +14,8 @@ interface PromptDialogProps {
     cancelText?: string;
     onConfirm: (value: string) => void;
     onCancel: () => void;
+    /** 可选校验：返回错误原因时不提交，并在输入框下方显示 */
+    validate?: (value: string) => string | null;
 }
 
 /**
@@ -28,6 +31,7 @@ const PromptDialog = ({
     cancelText = '取消',
     onConfirm,
     onCancel,
+    validate,
 }: PromptDialogProps) => {
     const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
     const [value, setValue] = useState(defaultValue);
@@ -50,9 +54,12 @@ const PromptDialog = ({
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [onCancel]);
 
+    const error = validate ? validate(value.trim()) : null;
+    const canConfirm = !!value.trim() && !error;
+
     const handleConfirm = () => {
         const trimmed = value.trim();
-        if (trimmed) onConfirm(trimmed);
+        if (trimmed && !error) onConfirm(trimmed);
     };
 
     return createPortal(
@@ -130,12 +137,22 @@ const PromptDialog = ({
                         fontSize: '13px',
                         outline: 'none',
                         boxSizing: 'border-box',
-                        marginBottom: '20px',
+                        marginBottom: error ? '8px' : '20px',
                         transition: 'border-color 0.15s',
                     }}
                     onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
                     onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-primary)'; }}
                 />
+
+                {error && (
+                    <div role="alert" style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        fontSize: '12px', color: 'var(--cm-status-failed)', marginBottom: '16px',
+                    }}>
+                        <CircleAlert size={14} strokeWidth={1.75} aria-hidden="true" />
+                        <span>{error}</span>
+                    </div>
+                )}
 
                 {/* 操作按钮 */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -156,14 +173,14 @@ const PromptDialog = ({
                     </button>
                     <button
                         onClick={handleConfirm}
-                        disabled={!value.trim()}
+                        disabled={!canConfirm}
                         style={{
                             padding: '7px 18px',
-                            backgroundColor: value.trim() ? 'var(--color-accent)' : 'var(--bg-tertiary)',
+                            backgroundColor: canConfirm ? 'var(--color-accent)' : 'var(--bg-tertiary)',
                             border: 'none',
                             borderRadius: '6px',
-                            color: value.trim() ? 'var(--color-on-accent)' : 'var(--text-secondary)',
-                            cursor: value.trim() ? 'pointer' : 'not-allowed',
+                            color: canConfirm ? 'var(--color-on-accent)' : 'var(--text-secondary)',
+                            cursor: canConfirm ? 'pointer' : 'not-allowed',
                             fontSize: '13px',
                             fontWeight: 600,
                             transition: 'background-color 0.15s, color 0.15s',

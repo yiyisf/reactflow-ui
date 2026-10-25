@@ -46,7 +46,8 @@ export function getNodeMeta(
         }
         case 'SWITCH': {
             // expression 可直接在 task 上，也可在 inputParameters.expression
-            const expr = task.caseExpression || (inp.expression as string);
+            // Conductor SWITCH 的 expression 在任务顶层；兼容旧数据的 caseExpression / inputParameters.expression
+            const expr = task.expression || task.caseExpression || (inp.expression as string);
             const evalType = task.evaluatorType || (inp.evaluatorType as string);
             return expr ? truncate(expr, 35) : (evalType || fallback);
         }
@@ -56,8 +57,8 @@ export function getNodeMeta(
             return task.name ? `worker: ${truncate(task.name, 28)}` : fallback;
         case 'INLINE':
         case 'LAMBDA': {
-            // evaluatorType 可在 task 上或 inputParameters.evaluatorType
-            const evalType = task.evaluatorType || (inp.evaluatorType as string);
+            // Conductor INLINE 的 evaluatorType 在 inputParameters；兼容旧数据写在任务顶层
+            const evalType = (inp.evaluatorType as string) || task.evaluatorType;
             return evalType ? `${evalType} script` : fallback;
         }
         case 'SUB_WORKFLOW': {

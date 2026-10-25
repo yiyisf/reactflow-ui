@@ -36,6 +36,13 @@ const PlusNode = ({ data }: NodeProps) => {
         position={isLR ? Position.Left : Position.Top}
         style={{ opacity: 0 }}
       />
+      {/* 空分支占位节点还会连向 JOIN / 下一个任务，需要出口 Handle */}
+      <Handle
+        type="source"
+        position={isLR ? Position.Right : Position.Bottom}
+        style={{ opacity: 0 }}
+        isConnectable={false}
+      />
       
       <style dangerouslySetInnerHTML={{ __html: `
         .plus-node-container:hover {

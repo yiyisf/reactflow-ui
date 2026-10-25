@@ -280,6 +280,14 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
     // 使用统一的快捷键 Hook（唯一入口）
     useShortcuts({ confirm, showToast, onSave });
 
+    // 沙箱试运行的提示（空流程、执行出错）
+    const sandboxNotice = useWorkflowStore((s) => s.sandboxNotice);
+    useEffect(() => {
+        if (!sandboxNotice) return;
+        showToast(sandboxNotice.text, sandboxNotice.type);
+        useWorkflowStore.getState().clearSandboxNotice();
+    }, [sandboxNotice, showToast]);
+
     // 监听选中任务变化，自动定位 (Locate)
     useEffect(() => {
         if (selectedTask) {

@@ -20,7 +20,7 @@ import {
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from '../types/conductor';
 import { buildExecutionWaves } from '../utils/simulateWorkflow';
 import { refactorTaskReferenceName } from '../services/wlsp/workflowLsp';
-import { executeLocalSandboxDryRun } from '../utils/localSandboxEngine';
+import { executeLocalSandboxDryRunAsync } from '../utils/localSandboxEngine';
 import { notifySandboxRun, notifyStepAdded } from './sandboxRunObserver';
 
 /**
@@ -126,6 +126,9 @@ const useWorkflowStore = create<WorkflowStore>()(
                 // Pillar 1: W-LSP 数据血缘与重构通知
                 showDataLineage: false,
                 lastRefactorNotice: null,
+
+                sandboxRunning: false,
+                sandboxNotice: null,
 
                 // Pillar 2: 瀑布流时间轴、时间旅行指针与循环迭代选择
                 showWaterfallPanel: false,
@@ -340,8 +343,9 @@ const useWorkflowStore = create<WorkflowStore>()(
                         workflowInstance,
                         timeTravelTimestamp: null,
                         activeLoopIterations: {},
-                        mode: 'run'
                     });
+                    // 经 setMode 进入运行态：重新解析画布（隐藏空分支和"+"占位节点）
+                    if (get().mode !== 'run') get().setMode('run');
                 },
 
                 setSelectedTask: (task: TaskDef | null) => set({ selectedTask: task ? { ...task } : null }),
@@ -1071,24 +1075,36 @@ const useWorkflowStore = create<WorkflowStore>()(
                             [loopTaskRef]: iteration,
                         },
                     }),
-                runLocalSandboxDryRun: (
+                clearSandboxNotice: () => set({ sandboxNotice: null }),
+                runLocalSandboxDryRun: async (
                     mockInput?: Record<string, any>,
                     taskMocks?: Record<string, any>,
                     maxLoopIterations?: number
                 ) => {
-                    const { workflowDef } = get();
-                    if (!workflowDef) return;
+                    const { workflowDef, sandboxRunning } = get();
+                    if (!workflowDef || sandboxRunning) return;
+                    if (!workflowDef.tasks?.length) {
+                        set({ sandboxNotice: { text: '流程里还没有步骤，先添加步骤再试运行', type: 'error', timestamp: Date.now() } });
+                        return;
+                    }
+                    set({ sandboxRunning: true, sandboxNotice: null });
                     let instance;
                     try {
-                        instance = executeLocalSandboxDryRun(workflowDef, {
+                        instance = await executeLocalSandboxDryRunAsync(workflowDef, {
                             workflowInput: mockInput,
                             taskMocks,
                             maxLoopIterations,
                         });
                     } catch (err) {
+                        const msg = err instanceof Error ? err.message : String(err);
+                        set({
+                            sandboxRunning: false,
+                            sandboxNotice: { text: `沙箱试运行出错：${msg}。检查流程定义和模拟数据后再试`, type: 'error', timestamp: Date.now() },
+                        });
                         notifySandboxRun('error');
-                        throw err;
+                        return;
                     }
+                    set({ sandboxRunning: false });
                     get().importExecutionJSON(instance);
                     set({ showWaterfallPanel: true });
                     // 埋点：专业模式试跑的统一出口（只传最终状态）

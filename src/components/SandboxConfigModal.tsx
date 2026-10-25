@@ -8,6 +8,9 @@ import {
     generateDefaultTaskOutputPreview,
     TaskMockOverride,
 } from '../utils/localSandboxEngine';
+
+/** DO_WHILE 循环安全上限默认值（与 executeLocalSandboxDryRunAsync 的默认一致） */
+const LOOP_SAFETY_DEFAULT = 20;
 import type { TaskDef } from '../types/conductor';
 import { ClipboardList, Compass, Eraser, FlaskConical, RefreshCw, RotateCcw, Shuffle, TriangleAlert, X, Zap } from 'lucide-react';
 
@@ -48,7 +51,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
     const [taskDrafts, setTaskDrafts] = useState<Record<string, TaskDraftMock>>({});
     const [selectedTaskRef, setSelectedTaskRef] = useState<string>('');
     const [taskJsonError, setTaskJsonError] = useState<string | null>(null);
-    const [maxLoopIterations, setMaxLoopIterations] = useState<number>(2);
+    const [maxLoopIterations, setMaxLoopIterations] = useState<number>(LOOP_SAFETY_DEFAULT);
 
     const allTasks = useMemo<TaskDef[]>(() => {
         if (!workflowDef?.tasks) return [];
@@ -78,8 +81,11 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                 if (parsed.taskDrafts && typeof parsed.taskDrafts === 'object') {
                     setTaskDrafts(parsed.taskDrafts);
                 }
-                if (typeof parsed.maxLoopIterations === 'number') {
-                    setMaxLoopIterations(parsed.maxLoopIterations);
+                // 1.3.1 起这是循环安全上限（旧版本存的 maxLoopIterations 是固定轮次，不再沿用）
+                if (typeof parsed.loopSafetyLimit === 'number') {
+                    setMaxLoopIterations(parsed.loopSafetyLimit);
+                } else {
+                    setMaxLoopIterations(LOOP_SAFETY_DEFAULT);
                 }
                 restored = true;
             }
@@ -90,7 +96,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
         if (!restored) {
             setInputJsonText(JSON.stringify(defaultInput, null, 2));
             setTaskDrafts({});
-            setMaxLoopIterations(2);
+            setMaxLoopIterations(LOOP_SAFETY_DEFAULT);
         }
 
         setInputJsonError(null);
@@ -219,14 +225,14 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                 JSON.stringify({
                     inputJsonText,
                     taskDrafts,
-                    maxLoopIterations,
+                    loopSafetyLimit: maxLoopIterations,
                 })
             );
         } catch {
             // ignore quota errors
         }
 
-        runLocalSandboxDryRun(parsedInput, compiledTaskMocks, maxLoopIterations);
+        void runLocalSandboxDryRun(parsedInput, compiledTaskMocks, maxLoopIterations);
         onClose();
     };
 
@@ -333,7 +339,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                             id: 'tasks',
                             label: `2. 节点级人工 Mock & 故障注入 ${enabledMockCount > 0 ? `(${enabledMockCount} 个已启用)` : ''}`,
                         },
-                        { id: 'engine', label: `3. 循环轮次与引擎参数 (${maxLoopIterations} 轮)` },
+                        { id: 'engine', label: `3. 循环上限 (${maxLoopIterations} 轮)` },
                     ].map((tab) => {
                         const active = activeTab === tab.id;
                         return (
@@ -999,10 +1005,10 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div>
                                         <div style={{ fontSize: 13, fontWeight: 700 }}>
-                                            <RefreshCw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />DO_WHILE 循环容器最大模拟迭代轮次
+                                            <RefreshCw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />DO_WHILE 循环安全上限
                                         </div>
                                         <div style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
-                                            控制沙箱遇到 <code>DO_WHILE</code> 节点时自动展开执行的循环轮次数（可在画布循环容器头部切换查看每一轮的子任务状态）
+                                            循环何时结束由 <code>loopCondition</code> 决定；到达上限时条件仍为真，沙箱停止循环并标记为部分完成，防止死循环（可在画布循环容器头部切换查看每一轮的子任务状态）
                                         </div>
                                     </div>
                                     <span
@@ -1019,7 +1025,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                 <input
                                     type="range"
                                     min={1}
-                                    max={8}
+                                    max={50}
                                     value={maxLoopIterations}
                                     onChange={(e) => setMaxLoopIterations(Number(e.target.value))}
                                     style={{ width: '100%', accentColor: 'var(--cm-data)', cursor: 'pointer' }}
@@ -1032,10 +1038,9 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                         color: textSecondary,
                                     }}
                                 >
-                                    <span>1 轮 (单次验证)</span>
-                                    <span>2 轮 (默认推荐)</span>
-                                    <span>5 轮</span>
-                                    <span>8 轮 (压测多轮轨迹)</span>
+                                    <span>1 轮</span>
+                                    <span>20 轮（默认）</span>
+                                    <span>50 轮</span>
                                 </div>
                             </div>
                         </div>
@@ -1059,7 +1064,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                             setTaskDrafts({});
                             const fresh = buildDefaultWorkflowMockInput(workflowDef);
                             setInputJsonText(JSON.stringify(fresh, null, 2));
-                            setMaxLoopIterations(2);
+                            setMaxLoopIterations(LOOP_SAFETY_DEFAULT);
                             sessionStorage.removeItem(storageKey);
                         }}
                         style={{

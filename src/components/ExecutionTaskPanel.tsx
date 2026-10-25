@@ -78,12 +78,20 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
     const displayInput = isGlobal ? workflowInstance?.input : currentInstance?.inputData;
     const displayOutput = isGlobal ? workflowInstance?.output : currentInstance?.outputData;
 
+    // 沙箱实例只存在于浏览器里，宿主的跳过 / 重跑接口拿不到它
+    const isSandbox = workflowInstance?.isSandbox === true;
+    const SANDBOX_EXECUTION_LABEL = { executed: '真实执行', mocked: '模拟数据', not_executed: '未执行' } as const;
+    const sandboxExecution = !isGlobal ? currentInstance?.sandboxExecution : undefined;
+    const sandboxWarnings = !isGlobal ? currentInstance?.sandboxWarnings ?? [] : [];
+
     const canSkip = !isGlobal
+        && !isSandbox
         && executionActions?.onSkipTask
         && (taskStatus === 'SCHEDULED' || taskStatus === 'IN_PROGRESS')
         && (wfStatus === 'RUNNING' || wfStatus === 'PAUSED');
 
     const canRerunFromTask = !isGlobal
+        && !isSandbox
         && executionActions?.onRerunFromTask
         && (wfStatus === 'FAILED' || wfStatus === 'TERMINATED' || wfStatus === 'COMPLETED' || wfStatus === 'TIMED_OUT');
 
@@ -176,6 +184,45 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                 <div style={{ fontSize: 12, color: secondaryText, marginTop: 6, fontFamily: 'monospace', opacity: 0.8 }}>
                     REF: {selectedTask.taskReferenceName}
                 </div>
+
+                {/* Sandbox: whether this task really ran in the browser or returned mock data */}
+                {isSandbox && sandboxExecution && (
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span
+                            title={sandboxExecution === 'executed'
+                                ? '在浏览器沙箱里按 Conductor 语义真实执行'
+                                : sandboxExecution === 'mocked'
+                                    ? '调用外部系统的任务，返回的是模拟数据（可在模拟数据配置台修改）'
+                                    : '同步接口不执行脚本，本任务没有运行'}
+                            style={{
+                                alignSelf: 'flex-start',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                padding: '2px 8px',
+                                borderRadius: 'var(--cm-radius-sm)',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: sandboxExecution === 'executed' ? 'var(--cm-data)' : 'var(--text-secondary)',
+                                background: sandboxExecution === 'executed' ? 'var(--cm-data-tint)' : 'var(--bg-tertiary)',
+                                border: `1px solid ${borderColor}`,
+                            }}
+                        >
+                            {sandboxExecution === 'executed'
+                                ? <Play size={12} strokeWidth={1.75} aria-hidden="true" />
+                                : sandboxExecution === 'mocked'
+                                    ? <FlaskConical size={12} strokeWidth={1.75} aria-hidden="true" />
+                                    : <CircleSlash size={12} strokeWidth={1.75} aria-hidden="true" />}
+                            沙箱 · {SANDBOX_EXECUTION_LABEL[sandboxExecution]}
+                        </span>
+                        {sandboxWarnings.map((w, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 12, color: 'var(--cm-status-warning)', lineHeight: 1.5 }}>
+                                <TriangleAlert size={13} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                                <span style={{ color: 'var(--text-secondary)' }}>{w}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* ── Attempt Selector ── */}
@@ -448,7 +495,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
 
 /* ── Helpers ── */
 import StructuredJsonViewer from './StructuredJsonViewer';
-import { X } from 'lucide-react';
+import { CircleSlash, FlaskConical, Play, TriangleAlert, X } from 'lucide-react';
 
 const taskOpBtnStyle: React.CSSProperties = {
     display: 'inline-flex',

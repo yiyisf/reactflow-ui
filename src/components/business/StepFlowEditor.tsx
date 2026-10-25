@@ -13,7 +13,7 @@ import { DecisionBranchCard } from './DecisionBranchCard';
 import { ForkJoinCard } from './ForkJoinCard';
 import { LoopDoWhileCard } from './LoopDoWhileCard';
 import { RunStoryTimeline } from './RunStoryTimeline';
-import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { executeLocalSandboxDryRunAsync } from '../../utils/localSandboxEngine';
 import type { LibraryCatalog } from '../../library/catalog';
 import { applyUpgradeToValues, collectReferencedOutputKeys } from '../../library/diff';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
@@ -129,7 +129,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   };
 
   // Run dry-run sandbox using action mockOutputs
-  const handleDryRunSandbox = () => {
+  const handleDryRunSandbox = async () => {
     if (!workflowDef) return;
     setIsSimulating(true);
 
@@ -149,7 +149,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       };
       collectMocks(steps);
 
-      const instance = executeLocalSandboxDryRun(workflowDef, { taskMocks });
+      const instance = await executeLocalSandboxDryRunAsync(workflowDef, { taskMocks });
       setLastSimInstance(instance);
       setActiveTab('story');
 
@@ -270,7 +270,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           )}
 
           <button
-            onClick={handleDryRunSandbox}
+            onClick={() => { void handleDryRunSandbox(); }}
             disabled={isSimulating || steps.length === 0}
             style={{
               padding: '6px 14px',

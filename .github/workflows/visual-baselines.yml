@@ -39,8 +39,10 @@ jobs:
       - name: Install Playwright test runner
         run: npm i --no-save @playwright/test@${PLAYWRIGHT_VERSION}
 
+      # =all rewrites every baseline; the default (changed) skips diffs under maxDiffPixelRatio,
+      # so small icon fixes would never land in the baselines.
       - name: Regenerate baselines
-        run: npx playwright test --update-snapshots
+        run: npx playwright test --update-snapshots=all
 
       - name: Commit baselines
         run: |

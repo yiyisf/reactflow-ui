@@ -1,4 +1,6 @@
-# Conductor Workflow IDE (`@yiyi_zhang/reactflow-ui` v1.1.0)
+# Conductor Workflow IDE (`@yiyi_zhang/reactflow-ui`)
+
+[![npm](https://img.shields.io/npm/v/@yiyi_zhang/reactflow-ui)](https://www.npmjs.com/package/@yiyi_zhang/reactflow-ui) [![CI](https://github.com/yiyisf/reactflow-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/yiyisf/reactflow-ui/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 基于 **React 19、ReactFlow 与 Zustand** 构建的下一代企业级 [Netflix Conductor](https://conductor-oss.org/) 工作流可视化设计器与 AI 原生编排 IDE。
 

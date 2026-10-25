@@ -186,6 +186,8 @@ export function insertFirstTaskIntoBranch(tasks: TaskDef[] | undefined, parentRe
             } else if (branchInfo.forkIndex !== undefined) {
                 // Fork 分支
                 if (!task.forkTasks) task.forkTasks = [];
+                while (task.forkTasks.length <= branchInfo.forkIndex) task.forkTasks.push([]);
+                if (!Array.isArray(task.forkTasks[branchInfo.forkIndex])) task.forkTasks[branchInfo.forkIndex] = [];
                 task.forkTasks[branchInfo.forkIndex].unshift(newTask);
                 return true;
             } else if ((branchInfo as any).isLoopAdd) {
@@ -215,38 +217,135 @@ export function insertFirstTaskIntoBranch(tasks: TaskDef[] | undefined, parentRe
     return false;
 }
 
-/**
- * 同步 FORK_JOIN 与配套 JOIN 任务的 joinOn 字段
- */
-export function syncForkJoinOn(tasks: TaskDef[] | undefined): void {
-    if (!tasks) return;
+/** 收集任务树中所有 taskReferenceName */
+export function collectTaskRefs(tasks: TaskDef[] | undefined, acc: Set<string> = new Set()): Set<string> {
+    for (const task of tasks || []) {
+        if (!task) continue;
+        if (task.taskReferenceName) acc.add(task.taskReferenceName);
+        if (task.decisionCases) Object.values(task.decisionCases).forEach(b => collectTaskRefs(b, acc));
+        if (task.defaultCase) collectTaskRefs(task.defaultCase, acc);
+        if (task.forkTasks) task.forkTasks.forEach(b => collectTaskRefs(b, acc));
+        if (task.loopOver) collectTaskRefs(task.loopOver, acc);
+    }
+    return acc;
+}
 
+const branchLastRefs = (fork: TaskDef): Array<string | null> =>
+    (fork.forkTasks || []).map(branch =>
+        branch && branch.length > 0 ? branch[branch.length - 1].taskReferenceName : null
+    );
+
+/**
+ * 同步 FORK_JOIN 与配套 JOIN 任务的 joinOn 字段（E5）
+ *
+ * - 不传 `previousTasks`（加载 / 导入）：只给缺失或为空的 joinOn 补齐"各分支最后一个任务"，已有 joinOn 原样保留。
+ * - 传入 `previousTasks`（编辑操作前的任务树）：只更新被结构性编辑影响的那几项——
+ *   分支最后一个任务变了就替换对应项、新增 / 原本为空的分支追加其末尾任务、分支变空或任务被删除则移除该项；
+ *   用户原本没有 join 的分支保持不 join，其余条目（例如 join 分支中间的任务）不动。
+ *   分支结构没有变化时 joinOn 完全不改写。
+ */
+export function syncForkJoinOn(tasks: TaskDef[] | undefined, previousTasks?: TaskDef[] | null): void {
+    if (!tasks) return;
+    const existingRefs = previousTasks ? collectTaskRefs(tasks) : null;
+    syncForkJoinOnLevel(tasks, previousTasks ?? null, existingRefs);
+}
+
+function syncForkJoinOnLevel(tasks: TaskDef[], previousRoot: TaskDef[] | null, existingRefs: Set<string> | null): void {
     for (let i = 0; i < tasks.length; i++) {
         const task = tasks[i];
+        if (!task) continue;
 
-        if (task.type === 'FORK_JOIN' && i + 1 < tasks.length) {
-            const nextTask = tasks[i + 1];
-            if (nextTask.type === 'JOIN') {
-                const joinOn: string[] = [];
-                (task.forkTasks || []).forEach(branch => {
-                    if (branch && branch.length > 0) {
-                        joinOn.push(branch[branch.length - 1].taskReferenceName);
-                    }
-                });
-                nextTask.joinOn = joinOn;
-            }
+        if (task.type === 'FORK_JOIN' && i + 1 < tasks.length && tasks[i + 1]?.type === 'JOIN') {
+            syncPair(task, tasks[i + 1], previousRoot, existingRefs);
         }
 
         // 递归同步嵌套结构
         if (task.decisionCases) {
-            Object.values(task.decisionCases).forEach(branchTasks => syncForkJoinOn(branchTasks));
-            if (task.defaultCase) syncForkJoinOn(task.defaultCase);
+            Object.values(task.decisionCases).forEach(branchTasks => branchTasks && syncForkJoinOnLevel(branchTasks, previousRoot, existingRefs));
         }
+        if (task.defaultCase) syncForkJoinOnLevel(task.defaultCase, previousRoot, existingRefs);
         if (task.forkTasks) {
-            task.forkTasks.forEach(branchTasks => syncForkJoinOn(branchTasks));
+            task.forkTasks.forEach(branchTasks => branchTasks && syncForkJoinOnLevel(branchTasks, previousRoot, existingRefs));
         }
-        if (task.loopOver) {
-            syncForkJoinOn(task.loopOver);
+        if (task.loopOver) syncForkJoinOnLevel(task.loopOver, previousRoot, existingRefs);
+    }
+}
+
+function syncPair(fork: TaskDef, join: TaskDef, previousRoot: TaskDef[] | null, existingRefs: Set<string> | null): void {
+    const nextLast = branchLastRefs(fork);
+    const current = Array.isArray(join.joinOn) ? join.joinOn : [];
+
+    // 加载模式：只补齐缺失的 joinOn
+    if (!previousRoot) {
+        if (current.length === 0) join.joinOn = nextLast.filter((r): r is string => !!r);
+        return;
+    }
+
+    const prevFork = findTaskByRef(previousRoot, fork.taskReferenceName);
+    if (!prevFork || prevFork.type !== 'FORK_JOIN') {
+        // 本次操作新建的 FORK：默认等待所有非空分支
+        if (current.length === 0) join.joinOn = nextLast.filter((r): r is string => !!r);
+        return;
+    }
+
+    const prevLast = branchLastRefs(prevFork);
+    const unchanged = prevLast.length === nextLast.length && prevLast.every((r, idx) => r === nextLast[idx]);
+    if (unchanged) return;
+
+    const result: string[] = [];
+    const push = (ref: string | null) => {
+        if (ref && !result.includes(ref)) result.push(ref);
+    };
+
+    for (const entry of current) {
+        const branchIdx = prevLast.indexOf(entry);
+        if (branchIdx >= 0) {
+            // 原来 join 在某分支末尾：跟随该分支新的末尾（分支变空 / 被删则去掉）
+            push(branchIdx < nextLast.length ? nextLast[branchIdx] : null);
+        } else if (!existingRefs || existingRefs.has(entry)) {
+            // 用户自定义的条目（如分支中间的任务），只要任务还在就保留
+            push(entry);
         }
     }
+
+    // 新增分支，或原本为空的分支有了第一个任务：追加其末尾任务
+    nextLast.forEach((ref, idx) => {
+        const prev = idx < prevLast.length ? prevLast[idx] : null;
+        if (ref && prev === null) push(ref);
+    });
+
+    join.joinOn = result;
+}
+
+/**
+ * 迁移旧版本编辑器写在 WorkflowTask 顶层、Conductor 实际从 inputParameters 读取的字段（E2 / E20）。
+ * 只在 inputParameters 中没有同名键时迁移，原地修改。
+ */
+export function normalizeLegacyTaskFields(tasks: TaskDef[] | undefined): void {
+    for (const task of tasks || []) {
+        if (!task) continue;
+        const t = task as TaskDef & Record<string, any>;
+        const moveToInput = (key: string) => {
+            if (t[key] === undefined) return;
+            const inputs = (t.inputParameters && typeof t.inputParameters === 'object') ? t.inputParameters : {};
+            if (inputs[key] === undefined) inputs[key] = t[key];
+            t.inputParameters = inputs;
+            delete t[key];
+        };
+        if (t.type === 'INLINE') moveToInput('evaluatorType');
+        if (t.type === 'FORK_JOIN_DYNAMIC') {
+            ['forkTaskName', 'forkTaskType', 'forkTaskWorkflow', 'forkTaskWorkflowVersion', 'forkTaskInputs'].forEach(moveToInput);
+        }
+        if (t.decisionCases) Object.values(t.decisionCases).forEach(b => normalizeLegacyTaskFields(b));
+        if (t.defaultCase) normalizeLegacyTaskFields(t.defaultCase);
+        if (t.forkTasks) t.forkTasks.forEach(b => normalizeLegacyTaskFields(b));
+        if (t.loopOver) normalizeLegacyTaskFields(t.loopOver);
+    }
+}
+
+/** 找到 FORK_JOIN / FORK_JOIN_DYNAMIC 在同层紧随其后的配对 JOIN 引用名（E8） */
+export function findPairedJoinRef(tasks: TaskDef[] | undefined, forkRef: string): string | null {
+    const container = findContainerList(tasks, forkRef);
+    if (!container) return null;
+    return findJoinForFork(container, forkRef);
 }

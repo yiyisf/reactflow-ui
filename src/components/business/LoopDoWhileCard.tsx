@@ -3,8 +3,11 @@ import type { BusinessStep } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
 import { StepListEditor } from './StepListEditor';
-import { createStepFromAction } from '../../stepmodel/factory';
-import { OctagonX, RefreshCw, Repeat } from 'lucide-react';
+import { createStepFromAction, defaultLoopCondition } from '../../stepmodel/factory';
+import { validateBusinessSteps } from '../../stepmodel/validate';
+import { useBusinessEditor, type InsertPickerInfo } from './BusinessEditorContext';
+import { IssueList, RenameableTitle } from './StepCardParts';
+import { Info, Plus, RefreshCw, Repeat } from 'lucide-react';
 
 export interface LoopDoWhileCardProps {
   step: BusinessStep;
@@ -12,7 +15,7 @@ export interface LoopDoWhileCardProps {
   registry?: ActionRegistry;
   disabled?: boolean;
   onChange: (updated: BusinessStep) => void;
-  onOpenInsertModal: (callback: (action: ActionDefinition) => void) => void;
+  onOpenInsertModal: (callback: (action: ActionDefinition) => void, info?: InsertPickerInfo) => void;
   /** 嵌套深度：顶层卡片为 0，其内部子控制流依次 +1 */
   depth?: number;
 }
@@ -27,6 +30,15 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
   depth = 0,
 }) => {
   const loopSteps: BusinessStep[] = step.loopSteps || [];
+  const ctx = useBusinessEditor();
+  const conditionId = `cm-loop-${step.taskReferenceName}-condition`;
+  const ownIssues = React.useMemo(() => {
+    const own = validateBusinessSteps([{ ...step, loopSteps: [] }], registry)[step.taskReferenceName] || [];
+    // 循环体为空的提醒按真实情况给出
+    const filtered = loopSteps.length > 0 ? own.filter((i) => !i.message.startsWith('循环体内没有步骤')) : own;
+    const extra = (ctx.issues[step.taskReferenceName] || []).filter((i) => !filtered.some((o) => o.message === i.message));
+    return [...filtered, ...extra];
+  }, [step, loopSteps.length, registry, ctx.issues]);
 
   // 更新循环体内步骤
   const handleUpdateLoopSteps = (newSteps: BusinessStep[]) => {
@@ -38,10 +50,13 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
 
   // 在循环体内追加步骤
   const handleAddStepToLoop = () => {
-    onOpenInsertModal((action) => {
-      const newChildStep: BusinessStep = createStepFromAction(action);
-      handleUpdateLoopSteps([...loopSteps, newChildStep]);
-    });
+    onOpenInsertModal(
+      (action) => {
+        const newChildStep: BusinessStep = createStepFromAction(action);
+        handleUpdateLoopSteps([...loopSteps, newChildStep]);
+      },
+      { label: `循环体 · 第 ${loopSteps.length + 1} 步` }
+    );
   };
 
   return (
@@ -85,9 +100,12 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
-                {step.name || '循环迭代处理'}
-              </span>
+              <RenameableTitle
+                value={step.name}
+                fallback="循环迭代处理"
+                disabled={disabled}
+                onRename={(name) => onChange({ ...step, name })}
+              />
               <span
                 style={{
                   fontSize: 10,
@@ -108,14 +126,52 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
           </div>
         </div>
 
-        {/* 循环条件修改 */}
-        {!disabled && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>循环继续条件:</span>
+      </div>
+
+      {/* 循环继续条件 */}
+      <div
+        style={{
+          padding: '10px 16px',
+          background: 'var(--bg-primary)',
+          borderBottom: '1px solid var(--border-primary)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <label htmlFor={conditionId} style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+            循环继续条件
+          </label>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            JavaScript，每轮结束后计算，为 true 继续下一轮，为 false 结束循环
+          </span>
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => onChange({ ...step, loopCondition: defaultLoopCondition(step.taskReferenceName) })}
+              style={{
+                marginLeft: 'auto',
+                padding: '2px 8px',
+                borderRadius: 4,
+                background: 'transparent',
+                border: '1px solid var(--border-primary)',
+                color: 'var(--text-secondary)',
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              改为最多执行 3 轮
+            </button>
+          )}
+        </div>
+        <div>
             <input
+              id={conditionId}
               type="text"
-              value={step.loopCondition || ''}
-              placeholder="如 $.status == 'PENDING'"
+              disabled={disabled}
+              value={step.loopCondition ?? ''}
+              placeholder={defaultLoopCondition(step.taskReferenceName)}
               onChange={(e) =>
                 onChange({
                   ...step,
@@ -123,18 +179,19 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                 })
               }
               style={{
-                width: 200,
+                width: '100%',
+                boxSizing: 'border-box',
                 padding: '4px 8px',
                 borderRadius: 4,
                 background: 'var(--bg-secondary)',
                 border: '1px solid var(--border-secondary)',
                 color: 'var(--text-primary)',
                 fontSize: 11,
-                fontFamily: 'monospace',
+                fontFamily: 'var(--cm-font-mono, monospace)',
               }}
             />
-          </div>
-        )}
+        </div>
+        <IssueList issues={ownIssues} />
       </div>
 
       {/* 循环体卡片流容器 */}
@@ -166,6 +223,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
 
             {!disabled && (
               <button
+                type="button"
                 onClick={handleAddStepToLoop}
                 style={{
                   padding: '3px 8px',
@@ -181,7 +239,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                   fontWeight: 500,
                 }}
               >
-                <span>+</span>
+                <Plus size={14} strokeWidth={1.75} aria-hidden="true" />
                 <span>追加循环步骤</span>
               </button>
             )}
@@ -197,7 +255,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                 fontSize: 11,
               }}
             >
-              循环体内暂无任务，请点击右上角「+ 追加循环步骤」添加轮询或重复执行动作
+              循环体内暂无步骤，点击「追加循环步骤」添加需要重复执行的动作
             </div>
           ) : (
             <StepListEditor
@@ -211,12 +269,13 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
               rowTone="primary"
               indexPrefix="轮内 "
               accentIndexBadge
+              insertLabel="循环体"
             />
           )}
         </div>
       </div>
 
-      {/* 底部跳出保护说明 */}
+      {/* 底部说明：只写引擎真实提供的行为 */}
       <div
         style={{
           padding: '8px 16px',
@@ -229,9 +288,9 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
           gap: 6,
         }}
       >
-        <span><OctagonX size={14} strokeWidth={1.75} aria-hidden="true" /></span>
+        <Info size={14} strokeWidth={1.75} aria-hidden="true" />
         <span>
-          <strong>跳出与安全保护</strong>：当条件表达式评估为 false 时自动跳出循环向下继续；引擎内置循环熔断保护，防止生产环境死循环。
+          循环至少执行一轮；条件为 false 时结束并继续向下。请确保条件最终会变为 false，例如用已执行轮次限定最大轮数。
         </span>
       </div>
     </div>

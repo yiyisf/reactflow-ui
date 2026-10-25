@@ -714,6 +714,10 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         onStepAdded={handleStepAdded}
                         onSandboxRun={handleSandboxRun}
                         readOnly={readOnly || mode === 'run'}
+                        onSave={onSave}
+                        // 卡片视图与画布共用同一份撤销历史
+                        onUndo={() => useWorkflowStore.temporal.getState().undo()}
+                        onRedo={() => useWorkflowStore.temporal.getState().redo()}
                         onChange={(newDef) => {
                             // 卡片视图下画布未挂载：只更新定义，避免每次按键都做整图布局
                             setWorkflowDefOnly(newDef);

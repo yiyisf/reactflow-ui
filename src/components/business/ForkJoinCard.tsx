@@ -6,7 +6,11 @@ import { StepListEditor } from './StepListEditor';
 import ConfirmDialog from '../ConfirmDialog';
 import { useConfirm } from '../../hooks/useConfirm';
 import { createStepFromAction } from '../../stepmodel/factory';
-import { Link, Waves, X, Zap } from 'lucide-react';
+import { joinRefOf } from '../../stepmodel/pills';
+import { useBusinessEditor, type InsertPickerInfo } from './BusinessEditorContext';
+import { IconButton, RenameableTitle } from './StepCardParts';
+import { countNestedSteps } from './deleteMessage';
+import { Link, Plus, Waves, X, Zap } from 'lucide-react';
 
 export interface ForkJoinCardProps {
   step: BusinessStep;
@@ -14,7 +18,7 @@ export interface ForkJoinCardProps {
   registry?: ActionRegistry;
   disabled?: boolean;
   onChange: (updated: BusinessStep) => void;
-  onOpenInsertModal: (callback: (action: ActionDefinition) => void) => void;
+  onOpenInsertModal: (callback: (action: ActionDefinition) => void, info?: InsertPickerInfo) => void;
   /** 嵌套深度：顶层卡片为 0，其内部子控制流依次 +1 */
   depth?: number;
 }
@@ -29,7 +33,9 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
   depth = 0,
 }) => {
   const lanes: ForkLane[] = step.forkLanes || [];
+  const ctx = useBusinessEditor();
   const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
+  const confirmFn = ctx.confirm ?? confirm;
   const [activeLaneId, setActiveLaneId] = useState<string>(lanes[0]?.laneId || 'lane_0');
 
   // 更新泳道内步骤
@@ -63,11 +69,14 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
   };
 
   // 删除并行泳道
-  const handleDeleteLane = async (laneId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDeleteLane = async (laneId: string) => {
     // 至少保留一条泳道（界面上只有多于一条时才显示删除按钮）
     if (lanes.length <= 1) return;
-    if (!(await confirm('确定要删除此条并行泳道及其内部步骤吗？'))) return;
+    const lIdx = lanes.findIndex((l) => l.laneId === laneId);
+    const lane = lanes[lIdx];
+    const nested = lane ? lane.steps.reduce((n, st) => n + 1 + countNestedSteps(st), 0) : 0;
+    const message = `删除泳道 ${lIdx + 1}${nested > 0 ? `及其中的 ${nested} 个步骤` : ''}？删除后可按 Ctrl+Z 撤销。`;
+    if (!(await confirmFn(message, '删除泳道'))) return;
     const nextLanes = lanes.filter((l) => l.laneId !== laneId);
     onChange({
       ...step,
@@ -83,10 +92,14 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
     const targetLane = lanes.find((l) => l.laneId === laneId);
     if (!targetLane) return;
 
-    onOpenInsertModal((action) => {
-      const newChildStep: BusinessStep = createStepFromAction(action);
-      handleUpdateLaneSteps(laneId, [...targetLane.steps, newChildStep]);
-    });
+    const laneNo = lanes.findIndex((l) => l.laneId === laneId) + 1;
+    onOpenInsertModal(
+      (action) => {
+        const newChildStep: BusinessStep = createStepFromAction(action);
+        handleUpdateLaneSteps(laneId, [...targetLane.steps, newChildStep]);
+      },
+      { label: `泳道 ${laneNo} · 第 ${targetLane.steps.length + 1} 步` }
+    );
   };
 
   const totalStepsInLanes = lanes.reduce((acc, l) => acc + (l.steps?.length || 0), 0);
@@ -132,9 +145,12 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
-                {step.name || '并行并发任务组'}
-              </span>
+              <RenameableTitle
+                value={step.name}
+                fallback="并行并发组"
+                disabled={disabled}
+                onRename={(name) => onChange({ ...step, name })}
+              />
               <span
                 style={{
                   fontSize: 10,
@@ -157,6 +173,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
 
         {!disabled && (
           <button
+            type="button"
             onClick={handleAddLane}
             style={{
               padding: '4px 10px',
@@ -171,7 +188,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
               gap: 4,
             }}
           >
-            <span>+</span>
+            <Plus size={14} strokeWidth={1.75} aria-hidden="true" />
             <span>新增并发泳道</span>
           </button>
         )}
@@ -230,20 +247,9 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
               </div>
 
               {!disabled && lanes.length > 1 && (
-                <button
-                  onClick={(e) => handleDeleteLane(lane.laneId, e)}
-                  title="删除此泳道"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: 11,
-                    padding: '2px 4px',
-                  }}
-                >
+                <IconButton label={`删除泳道 ${lIdx + 1}`} onClick={() => handleDeleteLane(lane.laneId)}>
                   <X size={14} strokeWidth={1.75} aria-hidden="true" />
-                </button>
+                </IconButton>
               )}
             </div>
 
@@ -282,12 +288,14 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
                   onOpenInsertModal={onOpenInsertModal}
                   variant="compact"
                   rowTone="primary"
+                  insertLabel={`泳道 ${lIdx + 1}`}
                 />
               )}
 
               {/* 泳道底部追加按钮 */}
               {!disabled && (
                 <button
+                  type="button"
                   onClick={() => handleAddStepToLane(lane.laneId)}
                   style={{
                     padding: '4px 8px',
@@ -300,7 +308,8 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
                     marginTop: 2,
                   }}
                 >
-                  + 追加并发步骤
+                  <Plus size={12} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 2 }} />
+                  追加并发步骤
                 </button>
               )}
             </div>
@@ -324,11 +333,10 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span><Link size={14} strokeWidth={1.75} aria-hidden="true" /></span>
           <span>
-            <strong>汇聚同步点 (Join)</strong>：所有 {lanes.length} 条并行泳道内步骤全部执行完毕后，在同步节点汇聚并继续向下执行。
+            <strong>汇聚同步点 (Join)</strong>：所有 {lanes.length} 条泳道执行完毕后再继续向下；后续步骤可通过「插入数据」引用汇聚结果或泳道内步骤的输出。
           </span>
         </div>
-        {step.pairedJoinTaskRef && (
-          <code
+        <code
             style={{
               fontSize: 10,
               color: 'var(--text-muted)',
@@ -337,12 +345,16 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
               borderRadius: 4,
             }}
           >
-            {step.pairedJoinTaskRef}
+            {joinRefOf(step)}
           </code>
-        )}
       </div>
       {confirmState && (
-        <ConfirmDialog message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
+        <ConfirmDialog
+          message={confirmState.message}
+          confirmLabel={confirmState.confirmLabel}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
       )}
     </div>
   );

@@ -24,32 +24,43 @@ export function decompileTaskDefToStep(
         });
       }
     }
-    if (task.defaultCase && task.defaultCase.length > 0) {
-      branches.push({
-        caseKey: '__default__',
-        caseLabel: '默认分支 (Default)',
-        steps: decompileTaskList(task.defaultCase, registry),
-      });
+    // Conductor 的分支任务总有默认分支（为空即跳过）：始终生成，避免空默认分支在一次往返后消失
+    branches.push({
+      caseKey: '__default__',
+      caseLabel: '默认分支 (Default)',
+      steps: decompileTaskList(task.defaultCase || [], registry),
+    });
+
+    // SWITCH：value-param 的 expression 是参数名；javascript / graaljs 的 expression 是脚本
+    let caseParam: string | undefined;
+    let caseExpression: string | undefined;
+    if (task.type === 'SWITCH') {
+      if (!task.evaluatorType || task.evaluatorType === 'value-param') caseParam = task.expression ?? '';
+      else caseExpression = task.expression ?? '';
+    } else if (task.caseExpression !== undefined && !task.caseValueParam) {
+      caseExpression = task.caseExpression;
+    } else {
+      caseParam = task.caseValueParam ?? '';
     }
 
     return {
       id: stepId,
       actionId: 'control_decision',
       taskReferenceName: task.taskReferenceName,
-      name: task.description || task.name || '条件分支路由 (Decision / Switch)',
-      description: task.description || `根据 ${task.caseValueParam || task.caseExpression || '条件'} 进行分支路由`,
-      values: task.inputParameters || {},
+      name: task.name || task.taskReferenceName,
+      description: task.description,
+      values: { ...(task.inputParameters || {}) },
       isProFallback: false,
       rawTaskDef: structuredClone(task),
       controlType: 'decision',
-      caseParam: task.caseValueParam,
-      caseExpression: task.caseExpression,
+      caseParam,
+      caseExpression,
       branches,
     };
   }
 
-  // 2. 并行多任务控制流 (FORK_JOIN / FORK_JOIN_DYNAMIC)
-  if (task.type === 'FORK_JOIN' || task.type === 'FORK_JOIN_DYNAMIC') {
+  // 2. 静态并行 (FORK_JOIN)。动态并行（FORK_JOIN_DYNAMIC）的泳道在运行时生成，业务卡片无法编辑，作为专业步骤保留
+  if (task.type === 'FORK_JOIN') {
     const forkLanes: ForkLane[] = (task.forkTasks || []).map((laneTasks, laneIdx) => ({
       laneId: `lane_${laneIdx}`,
       laneLabel: `并发泳道 #${laneIdx + 1}`,
@@ -60,9 +71,9 @@ export function decompileTaskDefToStep(
       id: stepId,
       actionId: 'control_fork',
       taskReferenceName: task.taskReferenceName,
-      name: task.description || task.name || '并行并发任务组 (Fork / Join)',
-      description: task.description || `同时并发执行 ${forkLanes.length} 条独立业务泳道`,
-      values: task.inputParameters || {},
+      name: task.name || task.taskReferenceName,
+      description: task.description,
+      values: { ...(task.inputParameters || {}) },
       isProFallback: false,
       rawTaskDef: structuredClone(task),
       controlType: 'fork',
@@ -78,28 +89,41 @@ export function decompileTaskDefToStep(
       id: stepId,
       actionId: 'control_loop',
       taskReferenceName: task.taskReferenceName,
-      name: task.description || task.name || '循环迭代处理 (Do-While Loop)',
-      description: task.description || `循环执行内部步骤，跳出条件: ${task.loopCondition || ''}`,
-      values: task.inputParameters || {},
+      name: task.name || task.taskReferenceName,
+      description: task.description,
+      values: { ...(task.inputParameters || {}) },
       isProFallback: false,
       rawTaskDef: structuredClone(task),
       controlType: 'loop',
-      loopCondition: task.loopCondition,
+      loopCondition: task.loopCondition ?? '',
       loopSteps,
     };
   }
 
-  // 4. 普通动作匹配
-  const matched = registry.findActionForTask(task);
+  // 4. 普通动作匹配（动态并行不交给动作匹配，保持专业步骤）
+  const matched = task.type === 'FORK_JOIN_DYNAMIC' ? null : registry.findActionForTask(task);
   if (matched) {
+    // 原描述若不是动作自动生成的那句，就是用户起的步骤名称（用于区分两个同类步骤）
+    let synthesized: string | undefined;
+    try {
+      synthesized = matched.action.compile(matched.values, {
+        taskReferenceName: task.taskReferenceName,
+        stepIndex: index,
+      }).description;
+    } catch {
+      synthesized = undefined;
+    }
+    const customName = task.description && task.description !== synthesized ? task.description : undefined;
     return {
       id: stepId,
       actionId: matched.action.id,
       taskReferenceName: task.taskReferenceName,
-      name: matched.action.name,
+      name: customName ?? matched.action.name,
       description: task.description,
       values: matched.values,
       isProFallback: false,
+      // 保留原任务定义：编译时以它为底，任务级配置（optional / retryCount / timeoutSeconds 等）往返不丢失
+      rawTaskDef: structuredClone(task),
       // 流程库能力：记录任务里已有的名称与版本；未显式指定版本则保持不固定，避免改变原有语义
       ...(task.type === 'SUB_WORKFLOW' && task.subWorkflowParam?.name
         ? {
@@ -118,7 +142,7 @@ export function decompileTaskDefToStep(
     actionId: 'pro_custom_task',
     taskReferenceName: task.taskReferenceName,
     name: task.name || task.taskReferenceName,
-    description: task.description || `底层 ${task.type} 技术任务`,
+    description: task.description,
     values: task.inputParameters || {},
     isProFallback: true,
     rawTaskDef: structuredClone(task),
@@ -133,13 +157,17 @@ export function decompileTaskList(
   tasks: TaskDef[],
   registry: ActionRegistry = defaultActionRegistry
 ): BusinessStep[] {
-  const pairedJoinRefs = new Set<string>();
+  const isFork = (t: TaskDef) => t.type === 'FORK_JOIN' || t.type === 'FORK_JOIN_DYNAMIC';
+  /** fork 下标 -> 配对的 JOIN 下标（取其后第一个 JOIN） */
+  const joinIndexOf = new Map<number, number>();
+  const pairedJoinIdx = new Set<number>();
 
   for (let i = 0; i < tasks.length; i++) {
-    if (tasks[i].type === 'FORK_JOIN') {
+    if (isFork(tasks[i])) {
       for (let j = i + 1; j < tasks.length; j++) {
-        if (tasks[j].type === 'JOIN') {
-          pairedJoinRefs.add(tasks[j].taskReferenceName);
+        if (tasks[j].type === 'JOIN' && !pairedJoinIdx.has(j)) {
+          joinIndexOf.set(i, j);
+          pairedJoinIdx.add(j);
           break;
         }
       }
@@ -149,18 +177,13 @@ export function decompileTaskList(
   const steps: BusinessStep[] = [];
   for (let i = 0; i < tasks.length; i++) {
     const task = tasks[i];
-    if (task.type === 'JOIN' && pairedJoinRefs.has(task.taskReferenceName)) {
-      continue;
-    }
+    if (pairedJoinIdx.has(i)) continue;
 
     const step = decompileTaskDefToStep(task, i, registry);
-    if (step.controlType === 'fork') {
-      for (let j = i + 1; j < tasks.length; j++) {
-        if (tasks[j].type === 'JOIN') {
-          step.pairedJoinTaskRef = tasks[j].taskReferenceName;
-          break;
-        }
-      }
+    const j = joinIndexOf.get(i);
+    if (j !== undefined) {
+      step.pairedJoinTaskRef = tasks[j].taskReferenceName;
+      step.pairedJoinTaskDef = structuredClone(tasks[j]);
     }
     steps.push(step);
   }

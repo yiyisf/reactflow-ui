@@ -55,13 +55,23 @@ export interface BusinessStep {
   controlType?: StepControlType;
 
   // 1. 分支 (DECISION / SWITCH)
-  caseParam?: string;                  // 分支判断参数，如 "userType"
-  caseExpression?: string;             // 分支求值表达式，如 "${workflow.input.env}"
+  /**
+   * 按参数取值时的参数名（DECISION 的 caseValueParam / SWITCH value-param 的 expression），如 "userType"。
+   * 判断用的取值本身绑定在 values[caseParam]（编译为 inputParameters[caseParam]，可为数据胶囊）。
+   */
+  caseParam?: string;
+  /**
+   * 按表达式判断时的脚本（DECISION 的 caseExpression / SWITCH javascript 的 expression）。
+   * 不为 undefined（含空字符串）即表示"表达式模式"，此时 caseParam 不参与编译。
+   */
+  caseExpression?: string;
   branches?: BranchCase[];             // 各分支列表（含默认分支）
 
   // 2. 并行 (FORK_JOIN)
   forkLanes?: ForkLane[];              // 各条并发泳道
   pairedJoinTaskRef?: string;          // 关联的汇聚 JOIN 任务引用名
+  /** 反编译时配对 JOIN 的原始定义（保留其 name / description 等字段，往返不丢失） */
+  pairedJoinTaskDef?: TaskDef;
 
   // 3. 循环 (DO_WHILE)
   loopCondition?: string;              // 循环继续条件表达式

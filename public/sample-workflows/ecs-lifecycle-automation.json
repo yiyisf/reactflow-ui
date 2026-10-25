@@ -16,7 +16,18 @@
         "instanceType": "ecs.c7.xlarge",
         "imageId": "image-alilinux-3",
         "instanceName": "app-server-node",
-        "systemDiskSize": 120
+        "systemDiskSize": 120,
+        "http_request": {
+          "uri": "https://ecs.internal.cloud/api/v2/instances",
+          "method": "POST",
+          "body": {
+            "regionId": "cn-hangzhou",
+            "instanceType": "ecs.c7.xlarge",
+            "imageId": "image-alilinux-3",
+            "instanceName": "app-server-node",
+            "systemDiskSize": 120
+          }
+        }
       }
     },
     {
@@ -27,7 +38,11 @@
       "inputParameters": {
         "_actionId": "ecs.query_instance",
         "actionName": "查询云主机详情",
-        "instanceId": "${create_app_node.output.instanceId}"
+        "instanceId": "${create_app_node.output.instanceId}",
+        "http_request": {
+          "uri": "https://ecs.internal.cloud/api/v2/instances/${create_app_node.output.instanceId}",
+          "method": "GET"
+        }
       }
     },
     {
@@ -41,7 +56,16 @@
         "instanceId": "${create_app_node.output.instanceId}",
         "commandType": "RunShellScript",
         "commandContent": "yum update -y && systemctl start docker && docker ps",
-        "timeoutSeconds": 60
+        "timeoutSeconds": 60,
+        "http_request": {
+          "uri": "https://ecs.internal.cloud/api/v2/instances/${create_app_node.output.instanceId}/commands",
+          "method": "POST",
+          "body": {
+            "commandType": "RunShellScript",
+            "commandContent": "yum update -y && systemctl start docker && docker ps",
+            "timeoutSeconds": 60
+          }
+        }
       }
     },
     {
@@ -54,7 +78,15 @@
         "actionName": "创建云盘快照",
         "instanceId": "${create_app_node.output.instanceId}",
         "snapshotName": "init-baseline-snapshot",
-        "retentionDays": 14
+        "retentionDays": 14,
+        "http_request": {
+          "uri": "https://ecs.internal.cloud/api/v2/instances/${create_app_node.output.instanceId}/snapshots",
+          "method": "POST",
+          "body": {
+            "snapshotName": "init-baseline-snapshot",
+            "retentionDays": 14
+          }
+        }
       }
     },
     {

@@ -1,8 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
+import type { ValidationResults } from '../../types/workflow';
 import type { BusinessWorkflowModel, BusinessStep } from '../../stepmodel/types';
 import { compileStepModelToWorkflowDef } from '../../stepmodel/compile';
 import { decompileWorkflowDefToStepModel } from '../../stepmodel/decompile';
+import { collectIssues, mergeWorkflowValidation, validateBusinessSteps } from '../../stepmodel/validate';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
 import { ActionForm } from './ActionForm';
@@ -14,10 +16,31 @@ import { ForkJoinCard } from './ForkJoinCard';
 import { LoopDoWhileCard } from './LoopDoWhileCard';
 import { RunStoryTimeline } from './RunStoryTimeline';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { validateWorkflow } from '../../utils/validator';
 import type { LibraryCatalog } from '../../library/catalog';
 import { applyUpgradeToValues, collectReferencedOutputKeys } from '../../library/diff';
 import type { WorkflowLevel } from '../../types/workflowLibrary';
 import { CmIcon } from '../icons/CmIcon';
+import ConfirmDialog from '../ConfirmDialog';
+import { useConfirm } from '../../hooks/useConfirm';
+import {
+  BusinessEditorContext,
+  containsStepRef,
+  stepDomId,
+  type BusinessEditorContextValue,
+  type InsertPickerInfo,
+} from './BusinessEditorContext';
+import {
+  IconButton,
+  InsertStepButton,
+  IssueBadge,
+  MoveDeleteButtons,
+  RunBadge,
+  SensitiveTag,
+  StepCardHeader,
+} from './StepCardParts';
+import { confirmDeleteMessage } from './deleteMessage';
+import { Sparkles } from 'lucide-react';
 
 export interface StepFlowEditorProps {
   workflowDef: WorkflowDef | null;
@@ -35,7 +58,38 @@ export interface StepFlowEditorProps {
   onStepAdded?: (info: { source: 'library' | 'builtin' }) => void;
   /** 本地沙箱试跑结束后回调（埋点用）：result 为执行状态，或 'error'（试跑抛错） */
   onSandboxRun?: (result: string) => void;
+  /** Ctrl/Cmd+S 时回调（保存当前定义）；不提供时不拦截浏览器的保存快捷键 */
+  onSave?: (def: WorkflowDef) => void;
+  /**
+   * Ctrl/Cmd+Z 撤销、Ctrl/Cmd+Shift+Z 或 Ctrl/Cmd+Y 重做。
+   * 宿主有自己的撤销历史（如 WorkflowIDE 的 store）时传入；不传时卡片视图使用内置的撤销历史。
+   */
+  onUndo?: () => void;
+  onRedo?: () => void;
+  /** 工作流校验结果（按任务引用名显示在卡片上）；不传时按当前定义自动计算 */
+  validationResults?: ValidationResults;
 }
+
+/** 内置撤销历史的最大条数 */
+const LOCAL_HISTORY_LIMIT = 100;
+
+interface PickerState {
+  index: number;
+  label?: string;
+  /** 在分支 / 泳道 / 循环体内插入时的回调；为空表示插入顶层第 index 位 */
+  callback?: (action: ActionDefinition) => void;
+}
+
+const isTypingTarget = (t: EventTarget | null) => {
+  const el = t as HTMLElement | null;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+};
+
+const CONTROL_LABEL: Record<string, { text: string; color: string }> = {
+  decision: { text: '控制流分支', color: 'color-mix(in srgb, var(--cm-ai) 75%, var(--text-primary))' },
+  fork: { text: '并发泳道组', color: 'var(--color-accent-text)' },
+  loop: { text: '循环迭代体', color: 'var(--color-accent-text)' },
+};
 
 export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   workflowDef,
@@ -48,15 +102,20 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
   onAskAi,
   onStepAdded,
   onSandboxRun,
+  onSave,
+  onUndo,
+  onRedo,
+  validationResults,
 }) => {
-  // Synchronize internal BusinessWorkflowModel from WorkflowDef
   const model: BusinessWorkflowModel = useMemo(() => {
     return decompileWorkflowDefToStepModel(workflowDef, registry);
   }, [workflowDef, registry]);
 
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
-  const [insertModalIndex, setInsertModalIndex] = useState<number | null>(null);
-  const [insertCallback, setInsertCallback] = useState<((action: ActionDefinition) => void) | null>(null);
+  // 动作选择器：关闭时整体清空（含嵌套插入回调），下一次插入不会落到上一次的位置
+  const [picker, setPicker] = useState<PickerState | null>(null);
+  const [focusRequest, setFocusRequest] = useState<{ ref: string; nonce: number } | null>(null);
+  const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
 
   // Simulation & Story state
   const [isSimulating, setIsSimulating] = useState(false);
@@ -73,13 +132,77 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
 
   const steps = model.steps;
 
-  const updateModelAndEmit = (newSteps: BusinessStep[]) => {
-    const nextModel: BusinessWorkflowModel = {
-      ...model,
-      steps: newSteps,
+  // ── 校验：业务字段校验 + 工作流校验器（按任务引用名归类） ──
+  const issues = useMemo(() => {
+    const map = validateBusinessSteps(steps, registry);
+    return mergeWorkflowValidation(map, validationResults ?? (workflowDef ? validateWorkflow(workflowDef) : null));
+  }, [steps, registry, validationResults, workflowDef]);
+
+  const runStatus = useMemo(() => {
+    if (!simResults) return undefined;
+    const out: Record<string, string> = {};
+    for (const [ref, r] of Object.entries(simResults)) out[ref] = r.status;
+    return out;
+  }, [simResults]);
+
+  // ── 撤销 / 重做 / 保存 ──
+  const historyRef = useRef<{ past: WorkflowDef[]; future: WorkflowDef[] }>({ past: [], future: [] });
+
+  const emit = (def: WorkflowDef) => {
+    if (workflowDef) {
+      const h = historyRef.current;
+      h.past.push(workflowDef);
+      if (h.past.length > LOCAL_HISTORY_LIMIT) h.past.shift();
+      h.future = [];
+    }
+    onChange(def);
+  };
+
+  const undo = useCallback(() => {
+    if (onUndo) return onUndo();
+    const h = historyRef.current;
+    const prev = h.past.pop();
+    if (!prev) return;
+    if (workflowDef) h.future.push(workflowDef);
+    onChange(prev);
+  }, [onUndo, onChange, workflowDef]);
+
+  const redo = useCallback(() => {
+    if (onRedo) return onRedo();
+    const h = historyRef.current;
+    const next = h.future.pop();
+    if (!next) return;
+    if (workflowDef) h.past.push(workflowDef);
+    onChange(next);
+  }, [onRedo, onChange, workflowDef]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      if (key === 's') {
+        if (!onSave || !workflowDef) return;
+        e.preventDefault();
+        onSave(workflowDef);
+        return;
+      }
+      // 输入框内保留浏览器自带的文字撤销；弹窗打开时不处理
+      if (readOnly || isTypingTarget(e.target) || picker || confirmState) return;
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault();
+        redo();
+      }
     };
-    const compiledDef = compileStepModelToWorkflowDef(nextModel, registry);
-    onChange(compiledDef);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onSave, workflowDef, readOnly, undo, redo, picker, confirmState]);
+
+  const updateModelAndEmit = (newSteps: BusinessStep[]) => {
+    emit(compileStepModelToWorkflowDef({ ...model, steps: newSteps }, registry));
   };
 
   const handleUpdateStep = (index: number, updated: BusinessStep) => {
@@ -88,13 +211,13 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
     updateModelAndEmit(next);
   };
 
-  const handleDeleteStep = (index: number) => {
+  const handleDeleteStep = async (index: number) => {
     if (readOnly) return;
-    const next = steps.filter((_, idx) => idx !== index);
-    if (activeStepId === steps[index]?.id) {
-      setActiveStepId(null);
-    }
-    updateModelAndEmit(next);
+    const target = steps[index];
+    if (!target) return;
+    if (!(await confirm(confirmDeleteMessage(target, registry), '删除'))) return;
+    if (activeStepId === target.id) setActiveStepId(null);
+    updateModelAndEmit(steps.filter((_, idx) => idx !== index));
   };
 
   const handleMoveStep = (fromIndex: number, toIndex: number) => {
@@ -105,27 +228,39 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
     updateModelAndEmit(next);
   };
 
-  const handleOpenInsertModalForCallback = (cb: (action: ActionDefinition) => void) => {
-    setInsertCallback(() => cb);
-    setInsertModalIndex(0);
+  const openNestedPicker = (cb: (action: ActionDefinition) => void, info?: InsertPickerInfo) => {
+    setPicker({ index: 0, label: info?.label, callback: cb });
   };
 
-  const handleAddAction = (action: ActionDefinition, atIndex: number) => {
+  const handleAddAction = (action: ActionDefinition) => {
+    if (!picker) return;
     onStepAdded?.({ source: action.kind === 'workflow' ? 'library' : 'builtin' });
-    if (insertCallback) {
-      insertCallback(action);
-      setInsertCallback(null);
-      setInsertModalIndex(null);
+    const { callback, index } = picker;
+    setPicker(null);
+    if (callback) {
+      callback(action);
       return;
     }
-
     const newStep: BusinessStep = createStepFromAction(action);
-
     const next = [...steps];
-    next.splice(atIndex, 0, newStep);
-    setInsertModalIndex(null);
+    next.splice(index, 0, newStep);
     setActiveStepId(newStep.id);
     updateModelAndEmit(next);
+  };
+
+  // 定位步骤（来自运行故事线）：顶层直接展开；嵌套步骤通知内部卡片切换分支并展开
+  const locateStep = (ref: string) => {
+    setActiveTab('steps');
+    const top = steps.find((s) => s.taskReferenceName === ref);
+    if (top) {
+      if (!top.controlType) setActiveStepId(top.id);
+    } else if (!steps.some((s) => containsStepRef([s], ref))) {
+      return;
+    }
+    setFocusRequest((prev) => ({ ref, nonce: (prev?.nonce ?? 0) + 1 }));
+    requestAnimationFrame(() =>
+      document.getElementById(stepDomId(ref))?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    );
   };
 
   // Run dry-run sandbox using action mockOutputs
@@ -171,7 +306,25 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
     }
   };
 
+  const ctxValue: BusinessEditorContextValue = {
+    workflowInputParams: model.inputParameters,
+    issues,
+    runStatus,
+    confirm,
+    libraryCatalog,
+    allSteps: steps,
+    focusRequest,
+  };
+
+  const errorCount = Object.values(issues)
+    .flat()
+    .filter((i) => i.level === 'error').length;
+
+  const insertBetween = (idx: number) =>
+    !readOnly && <InsertStepButton onClick={() => setPicker({ index: idx })} label="插入业务动作" />;
+
   return (
+    <BusinessEditorContext.Provider value={ctxValue}>
     <div
       style={{
         display: 'flex',
@@ -193,6 +346,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           justifyContent: 'space-between',
           background: 'var(--bg-secondary)',
           flexShrink: 0,
+          gap: 10,
+          flexWrap: 'wrap',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -201,8 +356,9 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
               {model.name || '云平台业务流程'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              共 {steps.length} 个业务执行步骤 · 普通用户零代码模式
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>共 {steps.length} 个业务执行步骤 · 普通用户零代码模式</span>
+              {errorCount > 0 && <IssueBadge issues={Object.values(issues).flat()} />}
             </div>
           </div>
         </div>
@@ -210,6 +366,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
         {/* 步骤配置 vs 故事线 视图切换 */}
         {lastSimInstance && (
           <div
+            role="group"
+            aria-label="视图"
             style={{
               display: 'inline-flex',
               background: 'var(--bg-highlight)',
@@ -219,6 +377,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             }}
           >
             <button
+              type="button"
+              aria-pressed={activeTab === 'steps'}
               onClick={() => setActiveTab('steps')}
               style={{
                 padding: '4px 10px',
@@ -234,6 +394,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               <CmIcon name="clipboard" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />步骤配置
             </button>
             <button
+              type="button"
+              aria-pressed={activeTab === 'story'}
               onClick={() => setActiveTab('story')}
               style={{
                 padding: '4px 10px',
@@ -246,7 +408,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 cursor: 'pointer',
               }}
             >
-              <CmIcon name="book" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />运行故事线 ({lastSimInstance.tasks.length}步)
+              <CmIcon name="book" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />运行故事线 ({lastSimInstance.tasks.length} 步)
             </button>
           </div>
         )}
@@ -254,6 +416,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {simResults && (
             <button
+              type="button"
               onClick={() => setSimResults(null)}
               style={{
                 padding: '5px 10px',
@@ -270,8 +433,10 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           )}
 
           <button
+            type="button"
             onClick={handleDryRunSandbox}
             disabled={isSimulating || steps.length === 0}
+            title={errorCount > 0 ? `还有 ${errorCount} 项待修正，试跑结果可能与真实运行不同` : undefined}
             style={{
               padding: '6px 14px',
               borderRadius: 6,
@@ -295,17 +460,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       {/* Main Container */}
       {activeTab === 'story' && lastSimInstance ? (
         <div style={{ flex: 1, overflowY: 'auto' }}>
-          <RunStoryTimeline
-            instance={lastSimInstance}
-            registry={registry}
-            onInspectStep={(ref) => {
-              setActiveTab('steps');
-              const found = steps.find((s) => s.taskReferenceName === ref);
-              if (found) {
-                setActiveStepId(found.id);
-              }
-            }}
-          />
+          <RunStoryTimeline instance={lastSimInstance} registry={registry} onInspectStep={locateStep} />
         </div>
       ) : (
         <div
@@ -318,6 +473,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
+            boxSizing: 'border-box',
           }}
         >
         {/* Empty State */}
@@ -343,8 +499,9 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               无需编写代码或配置复杂的 JSON，点击下方按钮选择第一个云主机业务动作，即可开始自动化编排。
             </p>
             <button
+              type="button"
               disabled={readOnly}
-              onClick={() => setInsertModalIndex(0)}
+              onClick={() => setPicker({ index: 0 })}
               style={{
                 marginTop: 8,
                 padding: '8px 18px',
@@ -354,7 +511,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 border: 'none',
                 fontWeight: 600,
                 fontSize: 13,
-                cursor: 'pointer',
+                cursor: readOnly ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
@@ -368,26 +525,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
 
         {/* Top Insert Button if has steps */}
         {steps.length > 0 && !readOnly && (
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <button
-              onClick={() => setInsertModalIndex(0)}
-              style={{
-                padding: '4px 12px',
-                borderRadius: 20,
-                background: 'var(--bg-highlight)',
-                border: '1px dashed var(--border-secondary)',
-                color: 'var(--text-muted)',
-                fontSize: 11,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-              }}
-            >
-              <span>+</span>
-              <span>在最前插入步骤</span>
-            </button>
-          </div>
+          <InsertStepButton onClick={() => setPicker({ index: 0 })} label="在最前插入步骤" />
         )}
 
         {/* Steps List */}
@@ -395,327 +533,64 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           const action = registry.getAction(step.actionId);
           const isExpanded = activeStepId === step.id;
           const upstream = steps.slice(0, idx);
-          const simResult = simResults?.[step.taskReferenceName];
+          const stepIssues = collectIssues(step, issues);
 
-          // 1. 分支路由卡片流 (DECISION / SWITCH)
-          if (step.controlType === 'decision') {
+          // 1–3. 控制流卡片（分支 / 并行 / 循环）
+          if (step.controlType) {
+            const label = CONTROL_LABEL[step.controlType] ?? CONTROL_LABEL.decision;
+            const cardProps = {
+              step,
+              upstreamSteps: upstream,
+              registry,
+              disabled: readOnly,
+              onChange: (updated: BusinessStep) => handleUpdateStep(idx, updated),
+              onOpenInsertModal: openNestedPicker,
+            };
             return (
               <React.Fragment key={step.id}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'color-mix(in srgb, var(--cm-ai) 75%, var(--text-primary))' }}>
-                      #{idx + 1} 控制流分支
+                <div id={stepDomId(step.taskReferenceName)} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: label.color }}>
+                        #{idx + 1} {label.text}
+                      </span>
+                      <IssueBadge issues={stepIssues} />
+                      <RunBadge status={runStatus?.[step.taskReferenceName]} />
                     </span>
                     {!readOnly && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button
-                          disabled={idx === 0}
-                          onClick={() => handleMoveStep(idx, idx - 1)}
-                          title="上移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === 0 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === 0 ? 'default' : 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          disabled={idx === steps.length - 1}
-                          onClick={() => handleMoveStep(idx, idx + 1)}
-                          title="下移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === steps.length - 1 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === steps.length - 1 ? 'default' : 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStep(idx)}
-                          title="删除步骤"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--cm-status-failed)',
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          <CmIcon name="trash" size={16} />
-                        </button>
-                      </div>
+                      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <MoveDeleteButtons
+                          index={idx}
+                          count={steps.length}
+                          onMove={(to) => handleMoveStep(idx, to)}
+                          onDelete={() => handleDeleteStep(idx)}
+                        />
+                      </span>
                     )}
                   </div>
 
-                  <DecisionBranchCard
-                    step={step}
-                    upstreamSteps={upstream}
-                    registry={registry}
-                    disabled={readOnly}
-                    onChange={(updated) => handleUpdateStep(idx, updated)}
-                    onOpenInsertModal={handleOpenInsertModalForCallback}
-                  />
+                  {step.controlType === 'fork' ? (
+                    <ForkJoinCard {...cardProps} />
+                  ) : step.controlType === 'loop' ? (
+                    <LoopDoWhileCard {...cardProps} />
+                  ) : (
+                    <DecisionBranchCard {...cardProps} />
+                  )}
                 </div>
-
-                {/* In-between Add Step Button */}
-                {!readOnly && (
-                  <div style={{ display: 'flex', justifyContent: 'center', margin: '-4px 0' }}>
-                    <button
-                      onClick={() => setInsertModalIndex(idx + 1)}
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: 16,
-                        background: 'var(--bg-tertiary)',
-                        border: '1px dashed var(--border-secondary)',
-                        color: 'var(--text-muted)',
-                        fontSize: 11,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--color-accent)';
-                        e.currentTarget.style.color = 'var(--color-accent)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-secondary)';
-                        e.currentTarget.style.color = 'var(--text-muted)';
-                      }}
-                    >
-                      <span>+</span>
-                      <span>插入业务动作</span>
-                    </button>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          }
-
-          // 2. 并行任务组卡片流 (FORK_JOIN)
-          if (step.controlType === 'fork') {
-            return (
-              <React.Fragment key={step.id}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent)' }}>
-                      #{idx + 1} 并发泳道组
-                    </span>
-                    {!readOnly && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button
-                          disabled={idx === 0}
-                          onClick={() => handleMoveStep(idx, idx - 1)}
-                          title="上移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === 0 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === 0 ? 'default' : 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          disabled={idx === steps.length - 1}
-                          onClick={() => handleMoveStep(idx, idx + 1)}
-                          title="下移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === steps.length - 1 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === steps.length - 1 ? 'default' : 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStep(idx)}
-                          title="删除步骤"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--cm-status-failed)',
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          <CmIcon name="trash" size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <ForkJoinCard
-                    step={step}
-                    upstreamSteps={upstream}
-                    registry={registry}
-                    disabled={readOnly}
-                    onChange={(updated) => handleUpdateStep(idx, updated)}
-                    onOpenInsertModal={handleOpenInsertModalForCallback}
-                  />
-                </div>
-
-                {/* In-between Add Step Button */}
-                {!readOnly && (
-                  <div style={{ display: 'flex', justifyContent: 'center', margin: '-4px 0' }}>
-                    <button
-                      onClick={() => setInsertModalIndex(idx + 1)}
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: 16,
-                        background: 'var(--bg-tertiary)',
-                        border: '1px dashed var(--border-secondary)',
-                        color: 'var(--text-muted)',
-                        fontSize: 11,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--color-accent)';
-                        e.currentTarget.style.color = 'var(--color-accent)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-secondary)';
-                        e.currentTarget.style.color = 'var(--text-muted)';
-                      }}
-                    >
-                      <span>+</span>
-                      <span>插入业务动作</span>
-                    </button>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          }
-
-          // 3. 循环迭代卡片流 (DO_WHILE)
-          if (step.controlType === 'loop') {
-            return (
-              <React.Fragment key={step.id}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent)' }}>
-                      #{idx + 1} 循环迭代体
-                    </span>
-                    {!readOnly && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button
-                          disabled={idx === 0}
-                          onClick={() => handleMoveStep(idx, idx - 1)}
-                          title="上移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === 0 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === 0 ? 'default' : 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          disabled={idx === steps.length - 1}
-                          onClick={() => handleMoveStep(idx, idx + 1)}
-                          title="下移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === steps.length - 1 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === steps.length - 1 ? 'default' : 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStep(idx)}
-                          title="删除步骤"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--cm-status-failed)',
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            padding: '2px 4px',
-                          }}
-                        >
-                          <CmIcon name="trash" size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <LoopDoWhileCard
-                    step={step}
-                    upstreamSteps={upstream}
-                    registry={registry}
-                    disabled={readOnly}
-                    onChange={(updated) => handleUpdateStep(idx, updated)}
-                    onOpenInsertModal={handleOpenInsertModalForCallback}
-                  />
-                </div>
-
-                {/* In-between Add Step Button */}
-                {!readOnly && (
-                  <div style={{ display: 'flex', justifyContent: 'center', margin: '-4px 0' }}>
-                    <button
-                      onClick={() => setInsertModalIndex(idx + 1)}
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: 16,
-                        background: 'var(--bg-tertiary)',
-                        border: '1px dashed var(--border-secondary)',
-                        color: 'var(--text-muted)',
-                        fontSize: 11,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--color-accent)';
-                        e.currentTarget.style.color = 'var(--color-accent)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--border-secondary)';
-                        e.currentTarget.style.color = 'var(--text-muted)';
-                      }}
-                    >
-                      <span>+</span>
-                      <span>插入业务动作</span>
-                    </button>
-                  </div>
-                )}
+                {insertBetween(idx + 1)}
               </React.Fragment>
             );
           }
 
           // 4. 普通串行业务卡片
+          const bodyId = `${stepDomId(step.taskReferenceName)}-body`;
+          const defaultTitle = action?.name || step.taskReferenceName;
+          const title = step.name || defaultTitle;
+          const renamed = !!action && title !== action.name;
           return (
             <React.Fragment key={step.id}>
               <div
+                id={stepDomId(step.taskReferenceName)}
                 style={{
                   background: 'var(--bg-secondary)',
                   borderRadius: 10,
@@ -729,192 +604,67 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                   transition: 'all 0.2s ease',
                 }}
               >
-                {/* Step Card Header */}
-                <div
-                  onClick={() => setActiveStepId(isExpanded ? null : step.id)}
-                  style={{
-                    padding: '12px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    background: isExpanded ? 'color-mix(in srgb, var(--color-accent) 5%, transparent)' : 'transparent',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 6,
-                        background: 'var(--bg-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: 'var(--color-accent)',
-                        border: '1px solid var(--border-primary)',
-                      }}
-                    >
-                      #{idx + 1}
-                    </div>
-
-                    <CmIcon name={action?.icon} size={20} />
-
-                    <div style={{ overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
-                          {step.name || action?.name || step.taskReferenceName}
-                        </span>
-                        {action?.riskLevel === 'sensitive' && (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              padding: '1px 5px',
-                              borderRadius: 4,
-                              background: 'color-mix(in srgb, var(--cm-status-failed) 15%, transparent)',
-                              color: 'var(--cm-status-failed)',
-                              fontWeight: 600,
-                            }}
-                          >
-                            <CmIcon name="alert" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />敏感
-                          </span>
-                        )}
-                        <LibraryVersionBadge
-                          step={step}
-                          action={action}
-                          disabled={readOnly}
-                          catalog={libraryCatalog}
-                          getReferencedOutputs={() =>
-                            collectReferencedOutputKeys(
-                              step.taskReferenceName,
-                              steps.filter((s) => s.id !== step.id)
-                            )
-                          }
-                          onUpgrade={(v, diff) =>
-                            handleUpdateStep(idx, {
-                              ...step,
-                              libraryRef: { name: step.libraryRef!.name, version: v },
-                              // 差异里提示「值将丢失」的已删除入参，随升级一并清理；新增入参补默认值
-                              ...(diff ? { values: applyUpgradeToValues(step.values, diff) } : {}),
-                            })
-                          }
+                <StepCardHeader
+                  bodyId={bodyId}
+                  indexLabel={`#${idx + 1}`}
+                  icon={action?.icon}
+                  title={title}
+                  subtitle={renamed ? action?.name : action?.description || step.description || step.taskReferenceName}
+                  defaultTitle={defaultTitle}
+                  expanded={isExpanded}
+                  onToggle={() => setActiveStepId(isExpanded ? null : step.id)}
+                  disabled={readOnly}
+                  onRename={step.isProFallback ? undefined : (name) => handleUpdateStep(idx, { ...step, name })}
+                  badges={
+                    <>
+                      {action?.riskLevel === 'sensitive' && <SensitiveTag />}
+                      <LibraryVersionBadge
+                        step={step}
+                        action={action}
+                        disabled={readOnly}
+                        catalog={libraryCatalog}
+                        getReferencedOutputs={() =>
+                          collectReferencedOutputKeys(
+                            step.taskReferenceName,
+                            steps.filter((s) => s.id !== step.id)
+                          )
+                        }
+                        onUpgrade={(v, diff) =>
+                          handleUpdateStep(idx, {
+                            ...step,
+                            libraryRef: { name: step.libraryRef!.name, version: v },
+                            // 差异里提示「值将丢失」的已删除入参，随升级一并清理；新增入参补默认值
+                            ...(diff ? { values: applyUpgradeToValues(step.values, diff) } : {}),
+                          })
+                        }
+                      />
+                      <IssueBadge issues={stepIssues} />
+                      <RunBadge status={runStatus?.[step.taskReferenceName]} />
+                    </>
+                  }
+                  actions={
+                    <>
+                      {onAskAi && (
+                        <IconButton label="让 AI 介绍这个步骤的作用与配置建议" onClick={() => onAskAi(step)}>
+                          <Sparkles size={16} strokeWidth={1.75} aria-hidden="true" />
+                        </IconButton>
+                      )}
+                      {!readOnly && (
+                        <MoveDeleteButtons
+                          index={idx}
+                          count={steps.length}
+                          onMove={(to) => handleMoveStep(idx, to)}
+                          onDelete={() => handleDeleteStep(idx)}
                         />
-                        {simResult && (
-                          <span
-                            style={{
-                              fontSize: 11,
-                              padding: '1px 6px',
-                              borderRadius: 4,
-                              background: 'color-mix(in srgb, var(--cm-status-success) 20%, transparent)',
-                              color: 'var(--cm-status-success)',
-                              fontWeight: 600,
-                            }}
-                          >
-                            <CmIcon name="approval" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />试跑成功
-                          </span>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: 'var(--text-muted)',
-                          marginTop: 2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {action?.description || step.description || step.taskReferenceName}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions & Chevron */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                    {onAskAi && (
-                      <button
-                        onClick={() => onAskAi(step)}
-                        title="让 AI 介绍这个步骤的作用与配置建议"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-secondary)',
-                          cursor: 'pointer',
-                          fontSize: 14,
-                          padding: '4px',
-                        }}
-                      >
-                        <CmIcon name="sparkles" size={16} />
-                      </button>
-                    )}
-                    {!readOnly && (
-                      <>
-                        <button
-                          disabled={idx === 0}
-                          onClick={() => handleMoveStep(idx, idx - 1)}
-                          title="上移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === 0 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === 0 ? 'default' : 'pointer',
-                            fontSize: 14,
-                            padding: '4px',
-                          }}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          disabled={idx === steps.length - 1}
-                          onClick={() => handleMoveStep(idx, idx + 1)}
-                          title="下移"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: idx === steps.length - 1 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
-                            cursor: idx === steps.length - 1 ? 'default' : 'pointer',
-                            fontSize: 14,
-                            padding: '4px',
-                          }}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStep(idx)}
-                          title="删除步骤"
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--cm-status-failed)',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                            padding: '4px',
-                          }}
-                        >
-                          <CmIcon name="trash" size={16} />
-                        </button>
-                      </>
-                    )}
-
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color: 'var(--text-muted)',
-                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease',
-                      }}
-                    >
-                      ▼
-                    </span>
-                  </div>
-                </div>
+                      )}
+                    </>
+                  }
+                />
 
                 {/* Collapsible Form Body */}
                 {isExpanded && (
                   <div
+                    id={bodyId}
                     style={{
                       padding: '14px 16px',
                       borderTop: '1px solid var(--border-primary)',
@@ -924,6 +674,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                     <ActionForm
                       step={step}
                       upstreamSteps={upstream}
+                      workflowInputParams={model.inputParameters}
                       registry={registry}
                       disabled={readOnly}
                       onChange={(updated) => handleUpdateStep(idx, updated)}
@@ -931,39 +682,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                   </div>
                 )}
               </div>
-
-              {/* In-between Add Step Button */}
-              {!readOnly && (
-                <div style={{ display: 'flex', justifyContent: 'center', margin: '-4px 0' }}>
-                  <button
-                    onClick={() => setInsertModalIndex(idx + 1)}
-                    style={{
-                      padding: '4px 12px',
-                      borderRadius: 16,
-                      background: 'var(--bg-tertiary)',
-                      border: '1px dashed var(--border-secondary)',
-                      color: 'var(--text-muted)',
-                      fontSize: 11,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      transition: 'all 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--color-accent)';
-                      e.currentTarget.style.color = 'var(--color-accent)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-secondary)';
-                      e.currentTarget.style.color = 'var(--text-muted)';
-                    }}
-                  >
-                    <span>+</span>
-                    <span>插入业务动作</span>
-                  </button>
-                </div>
-              )}
+              {insertBetween(idx + 1)}
             </React.Fragment>
           );
         })}
@@ -971,16 +690,27 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       )}
 
       {/* Action Picker Modal */}
-      {insertModalIndex !== null && (
+      {picker && (
         <ActionPickerModal
           registry={registry}
-          stepNumber={insertModalIndex + 1}
-          onClose={() => setInsertModalIndex(null)}
-          onSelect={(action) => handleAddAction(action, insertModalIndex)}
+          stepNumber={picker.index + 1}
+          positionLabel={picker.label}
+          onClose={() => setPicker(null)}
+          onSelect={handleAddAction}
           currentWorkflowLevel={currentWorkflowLevel}
           libraryCatalog={libraryCatalog}
         />
       )}
+
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          confirmLabel={confirmState.confirmLabel}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
+      )}
     </div>
+    </BusinessEditorContext.Provider>
   );
 };

@@ -225,7 +225,7 @@ export function buildLibraryCatalog(
 - L1（原子操作）只能调用同层 L1
 - 禁止反向跨层调用（L1 不可调用 L2/L3，L2 不可调用 L3）
 
-**引用方式**：使用 SUB_WORKFLOW 任务，\`workflowName\` 填入下方对应名称。
+**引用方式**：使用 SUB_WORKFLOW 任务，把下方名称填入 \`subWorkflowParam.name\`（如 \`"subWorkflowParam": { "name": "create_vm" }\`）；版本号可省略，系统会固定为流程库当前版本。
 
 **使用策略**
 1. 用户需求完全匹配已有工作流时：直接推荐使用，无需新建

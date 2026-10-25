@@ -343,6 +343,11 @@ export const ecsRestartInstanceAction: ActionDefinition = {
       actionName: '重启云主机',
       instanceId: values.instanceId,
       forceRestart: Boolean(values.forceRestart),
+      http_request: {
+        uri: `https://ecs.internal.cloud/api/v2/instances/${values.instanceId || ''}/restart`,
+        method: 'POST',
+        body: { forceRestart: Boolean(values.forceRestart) },
+      },
     },
   }),
   decompile: (task) => {
@@ -407,6 +412,11 @@ export const ecsModifySpecAction: ActionDefinition = {
       actionName: '变更实例规格',
       instanceId: values.instanceId,
       targetSpec: values.targetSpec,
+      http_request: {
+        uri: `https://ecs.internal.cloud/api/v2/instances/${values.instanceId || ''}/spec`,
+        method: 'PUT',
+        body: { instanceType: values.targetSpec },
+      },
     },
   }),
   decompile: (task) => {
@@ -475,6 +485,11 @@ export const ecsCreateSnapshotAction: ActionDefinition = {
       instanceId: values.instanceId,
       snapshotName: values.snapshotName,
       retentionDays: toNumberField(values.retentionDays, 7),
+      http_request: {
+        uri: `https://ecs.internal.cloud/api/v2/instances/${values.instanceId || ''}/snapshots`,
+        method: 'POST',
+        body: { snapshotName: values.snapshotName, retentionDays: toNumberField(values.retentionDays, 7) },
+      },
     },
   }),
   decompile: (task) => {
@@ -556,6 +571,15 @@ export const ecsRunCommandAction: ActionDefinition = {
       commandType: values.commandType ?? 'RunShellScript',
       commandContent: values.commandContent,
       timeoutSeconds: toNumberField(values.timeoutSeconds, 60),
+      http_request: {
+        uri: `https://ecs.internal.cloud/api/v2/instances/${values.instanceId || ''}/commands`,
+        method: 'POST',
+        body: {
+          commandType: values.commandType ?? 'RunShellScript',
+          commandContent: values.commandContent,
+          timeoutSeconds: toNumberField(values.timeoutSeconds, 60),
+        },
+      },
     },
   }),
   decompile: (task) => {
@@ -622,6 +646,10 @@ export const ecsGetMonitorMetricsAction: ActionDefinition = {
       actionName: '获取运行监控指标',
       instanceId: values.instanceId,
       periodSeconds: toNumberField(values.periodSeconds, 60),
+      http_request: {
+        uri: `https://ecs.internal.cloud/api/v2/instances/${values.instanceId || ''}/metrics?period=${toNumberField(values.periodSeconds, 60)}`,
+        method: 'GET',
+      },
     },
   }),
   decompile: (task) => {
@@ -684,6 +712,10 @@ export const ecsReleaseInstanceAction: ActionDefinition = {
       actionName: '释放下线云主机',
       instanceId: values.instanceId,
       forceRelease: Boolean(values.forceRelease),
+      http_request: {
+        uri: `https://ecs.internal.cloud/api/v2/instances/${values.instanceId || ''}${values.forceRelease ? '?force=true' : ''}`,
+        method: 'DELETE',
+      },
     },
   }),
   decompile: (task) => {

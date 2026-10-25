@@ -1,6 +1,7 @@
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { TaskDef } from '../types/conductor';
+import { CircleCheck, Stethoscope, X } from 'lucide-react';
 
 interface HealthCheckPanelProps {
     isOpen: boolean;
@@ -50,7 +51,7 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
             backgroundColor: bgColor,
             border: `1px solid ${borderColor}`,
             borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            boxShadow: 'var(--cm-shadow-float)',
             zIndex: 1100,
             display: 'flex',
             flexDirection: 'column',
@@ -63,7 +64,7 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                     to { opacity: 1; transform: translateY(0); }
                 }
                 .health-item:hover {
-                    background-color: ${theme === 'light' ? '#f1f5f9' : 'rgba(255,255,255,0.05)'};
+                    background-color: ${theme === 'light' ? 'var(--text-primary)' : 'var(--text-muted)'};
                 }
             `}</style>
 
@@ -73,23 +74,23 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                backgroundColor: 'rgba(0,0,0,0.02)'
+                backgroundColor: 'var(--cm-surface-0)'
             }}>
                 <div style={{ fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>🩺</span> 工作流体检报告
+                    <span><Stethoscope size={14} strokeWidth={1.75} aria-hidden="true" /></span> 工作流体检报告
                 </div>
                 <button
                     onClick={onClose}
                     style={{ background: 'none', border: 'none', color: secondaryTextColor, cursor: 'pointer', fontSize: '18px' }}
                 >
-                    ✕
+                    <X size={14} strokeWidth={1.75} aria-hidden="true" />
                 </button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
                 {errors.length === 0 && warnings.length === 0 ? (
-                    <div style={{ padding: '32px 16px', textAlign: 'center', color: '#10b981' }}>
-                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>✅</div>
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--cm-status-success)' }}>
+                        <div style={{ fontSize: '32px', marginBottom: '12px' }}><CircleCheck size={14} strokeWidth={1.75} aria-hidden="true" /></div>
                         <div style={{ fontWeight: 'bold' }}>未发现问题</div>
                         <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>工作流逻辑看起来很完美</div>
                     </div>
@@ -108,11 +109,11 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                                     borderRadius: '8px',
                                     marginBottom: '4px',
                                     cursor: err.ref ? 'pointer' : 'default',
-                                    borderLeft: '4px solid #ef4444',
+                                    borderLeft: '4px solid var(--cm-status-failed)',
                                     transition: 'background 0.2s'
                                 }}
                             >
-                                <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 'bold', marginBottom: '2px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--cm-status-failed)', fontWeight: 'bold', marginBottom: '2px' }}>
                                     ERROR {err.ref !== 'UNKNOWN' && `[${err.ref}]`}
                                 </div>
                                 <div style={{ fontSize: '13px', color: textColor }}>{err.message}</div>
@@ -132,11 +133,11 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                                     borderRadius: '8px',
                                     marginBottom: '4px',
                                     cursor: warn.ref ? 'pointer' : 'default',
-                                    borderLeft: '4px solid #f59e0b',
+                                    borderLeft: '4px solid var(--cm-status-warning)',
                                     transition: 'background 0.2s'
                                 }}
                             >
-                                <div style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 'bold', marginBottom: '2px' }}>
+                                <div style={{ fontSize: '12px', color: 'var(--cm-status-warning)', fontWeight: 'bold', marginBottom: '2px' }}>
                                     WARNING {warn.ref !== 'UNKNOWN' && `[${warn.ref}]`}
                                 </div>
                                 <div style={{ fontSize: '13px', color: textColor }}>{warn.message}</div>
@@ -151,12 +152,12 @@ const HealthCheckPanel = ({ isOpen, onClose, theme = 'dark', onTaskSelect }: Hea
                 fontSize: '11px',
                 color: secondaryTextColor,
                 borderTop: `1px solid ${borderColor}`,
-                backgroundColor: 'rgba(0,0,0,0.02)',
+                backgroundColor: 'var(--cm-surface-0)',
                 display: 'flex',
                 justifyContent: 'space-between'
             }}>
                 <span>共 {errors.length} 个错误, {warnings.length} 个警告</span>
-                {errors.length > 0 && <span style={{ color: '#ef4444' }}>无法保存/导出</span>}
+                {errors.length > 0 && <span style={{ color: 'var(--cm-status-failed)' }}>无法保存/导出</span>}
             </div>
         </div>
     );

@@ -223,7 +223,7 @@ export function buildLibraryCatalog(
 - L3（端到端）可调用 L2/L1 及同层 L3
 - L2（业务场景）可调用 L1 及同层 L2
 - L1（原子操作）只能调用同层 L1
-- ❌ 禁止反向跨层调用（L1 不可调用 L2/L3，L2 不可调用 L3）
+- 禁止反向跨层调用（L1 不可调用 L2/L3，L2 不可调用 L3）
 
 **引用方式**：使用 SUB_WORKFLOW 任务，\`workflowName\` 填入下方对应名称。
 

@@ -9,6 +9,7 @@ import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates
 import { AIChatMessage } from '../../types/workflow';
 import { applyWorkflowDiff, parseDiffFromAIResponse } from '../../utils/workflowDiff';
 import { TaskType } from '../../types/conductor';
+import { Check, Copy, Rocket, Sparkles, Square, Trash2 } from 'lucide-react';
 
 interface AIChatPanelProps {
     aiConfig?: Partial<AIServiceConfig>;
@@ -198,7 +199,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                     const aiMsg: AIChatMessage = {
                         id: (Date.now() + 1).toString(),
                         role: 'ai',
-                        content: '**演示模式**：未检测到 API Key，以下是一个示例审批流程供体验。请在标题栏 🤖 按钮中配置真实 API Key 以启用 AI 功能。',
+                        content: '**演示模式**：未检测到 API Key，以下是一个示例审批流程供体验。请在标题栏 按钮中配置真实 API Key 以启用 AI 功能。',
                         diff: {
                             kind: 'replace',
                             summary: '生成三步审批流程（演示）',
@@ -321,7 +322,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
             <div className="ai-chat-panel collapsed" onClick={() => setIsOpen(true)}>
                 <div className="ai-header" style={{ borderBottom: 'none' }}>
                     <div className="ai-title">
-                        <span className="ai-sparkles">✨</span>
+                        <span className="ai-sparkles"><Sparkles size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                         AI 助手
                     </div>
                 </div>
@@ -333,11 +334,11 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
         <div className="ai-chat-panel">
             <div className="ai-header">
                 <div className="ai-title">
-                    <span className="ai-sparkles">✨</span>
+                    <span className="ai-sparkles"><Sparkles size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                     AI 助手
                 </div>
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                    <button className="ai-close" onClick={handleClear} title="清空对话">🗑</button>
+                    <button className="ai-close" onClick={handleClear} title="清空对话"><Trash2 size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                     <button className="ai-close" onClick={() => setIsOpen(false)}>×</button>
                 </div>
             </div>
@@ -371,7 +372,7 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                                 onClick={() => handleCopy(msg)}
                                 title="复制"
                             >
-                                {copiedId === msg.id ? '✓' : '📋'}
+                                {copiedId === msg.id ? <Check size={14} strokeWidth={1.75} aria-hidden="true" /> : <Copy size={14} strokeWidth={1.75} aria-hidden="true" />}
                             </button>
                         )}
                     </div>
@@ -410,12 +411,12 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                         rows={2}
                     />
                     {isLoading ? (
-                        <button className="ai-send stop" onClick={handleStop} title="停止生成">
-                            ⏹
+                        <button className="ai-send stop" onClick={handleStop} title="停止生成" aria-label="停止生成">
+                            <Square size={14} strokeWidth={1.75} aria-hidden="true" />
                         </button>
                     ) : (
                         <button className="ai-send" onClick={() => handleSend()} title="发送">
-                            🚀
+                            <Rocket size={14} strokeWidth={1.75} aria-hidden="true" />
                         </button>
                     )}
                 </div>

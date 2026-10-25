@@ -11,7 +11,7 @@
     --status-completed: var(--cm-status-success);
     --status-completed-with-errors: var(--cm-status-warning);
     --status-failed: var(--cm-status-failed);
-    --status-failed-terminal: #991B1B;
+    --status-failed-terminal: color-mix(in srgb, var(--cm-status-failed) 70%, var(--cm-text-primary));
     --status-timed-out: var(--cm-status-warning);
     --status-skipped: var(--cm-status-skipped);
     --status-canceled: var(--cm-text-muted);
@@ -24,11 +24,11 @@
 
     0%,
     100% {
-        box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.4);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--cm-data) 40%, transparent);
     }
 
     50% {
-        box-shadow: 0 0 0 8px rgba(34, 211, 238, 0);
+        box-shadow: 0 0 0 8px color-mix(in srgb, var(--cm-data) 0%, transparent);
     }
 }
 
@@ -46,15 +46,15 @@
 /* COMPLETED: Green flash once */
 @keyframes status-flash-success {
     0% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--cm-status-success) 60%, transparent);
     }
 
     50% {
-        box-shadow: 0 0 20px 4px rgba(4, 125, 85, 0.8);
+        box-shadow: 0 0 20px 4px color-mix(in srgb, var(--cm-status-success) 80%, transparent);
     }
 
     100% {
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--cm-status-success) 0%, transparent);
     }
 }
 
@@ -86,7 +86,7 @@
 
 .node-sim-done {
     border-color: var(--status-completed) !important;
-    box-shadow: 0 0 12px rgba(10, 173, 118, 0.5) !important;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cm-status-success) 50%, transparent) !important;
 }
 
 /* ---- Status Node Classes ---- */
@@ -160,10 +160,10 @@
     justify-content: center;
     font-size: 11px;
     font-weight: 700;
-    color: #fff;
+    color: var(--text-primary);
     border: 2px solid var(--bg-secondary);
     z-index: 10;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--cm-shadow-card);
     flex-shrink: 0;
 }
 
@@ -185,7 +185,7 @@
 
 .execution-status-badge.completed-with-errors {
     background: var(--status-completed-with-errors);
-    color: #0f172a;
+    color: var(--text-primary);
 }
 
 .execution-status-badge.failed {
@@ -211,9 +211,9 @@
 /* ---- Execution Status Bar ---- */
 
 .execution-status-bar {
-    background: var(--glass-surface, rgba(15, 23, 42, 0.8));
+    background: var(--glass-surface);
     backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+    border: 1px solid var(--glass-border);
     border-radius: 12px;
     padding: 12px 24px;
     display: flex;
@@ -225,7 +225,7 @@
     align-items: center;
     font-size: 14px;
     color: var(--text-primary);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--cm-shadow-float);
     pointer-events: auto;
     /* Ensure clicks work */
     width: max-content;
@@ -269,7 +269,7 @@
 /* ---- Light Theme Adjustments ---- */
 
 [data-mode='light'] .execution-status-bar {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent);
+    border-color: var(--border-primary);
+    box-shadow: var(--cm-shadow-float);
 }

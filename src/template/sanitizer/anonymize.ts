@@ -108,7 +108,7 @@ export function extractTemplateFromInstance(options: ExtractTemplateOptions): Ex
     version: '1.0.0',
     title: templateTitle,
     category: templateCategory,
-    icon: '💎',
+    icon: 'package',
     valueProposition: templateValProp,
     description: rawDef.description || '由管理员从高频成功的生产运行记录中提炼而成的标准化黄金模板。',
     connectors: ['cloud_host', 'dingtalk'],

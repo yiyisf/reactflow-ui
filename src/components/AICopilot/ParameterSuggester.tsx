@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import './ParameterSuggester.css';
 import { WlspCompletionItem, ValueType } from '../../services/wlsp/workflowLsp';
 import useWorkflowStore from '../../store/workflowStore';
+import { X, Zap } from 'lucide-react';
 
 export interface Suggestion {
     label: string;
@@ -27,12 +28,12 @@ interface ParameterSuggesterProps {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-    string: '#38bdf8',
-    number: '#a78bfa',
-    boolean: '#f472b6',
-    object: '#fbbf24',
-    array: '#34d399',
-    any: '#94a3b8',
+    string: 'var(--cm-data)',
+    number: 'var(--cm-ai)',
+    boolean: 'var(--cm-cat-human)',
+    object: 'var(--cm-status-warning)',
+    array: 'var(--cm-status-success)',
+    any: 'var(--text-muted)',
 };
 
 const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
@@ -140,9 +141,9 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
         width: `${popoverWidth}px`,
         maxHeight: `${availableHeight}px`,
         zIndex: 9999,
-        background: isLight ? 'rgba(255, 255, 255, 0.98)' : 'rgba(15, 23, 42, 0.96)',
-        color: isLight ? '#0f172a' : '#f8fafc',
-        borderColor: isLight ? 'rgba(148, 163, 184, 0.35)' : 'rgba(56, 189, 248, 0.28)',
+        background: 'color-mix(in srgb, var(--cm-surface-1) 97%, transparent)',
+        color: 'var(--text-primary)',
+        borderColor: 'color-mix(in srgb, var(--cm-data) 28%, transparent)',
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -174,7 +175,7 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
             >
                 <div className="suggester-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span className="sparkle-icon">⚡</span>
+                        <span className="sparkle-icon"><Zap size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                         <span>W-LSP 上下文变量补全</span>
                         <span style={{ fontSize: 10, opacity: 0.65, fontWeight: 500 }}>
                             ({filteredItems.length})
@@ -189,7 +190,7 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
                                 disabled={aiLoading}
                                 title="调用 AI 推理更多上下文表达式"
                             >
-                                {aiLoading ? 'AI 思考中...' : '✨ AI 推荐'}
+                                {aiLoading ? 'AI 思考中...' : 'AI 推荐'}
                             </button>
                         )}
                         <button
@@ -207,7 +208,7 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
                                 lineHeight: 1,
                             }}
                         >
-                            ✕
+                            <X size={14} strokeWidth={1.75} aria-hidden="true" />
                         </button>
                     </div>
                 </div>
@@ -228,10 +229,10 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
                 <div className="suggester-tabs">
                     {[
                         { id: 'all', label: '全部' },
-                        { id: 'upstream', label: '🔗 上游输出' },
-                        { id: 'workflow_input', label: '📥 工作流输入' },
-                        { id: 'variable', label: '📦 全局变量' },
-                        { id: 'system', label: '⚙️ 系统' },
+                        { id: 'upstream', label: '上游输出' },
+                        { id: 'workflow_input', label: '工作流输入' },
+                        { id: 'variable', label: '全局变量' },
+                        { id: 'system', label: '系统' },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -251,7 +252,7 @@ const ParameterSuggester: React.FC<ParameterSuggesterProps> = ({
                         </div>
                     ) : (
                         filteredItems.map((s, idx) => {
-                            const typeColor = TYPE_COLORS[s.valueType || 'any'] || '#94a3b8';
+                            const typeColor = TYPE_COLORS[s.valueType || 'any'] || 'var(--text-muted)';
                             return (
                                 <div
                                     key={`${s.value}-${idx}`}

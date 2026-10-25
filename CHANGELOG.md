@@ -27,6 +27,10 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 - **业务模式、模板中心与对话框换用 tokens 与图标**：`components/business`、`components/template`、`components/onboarding`、`components/import` 及沙箱试运行、全屏编辑、确认 / 输入对话框、Toast、空状态面板中约 400 处写死颜色改为 tokens（中性色按用途映射到 `--bg-*` / `--text-*` / `--border-*`，深浅自动切换；沙箱试运行弹窗不再在组件内判断深浅），约 85 处 emoji 换成 Lucide 图标或去掉（下拉选项与标签文字中的 emoji 直接删除）。上游数据选择器的步骤图标改用 `CmIcon`。守卫测试改为按目录登记已迁移代码，同时检查 emoji 与写死颜色。
 
+- **IDE 其余组件完成迁移**：任务详情面板、节点（循环 / 分支 / 并行 / 任务 / 子流程）、执行瀑布图 / 摘要 / 任务面板、健康检查、JSON 预览与结构化查看器、参数建议浮层、旧版 AI 对话面板、设置面板、画布控件与 `executionStyles.css` 的写死颜色与 emoji 全部替换。运行态节点角标改为 Lucide 图标 + 中文状态词（提示与无障碍名称）；任务详情的专项配置区图标改为 Lucide，并修复了把十六进制透明度拼到 `var()` 上导致背景与边框失效的问题；小地图运行中节点改用运行青色（原为橙色）。
+- `getTaskTypeMeta().color` 改为分类色 token（`--cm-cat-task / control / data / human`，终止为失败色）；`getCategoryIcon()` 返回图标名（配合 `CmIcon` 使用），`getCategoryColor()` 返回状态色 token；解析器生成的分支连线颜色改用 token。模板脱敏与接口导入生成的默认图标改为图标名。Mermaid 中 WAIT / HUMAN 节点改用圆角形状代替 emoji 前缀。
+- **守卫覆盖全部 UI 源码**：`designRules.test.ts` 对 `src/` 下所有 `.ts/.tsx/.css` 检查 emoji 与写死颜色，仅保留 6 个有理由的例外（tokens 桥接文件、Logo 图形、蓝色品牌色样、emoji 别名表、两个只给模型看的 AI 上下文文件）。
+
 ### Fixed
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。

@@ -288,7 +288,7 @@ export function buildHttpAction(op: ImportedOperation, opts: BuildHttpActionOpti
         id,
         name,
         category: 'network',
-        icon: '🔌',
+        icon: 'plug',
         description: `${op.method} ${base}${pathTemplate}${desc ? `：${desc.slice(0, 80)}` : ''}`,
         kind: 'task',
         tags: ['导入', ...op.tags],

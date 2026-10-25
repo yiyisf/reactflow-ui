@@ -115,7 +115,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                 flexDirection: 'column',
                 background: 'var(--bg-primary)',
                 borderLeft: `1px solid ${borderColor}`,
-                boxShadow: '-10px 0 30px rgba(0,0,0,0.2)',
+                boxShadow: 'var(--cm-shadow-float)',
                 overflow: 'hidden',
             }}
         >
@@ -130,7 +130,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                     <div style={{
                         background: 'var(--color-accent)',
-                        color: 'var(--color-on-accent, #fff)',
+                        color: 'var(--color-on-accent)',
                         padding: '2px 8px',
                         borderRadius: 4,
                         fontSize: 10,
@@ -164,7 +164,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                     <button
                         onClick={handleClose}
                         style={{ background: 'none', border: 'none', color: secondaryText, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 4 }}
-                    >✕</button>
+                    ><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                 </div>
 
                 {/* Task name */}
@@ -203,7 +203,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                         cursor: 'pointer',
                                         border: `1px solid ${isActive ? 'var(--color-accent)' : borderColor}`,
                                         background: isActive ? 'var(--color-accent)' : 'var(--bg-tertiary)',
-                                        color: isActive ? 'var(--color-on-accent, #fff)' : 'var(--text-primary)',
+                                        color: isActive ? 'var(--color-on-accent)' : 'var(--text-primary)',
                                         fontFamily: 'inherit',
                                         transition: 'all 0.15s',
                                     }}
@@ -323,7 +323,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                         {displayError && (
                             <div style={{
                                 padding: 14,
-                                background: 'rgba(239,68,68,0.08)',
+                                background: 'color-mix(in srgb, var(--cm-status-failed) 8%, transparent)',
                                 borderLeft: '3px solid var(--status-failed)',
                                 borderRadius: '0 8px 8px 0',
                                 fontSize: 12,
@@ -365,8 +365,8 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                             gap: 4,
                                             padding: '2px 7px',
                                             borderRadius: 4,
-                                            background: 'rgba(239,68,68,0.08)',
-                                            border: '1px solid rgba(239,68,68,0.25)',
+                                            background: 'color-mix(in srgb, var(--cm-status-failed) 8%, transparent)',
+                                            border: '1px solid color-mix(in srgb, var(--cm-status-failed) 25%, transparent)',
                                             color: 'var(--status-failed)',
                                             fontSize: 10,
                                             fontWeight: 600,
@@ -448,6 +448,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
 
 /* ── Helpers ── */
 import StructuredJsonViewer from './StructuredJsonViewer';
+import { X } from 'lucide-react';
 
 const taskOpBtnStyle: React.CSSProperties = {
     display: 'inline-flex',
@@ -476,7 +477,7 @@ const taskOpBtnDangerHover: React.CSSProperties = {
     ...taskOpBtnStyle,
     borderColor: 'var(--status-failed)',
     color: 'var(--status-failed)',
-    background: 'rgba(239,68,68,0.08)',
+    background: 'color-mix(in srgb, var(--cm-status-failed) 8%, transparent)',
 };
 
 /** 操作权限受限时按钮的禁用样式 */

@@ -498,7 +498,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             const isLoopBack = edge.id.includes('loop-back');
             const isDynamicEdge = edge.source.startsWith('dynamic_rt_') || edge.target.startsWith('dynamic_rt_');
             // 连线颜色：浅色/深色主题略有区别，加深使其更醒目
-            const edgeStroke = theme === 'light' ? '#64748b' : '#94a3b8';
+            const edgeStroke = 'var(--cm-edge-default)';
             const baseStyle: React.CSSProperties = {
                 ...edge.style,
                 stroke: edgeStroke,
@@ -622,10 +622,10 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                     type: MarkerType.ArrowClosed,
                     width: 16,
                     height: 16,
-                    color: '#38bdf8',
+                    color: 'var(--cm-data)',
                 },
                 style: {
-                    stroke: '#38bdf8',
+                    stroke: 'var(--cm-data)',
                     strokeWidth: 2.4,
                     strokeDasharray: '6,4',
                     opacity: 0.95,
@@ -737,22 +737,22 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             height: 110,
                             backgroundColor: 'var(--glass-surface)',
                         }}
-                        maskColor={theme === 'light' ? 'rgba(241, 245, 249, 0.7)' : 'rgba(15, 23, 42, 0.7)'}
+                        maskColor="color-mix(in srgb, var(--cm-surface-0) 70%, transparent)"
                         nodeColor={(node) => {
                             if (node.type === 'plusNode') return 'transparent';
                             if (mode === 'run' && executionData) {
                                 const ref = node.data?.taskReferenceName;
                                 const st = executionData[ref]?.status;
-                                if (st === 'COMPLETED') return '#10b981';
-                                if (st === 'FAILED' || st === 'FAILED_WITH_TERMINAL_ERROR') return '#ef4444';
-                                if (st === 'IN_PROGRESS' || st === 'SCHEDULED') return '#3b82f6';
-                                if (st === 'TIMED_OUT' || st === 'COMPLETED_WITH_ERRORS') return '#f59e0b';
-                                return '#64748b';
+                                if (st === 'COMPLETED') return 'var(--cm-status-success)';
+                                if (st === 'FAILED' || st === 'FAILED_WITH_TERMINAL_ERROR') return 'var(--cm-status-failed)';
+                                if (st === 'IN_PROGRESS' || st === 'SCHEDULED') return 'var(--cm-status-running)';
+                                if (st === 'TIMED_OUT' || st === 'COMPLETED_WITH_ERRORS') return 'var(--cm-status-warning)';
+                                return 'var(--cm-status-pending)';
                             }
-                            if (node.type === 'decisionNode') return '#f59e0b';
-                            if (node.type === 'forkNode' || node.type === 'joinNode') return '#10b981';
-                            if (node.type === 'loopNode') return '#8b5cf6';
-                            return '#3b82f6';
+                            if (node.type === 'decisionNode') return 'var(--cm-status-warning)';
+                            if (node.type === 'forkNode' || node.type === 'joinNode') return 'var(--cm-status-success)';
+                            if (node.type === 'loopNode') return 'var(--cm-ai)';
+                            return 'var(--color-accent)';
                         }}
                     />
                 )}
@@ -783,11 +783,11 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                 gap: '12px',
                                 padding: '8px 16px',
                                 borderRadius: '999px',
-                                background: 'rgba(15, 23, 42, 0.94)',
+                                background: 'color-mix(in srgb, var(--cm-surface-1) 94%, transparent)',
                                 backdropFilter: 'blur(16px)',
-                                border: '1px solid rgba(99, 102, 241, 0.45)',
-                                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.4)',
-                                color: '#f8fafc',
+                                border: '1px solid color-mix(in srgb, var(--cm-ai) 45%, transparent)',
+                                boxShadow: 'var(--cm-shadow-float)',
+                                color: 'var(--text-primary)',
                                 fontSize: '12px',
                             }}
                         >
@@ -824,8 +824,8 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                         padding: '4px 12px',
                                         borderRadius: '999px',
                                         border: 'none',
-                                        background: '#10b981',
-                                        color: '#fff',
+                                        background: 'var(--cm-status-success)',
+                                        color: 'var(--cm-on-danger)',
                                         fontSize: '11px',
                                         fontWeight: 700,
                                         cursor: 'pointer',
@@ -842,9 +842,9 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                     style={{
                                         padding: '4px 10px',
                                         borderRadius: '999px',
-                                        border: '1px solid rgba(248, 113, 113, 0.4)',
-                                        background: 'rgba(239, 68, 68, 0.14)',
-                                        color: '#f87171',
+                                        border: '1px solid color-mix(in srgb, var(--cm-status-failed) 40%, transparent)',
+                                        background: 'color-mix(in srgb, var(--cm-status-failed) 14%, transparent)',
+                                        color: 'var(--cm-status-failed)',
                                         fontSize: '11px',
                                         fontWeight: 600,
                                         cursor: 'pointer',
@@ -899,7 +899,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                             gap: '8px',
                             fontSize: '16px',
                             fontWeight: 500,
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            boxShadow: 'var(--cm-shadow-card)'
                         }}
                         onClick={() => {
                             setActiveEdgeData({

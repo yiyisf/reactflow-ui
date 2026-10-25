@@ -6,8 +6,8 @@ import type { LibraryLoadStatus } from './types';
  * | 场景 | 状态 |
  * |---|---|
  * | 步骤未记录版本 | unpinned：沿用原定义，不显示任何提示 |
- * | 库中有更高版本 | upgradable：「⬆ 有新版本 vN」，由用户确认差异后手动升级 |
- * | 固定版本在库中不存在 / 已下线 | unavailable：「⚠ 版本不可用」，保持原样编译，不自动改版本 |
+ * | 库中有更高版本 | upgradable：「有新版本 vN」，由用户确认差异后手动升级 |
+ * | 固定版本在库中不存在 / 已下线 | unavailable：「版本不可用」，保持原样编译，不自动改版本 |
  * | 目录加载中 / 加载失败 | pinned：不显示新版本提示，不影响编辑与编译 |
  */
 export type LibraryBadgeState =

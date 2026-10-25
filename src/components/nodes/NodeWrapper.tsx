@@ -3,6 +3,7 @@ import useWorkflowStore from '../../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import ConfirmDialog from '../ConfirmDialog';
 import { ExecutionStatus } from '../../types/workflow';
+import { CircleAlert, TriangleAlert } from 'lucide-react';
 
 interface NodeWrapperProps {
     children: React.ReactNode;
@@ -67,12 +68,12 @@ const NodeWrapper = ({
             case 'FAILED_WITH_TERMINAL_ERROR':
                 return {
                     borderColor: 'var(--status-failed)',
-                    boxShadow: '0 0 12px rgba(239, 68, 68, 0.5), 0 0 24px rgba(239, 68, 68, 0.2)',
+                    boxShadow: '0 0 12px color-mix(in srgb, var(--cm-status-failed) 50%, transparent), 0 0 24px color-mix(in srgb, var(--cm-status-failed) 20%, transparent)',
                 };
             case 'TIMED_OUT':
                 return {
                     borderColor: 'var(--status-timed-out)',
-                    boxShadow: '0 0 8px rgba(249, 115, 22, 0.4)',
+                    boxShadow: '0 0 8px color-mix(in srgb, var(--color-accent) 40%, transparent)',
                 };
             case 'IN_PROGRESS':
             case 'SCHEDULED':
@@ -110,16 +111,16 @@ const NodeWrapper = ({
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: '2px solid white',
+                        backgroundColor: 'var(--cm-status-failed)',
+                        color: 'var(--cm-on-danger)',
+                        border: '2px solid var(--cm-surface-1)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '14px',
                         zIndex: 100,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        boxShadow: 'var(--cm-shadow-card)',
                         animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                         padding: 0
                     }}
@@ -138,19 +139,19 @@ const NodeWrapper = ({
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: '2px solid white',
+                        backgroundColor: 'var(--cm-status-failed)',
+                        color: 'var(--cm-on-danger)',
+                        border: '2px solid var(--cm-surface-1)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '14px',
                         zIndex: 101,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                        boxShadow: 'var(--cm-shadow-card)'
                     }}
                     title="此节点配置有误"
                 >
-                    ❗
+                    <CircleAlert size={14} strokeWidth={2} aria-hidden="true" />
                 </div>
             )}
 
@@ -163,19 +164,19 @@ const NodeWrapper = ({
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
-                        backgroundColor: '#f59e0b',
-                        color: 'white',
-                        border: '2px solid white',
+                        backgroundColor: 'var(--cm-status-warning)',
+                        color: 'var(--cm-on-danger)',
+                        border: '2px solid var(--cm-surface-1)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '14px',
                         zIndex: 101,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                        boxShadow: 'var(--cm-shadow-card)'
                     }}
                     title="此节点有警告信息"
                 >
-                    ⚠️
+                    <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" />
                 </div>
             )}
 

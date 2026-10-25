@@ -1,7 +1,7 @@
 .wrp-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--cm-overlay);
     backdrop-filter: blur(4px);
     z-index: 1500;
     display: flex;
@@ -16,7 +16,7 @@
     background: var(--glass-surface);
     border: 1px solid var(--glass-border);
     border-radius: 16px;
-    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--cm-shadow-float);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -272,8 +272,8 @@ textarea.wrp-input { resize: vertical; }
 .wrp-spinner {
     width: 12px;
     height: 12px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
+    border: 2px solid var(--border-primary);
+    border-top-color: var(--cm-surface-1);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
     flex-shrink: 0;

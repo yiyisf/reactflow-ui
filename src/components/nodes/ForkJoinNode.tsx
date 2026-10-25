@@ -90,12 +90,12 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                         height: 20,
                         background: 'var(--color-accent)',
                         borderRadius: '50%',
-                        color: 'var(--color-on-accent, #fff)',
+                        color: 'var(--color-on-accent)',
                         fontSize: '14px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer',
                         zIndex: 1000,
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                        boxShadow: 'var(--cm-shadow-card)',
                         border: '2px solid var(--bg-primary)' // 增加描边以区分
                     }}
                         onClick={(e) => {
@@ -106,7 +106,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     >+</div>
                 )}
 
-                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
+                <Handle type="target" position={targetPosition} style={{ background: 'var(--cm-surface-1)' }} />
 
 
                 {/* 动态 Source Handles (均匀分布，避开圆角) */}
@@ -129,7 +129,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                             type="source"
                             position={sourcePosition}
                             style={{
-                                background: '#fff',
+                                background: 'var(--cm-surface-1)',
                                 [layoutDirection === 'LR' ? 'top' : 'left']: `${offset}%`,
                                 [layoutDirection === 'LR' ? 'left' : 'top']: undefined, // clear
                                 // 显式设置对齐边，防止默认位置偏差
@@ -142,12 +142,12 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
 
                 {/* 如果没有分支，保留一个默认 Handle 用于连接 Join */}
                 {!isDynamic && (!data.task?.forkTasks || data.task.forkTasks.length === 0) && (
-                    <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
+                    <Handle type="source" position={sourcePosition} style={{ background: 'var(--cm-surface-1)' }} />
                 )}
 
                 {/* 动态 Fork: 单个 source Handle 连接到占位节点 */}
                 {isDynamic && (
-                    <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
+                    <Handle type="source" position={sourcePosition} style={{ background: 'var(--cm-surface-1)' }} />
                 )}
             </div>
         </NodeWrapper>
@@ -197,23 +197,23 @@ export const JoinNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                     isRunning={isRunning}
                 />
 
-                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
+                <Handle type="target" position={targetPosition} style={{ background: 'var(--cm-surface-1)' }} />
 
                 {/* 侧边输入 Handles */}
                 {layoutDirection === 'TB' && (
                     <>
-                        <Handle type="target" position={Position.Left} id="left" style={{ background: '#fff' }} />
-                        <Handle type="target" position={Position.Right} id="right" style={{ background: '#fff' }} />
+                        <Handle type="target" position={Position.Left} id="left" style={{ background: 'var(--cm-surface-1)' }} />
+                        <Handle type="target" position={Position.Right} id="right" style={{ background: 'var(--cm-surface-1)' }} />
                     </>
                 )}
                 {layoutDirection === 'LR' && (
                     <>
-                        <Handle type="target" position={Position.Top} id="top" style={{ background: '#fff' }} />
-                        <Handle type="target" position={Position.Bottom} id="bottom" style={{ background: '#fff' }} />
+                        <Handle type="target" position={Position.Top} id="top" style={{ background: 'var(--cm-surface-1)' }} />
+                        <Handle type="target" position={Position.Bottom} id="bottom" style={{ background: 'var(--cm-surface-1)' }} />
                     </>
                 )}
 
-                <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
+                <Handle type="source" position={sourcePosition} style={{ background: 'var(--cm-surface-1)' }} />
             </div>
         </NodeWrapper>
     );

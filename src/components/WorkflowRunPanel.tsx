@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { parseWorkflowInputParams, WorkflowInputParam } from '../types/conductor';
 import { WorkflowInstance } from '../types/conductor';
 import './WorkflowRunPanel.css';
+import { X } from 'lucide-react';
 
 export interface WorkflowRunPanelProps {
     onTriggerExecution?: (
@@ -194,7 +195,7 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
                     <div className="wrp-workflow-name">
                         {workflowDef.name} <span className="wrp-version">v{workflowDef.version ?? 1}</span>
                     </div>
-                    <button className="wrp-close" onClick={() => setShowRunPanel(false)}>✕</button>
+                    <button className="wrp-close" onClick={() => setShowRunPanel(false)}><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                 </div>
 
                 {/* Content */}

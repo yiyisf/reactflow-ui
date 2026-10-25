@@ -96,7 +96,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                 background: 'var(--bg-secondary)',
                 backdropFilter: 'blur(14px)',
                 border: '1px solid var(--border-primary)',
-                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.18)',
+                boxShadow: 'var(--cm-shadow-float)',
             }}
         >
             {/* Group 2: 智能洞察与 AI 原位助手 */}
@@ -175,7 +175,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                             variant="primary"
                             style={{
                                 borderRadius: '7px 0 0 7px',
-                                borderRight: '1px solid color-mix(in srgb, var(--color-on-accent, #fff) 25%, transparent)',
+                                borderRight: '1px solid color-mix(in srgb, var(--color-on-accent) 25%, transparent)',
                             }}
                         />
                         <ControlButton
@@ -336,7 +336,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                                     backdropFilter: 'blur(12px)',
                                     border: '1px solid var(--glass-border)',
                                     borderRadius: '10px',
-                                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                    boxShadow: 'var(--cm-shadow-float)',
                                     zIndex: 2000,
                                     minWidth: '180px',
                                     overflow: 'hidden',

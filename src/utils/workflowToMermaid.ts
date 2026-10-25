@@ -26,7 +26,7 @@ function nodeShape(task: TaskDef): string {
             return `${id}(("${lbl}"))`;
         case 'WAIT':
         case 'HUMAN':
-            return `${id}["⏳ ${lbl}"]`;
+            return `${id}(["${lbl}"])`;
         default:
             return `${id}["${lbl}"]`;
     }

@@ -6,7 +6,7 @@ import { WorkflowNodeData } from '../../types/workflow';
 import { useNodeLayout } from '../../hooks/useNodeLayout';
 import { useNodeExecution } from '../../hooks/useNodeExecution';
 import { TASK_TYPES } from '../../config/taskTypes';
-import { Repeat } from 'lucide-react';
+import { CircleAlert, Repeat, RotateCw, TriangleAlert } from 'lucide-react';
 import { getNodeMeta, getNodeHeader } from '../../utils/nodeMeta';
 import ConfirmDialog from '../ConfirmDialog';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
@@ -100,16 +100,16 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                         width: '24px',
                         height: '24px',
                         borderRadius: '50%',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: '2px solid white',
+                        backgroundColor: 'var(--cm-status-failed)',
+                        color: 'var(--cm-on-danger)',
+                        border: '2px solid var(--cm-surface-1)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '14px',
                         zIndex: 100,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        boxShadow: 'var(--cm-shadow-card)',
                         padding: 0,
                         pointerEvents: 'auto',
                     }}
@@ -124,21 +124,21 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                 <div style={{
                     position: 'absolute', top: '-10px', left: '-10px',
                     width: '24px', height: '24px', borderRadius: '50%',
-                    backgroundColor: '#ef4444', color: 'white', border: '2px solid white',
+                    backgroundColor: 'var(--cm-status-failed)', color: 'var(--cm-on-danger)', border: '2px solid var(--cm-surface-1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '14px', zIndex: 101, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    fontSize: '14px', zIndex: 101, boxShadow: 'var(--cm-shadow-card)',
                     pointerEvents: 'auto',
-                }} title="此节点配置有误">❗</div>
+                }} title="此节点配置有误"><CircleAlert size={14} strokeWidth={2} aria-hidden="true" /></div>
             )}
             {!data.isError && data.hasWarning && (
                 <div style={{
                     position: 'absolute', top: '-10px', left: '-10px',
                     width: '24px', height: '24px', borderRadius: '50%',
-                    backgroundColor: '#f59e0b', color: 'white', border: '2px solid white',
+                    backgroundColor: 'var(--cm-status-warning)', color: 'var(--cm-on-danger)', border: '2px solid var(--cm-surface-1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '14px', zIndex: 101, boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                    fontSize: '14px', zIndex: 101, boxShadow: 'var(--cm-shadow-card)',
                     pointerEvents: 'auto',
-                }} title="此节点有警告信息">⚠️</div>
+                }} title="此节点有警告信息"><TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" /></div>
             )}
 
             {data.proposalStatus && (
@@ -175,7 +175,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                             {getNodeHeader('DO_WHILE', viewMode)}
                         </span>
                         <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
-                            ↻ {loopOver.length} 个子任务
+                            <RotateCw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />{loopOver.length} 个子任务
                         </span>
                     </div>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -213,7 +213,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                         onClick={() => selectTaskAction(task || null)}
                         style={{
                             padding: '2px 8px', borderRadius: '12px',
-                            background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)',
+                            background: 'var(--color-accent)', color: 'var(--color-on-accent)',
                             fontSize: '10px', fontWeight: 700, cursor: 'pointer',
                             flexShrink: 0,
                         }}
@@ -240,14 +240,14 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                         alignItems: 'center',
                         gap: '4px',
                         padding: '4px 10px',
-                        background: 'rgba(15, 23, 42, 0.72)',
+                        background: 'var(--cm-overlay)',
                         borderBottom: '1px solid var(--border-primary)',
                         flexShrink: 0,
                         pointerEvents: 'auto',
                         overflowX: 'auto',
                     }}
                 >
-                    <span style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, marginRight: '2px' }}>
+                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600, marginRight: '2px' }}>
                         切换轮次:
                     </span>
                     {Array.from({ length: totalIterations }, (_, idx) => idx + 1).map((iterNum) => {
@@ -265,12 +265,12 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                                     padding: '1px 7px',
                                     borderRadius: '999px',
                                     border: isSelectedIter
-                                        ? '1px solid #38bdf8'
-                                        : '1px solid rgba(148, 163, 184, 0.25)',
+                                        ? '1px solid var(--cm-data)'
+                                        : '1px solid var(--border-primary)',
                                     background: isSelectedIter
-                                        ? 'rgba(56, 189, 248, 0.22)'
-                                        : 'rgba(30, 41, 59, 0.6)',
-                                    color: isSelectedIter ? '#38bdf8' : '#cbd5e1',
+                                        ? 'color-mix(in srgb, var(--cm-data) 22%, transparent)'
+                                        : 'var(--bg-tertiary)',
+                                    color: isSelectedIter ? 'var(--cm-data)' : 'var(--text-secondary)',
                                     fontWeight: isSelectedIter ? 700 : 500,
                                     cursor: 'pointer',
                                 }}
@@ -304,7 +304,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             <div style={{
                 flex: 1,
                 position: 'relative',
-                background: 'var(--loop-body-bg, rgba(99,102,241,0.04))',
+                background: 'var(--loop-body-bg, color-mix(in srgb, var(--cm-ai) 4%, transparent))',
                 borderRadius: '0 0 8px 8px',
                 pointerEvents: 'none',
             }} />

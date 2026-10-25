@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface StructuredJsonViewerProps {
   data: any;
@@ -55,17 +56,17 @@ const TreeNode: React.FC<TreeNodeProps> = ({
   if (!matchesSearch) return null;
 
   if (!isObject) {
-    let valColor = '#e2e8f0';
+    let valColor = 'var(--text-primary)';
     let formattedVal = String(value);
     if (typeof value === 'string') {
-      valColor = '#34d399';
+      valColor = 'var(--cm-status-success)';
       formattedVal = `"${value}"`;
     } else if (typeof value === 'number') {
-      valColor = '#fbbf24';
+      valColor = 'var(--cm-status-warning)';
     } else if (typeof value === 'boolean') {
-      valColor = '#f472b6';
+      valColor = 'var(--cm-cat-human)';
     } else if (value === null || value === undefined) {
-      valColor = '#94a3b8';
+      valColor = 'var(--text-muted)';
       formattedVal = 'null';
     }
 
@@ -87,9 +88,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
       >
         <div style={{ wordBreak: 'break-all', lineHeight: 1.45 }}>
           {keyName !== undefined && (
-            <span style={{ color: '#93c5fd' }}>
+            <span style={{ color: 'var(--color-accent)' }}>
               {typeof keyName === 'number' ? `[${keyName}]` : `"${keyName}"`}
-              <span style={{ color: '#64748b' }}>: </span>
+              <span style={{ color: 'var(--text-muted)' }}>: </span>
             </span>
           )}
           <span style={{ color: valColor }}>{formattedVal}</span>
@@ -107,16 +108,16 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               fontSize: '10px',
               padding: '1px 6px',
               borderRadius: '4px',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
+              border: '1px solid color-mix(in srgb, var(--cm-data) 30%, transparent)',
               background:
-                copiedPath === expr ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.08)',
-              color: copiedPath === expr ? '#34d399' : '#38bdf8',
+                copiedPath === expr ? 'color-mix(in srgb, var(--cm-status-success) 20%, transparent)' : 'color-mix(in srgb, var(--cm-data) 8%, transparent)',
+              color: copiedPath === expr ? 'var(--cm-status-success)' : 'var(--cm-data)',
               cursor: 'pointer',
               opacity: 0.85,
               fontFamily: 'inherit',
             }}
           >
-            {copiedPath === expr ? '✓ 已复制' : '${} 引用'}
+            {copiedPath === expr ? '已复制' : '${} 引用'}
           </button>
         )}
       </div>
@@ -149,19 +150,19 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ fontSize: '9px', color: '#64748b', width: '10px', display: 'inline-block' }}>
-            {expanded ? '▼' : '▶'}
+          <span style={{ color: 'var(--text-muted)', width: '10px', display: 'inline-flex' }}>
+            {expanded ? <ChevronDown size={10} strokeWidth={1.75} aria-hidden="true" /> : <ChevronRight size={10} strokeWidth={1.75} aria-hidden="true" />}
           </span>
           {keyName !== undefined && (
-            <span style={{ color: '#93c5fd' }}>
+            <span style={{ color: 'var(--color-accent)' }}>
               {typeof keyName === 'number' ? `[${keyName}]` : `"${keyName}"`}
-              <span style={{ color: '#64748b' }}>: </span>
+              <span style={{ color: 'var(--text-muted)' }}>: </span>
             </span>
           )}
-          <span style={{ color: '#94a3b8' }}>
+          <span style={{ color: 'var(--text-muted)' }}>
             {bracketOpen}
             {!expanded && (
-              <span style={{ fontSize: '10px', color: '#64748b', margin: '0 4px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '0 4px' }}>
                 {summaryLabel}
               </span>
             )}
@@ -181,16 +182,16 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               fontSize: '10px',
               padding: '1px 6px',
               borderRadius: '4px',
-              border: '1px solid rgba(56, 189, 248, 0.25)',
+              border: '1px solid color-mix(in srgb, var(--cm-data) 25%, transparent)',
               background:
-                copiedPath === expr ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.06)',
-              color: copiedPath === expr ? '#34d399' : '#38bdf8',
+                copiedPath === expr ? 'color-mix(in srgb, var(--cm-status-success) 20%, transparent)' : 'color-mix(in srgb, var(--cm-data) 6%, transparent)',
+              color: copiedPath === expr ? 'var(--cm-status-success)' : 'var(--cm-data)',
               cursor: 'pointer',
               opacity: 0.75,
               fontFamily: 'inherit',
             }}
           >
-            {copiedPath === expr ? '✓ 已复制' : '${} 引用'}
+            {copiedPath === expr ? '已复制' : '${} 引用'}
           </button>
         )}
       </div>
@@ -223,7 +224,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           <div
             style={{
               paddingLeft: `${depth * 14 + 14}px`,
-              color: '#94a3b8',
+              color: 'var(--text-muted)',
               fontSize: '12px',
               fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
             }}
@@ -275,7 +276,7 @@ export const StructuredJsonViewer: React.FC<StructuredJsonViewerProps> = ({
           textAlign: 'center',
           color: 'var(--text-secondary)',
           fontSize: '12px',
-          background: 'rgba(15, 23, 42, 0.35)',
+          background: 'color-mix(in srgb, var(--cm-surface-1) 35%, transparent)',
           borderRadius: '8px',
           border: '1px solid var(--border-primary)',
         }}
@@ -290,7 +291,7 @@ export const StructuredJsonViewer: React.FC<StructuredJsonViewerProps> = ({
       style={{
         borderRadius: '8px',
         border: '1px solid var(--border-primary)',
-        background: 'rgba(15, 23, 42, 0.55)',
+        background: 'var(--cm-overlay)',
         overflow: 'hidden',
       }}
     >
@@ -301,22 +302,22 @@ export const StructuredJsonViewer: React.FC<StructuredJsonViewerProps> = ({
           alignItems: 'center',
           gap: '6px',
           padding: '6px 10px',
-          borderBottom: '1px solid rgba(148, 163, 184, 0.14)',
-          background: 'rgba(15, 23, 42, 0.4)',
+          borderBottom: '1px solid var(--border-primary)',
+          background: 'var(--cm-overlay)',
         }}
       >
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="🔍 检索字段名或值..."
+          placeholder="检索字段名或值..."
           style={{
             flex: 1,
             padding: '4px 8px',
             borderRadius: '5px',
-            border: '1px solid rgba(148, 163, 184, 0.2)',
-            background: 'rgba(2, 6, 23, 0.5)',
-            color: '#f8fafc',
+            border: '1px solid var(--border-primary)',
+            background: 'var(--cm-overlay)',
+            color: 'var(--text-primary)',
             fontSize: '11px',
             outline: 'none',
           }}
@@ -328,9 +329,9 @@ export const StructuredJsonViewer: React.FC<StructuredJsonViewerProps> = ({
             fontSize: '10px',
             padding: '3px 7px',
             borderRadius: '4px',
-            border: '1px solid rgba(148, 163, 184, 0.2)',
+            border: '1px solid var(--border-primary)',
             background: 'transparent',
-            color: '#cbd5e1',
+            color: 'var(--text-secondary)',
             cursor: 'pointer',
           }}
         >
@@ -343,9 +344,9 @@ export const StructuredJsonViewer: React.FC<StructuredJsonViewerProps> = ({
             fontSize: '10px',
             padding: '3px 7px',
             borderRadius: '4px',
-            border: '1px solid rgba(148, 163, 184, 0.2)',
+            border: '1px solid var(--border-primary)',
             background: 'transparent',
-            color: '#cbd5e1',
+            color: 'var(--text-secondary)',
             cursor: 'pointer',
           }}
         >
@@ -358,9 +359,9 @@ export const StructuredJsonViewer: React.FC<StructuredJsonViewerProps> = ({
             fontSize: '10px',
             padding: '3px 7px',
             borderRadius: '4px',
-            border: '1px solid rgba(148, 163, 184, 0.2)',
-            background: rawMode ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
-            color: rawMode ? '#38bdf8' : '#cbd5e1',
+            border: '1px solid var(--border-primary)',
+            background: rawMode ? 'color-mix(in srgb, var(--cm-data) 18%, transparent)' : 'transparent',
+            color: rawMode ? 'var(--cm-data)' : 'var(--text-secondary)',
             cursor: 'pointer',
           }}
         >
@@ -383,7 +384,7 @@ export const StructuredJsonViewer: React.FC<StructuredJsonViewerProps> = ({
               margin: 0,
               fontSize: '11px',
               fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-              color: '#e2e8f0',
+              color: 'var(--text-primary)',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-all',
             }}

@@ -15,27 +15,27 @@ export interface TaskTypeMeta {
 }
 
 export const TASK_TYPE_LABELS: Record<string, TaskTypeMeta> = {
-    SIMPLE:              { label: '自动任务',   icon: 'settings',  who: '系统自动执行', color: '#6366f1' },
-    HTTP:                { label: '接口调用',   icon: 'globe',  who: '调用外部服务', color: '#3b82f6' },
-    SWITCH:              { label: '条件判断',   icon: 'shuffle',  who: '系统判断',     color: '#f59e0b' },
-    FORK_JOIN:           { label: '并行处理',   icon: 'zap',  who: '并行执行',     color: '#8b5cf6' },
-    FORK_JOIN_DYNAMIC:   { label: '动态并行',   icon: 'zap',  who: '并行执行',     color: '#8b5cf6' },
-    DO_WHILE:            { label: '循环处理',   icon: 'repeat',  who: '系统循环',     color: '#6366f1' },
-    SUB_WORKFLOW:        { label: '子流程',     icon: 'package',  who: '调用子流程',   color: '#0ea5e9' },
-    EVENT:               { label: '发送事件',   icon: 'radio',  who: '系统发送',     color: '#10b981' },
-    WAIT:                { label: '等待',       icon: 'hourglass',  who: '系统等待',     color: '#94a3b8' },
-    HUMAN:               { label: '人工处理',   icon: 'user',  who: '需要人工操作', color: '#ec4899' },
-    INLINE:              { label: '数据处理',   icon: 'braces',  who: '系统计算',     color: '#6366f1' },
-    TERMINATE:           { label: '终止流程',   icon: 'stop-circle',  who: '结束执行',     color: '#ef4444' },
-    SET_VARIABLE:        { label: '设置变量',   icon: 'pencil',  who: '系统记录',     color: '#64748b' },
-    KAFKA_PUBLISH:       { label: '消息发布',   icon: 'send',  who: '发布消息',     color: '#f97316' },
-    JSON_JQ_TRANSFORM:   { label: '数据转换',   icon: 'shuffle',  who: '格式转换',     color: '#6366f1' },
-    START_WORKFLOW:      { label: '启动子流程', icon: 'play',  who: '触发子流程',   color: '#3b82f6' },
-    NOOP:                { label: '占位步骤',   icon: 'circle',   who: '无操作',       color: '#94a3b8' },
-    JOIN:                { label: '并行合并',   icon: 'merge',  who: '等待所有分支', color: '#8b5cf6' },
+    SIMPLE:              { label: '自动任务',   icon: 'settings',  who: '系统自动执行', color: 'var(--cm-cat-task)' },
+    HTTP:                { label: '接口调用',   icon: 'globe',  who: '调用外部服务', color: 'var(--cm-cat-task)' },
+    SWITCH:              { label: '条件判断',   icon: 'shuffle',  who: '系统判断',     color: 'var(--cm-cat-control)' },
+    FORK_JOIN:           { label: '并行处理',   icon: 'zap',  who: '并行执行',     color: 'var(--cm-cat-control)' },
+    FORK_JOIN_DYNAMIC:   { label: '动态并行',   icon: 'zap',  who: '并行执行',     color: 'var(--cm-cat-control)' },
+    DO_WHILE:            { label: '循环处理',   icon: 'repeat',  who: '系统循环',     color: 'var(--cm-cat-control)' },
+    SUB_WORKFLOW:        { label: '子流程',     icon: 'package',  who: '调用子流程',   color: 'var(--cm-cat-task)' },
+    EVENT:               { label: '发送事件',   icon: 'radio',  who: '系统发送',     color: 'var(--cm-cat-task)' },
+    WAIT:                { label: '等待',       icon: 'hourglass',  who: '系统等待',     color: 'var(--cm-cat-control)' },
+    HUMAN:               { label: '人工处理',   icon: 'user',  who: '需要人工操作', color: 'var(--cm-cat-human)' },
+    INLINE:              { label: '数据处理',   icon: 'braces',  who: '系统计算',     color: 'var(--cm-cat-data)' },
+    TERMINATE:           { label: '终止流程',   icon: 'stop-circle',  who: '结束执行',     color: 'var(--cm-status-failed)' },
+    SET_VARIABLE:        { label: '设置变量',   icon: 'pencil',  who: '系统记录',     color: 'var(--cm-cat-data)' },
+    KAFKA_PUBLISH:       { label: '消息发布',   icon: 'send',  who: '发布消息',     color: 'var(--cm-cat-task)' },
+    JSON_JQ_TRANSFORM:   { label: '数据转换',   icon: 'shuffle',  who: '格式转换',     color: 'var(--cm-cat-data)' },
+    START_WORKFLOW:      { label: '启动子流程', icon: 'play',  who: '触发子流程',   color: 'var(--cm-cat-task)' },
+    NOOP:                { label: '占位步骤',   icon: 'circle',   who: '无操作',       color: 'var(--cm-cat-control)' },
+    JOIN:                { label: '并行合并',   icon: 'merge',  who: '等待所有分支', color: 'var(--cm-cat-control)' },
 };
 
-const DEFAULT_META: TaskTypeMeta = { label: '', icon: 'settings', who: '执行', color: '#64748b' };
+const DEFAULT_META: TaskTypeMeta = { label: '', icon: 'settings', who: '执行', color: 'var(--cm-cat-task)' };
 
 /** Looks up business-friendly metadata for a task type, falling back to the type name itself as the label. */
 export function getTaskTypeMeta(taskType: string): TaskTypeMeta {

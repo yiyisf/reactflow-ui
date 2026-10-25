@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { TaskInstance } from '../types/conductor';
+import { ChartColumn, Flame, History, X } from 'lucide-react';
 
 export const ExecutionWaterfallPanel: React.FC = () => {
   const { mode, showWaterfallPanel, setShowWaterfallPanel, workflowInstance, executionData, taskMap, selectedTask, setSelectedTask, setSelectedTaskInstance, timeTravelTimestamp, setTimeTravelTimestamp } = useWorkflowStore(useShallow((s) => ({
@@ -97,15 +98,15 @@ export const ExecutionWaterfallPanel: React.FC = () => {
   const statusColor = (status?: string) => {
     switch (status) {
       case 'COMPLETED':
-        return '#10b981';
+        return 'var(--cm-status-success)';
       case 'FAILED':
       case 'FAILED_WITH_TERMINAL_ERROR':
       case 'TIMED_OUT':
-        return '#ef4444';
+        return 'var(--cm-status-failed)';
       case 'IN_PROGRESS':
-        return '#38bdf8';
+        return 'var(--cm-data)';
       default:
-        return '#94a3b8';
+        return 'var(--cm-status-skipped)';
     }
   };
 
@@ -118,11 +119,11 @@ export const ExecutionWaterfallPanel: React.FC = () => {
         bottom: 16,
         height: 255,
         zIndex: 1100,
-        background: 'rgba(15, 23, 42, 0.95)',
+        background: 'color-mix(in srgb, var(--cm-surface-1) 95%, transparent)',
         backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(56, 189, 248, 0.3)',
+        border: '1px solid color-mix(in srgb, var(--cm-data) 30%, transparent)',
         borderRadius: 12,
-        boxShadow: '0 16px 40px rgba(0, 0, 0, 0.45)',
+        boxShadow: 'var(--cm-shadow-float)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -137,22 +138,22 @@ export const ExecutionWaterfallPanel: React.FC = () => {
           justifyContent: 'space-between',
           gap: 16,
           padding: '8px 14px',
-          borderBottom: '1px solid rgba(148, 163, 184, 0.16)',
-          background: 'rgba(2, 6, 23, 0.55)',
+          borderBottom: '1px solid var(--border-primary)',
+          background: 'var(--cm-overlay)',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc' }}>
-            📊 并发执行瀑布流 & 时间旅行调试器
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+            <ChartColumn size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />并发执行瀑布流 & 时间旅行调试器
           </span>
           <span
             style={{
               fontSize: 10,
               padding: '2px 7px',
               borderRadius: 999,
-              background: 'rgba(56, 189, 248, 0.14)',
-              color: '#38bdf8',
+              background: 'color-mix(in srgb, var(--cm-data) 14%, transparent)',
+              color: 'var(--cm-data)',
               fontFamily: 'monospace',
               fontWeight: 600,
             }}
@@ -164,19 +165,19 @@ export const ExecutionWaterfallPanel: React.FC = () => {
               fontSize: 10,
               padding: '2px 7px',
               borderRadius: 999,
-              background: 'rgba(249, 115, 22, 0.15)',
-              color: '#fb923c',
+              background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+              color: 'var(--color-accent)',
               fontWeight: 600,
             }}
           >
-            🔥 关键路径耗时瓶颈高亮
+            <Flame size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />关键路径耗时瓶颈高亮
           </span>
         </div>
 
         {/* Time-Travel Scrubber */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 420 }}>
-          <span style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>
-            ⏪ 时间旅行指针:
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            <History size={12} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />时间旅行指针：
           </span>
           <input
             type="range"
@@ -191,13 +192,13 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                 setTimeTravelTimestamp(minTime + offset);
               }
             }}
-            style={{ flex: 1, cursor: 'pointer', accentColor: '#38bdf8' }}
+            style={{ flex: 1, cursor: 'pointer', accentColor: 'var(--cm-data)' }}
           />
           <span
             style={{
               fontSize: 11,
               fontFamily: 'monospace',
-              color: timeTravelTimestamp !== null ? '#fbbf24' : '#34d399',
+              color: timeTravelTimestamp !== null ? 'var(--cm-status-warning)' : 'var(--cm-status-success)',
               fontWeight: 700,
               minWidth: 74,
               textAlign: 'right',
@@ -213,9 +214,9 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                 fontSize: 10,
                 padding: '2px 7px',
                 borderRadius: 4,
-                border: '1px solid rgba(251, 191, 36, 0.4)',
-                background: 'rgba(251, 191, 36, 0.12)',
-                color: '#fbbf24',
+                border: '1px solid color-mix(in srgb, var(--cm-status-warning) 40%, transparent)',
+                background: 'color-mix(in srgb, var(--cm-status-warning) 12%, transparent)',
+                color: 'var(--cm-status-warning)',
                 cursor: 'pointer',
               }}
             >
@@ -230,13 +231,13 @@ export const ExecutionWaterfallPanel: React.FC = () => {
           style={{
             background: 'none',
             border: 'none',
-            color: '#94a3b8',
+            color: 'var(--text-muted)',
             cursor: 'pointer',
             fontSize: 15,
             padding: '2px 6px',
           }}
         >
-          ✕
+          <X size={14} strokeWidth={1.75} aria-hidden="true" />
         </button>
       </div>
 
@@ -270,10 +271,10 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                 padding: '4px 14px',
                 cursor: 'pointer',
                 background: isSelected
-                  ? 'rgba(56, 189, 248, 0.14)'
+                  ? 'color-mix(in srgb, var(--cm-data) 14%, transparent)'
                   : 'transparent',
                 opacity: isFutureInTimeTravel ? 0.35 : 1,
-                borderLeft: isSelected ? '3px solid #38bdf8' : '3px solid transparent',
+                borderLeft: isSelected ? '3px solid var(--cm-data)' : '3px solid transparent',
               }}
             >
               {/* Task Name + Iteration / Critical Path Badge */}
@@ -293,7 +294,7 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                     height: 7,
                     borderRadius: '50%',
                     background: isRunningInTimeTravel
-                      ? '#38bdf8'
+                      ? 'var(--cm-data)'
                       : statusColor(row.task.status),
                     flexShrink: 0,
                   }}
@@ -302,7 +303,7 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                   style={{
                     fontSize: 11,
                     fontFamily: 'monospace',
-                    color: '#e2e8f0',
+                    color: 'var(--text-primary)',
                     fontWeight: isSelected ? 700 : 500,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -318,13 +319,13 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                       fontSize: 9,
                       padding: '1px 4px',
                       borderRadius: 4,
-                      background: 'rgba(249, 115, 22, 0.2)',
-                      color: '#fb923c',
+                      background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                      color: 'var(--color-accent)',
                       fontWeight: 700,
                       flexShrink: 0,
                     }}
                   >
-                    🔥瓶颈
+                    <Flame size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />瓶颈
                   </span>
                 )}
               </div>
@@ -334,10 +335,10 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                 style={{
                   position: 'relative',
                   height: 14,
-                  background: 'rgba(15, 23, 42, 0.65)',
+                  background: 'var(--cm-overlay)',
                   borderRadius: 4,
                   overflow: 'hidden',
-                  border: '1px solid rgba(148, 163, 184, 0.1)',
+                  border: '1px solid var(--border-primary)',
                 }}
               >
                 {/* Queue Wait Segment */}
@@ -350,7 +351,7 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                       width: `${row.queueWidthPct}%`,
                       top: 3,
                       bottom: 3,
-                      background: 'rgba(148, 163, 184, 0.35)',
+                      background: 'color-mix(in srgb, var(--cm-text-muted) 35%, transparent)',
                       borderRadius: '2px 0 0 2px',
                     }}
                   />
@@ -366,10 +367,10 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                     bottom: 2,
                     borderRadius: 3,
                     background: row.isCritical
-                      ? 'linear-gradient(90deg, #f97316, #ef4444)'
+                      ? 'linear-gradient(90deg, var(--color-accent), var(--cm-status-failed))'
                       : statusColor(row.task.status),
                     boxShadow: isRunningInTimeTravel
-                      ? '0 0 8px rgba(56, 189, 248, 0.8)'
+                      ? '0 0 8px color-mix(in srgb, var(--cm-data) 80%, transparent)'
                       : undefined,
                   }}
                 />
@@ -382,7 +383,7 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                       top: 0,
                       bottom: 0,
                       width: 2,
-                      background: '#fbbf24',
+                      background: 'var(--cm-status-warning)',
                       pointerEvents: 'none',
                     }}
                   />
@@ -394,7 +395,7 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                 style={{
                   fontSize: 10,
                   fontFamily: 'monospace',
-                  color: row.isCritical ? '#fb923c' : '#94a3b8',
+                  color: row.isCritical ? 'var(--color-accent)' : 'var(--text-muted)',
                   textAlign: 'right',
                   fontWeight: row.isCritical ? 700 : 400,
                 }}

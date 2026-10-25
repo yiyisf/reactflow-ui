@@ -1,6 +1,7 @@
 import React from 'react';
 import { useReactFlow } from 'reactflow';
 import ControlButton from './ControlButton';
+import { Minus, Plus } from 'lucide-react';
 
 const ControlHub: React.FC = () => {
     const { zoomIn, zoomOut, fitView } = useReactFlow();
@@ -15,15 +16,15 @@ const ControlHub: React.FC = () => {
                 borderRadius: '8px',
                 border: '1px solid var(--border-primary)',
                 gap: '4px',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                boxShadow: 'var(--cm-shadow-card)'
             }}>
                 <ControlButton
-                    icon="➕"
+                    icon={<Plus size={15} strokeWidth={1.75} aria-hidden="true" />}
                     title="放大"
                     onClick={() => zoomIn()}
                 />
                 <ControlButton
-                    icon="➖"
+                    icon={<Minus size={15} strokeWidth={1.75} aria-hidden="true" />}
                     title="缩小"
                     onClick={() => zoomOut()}
                 />

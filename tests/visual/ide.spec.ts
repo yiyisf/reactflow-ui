@@ -21,6 +21,11 @@ const VIEWS: Record<string, (page: Page) => Promise<void>> = {
         await page.getByRole('group', { name: '使用模式' }).getByRole('button', { name: /专业/ }).click();
         await page.locator('.react-flow').first().waitFor();
     },
+    // AI 设计器 (the AI panel: chat, cards, canvas drawer)
+    ai: async (page) => {
+        await page.getByRole('group', { name: '设计器模式' }).getByRole('button', { name: /AI/ }).click();
+        await page.locator('.ai-cc-messages').first().waitFor();
+    },
 };
 
 for (const theme of THEMES) {
@@ -64,26 +69,31 @@ test('IDE · light theme icons are not near-white', async ({ page }) => {
     });
     await page.goto('/app.html');
     await settle(page);
-    const pale = await page.locator('[data-mode="light"] svg.lucide').evaluateAll((svgs) => {
-        const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
-        const light = (c: string) => {
-            const [r, g, b] = rgb(c);
-            return r > 225 && g > 225 && b > 225;
-        };
-        // first ancestor with an opaque-ish background; white icons on red/orange fills are fine
-        const groundOf = (el: Element | null): string => {
-            for (; el; el = el.parentElement) {
-                const bg = getComputedStyle(el).backgroundColor;
-                const a = rgb(bg)[3];
-                if (bg !== 'transparent' && (a === undefined || a > 0.5)) return bg;
-            }
-            return 'rgb(255, 255, 255)';
-        };
-        return svgs
-            .filter((s) => s.getBoundingClientRect().width > 0)
-            .filter((s) => light(getComputedStyle(s).color) && light(groundOf(s.parentElement)))
-            .map((s) => `${s.getAttribute('class')} in ${s.parentElement?.textContent?.trim().slice(0, 20)}`);
-    });
+    const pale: string[] = [];
+    for (const view of ['business-cards', 'ai'] as const) {
+        await VIEWS[view](page);
+        await settle(page);
+        pale.push(...await page.locator('[data-mode="light"] svg.lucide').evaluateAll((svgs) => {
+            const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+            const light = (c: string) => {
+                const [r, g, b] = rgb(c);
+                return r > 225 && g > 225 && b > 225;
+            };
+            // first ancestor with an opaque-ish background; white icons on red/orange fills are fine
+            const groundOf = (el: Element | null): string => {
+                for (; el; el = el.parentElement) {
+                    const bg = getComputedStyle(el).backgroundColor;
+                    const a = rgb(bg)[3];
+                    if (bg !== 'transparent' && (a === undefined || a > 0.5)) return bg;
+                }
+                return 'rgb(255, 255, 255)';
+            };
+            return svgs
+                .filter((s) => s.getBoundingClientRect().width > 0)
+                .filter((s) => light(getComputedStyle(s).color) && light(groundOf(s.parentElement)))
+                .map((s) => `${s.getAttribute('class')} in ${s.parentElement?.textContent?.trim().slice(0, 20)}`);
+        }));
+    }
     expect(pale, 'near-white icons on light grounds in light theme').toEqual([]);
 });
 

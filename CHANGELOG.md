@@ -19,6 +19,13 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **IDE 外壳的 emoji 换成 Lucide 图标**（线宽 1.75）：工具栏（数据血缘、AI 微调、撤销 / 重做、诊断、配置、沙箱试运行、模拟数据、瀑布流回放、返回编辑）、主题切换、业务视图切换、导入接口、模板中心、执行状态栏、AI IDE 视图切换与对话开关、Shadow Graph 评审条（按钮文案改为"全部采纳 / 放弃"，增删改计数改用 `--cm-diff-*`）。模板中心按钮不再使用蓝色。
 - 新增守卫测试 `src/styles/designRules.test.ts`：禁止在强调色底上写死白字；已迁移的文件不允许再出现 emoji。
 - **数据图标改为图标名**：新增 `CmIcon` 组件与 `iconRegistry`（66 个 Lucide 图标名 + 77 个常见 emoji 别名）。内置动作、模板、任务类型元数据、演示流程库数据的 `icon` 由 emoji 改为图标名（如 `'server'`、`'rocket'`）；`ActionDefinition.icon` / `WorkflowTemplate.icon` 仍为 `string`，宿主或治理服务传入的 emoji 会映射为对应图标显示，未知值显示默认图标。业务卡片、动作选择器、运行故事线、模板中心与向导、AI 指令中心、表单向导、提案卡片中的 emoji 一并换成图标；按钮与状态文案去掉了前缀 emoji。`getTaskTypeMeta` 的默认图标由 `'⚙️'` 改为 `'settings'`。
+- **AI 面板全面换用 tokens 与图标**：`AiNative.css` 的 223 处写死颜色、`components/AiNative` 各组件内联颜色全部改为 `--cm-*` / 旧别名，透明度用 `color-mix(in srgb, var(--cm-x) N%, transparent)`；状态色走 `--cm-status-*`，AI 元素走 `--cm-ai`，阴影走 `--cm-shadow-*`，状态色填充上的文字用 `--cm-on-danger`。内联指令浮层（⌘K）不再固定深色，随主题切换；Mermaid 图改用主题变量。AI 面板全部 emoji 与 ✓ ✕ ↺ ▶ 等符号换成 Lucide 图标，执行结果、连接测试与内联指令提示均为"颜色 + 图标 + 文字"。文案："确认执行"改为"运行"、"✓ 确认"改为"立即执行"、"执行中…"改为"运行中"，错误提示说明如何处理。
+- 演示站顶栏、示例选择器、文件与演示设置菜单、AI 配置弹窗去掉 emoji；运行态示例用"运行中 / 失败 / 成功"标注状态。`HeaderPopover` 的 `icon` 接受 React 节点。
+- 守卫测试加强：emoji 检查也拦截 ✓ ✕ ✗ ↺ ▶ ⚠ 等文字符号；`components/AiNative` 下所有文件自动纳入"无 emoji"与新增的"无写死颜色"检查。截图回归新增 AI 设计器视图（深 / 浅），浅色图标检查也覆盖 AI 视图。
+
+### Fixed
+- 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
+- AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。
 
 ---
 

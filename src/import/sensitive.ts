@@ -7,8 +7,12 @@ import { camelName } from './util';
 
 /** 固定视为敏感的请求头 */
 const SENSITIVE_HEADER_RE = /^(authorization|cookie|set-cookie|proxy-authorization|x-api-key)$/i;
-/** 名称含这些词的头 / 参数 / 字段视为敏感 */
-const SENSITIVE_NAME_RE = /token|secret|api[-_]?key|passw(or)?d/i;
+/**
+ * 名称含这些词的头 / 参数 / 字段视为敏感（R14 补 access key、签名、订阅密钥、凭据、会话）。
+ * `session` 只在名称以 session / session_id / session-token / session_key 结尾时命中，
+ * 避免把 sessionTimeout、sessionCount 这类普通参数当成凭据。
+ */
+const SENSITIVE_NAME_RE = /token|secret|api[-_]?key|passw(or)?d|access[-_]?key|signature|subscription[-_]?key|credential|session(?:[-_]?(?:id|token|key))?$/i;
 
 export function isSensitiveHeader(name: string): boolean {
     return SENSITIVE_HEADER_RE.test(name.trim()) || SENSITIVE_NAME_RE.test(name);

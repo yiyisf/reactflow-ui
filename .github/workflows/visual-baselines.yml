@@ -2,7 +2,8 @@ name: Visual baselines
 
 # Regenerates tests/visual/__screenshots__ inside the same Playwright image the check uses, and commits them to the
 # branch. Use it once to create the first baselines, and whenever a visual change is intended:
-#   - on a pull request: add the label "update-visual-baselines" (works before this file reaches the default branch)
+#   - on a pull request: add the label "update-visual-baselines" (works before this file reaches the default branch).
+#     The label is a one-shot command: the workflow removes it when done, so add it again for the next regeneration.
 #   - on any branch: run it manually from the Actions tab (workflow_dispatch)
 # Review the committed images in the PR diff before merging, then re-run the "Visual regression" check.
 
@@ -13,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 env:
   PLAYWRIGHT_VERSION: 1.56.1
@@ -25,7 +27,7 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.56.1-noble
     steps:
       - name: Install git
-        run: apt-get update && apt-get install -y --no-install-recommends git
+        run: apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
 
       - uses: actions/checkout@v4
         with:
@@ -52,3 +54,13 @@ jobs:
             git commit -m "test(visual): update screenshot baselines"
             git push origin "HEAD:${{ github.head_ref || github.ref_name }}"
           fi
+
+      - name: Remove the trigger label
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sS -X DELETE \
+            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/update-visual-baselines" \
+            -o /dev/null -w "label removal: HTTP %{http_code}\n"

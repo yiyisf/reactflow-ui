@@ -11,7 +11,7 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 ### Added
 - **CMASTER 设计 tokens 编译**：`design/tokens.json` 为唯一来源，`npm run tokens:build` 生成 `src/styles/cmaster-tokens.css`（`--cm-*` 变量，`data-mode="dark" | "light"` 双主题）与 `src/styles/cmasterTokens.ts`（含 5 套活动主题色）；`npm run tokens:check` 进 CI，生成物过期即失败。新增单测 `cmasterTokens.test.ts`：两个主题下文字与地色对比度 ≥ 4.5:1、状态色与焦点环 ≥ 3:1、橙底文字与活动主题按钮文字 ≥ 4.5:1、标志橙在所有主题不变。
 - **AI 协作约定**：根目录 `CLAUDE.md`（硬规则与完成前检查）、`AGENTS.md`、项目 skill `.claude/skills/cmaster-design`（按任务类型指向规范与黄金示例，含交付前检查清单）；`design/` 收录品牌手册、IDE 布局、文档站、宣传页、海报与社媒规范，24 个组件规范、参考样式 `reference/components.css`、9 个黄金示例与 Logo。
-- **截图回归**：Playwright 视觉测试覆盖演示 IDE（深 / 浅 × 业务 / 标准 / 开发者）与全部黄金示例，并检查橙色按钮悬停时文字不与底色相同；`Visual regression` 工作流在官方 Playwright 容器中比对，`Visual baselines` 工作流（PR 加 `update-visual-baselines` 标签或手动触发）生成并提交基线。
+- **截图回归**：Playwright 视觉测试覆盖演示 IDE（深 / 浅 × 业务卡片流 / 全景画布 / 专业模式，视图通过点击界面切换，并校验三个视图截图确实不同）与全部黄金示例，并检查橙色按钮悬停时文字不与底色相同；`Visual regression` 工作流在官方 Playwright 容器中比对，`Visual baselines` 工作流（PR 加 `update-visual-baselines` 标签或手动触发）生成并提交基线。
 
 ### Changed
 - **IDE 换用 CMASTER 视觉**：旧变量（`--bg-*`、`--text-*`、`--border-*`、`--font-*`、`--radius-*`、`--color-success/warning/error/info`、`--status-*`）改为 `--cm-*` 的别名，深色主题由 slate 灰蓝换为 CMASTER 海军蓝，圆角放大一档，运行中状态改用数据青色，`themeColor="orange"` 使用 CMASTER 橙（`#ff6a13`）。`themeColor="blue"` 保留但标记为弃用。演示站加载 Geist / Geist Mono 字体；库本身不加载字体。

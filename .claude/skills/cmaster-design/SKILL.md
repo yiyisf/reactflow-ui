@@ -26,6 +26,8 @@ Component styling: `design/reference/components.css` is the reference implementa
 - **Surface and theme:** IDE / landing / docs / poster; dark and light both supported (IDE, docs) or a chosen poster ground (night / paper).
 - **Accent:** product UI is always brand orange. Marketing picks exactly one campaign palette by content type:
   Ember = release and overview, Glacier = data and integration, Nebula = AI, Signal = milestones and numbers, Solar = events and training.
+  Release pages also take a campaign palette (`data-campaign` on `<html>`, `src/marketing/campaign.css`), different from the
+  previous version's; see the rotation table in `design/guidelines/marketing.md`.
 - **Which components** from `design/components/` you are using. Prefer an existing component over a new pattern.
 - **Copy:** Chinese, verb-first, says what happens. Real content only; unknown facts become `[占位]` placeholders, never invented numbers.
 

@@ -1,5 +1,5 @@
 /** 值中含 `${...}` 引用（数据胶囊 / 表达式）时视为运行时取值，编译时原样保留 */
-export const isExpressionValue = (v: unknown): v is string => typeof v === 'string' && v.includes('${');
+export const isExpressionValue = (v: unknown): boolean => typeof v === 'string' && v.includes('${');
 
 /**
  * 数字字段编译：

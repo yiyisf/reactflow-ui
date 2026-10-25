@@ -99,3 +99,13 @@ describe('B16 试跑徽标按真实状态显示', () => {
     expect(runStatusBadge(undefined).label).toBe('等待中');
   });
 });
+
+describe('B17 删除确认文案', () => {
+  it('控制流删除时说明连带删除的内部步骤数', async () => {
+    const { confirmDeleteMessage } = await import('../components/business/deleteMessage');
+    const fork = withRef(createStepFromAction(action('control.fork')), 'f');
+    fork.forkLanes![0].steps = [withRef(createStepFromAction(action('ecs.query_instance')), 'q')];
+    expect(confirmDeleteMessage(fork, R)).toContain('其中的 1 个步骤');
+    expect(confirmDeleteMessage(withRef(createStepFromAction(action('ecs.query_instance')), 'q2'), R)).toContain('「查询云主机详情」');
+  });
+});

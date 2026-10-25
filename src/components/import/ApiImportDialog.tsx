@@ -6,6 +6,7 @@ import type { ActionDefinition } from '../../actions/types';
 import { parseApiText } from '../../import/detect';
 import { buildHttpAction } from '../../import/buildAction';
 import { CURL_SAMPLE } from '../../import/curl';
+import { applyToVisible, initialSelection, visibleSlice } from '../../import/selection';
 import type { ImportFormat, ImportedOperation, ParseResult } from '../../import/types';
 import { TriangleAlert, X } from 'lucide-react';
 
@@ -86,9 +87,9 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
     const result = useMemo<ParseResult | null>(() => (text.trim() ? parseApiText(text) : null), [text]);
     const operations: ImportedOperation[] = useMemo(() => (result && result.ok ? result.operations : []), [result]);
 
-    // 解析出新的接口列表时默认全选
+    // R16: 解析出新的接口列表时，全部能显示才默认全选；超出显示上限时默认不选，避免插入看不到的接口
     useEffect(() => {
-        setSelected(new Set(operations.map((o) => o.id)));
+        setSelected(initialSelection(operations, RENDER_LIMIT));
         setSearch('');
         setShowAllWarnings(false);
     }, [operations]);
@@ -112,7 +113,7 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
             ),
         [operations, keyword],
     );
-    const visible = filtered.slice(0, RENDER_LIMIT);
+    const { visible, hiddenCount } = visibleSlice(filtered, RENDER_LIMIT);
     const selectedCount = operations.filter((o) => selected.has(o.id)).length;
 
     const toggle = (id: string) =>
@@ -122,15 +123,8 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
             else next.add(id);
             return next;
         });
-    const setAllFiltered = (on: boolean) =>
-        setSelected((prev) => {
-            const next = new Set(prev);
-            for (const o of filtered) {
-                if (on) next.add(o.id);
-                else next.delete(o.id);
-            }
-            return next;
-        });
+    // 全选 / 全不选只作用于当前显示的行
+    const setAllVisible = (on: boolean) => setSelected((prev) => applyToVisible(prev, visible, on));
 
     const handleFile = async (file: File | undefined) => {
         if (!file) return;
@@ -394,10 +388,10 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
                                         outline: 'none',
                                     }}
                                 />
-                                <button type="button" style={buttonBase} onClick={() => setAllFiltered(true)}>
-                                    全选{keyword ? '结果' : ''}
+                                <button type="button" style={buttonBase} onClick={() => setAllVisible(true)}>
+                                    {hiddenCount > 0 ? `全选显示的 ${visible.length} 项` : `全选${keyword ? '结果' : ''}`}
                                 </button>
-                                <button type="button" style={buttonBase} onClick={() => setAllFiltered(false)}>
+                                <button type="button" style={buttonBase} onClick={() => setAllVisible(false)}>
                                     全不选
                                 </button>
                             </div>
@@ -451,9 +445,9 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
                                 {filtered.length === 0 && (
                                     <li style={{ textAlign: 'center', padding: '28px 0', fontSize: 12, color: 'var(--text-muted)' }}>没有符合条件的接口</li>
                                 )}
-                                {filtered.length > visible.length && (
+                                {hiddenCount > 0 && (
                                     <li style={{ textAlign: 'center', padding: '8px 0', fontSize: 12, color: 'var(--text-muted)' }}>
-                                        共 {filtered.length} 项，仅显示前 {visible.length} 项，请用搜索缩小范围
+                                        另有 {hiddenCount} 个未显示，请用搜索缩小范围
                                     </li>
                                 )}
                             </ul>

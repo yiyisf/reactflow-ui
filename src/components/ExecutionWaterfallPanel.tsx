@@ -3,6 +3,7 @@ import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { TaskInstance } from '../types/conductor';
 import { ChartColumn, Flame, History, X } from 'lucide-react';
+import { getStatusMeta } from '../utils/statusMeta';
 
 export const ExecutionWaterfallPanel: React.FC = () => {
   const { mode, showWaterfallPanel, setShowWaterfallPanel, workflowInstance, executionData, taskMap, selectedTask, setSelectedTask, setSelectedTaskInstance, timeTravelTimestamp, setTimeTravelTimestamp } = useWorkflowStore(useShallow((s) => ({
@@ -95,20 +96,8 @@ export const ExecutionWaterfallPanel: React.FC = () => {
   const currentScrubMs = timeTravelTimestamp !== null ? timeTravelTimestamp - minTime : totalSpanMs;
   const scrubPct = Math.min(Math.max((currentScrubMs / totalSpanMs) * 100, 0), 100);
 
-  const statusColor = (status?: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'var(--cm-status-success)';
-      case 'FAILED':
-      case 'FAILED_WITH_TERMINAL_ERROR':
-      case 'TIMED_OUT':
-        return 'var(--cm-status-failed)';
-      case 'IN_PROGRESS':
-        return 'var(--cm-data)';
-      default:
-        return 'var(--cm-status-skipped)';
-    }
-  };
+  // R18: one status helper for colour + icon + Chinese word.
+  const statusColor = (status?: string) => getStatusMeta(status).color;
 
   return (
     <div
@@ -288,17 +277,20 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                   textOverflow: 'ellipsis',
                 }}
               >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: isRunningInTimeTravel
-                      ? 'var(--cm-data)'
-                      : statusColor(row.task.status),
-                    flexShrink: 0,
-                  }}
-                />
+                {(() => {
+                  const meta = getStatusMeta(isRunningInTimeTravel ? 'IN_PROGRESS' : row.task.status);
+                  const RowIcon = meta.icon;
+                  return (
+                    <span
+                      role="img"
+                      aria-label={`状态：${meta.label}`}
+                      title={meta.label}
+                      style={{ display: 'inline-flex', color: meta.color, flexShrink: 0 }}
+                    >
+                      <RowIcon size={12} strokeWidth={1.75} aria-hidden="true" />
+                    </span>
+                  );
+                })()}
                 <span
                   style={{
                     fontSize: 11,
@@ -400,6 +392,9 @@ export const ExecutionWaterfallPanel: React.FC = () => {
                   fontWeight: row.isCritical ? 700 : 400,
                 }}
               >
+                {row.task.status !== 'COMPLETED' && !isRunningInTimeTravel ? (
+                  <span style={{ color: statusColor(row.task.status), marginRight: 4 }}>{getStatusMeta(row.task.status).label}</span>
+                ) : null}
                 {row.execMs}ms
                 {row.queueMs > 0 ? (
                   <span style={{ opacity: 0.6, fontSize: 9 }}> (+{row.queueMs}q)</span>

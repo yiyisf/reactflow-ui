@@ -8,10 +8,12 @@ import { isPromotableName } from '../../onboarding/naming';
 import { OnboardingWizard } from './OnboardingWizard';
 import type { OnboardingCreateResult } from './OnboardingWizard';
 import { PromotionPanel } from './PromotionPanel';
+import type { PendingPromotion } from './PromotionPanel';
 import { OnboardingGuideCard } from './OnboardingGuideCard';
 import { useOnboardingData } from './useOnboardingData';
 import type { OnboardingData } from './useOnboardingData';
 import { Rocket } from 'lucide-react';
+import ConfirmDialog from '../ConfirmDialog';
 
 /** 向导创建骨架后、选择了模板 / 导入时暂存的流程身份，供宿主在后续步骤里保留名称 */
 export interface PendingIdentity {
@@ -41,6 +43,9 @@ export interface OnboardingController {
   level: WorkflowLevel | undefined;
   wizardOpen: boolean;
   promoOpen: boolean;
+  /** 「新建流程」会替换画布上的流程，正在请用户确认 */
+  confirmReplace: boolean;
+  resolveConfirmReplace: (proceed: boolean) => void;
   openWizard: () => void;
   openPromotion: () => void;
   /** 当前流程是否可申请上线（名称可解析且类型为 tmp） */
@@ -59,6 +64,9 @@ export interface OnboardingController {
   onImportApi?: () => void;
   ownerEmail?: string;
   track: OnboardingControllerOptions['track'];
+  /** 已提交、未到终态的上线申请（按流程名称与版本） */
+  getPendingPromotion: (name: string, version: number) => PendingPromotion | null;
+  setPendingPromotion: (name: string, version: number, request: PendingPromotion | null) => void;
 }
 
 /**
@@ -73,7 +81,10 @@ export function useOnboardingController(opts: OnboardingControllerOptions): Onbo
   const [promoOpen, setPromoOpen] = useState(false);
   const [level, setLevel] = useState<WorkflowLevel | undefined>(undefined);
   const [guideDismissed, setGuideDismissed] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState(false);
   const pendingRef = useRef<PendingIdentity | null>(null);
+  // R12: submitted promotion requests per workflow name + version, so reopening the panel resumes polling
+  const promotionsRef = useRef<Record<string, PendingPromotion>>({});
 
   const workflowName = useWorkflowStore((s) => s.workflowDef?.name);
   const hasWorkflow = useWorkflowStore((s) => !!s.workflowDef);
@@ -85,15 +96,20 @@ export function useOnboardingController(opts: OnboardingControllerOptions): Onbo
     setLevel(undefined);
     setGuideDismissed(false);
     pendingRef.current = null;
+    promotionsRef.current = {};
   }, [provider]);
 
   const enabled = !!provider && !disabled;
+  // P2: the skeleton's ownerEmail comes from the host option, else from the onboarding context user
+  const effectiveOwnerEmail = ownerEmail ?? data.context?.user?.email;
 
   const handleCreate = useCallback((r: OnboardingCreateResult) => {
     const store = useWorkflowStore.getState();
+    // R8: replacing an existing workflow stays undoable; only a fresh canvas starts a clean history.
+    const hadWorkflow = (store.workflowDef?.tasks?.length ?? 0) > 0;
     store.setWorkflow(r.def);
     store.setMode('edit');
-    useWorkflowStore.temporal.getState().clear();
+    if (!hadWorkflow) useWorkflowStore.temporal.getState().clear();
     setLevel(r.level);
     pendingRef.current = r.source === 'blank'
       ? null
@@ -121,7 +137,22 @@ export function useOnboardingController(opts: OnboardingControllerOptions): Onbo
     level,
     wizardOpen,
     promoOpen,
-    openWizard: () => { pendingRef.current = null; setWizardOpen(true); },
+    openWizard: () => {
+      // R8: a workflow on the canvas would be replaced — ask first.
+      if ((useWorkflowStore.getState().workflowDef?.tasks?.length ?? 0) > 0) {
+        setConfirmReplace(true);
+        return;
+      }
+      pendingRef.current = null;
+      setWizardOpen(true);
+    },
+    confirmReplace,
+    resolveConfirmReplace: (proceed: boolean) => {
+      setConfirmReplace(false);
+      if (!proceed) return;
+      pendingRef.current = null;
+      setWizardOpen(true);
+    },
     openPromotion: () => setPromoOpen(true),
     canPromote: enabled && hasWorkflow && isPromotableName(workflowName),
     showGuide,
@@ -137,8 +168,14 @@ export function useOnboardingController(opts: OnboardingControllerOptions): Onbo
     handleTrialStarted,
     onPickTemplate,
     onImportApi,
-    ownerEmail,
+    ownerEmail: effectiveOwnerEmail,
     track,
+    getPendingPromotion: (name, version) => promotionsRef.current[`${name}@${version}`] ?? null,
+    setPendingPromotion: (name, version, request) => {
+      const key = `${name}@${version}`;
+      if (request) promotionsRef.current[key] = request;
+      else delete promotionsRef.current[key];
+    },
   };
 }
 
@@ -203,6 +240,13 @@ export function OnboardingOverlays({ c }: { c: OnboardingController }) {
   if (!provider || !c.enabled) return null;
   return (
     <>
+      {c.confirmReplace && (
+        <ConfirmDialog
+          message="新建流程会替换当前画布上的流程。替换后可以用撤销（⌘Z / Ctrl+Z）找回。继续新建吗？"
+          onConfirm={() => c.resolveConfirmReplace(true)}
+          onCancel={() => c.resolveConfirmReplace(false)}
+        />
+      )}
       {c.wizardOpen && data.context && (
         <OnboardingWizard
           provider={provider}
@@ -226,6 +270,8 @@ export function OnboardingOverlays({ c }: { c: OnboardingController }) {
           onClose={c.close}
           onRequested={(targetType) => c.track('promotion_requested', { targetType })}
           onStateChange={(state) => c.track('promotion_state', { state })}
+          resumeRequest={c.getPendingPromotion(name, version ?? 1)}
+          onRequestChange={(req) => c.setPendingPromotion(name, version ?? 1, req)}
         />
       )}
     </>

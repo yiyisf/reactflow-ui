@@ -1,6 +1,7 @@
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
-import type { TaskExecutionData, ExecutionStatus } from '../types/workflow';
+import type { TaskExecutionData } from '../types/workflow';
+import { countRetries, findEnclosingLoopRef, selectExecutionForIteration } from '../utils/executionImport';
 
 /**
  * 获取节点的运行态信息（mode、executionData、retryCount），
@@ -19,33 +20,10 @@ export const useNodeExecution = (taskReferenceName: string) => {
 
     let execution: TaskExecutionData | null = rawExecution ? { ...rawExecution } : null;
 
-    // 1. Check if this task belongs to a DO_WHILE loop with an active iteration selected
+    // 1. R3: apply only the iteration chosen for THIS node's enclosing DO_WHILE; within it, the last attempt wins.
     if (isRunning && execution && execution.attempts.length > 1 && workflowDef?.tasks) {
-        let selectedIter = 0;
-        for (const [loopRef, iterNum] of Object.entries(activeLoopIterations)) {
-            if (!iterNum) continue;
-            const loopExec = executionData?.[loopRef];
-            if (loopExec || execution.attempts.some(a => a.iteration === iterNum)) {
-                selectedIter = iterNum;
-                break;
-            }
-        }
-        if (selectedIter > 0) {
-            const matchedAttempt =
-                execution.attempts.find(a => a.iteration === selectedIter) ||
-                execution.attempts[selectedIter - 1];
-            if (matchedAttempt) {
-                execution = {
-                    ...execution,
-                    status: matchedAttempt.status as ExecutionStatus,
-                    startTime: matchedAttempt.startTime,
-                    endTime: matchedAttempt.endTime,
-                    input: matchedAttempt.inputData,
-                    output: matchedAttempt.outputData,
-                    iteration: matchedAttempt.iteration ?? selectedIter,
-                };
-            }
-        }
+        const loopRef = findEnclosingLoopRef(workflowDef.tasks, taskReferenceName);
+        execution = selectExecutionForIteration(execution, loopRef, activeLoopIterations);
     }
 
     // 2. Project node status at timeTravelTimestamp if Time-Travel scrubber is active
@@ -65,11 +43,12 @@ export const useNodeExecution = (taskReferenceName: string) => {
         }
     }
 
-    // 如果 attempts 中存在 iteration > 1 的条目，说明是 DO_WHILE 迭代，不是重试
-    const hasLoopIterations =
-        execution?.attempts.some(a => a.iteration !== undefined && a.iteration > 1) ?? false;
-    const lastAttempt = execution?.attempts[execution.attempts.length - 1];
-    const retryCount = hasLoopIterations ? 0 : (lastAttempt?.retryCount ?? 0);
+    // R5: loop iterations are not retries. Show the retries of the shown iteration (or of the task outside loops).
+    const shownIteration = execution?.iteration;
+    const shownAttempts = execution
+        ? (shownIteration !== undefined ? execution.attempts.filter(a => a.iteration === shownIteration) : execution.attempts)
+        : [];
+    const retryCount = countRetries(shownAttempts);
 
     let durationText: string | undefined;
     if (isRunning && execution?.startTime) {

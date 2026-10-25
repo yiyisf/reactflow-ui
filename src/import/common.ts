@@ -36,20 +36,40 @@ export function collectWarnings(ops: ImportedOperation[], extra: string[] = []):
     return out;
 }
 
-/** 把 JSON 示例的顶层属性作为默认值写入 schema；敏感字段名的默认值换成占位 */
+/**
+ * 把 JSON 示例的顶层属性作为默认值写入 schema；敏感字段（任意层级，R7）的默认值换成占位。
+ * 嵌套字段的占位名取路径（`credentials.password` → `${workflow.input.credentialsPassword}`）；
+ * 敏感名下面的所有标量值都视为敏感（如 `credentials: { user, pass }`）。
+ */
 export function schemaWithDefaults(example: unknown, warnings: string[]): Record<string, any> {
     const schema = inferSchema(example);
     if (isPlainObject(example) && schema.properties) {
         for (const [k, v] of Object.entries(example)) {
-            if (isSensitiveName(k) && typeof v === 'string') {
-                schema.properties[k].default = inputPlaceholder(k);
-                warnings.push(`请求体字段 ${k} 疑似敏感信息，默认值已替换为 ${inputPlaceholder(k)}`);
-            } else {
-                schema.properties[k].default = v;
-            }
+            schema.properties[k].default = redactSensitive(v, [k], isSensitiveName(k), warnings);
         }
     }
     return schema;
+}
+
+/** 递归替换敏感值；返回新值，不修改入参 */
+export function redactSensitive(value: unknown, path: string[], underSensitive: boolean, warnings: string[]): unknown {
+    const name = path[path.length - 1] ?? '';
+    const sensitive = underSensitive || isSensitiveName(name);
+    if (Array.isArray(value)) {
+        return value.map((item, i) => redactSensitive(item, [...path, String(i)], sensitive, warnings));
+    }
+    if (isPlainObject(value)) {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value)) out[k] = redactSensitive(v, [...path, k], sensitive, warnings);
+        return out;
+    }
+    if (sensitive && (typeof value === 'string' || typeof value === 'number') && !String(value).includes('${')) {
+        const placeholderName = path.filter((p) => !/^\d+$/.test(p)).join('_');
+        const placeholder = inputPlaceholder(placeholderName);
+        warnings.push(`请求体字段 ${path.join('.')} 疑似敏感信息，默认值已替换为 ${placeholder}`);
+        return placeholder;
+    }
+    return value;
 }
 
 /** 把查询串解析为 query 参数（字面量作为默认值；敏感参数名的值替换为占位） */

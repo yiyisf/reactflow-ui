@@ -131,8 +131,8 @@ describe('OpenAPI 3', () => {
         expect(list.map((o) => o.id)).toEqual([
             'get_list_assets',
             'post_create_asset',
-            'get_get_asset',
-            'delete_delete_asset',
+            'get_asset',
+            'delete_asset',
             'get_list_relations',
         ]);
         expect(list.every((o) => o.baseUrl === 'https://test.cmdb.example.com/api/v1')).toBe(true);

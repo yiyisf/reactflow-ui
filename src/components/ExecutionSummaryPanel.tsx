@@ -3,34 +3,13 @@ import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { CmIcon } from './icons/CmIcon';
 import { analyzeExecution, formatDuration, getCategoryIcon, getCategoryColor, ExecutionSummary } from '../utils/executionAnalyzer';
-import { ExecutionStatus } from '../types/workflow';
+import { getStatusMeta } from '../utils/statusMeta';
 import { TemplateExtractor } from './template/TemplateExtractor';
 import './ExecutionSummaryPanel.css';
 import { Hammer, X } from 'lucide-react';
 
-const STATUS_LABELS: Record<ExecutionStatus, string> = {
-    COMPLETED: '完成',
-    COMPLETED_WITH_ERRORS: '完成(含错误)',
-    FAILED: '失败',
-    FAILED_WITH_TERMINAL_ERROR: '终态失败',
-    IN_PROGRESS: '执行中',
-    SCHEDULED: '等待中',
-    TIMED_OUT: '超时',
-    SKIPPED: '跳过',
-    CANCELED: '已取消',
-};
-
-const STATUS_COLORS: Record<string, string> = {
-    COMPLETED: 'var(--status-completed)',
-    COMPLETED_WITH_ERRORS: 'var(--status-completed)',
-    FAILED: 'var(--status-failed)',
-    FAILED_WITH_TERMINAL_ERROR: 'var(--status-failed)',
-    IN_PROGRESS: 'var(--status-running)',
-    SCHEDULED: 'var(--status-scheduled)',
-    TIMED_OUT: 'var(--status-failed)',
-    SKIPPED: 'var(--status-skipped)',
-    CANCELED: 'var(--status-failed)',
-};
+/** Sandbox dry runs use this id prefix; they are not real runs, so they cannot become templates (R17). */
+const isSandboxInstance = (workflowId?: string) => !!workflowId && workflowId.startsWith('sandbox-dryrun-');
 
 const ExecutionSummaryPanel: React.FC = () => {
     const [showExtractor, setShowExtractor] = useState(false);
@@ -55,7 +34,8 @@ const ExecutionSummaryPanel: React.FC = () => {
     const successRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     const wfStatus = workflowInstance?.status;
-    const statusColor = wfStatus ? STATUS_COLORS[wfStatus] ?? 'var(--text-secondary)' : 'var(--text-secondary)';
+    const wfMeta = wfStatus ? getStatusMeta(wfStatus) : null;
+    const WfIcon = wfMeta?.icon;
 
     return (
         <div className="esp-panel glass-panel">
@@ -68,12 +48,13 @@ const ExecutionSummaryPanel: React.FC = () => {
                     </svg>
                     执行分析
                 </div>
-                {wfStatus && (
-                    <span className="esp-wf-status" style={{ color: statusColor }}>
-                        {STATUS_LABELS[wfStatus as ExecutionStatus] ?? wfStatus}
+                {wfMeta && WfIcon && (
+                    <span className="esp-wf-status" style={{ color: wfMeta.color, display: 'inline-flex', alignItems: 'center', gap: 4 }} title={wfStatus}>
+                        <WfIcon size={12} strokeWidth={1.75} aria-hidden="true" />
+                        {wfMeta.label}
                     </span>
                 )}
-                {workflowInstance && (
+                {workflowInstance && !isSandboxInstance(workflowInstance.workflowId) && (
                     <button
                         onClick={() => setShowExtractor(true)}
                         style={{
@@ -172,7 +153,8 @@ const ExecutionSummaryPanel: React.FC = () => {
                         <span>重试</span>
                     </div>
                     {steps.map((step, idx) => {
-                        const color = STATUS_COLORS[step.status] ?? 'var(--text-secondary)';
+                        const meta = getStatusMeta(step.status);
+                        const StepIcon = meta.icon;
                         const task = taskMap[step.taskRef];
                         return (
                             <button
@@ -183,13 +165,14 @@ const ExecutionSummaryPanel: React.FC = () => {
                             >
                                 <span className="esp-step-idx">{idx + 1}</span>
                                 <span className="esp-step-ref">{step.taskRef}</span>
-                                <span className="esp-step-status" style={{ color }}>
-                                    <span className="esp-status-dot" style={{ background: color }} />
-                                    {STATUS_LABELS[step.status] ?? step.status}
+                                <span className="esp-step-status" style={{ color: meta.color }} title={step.status}>
+                                    <StepIcon size={12} strokeWidth={1.75} aria-hidden="true" />
+                                    {meta.label}
                                 </span>
                                 <span className="esp-step-duration">{formatDuration(step.durationMs)}</span>
-                                <span className="esp-step-retry" style={{ color: step.retryCount > 0 ? 'var(--status-failed)' : 'var(--text-secondary)' }}>
-                                    {step.retryCount > 0 ? `${step.retryCount}次` : '-'}
+                                <span className="esp-step-retry" style={{ color: step.retryCount > 0 ? 'var(--status-failed)' : 'var(--text-secondary)' }}
+                                    title={step.iterationCount > 0 ? `${step.iterationCount} 轮迭代` : undefined}>
+                                    {step.retryCount > 0 ? `${step.retryCount} 次` : '-'}
                                 </span>
                             </button>
                         );
@@ -204,7 +187,7 @@ const ExecutionSummaryPanel: React.FC = () => {
                     instance={workflowInstance}
                     onClose={() => setShowExtractor(false)}
                     onPublished={() => {
-                        console.log('[ExecutionSummaryPanel] 模板已成功发布到场景中心');
+                        console.log('[ExecutionSummaryPanel] 模板已发布到本页模板中心');
                     }}
                 />
             )}

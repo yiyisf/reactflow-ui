@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { OnboardingProvider, PromotionStatus } from '../../providers/types';
 import { promotionTargetName } from '../../onboarding/naming';
 import type { PromotionTargetType } from '../../onboarding/naming';
-import { buildPromotionTimeline, isAbortError, pollPromotion } from '../../onboarding/poll';
+import { buildPromotionTimeline, isAbortError, isTerminalPromotionState, pollPromotion } from '../../onboarding/poll';
 import { ModalShell } from './ModalShell';
 import {
   disabledStyle,
@@ -25,6 +25,15 @@ export interface PromotionPanelProps {
   onRequested?: (targetType: PromotionTargetType) => void;
   /** 状态变化（埋点：promotion_state），同一状态只回调一次 */
   onStateChange?: (state: PromotionStatus['state']) => void;
+  /** 关闭前已提交、尚未到终态的申请：重新打开时接着轮询，不会重复提交（R12） */
+  resumeRequest?: PendingPromotion | null;
+  /** 提交成功时传入申请；到达终态（SYNCED / REJECTED）时传 null。宿主据此保存 / 清除 resumeRequest */
+  onRequestChange?: (request: PendingPromotion | null) => void;
+}
+
+export interface PendingPromotion {
+  requestId: string;
+  targetType: PromotionTargetType;
 }
 
 const TARGETS: { value: PromotionTargetType; title: string; desc: string }[] = [
@@ -47,18 +56,18 @@ const DOT_COLOR: Record<string, string> = {
  * 申请上线面板：选择目标类型 → 预览正式名称 → 提交 → 轮询进度（指数退避，30 秒封顶）。
  * 轮询在关闭面板 / 卸载时中止。
  */
-export function PromotionPanel({ provider, workflowName, version, onClose, onRequested, onStateChange }: PromotionPanelProps) {
+export function PromotionPanel({ provider, workflowName, version, onClose, onRequested, onStateChange, resumeRequest, onRequestChange }: PromotionPanelProps) {
   const titleId = useId();
-  const [targetType, setTargetType] = useState<PromotionTargetType>('custom');
-  const [requestId, setRequestId] = useState<string | null>(null);
+  const [targetType, setTargetType] = useState<PromotionTargetType>(resumeRequest?.targetType ?? 'custom');
+  const [requestId, setRequestId] = useState<string | null>(resumeRequest?.requestId ?? null);
   const [status, setStatus] = useState<PromotionStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastStateRef = useRef<string | null>(null);
-  const cbRef = useRef({ onRequested, onStateChange });
-  cbRef.current = { onRequested, onStateChange };
+  const cbRef = useRef({ onRequested, onStateChange, onRequestChange });
+  cbRef.current = { onRequested, onStateChange, onRequestChange };
 
   const targetName = promotionTargetName(workflowName, targetType);
 
@@ -82,6 +91,7 @@ export function PromotionPanel({ provider, workflowName, version, onClose, onReq
             lastStateRef.current = s.state;
             cbRef.current.onStateChange?.(s.state);
           }
+          if (isTerminalPromotionState(s.state)) cbRef.current.onRequestChange?.(null);
         },
       });
     } catch (e) {
@@ -98,6 +108,7 @@ export function PromotionPanel({ provider, workflowName, version, onClose, onReq
     try {
       const { requestId: id } = await provider.requestPromotion({ workflowName, version, targetType });
       setRequestId(id);
+      cbRef.current.onRequestChange?.({ requestId: id, targetType });
       cbRef.current.onRequested?.(targetType);
       void startPolling(id);
     } catch (e) {
@@ -106,6 +117,12 @@ export function PromotionPanel({ provider, workflowName, version, onClose, onReq
       setSubmitting(false);
     }
   };
+
+  // 重新打开面板时接着轮询已提交的申请（只在挂载时执行一次）
+  const resumeIdRef = useRef(resumeRequest?.requestId ?? null);
+  useEffect(() => {
+    if (resumeIdRef.current) void startPolling(resumeIdRef.current);
+  }, [startPolling]);
 
   const submitted = requestId !== null;
   const timeline = buildPromotionTimeline(status ? status.state : submitted ? 'SUBMITTED' : null);

@@ -34,7 +34,8 @@ import {
 } from './components/onboarding/OnboardingController';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
-import { LayoutList, LayoutTemplate, Network, Plug } from 'lucide-react';
+import { LayoutList, LayoutTemplate, Network, Plug, TriangleAlert, X } from 'lucide-react';
+import { saveNameHint } from './onboarding/naming';
 
 /**
  * WorkflowIDE 的命令式 API（通过 ref 调用）
@@ -262,13 +263,6 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     useIdeOpenedOnce(track);
     // 专业模式本地试跑（ActionBar / SandboxConfigModal 都经 store.runLocalSandboxDryRun）
     useProStoreTelemetry(track);
-    const onSave = useMemo(() => {
-        if (!onSaveProp) return undefined;
-        return (def: WorkflowDef) => {
-            track('workflow_saved');
-            onSaveProp(def);
-        };
-    }, [onSaveProp, track]);
     const handleStepAdded = useCallback((info: { source: 'library' | 'builtin' }) => {
         track('step_added', { source: info.source });
     }, [track]);
@@ -296,6 +290,19 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         // 向导起点「从接口导入」：先建好骨架流程，再打开接口导入对话框
         onImportApi: () => setShowApiImport(true),
     });
+    // R15（设计 3.3）：启用自助接入时，保存前用命名规范检查名称，只提示不阻断
+    const [saveNameNotice, setSaveNameNotice] = useState<string | null>(null);
+    const onboardingEnabled = !!resolvedProviders.onboarding;
+    const onboardingDomains = onboarding.data.domains;
+    const onSave = useMemo(() => {
+        if (!onSaveProp) return undefined;
+        return (def: WorkflowDef) => {
+            setSaveNameNotice(onboardingEnabled ? saveNameHint(def.name, onboardingDomains) : null);
+            track('workflow_saved');
+            onSaveProp(def);
+        };
+    }, [onSaveProp, track, onboardingEnabled, onboardingDomains]);
+
     // 宿主没传 currentWorkflowLevel 时，用向导选择的层级作为默认
     const effectiveWorkflowLevel = currentWorkflowLevel ?? onboarding.level;
 
@@ -595,7 +602,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                     </button>
                 )}
 
-                {/* 模拟运行按钮（非 run 模式下可用） */}
+                {/* 流转预览按钮（非 run 模式下可用）：只按连线顺序播放高亮动画，不执行任何步骤 */}
                 {mode !== 'run' && storeWorkflowDef && (
                     isSimRunning ? (
                         <button
@@ -608,7 +615,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                                 borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500,
                                 display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
                             }}
-                            title="停止模拟"
+                            title="停止流转预览"
                         >
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="4" width="8" height="8" rx="1" /></svg>
                             停止
@@ -624,10 +631,10 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                                 borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500,
                                 display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
                             }}
-                            title="模拟执行工作流"
+                            title="按连线顺序播放步骤流转动画（不执行任何步骤）"
                         >
                             <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5z" /></svg>
-                            模拟运行
+                            流转预览
                         </button>
                     )
                 )}
@@ -671,6 +678,30 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                     </>
                 )}
             </div>
+
+            {saveNameNotice && (
+                <div
+                    role="status"
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', fontSize: 12,
+                        color: 'var(--cm-status-warning)',
+                        background: 'var(--cm-warning-tint)',
+                        borderBottom: '1px solid var(--border)',
+                        flexShrink: 0,
+                    }}
+                >
+                    <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1, color: 'var(--text-primary)' }}>{saveNameNotice}</span>
+                    <button
+                        type="button"
+                        onClick={() => setSaveNameNotice(null)}
+                        aria-label="关闭命名提示"
+                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+                    >
+                        <X size={14} strokeWidth={1.75} aria-hidden="true" />
+                    </button>
+                </div>
+            )}
 
             {uiMode === 'business' && businessViewLayout === 'card' ? (
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
@@ -752,7 +783,12 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                     const identity = onboarding.takePendingIdentity();
                     setWorkflow(
                         identity
-                            ? { ...configuredDef, name: identity.name, description: identity.description || configuredDef.description }
+                            ? {
+                                ...configuredDef,
+                                name: identity.name,
+                                description: identity.description || configuredDef.description,
+                                ...(identity.ownerEmail ? { ownerEmail: identity.ownerEmail } : {}),
+                            }
                             : configuredDef,
                         layoutDirection,
                     );

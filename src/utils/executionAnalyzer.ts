@@ -1,5 +1,7 @@
 import { TaskExecutionData, ExecutionStatus } from '../types/workflow';
 import { WorkflowInstance } from '../types/conductor';
+import { countIterations, countRetries } from './executionImport';
+import { getStatusMeta } from './statusMeta';
 
 export interface DiagnosticResult {
     category: 'parameter' | 'timeout' | 'auth' | 'network' | 'logic';
@@ -14,7 +16,10 @@ export interface StepInfo {
     startTime?: number;
     endTime?: number;
     durationMs?: number;
+    /** Retries only (R5): loop iterations are not retries. */
     retryCount: number;
+    /** Loop iterations the step ran (0 outside loops). */
+    iterationCount: number;
     reasonForIncompletion?: string;
     diagnostics: DiagnosticResult[];
 }
@@ -149,7 +154,8 @@ export function analyzeExecution(
         .map(data => {
             const durationMs =
                 data.startTime && data.endTime ? data.endTime - data.startTime : undefined;
-            const retryCount = Math.max(0, (data.attempts?.length ?? 1) - 1);
+            const retryCount = countRetries(data.attempts);
+            const iterationCount = countIterations(data.attempts);
             return {
                 taskRef: data.taskReferenceName,
                 status: data.status,
@@ -157,16 +163,15 @@ export function analyzeExecution(
                 endTime: data.endTime,
                 durationMs,
                 retryCount,
+                iterationCount,
                 reasonForIncompletion: data.reasonForIncompletion,
                 diagnostics: diagnoseTask(data.taskReferenceName, executionData),
             } as StepInfo;
         })
         .sort((a, b) => (a.startTime ?? 0) - (b.startTime ?? 0));
 
-    const failedStatuses: ExecutionStatus[] = ['FAILED', 'FAILED_WITH_TERMINAL_ERROR', 'TIMED_OUT'];
-
     const completedTasks = steps.filter(s => s.status === 'COMPLETED' || s.status === 'COMPLETED_WITH_ERRORS').length;
-    const failedTasks = steps.filter(s => failedStatuses.includes(s.status)).length;
+    const failedTasks = steps.filter(s => getStatusMeta(s.status).isFailure).length;
     const skippedTasks = steps.filter(s => s.status === 'SKIPPED').length;
 
     const allTimes = steps.flatMap(s => [s.startTime, s.endTime]).filter((t): t is number => !!t);

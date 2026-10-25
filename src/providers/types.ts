@@ -7,7 +7,8 @@ import type { TelemetrySink } from '../telemetry/types';
 
 export interface OnboardingContext {
     env: 'TEST' | 'PROD';
-    user: { id: string; name: string };
+    /** `email` 写入向导生成的骨架流程的 ownerEmail（可选） */
+    user: { id: string; name: string; email?: string };
     /** 当前环境是否开放自助试用（生产为 false） */
     trialEnabled: boolean;
 }

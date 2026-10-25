@@ -86,7 +86,7 @@
 
 .empty-state-btn.primary {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     border-color: var(--color-accent);
 }
 

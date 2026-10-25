@@ -5,6 +5,7 @@ import type { ActionDefinition } from '../../actions/types';
 import { DecisionBranchCard } from './DecisionBranchCard';
 import { ForkJoinCard } from './ForkJoinCard';
 import { LoopDoWhileCard } from './LoopDoWhileCard';
+import { Trash2 } from 'lucide-react';
 
 export interface NestedControlStepProps {
   step: BusinessStep;
@@ -20,9 +21,9 @@ export interface NestedControlStepProps {
 }
 
 const ACCENT: Record<string, string> = {
-  decision: '#8b5cf6',
-  fork: '#3b82f6',
-  loop: '#10b981',
+  decision: 'var(--cm-ai)',
+  fork: 'var(--color-accent)',
+  loop: 'var(--cm-status-success)',
 };
 
 /**
@@ -82,13 +83,13 @@ export const NestedControlStep: React.FC<NestedControlStepProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              color: '#ef4444',
+              color: 'var(--cm-status-failed)',
               cursor: 'pointer',
               fontSize: 12,
               padding: '2px 4px',
             }}
           >
-            🗑️
+            <Trash2 size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
         )}
       </div>

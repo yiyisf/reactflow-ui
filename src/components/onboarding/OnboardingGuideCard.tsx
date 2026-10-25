@@ -1,4 +1,5 @@
 import { ghostButton, primaryButton } from './styles';
+import { Rocket } from 'lucide-react';
 
 export interface OnboardingGuideCardProps {
   onStart: () => void;
@@ -23,10 +24,10 @@ export function OnboardingGuideCard({ onStart, onDismiss }: OnboardingGuideCardP
         color: 'var(--text-primary)',
         border: '1px solid var(--border-primary)',
         borderRadius: 12,
-        boxShadow: '0 8px 28px rgba(0, 0, 0, 0.18)',
+        boxShadow: 'var(--cm-shadow-float)',
       }}
     >
-      <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 8 }}>🚀</div>
+      <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 8 }}><Rocket size={32} strokeWidth={1.75} aria-hidden="true" /></div>
       <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700 }}>开始试用编排平台</h3>
       <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
         登记你的产品、按规范命名，几分钟内就能在测试环境建出第一个流程，试跑通过后再申请上线。

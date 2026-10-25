@@ -7,6 +7,7 @@ import { parseApiText } from '../../import/detect';
 import { buildHttpAction } from '../../import/buildAction';
 import { CURL_SAMPLE } from '../../import/curl';
 import type { ImportFormat, ImportedOperation, ParseResult } from '../../import/types';
+import { TriangleAlert, X } from 'lucide-react';
 
 /** 单次最多渲染的接口行数（大型 OpenAPI 可能有上千个）；超出请用搜索缩小范围 */
 const RENDER_LIMIT = 200;
@@ -206,7 +207,7 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
             style={{
                 position: 'fixed',
                 inset: 0,
-                background: 'rgba(0, 0, 0, 0.5)',
+                background: 'var(--cm-overlay)',
                 backdropFilter: 'blur(2px)',
                 zIndex: 2000,
                 display: 'flex',
@@ -233,7 +234,7 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
                     color: 'var(--text-primary)',
                     border: '1px solid var(--border-primary)',
                     borderRadius: 12,
-                    boxShadow: '0 20px 48px rgba(0, 0, 0, 0.35)',
+                    boxShadow: 'var(--cm-shadow-float)',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
@@ -253,7 +254,7 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
                         aria-label="关闭"
                         style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: 4, lineHeight: 1 }}
                     >
-                        ✕
+                        <X size={14} strokeWidth={1.75} aria-hidden="true" />
                     </button>
                 </div>
 
@@ -440,7 +441,7 @@ const ApiImportDialogBody: React.FC<ApiImportDialogProps> = ({ onClose, onInsert
                                                 </span>
                                                 {op.warnings.length > 0 && (
                                                     <span title={op.warnings.join('\n')} aria-label={`${op.warnings.length} 条提示`} style={{ color: 'var(--color-warning)', fontSize: 12, flexShrink: 0 }}>
-                                                        ⚠
+                                                        <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" />
                                                     </span>
                                                 )}
                                             </label>

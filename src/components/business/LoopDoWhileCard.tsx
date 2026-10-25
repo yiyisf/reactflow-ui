@@ -4,6 +4,7 @@ import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
 import { StepListEditor } from './StepListEditor';
 import { createStepFromAction } from '../../stepmodel/factory';
+import { OctagonX, RefreshCw, Repeat } from 'lucide-react';
 
 export interface LoopDoWhileCardProps {
   step: BusinessStep;
@@ -49,7 +50,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
         borderRadius: 12,
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border-secondary)',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+        boxShadow: 'var(--cm-shadow-float)',
         overflow: 'hidden',
         transition: 'all 0.2s ease',
       }}
@@ -71,8 +72,8 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
               width: 32,
               height: 32,
               borderRadius: 8,
-              background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.15))',
-              color: 'var(--color-accent, #3b82f6)',
+              background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 15%, transparent))',
+              color: 'var(--color-accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -80,7 +81,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
               fontWeight: 700,
             }}
           >
-            🔁
+            <Repeat size={14} strokeWidth={1.75} aria-hidden="true" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -92,13 +93,13 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-                  color: 'var(--color-accent-text, #1e40af)',
+                  background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
+                  color: 'var(--color-accent-text)',
                   fontWeight: 600,
-                  border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 30%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
                 }}
               >
-                🔁 循环迭代 (Do-While Loop)
+                <Repeat size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />循环迭代 (Do-While Loop)
               </span>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -141,7 +142,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
         <div
           style={{
             borderRadius: 8,
-            border: '2px dashed color-mix(in srgb, var(--color-accent, #3b82f6) 45%, var(--border-secondary))',
+            border: '2px dashed color-mix(in srgb, var(--color-accent) 45%, var(--border-secondary))',
             background: 'var(--bg-secondary)',
             padding: 12,
           }}
@@ -157,7 +158,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>🔄</span>
+              <span><RefreshCw size={14} strokeWidth={1.75} aria-hidden="true" /></span>
               <span>
                 <strong>循环体内部任务序列</strong> (每轮迭代将依次执行以下 {loopSteps.length} 个步骤):
               </span>
@@ -169,9 +170,9 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
                 style={{
                   padding: '3px 8px',
                   borderRadius: 4,
-                  background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.1))',
-                  border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 40%, transparent)',
-                  color: 'var(--color-accent-text, #1e40af)',
+                  background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 10%, transparent))',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 40%, transparent)',
+                  color: 'var(--color-accent-text)',
                   fontSize: 11,
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -228,7 +229,7 @@ export const LoopDoWhileCard: React.FC<LoopDoWhileCardProps> = ({
           gap: 6,
         }}
       >
-        <span>🛑</span>
+        <span><OctagonX size={14} strokeWidth={1.75} aria-hidden="true" /></span>
         <span>
           <strong>跳出与安全保护</strong>：当条件表达式评估为 false 时自动跳出循环向下继续；引擎内置循环熔断保护，防止生产环境死循环。
         </span>

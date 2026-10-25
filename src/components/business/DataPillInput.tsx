@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import type { BusinessStep, PillToken } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import { PillPicker } from './PillPicker';
+import { Link, Tag } from 'lucide-react';
 
 export interface DataPillInputProps {
   value: any;
@@ -164,10 +165,10 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
           title="点击选择并插入上游数据胶囊 (@)"
           style={{
             background: showPicker
-              ? 'var(--color-accent-bg, rgba(59, 130, 246, 0.15))'
+              ? 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 15%, transparent))'
               : 'var(--bg-tertiary)',
-            color: showPicker ? 'var(--color-accent, #3b82f6)' : 'var(--text-secondary)',
-            border: `1px solid ${showPicker ? 'var(--color-accent, #3b82f6)' : 'var(--border-primary)'}`,
+            color: showPicker ? 'var(--color-accent)' : 'var(--text-secondary)',
+            border: `1px solid ${showPicker ? 'var(--color-accent)' : 'var(--border-primary)'}`,
             borderRadius: 4,
             padding: '2px 8px',
             fontSize: 11,
@@ -179,7 +180,7 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
             transition: 'all 0.15s ease',
           }}
         >
-          <span>🏷️</span>
+          <span><Tag size={14} strokeWidth={1.75} aria-hidden="true" /></span>
           <span>插入数据</span>
         </button>
       </div>
@@ -203,9 +204,9 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 12,
-                background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-                color: 'var(--color-accent-text, #1e40af)',
-                border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 35%, transparent)',
+                background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
+                color: 'var(--color-accent-text)',
+                border: '1px solid color-mix(in srgb, var(--color-accent) 35%, transparent)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
@@ -213,7 +214,7 @@ export const DataPillInput: React.FC<DataPillInputProps> = ({
               }}
               title={`原始引用表达式: ${t.raw}`}
             >
-              <span>🔗</span>
+              <span><Link size={14} strokeWidth={1.75} aria-hidden="true" /></span>
               <span>{t.label}</span>
             </span>
           ))}

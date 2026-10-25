@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { translateTechnicalError, FriendlyErrorDiagnosis } from '../../utils/friendlyErrorTranslator';
+import { CircleX, CreditCard, Key, Lightbulb, Timer, TriangleAlert, Zap } from 'lucide-react';
 
 export interface FriendlyErrorCardProps {
   rawError?: string;
@@ -21,8 +22,8 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
     <div
       style={{
         borderRadius: 10,
-        background: 'rgba(239, 68, 68, 0.08)',
-        border: '1px solid rgba(239, 68, 68, 0.3)',
+        background: 'color-mix(in srgb, var(--cm-status-failed) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--cm-status-failed) 30%, transparent)',
         padding: '14px 16px',
         display: 'flex',
         flexDirection: 'column',
@@ -33,18 +34,21 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
       {/* 头部标题 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>
-            {diagnosis.type === 'auth'
-              ? '🔑'
-              : diagnosis.type === 'timeout'
-              ? '⏱️'
-              : diagnosis.type === 'missing_data'
-              ? '⚠️'
-              : diagnosis.type === 'quota'
-              ? '💳'
-              : '❌'}
+          <span style={{ display: 'inline-flex', color: 'var(--status-failed)' }}>
+            {React.createElement(
+              diagnosis.type === 'auth'
+                ? Key
+                : diagnosis.type === 'timeout'
+                ? Timer
+                : diagnosis.type === 'missing_data'
+                ? TriangleAlert
+                : diagnosis.type === 'quota'
+                ? CreditCard
+                : CircleX,
+              { size: 18, strokeWidth: 1.75, 'aria-hidden': true },
+            )}
           </span>
-          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--status-failed, #ef4444)' }}>
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--status-failed)' }}>
             {diagnosis.title}
           </span>
         </div>
@@ -55,9 +59,9 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
             style={{
               padding: '4px 10px',
               borderRadius: 6,
-              background: 'color-mix(in srgb, var(--status-failed, #ef4444) 15%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--status-failed, #ef4444) 30%, transparent)',
-              color: 'var(--status-failed, #ef4444)',
+              background: 'color-mix(in srgb, var(--status-failed) 15%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--status-failed) 30%, transparent)',
+              color: 'var(--status-failed)',
               fontSize: 11,
               fontWeight: 600,
               cursor: 'pointer',
@@ -66,7 +70,7 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
               gap: 4,
             }}
           >
-            <span>⚡</span>
+            <span><Zap size={14} strokeWidth={1.75} aria-hidden="true" /></span>
             <span>{diagnosis.actionLabel}</span>
           </button>
         )}
@@ -85,11 +89,11 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
           background: 'var(--bg-tertiary)',
           border: '1px solid var(--border-primary)',
           fontSize: 11,
-          color: 'var(--color-warning, #d97706)',
+          color: 'var(--color-warning)',
           lineHeight: 1.5,
         }}
       >
-        💡 <strong>建议做法</strong>：{diagnosis.suggestion}
+        <Lightbulb size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} /><strong>建议做法</strong>：{diagnosis.suggestion}
       </div>
 
       {/* 可折叠的技术日志明细（供技术人员查看） */}
@@ -100,7 +104,7 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-muted, #94a3b8)',
+              color: 'var(--text-muted)',
               fontSize: 10,
               cursor: 'pointer',
               padding: 0,
@@ -118,8 +122,8 @@ export const FriendlyErrorCard: React.FC<FriendlyErrorCardProps> = ({
                 marginTop: 6,
                 padding: '8px 10px',
                 borderRadius: 4,
-                background: 'rgba(0, 0, 0, 0.35)',
-                color: 'var(--text-muted, #94a3b8)',
+                background: 'var(--cm-surface-0)',
+                color: 'var(--text-muted)',
                 fontFamily: 'monospace',
                 fontSize: 10,
                 lineHeight: 1.4,

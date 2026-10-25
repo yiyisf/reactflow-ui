@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { BusinessStep } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import { DataPillInput } from './DataPillInput';
+import { ClipboardList, Lightbulb, Tag, Wrench } from 'lucide-react';
 
 export interface ActionFormProps {
   step: BusinessStep;
@@ -28,16 +29,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
       <div
         style={{
           padding: 16,
-          background: 'rgba(255, 255, 255, 0.03)',
+          background: 'var(--bg-highlight)',
           borderRadius: 8,
-          border: '1px dashed var(--border-secondary, rgba(255, 255, 255, 0.2))',
+          border: '1px dashed var(--border-secondary)',
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>🔧</span>
+          <span style={{ fontSize: 20 }}><Wrench size={20} strokeWidth={1.75} aria-hidden="true" /></span>
           <div>
             <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 14 }}>
               {step.name || step.taskReferenceName} (底层技术步骤)
@@ -78,7 +79,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
             lineHeight: 1.5,
           }}
         >
-          💡 <strong>操作安全网</strong>：此步骤会直接影响真实云主机的运行状态（关机、重启、变配或下线）。建议在流程设计中，于本步骤之前放置一个「人工确认/审批」步骤，确保生产稳定性。
+          <Lightbulb size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} /><strong>操作安全网</strong>：此步骤会直接影响真实云主机的运行状态（关机、重启、变配或下线）。建议在流程设计中，于本步骤之前放置一个「人工确认/审批」步骤，确保生产稳定性。
         </div>
       )}
 
@@ -101,7 +102,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   }}
                 >
                   {field.label}
-                  {field.required && <span style={{ color: '#ef4444' }}>*</span>}
+                  {field.required && <span style={{ color: 'var(--cm-status-failed)' }}>*</span>}
                 </label>
                 {field.help && (
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -220,7 +221,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               marginBottom: 6,
             }}
           >
-            📋 本步骤产生的数据（可被后续步骤引用）:
+            <ClipboardList size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />本步骤产生的数据（可被后续步骤引用）:
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {action.outputs.map((out) => (
@@ -238,7 +239,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   gap: 4,
                 }}
               >
-                <span>🏷️</span>
+                <span><Tag size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                 <span>{out.label}</span>
                 <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                   ({out.key})
@@ -369,7 +370,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
             setJustSwitched(true);
           }}
         >
-          🏷️ 插入数据
+          <Tag size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />插入数据
         </button>
       )}
     </div>

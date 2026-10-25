@@ -57,12 +57,12 @@ const FullscreenEditor = ({
     }, [draft, onSave, onClose]);
 
     const LANG_COLORS: Record<string, string> = {
-        javascript: '#f7df1e',
-        js: '#f7df1e',
-        json: '#89b4fa',
-        jq: '#a6e3a1',
-        groovy: '#4ec994',
-        python: '#3572A5',
+        javascript: 'var(--cm-status-warning)',
+        js: 'var(--cm-status-warning)',
+        json: 'var(--cm-data)',
+        jq: 'var(--cm-status-success)',
+        groovy: 'var(--cm-status-success)',
+        python: 'var(--cm-ai)',
         text: 'var(--text-secondary)',
     };
     const langColor = LANG_COLORS[language.toLowerCase()] ?? 'var(--text-secondary)';
@@ -152,7 +152,7 @@ const FullscreenEditor = ({
                         background: 'var(--color-accent)',
                         border: 'none',
                         borderRadius: '6px',
-                        color: 'var(--color-on-accent, #fff)',
+                        color: 'var(--color-on-accent)',
                         cursor: 'pointer',
                         fontSize: '12px',
                         fontWeight: 600,
@@ -205,7 +205,7 @@ const FullscreenEditor = ({
                 <span>{draft.split('\n').length} 行</span>
                 <span>{draft.length} 字符</span>
                 {draft !== value && (
-                    <span style={{ color: '#f59e0b', fontWeight: 600 }}>● 未保存</span>
+                    <span style={{ color: 'var(--cm-status-warning)', fontWeight: 600 }}>● 未保存</span>
                 )}
             </div>
         </div>,

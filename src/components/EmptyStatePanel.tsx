@@ -3,6 +3,7 @@ import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { BrandLogo } from './BrandLogo';
 import './EmptyStatePanel.css';
+import { FileText, Sparkles, Upload } from 'lucide-react';
 
 interface EmptyStatePanelProps {
     onRequestImport?: () => void;
@@ -49,16 +50,16 @@ const EmptyStatePanel: React.FC<EmptyStatePanelProps> = ({ onRequestImport }) =>
 
             <div className="empty-state-actions">
                 <button className="empty-state-btn primary" onClick={handleBlank}>
-                    <span className="empty-state-btn-icon">📄</span>
+                    <span className="empty-state-btn-icon"><FileText size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                     空白工作流
                 </button>
                 <button className="empty-state-btn" onClick={handleAI}>
-                    <span className="empty-state-btn-icon">✨</span>
+                    <span className="empty-state-btn-icon"><Sparkles size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                     AI 生成
                 </button>
                 {onRequestImport && (
                     <button className="empty-state-btn" onClick={onRequestImport}>
-                        <span className="empty-state-btn-icon">📤</span>
+                        <span className="empty-state-btn-icon"><Upload size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                         导入 JSON
                     </button>
                 )}

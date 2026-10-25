@@ -11,6 +11,7 @@ import { PromotionPanel } from './PromotionPanel';
 import { OnboardingGuideCard } from './OnboardingGuideCard';
 import { useOnboardingData } from './useOnboardingData';
 import type { OnboardingData } from './useOnboardingData';
+import { Rocket } from 'lucide-react';
 
 /** 向导创建骨架后、选择了模板 / 导入时暂存的流程身份，供宿主在后续步骤里保留名称 */
 export interface PendingIdentity {
@@ -187,7 +188,7 @@ export function OnboardingToolbarButtons({ c }: { c: OnboardingController }) {
         onClick={c.openPromotion}
         title={c.canPromote ? '把当前临时流程申请上线到生产' : '仅类型为 tmp 的临时流程可以申请上线'}
       >
-        <span aria-hidden="true">🚀</span>
+        <span aria-hidden="true"><Rocket size={14} strokeWidth={1.75} aria-hidden="true" /></span>
         <span>申请上线</span>
       </button>
     </>

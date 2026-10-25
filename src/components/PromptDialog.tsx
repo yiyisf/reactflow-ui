@@ -66,7 +66,7 @@ const PromptDialog = ({
                 left: 0,
                 width: '100vw',
                 height: '100vh',
-                backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                backgroundColor: 'var(--cm-overlay)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -85,7 +85,7 @@ const PromptDialog = ({
                     padding: '24px 28px',
                     maxWidth: '400px',
                     width: '90%',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.22)',
+                    boxShadow: 'var(--cm-shadow-float)',
                 }}
             >
                 {/* 标题 */}
@@ -162,7 +162,7 @@ const PromptDialog = ({
                             backgroundColor: value.trim() ? 'var(--color-accent)' : 'var(--bg-tertiary)',
                             border: 'none',
                             borderRadius: '6px',
-                            color: value.trim() ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary)',
+                            color: value.trim() ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                             cursor: value.trim() ? 'pointer' : 'not-allowed',
                             fontSize: '13px',
                             fontWeight: 600,

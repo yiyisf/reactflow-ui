@@ -6,6 +6,7 @@ import { StepListEditor } from './StepListEditor';
 import ConfirmDialog from '../ConfirmDialog';
 import { useConfirm } from '../../hooks/useConfirm';
 import { createStepFromAction } from '../../stepmodel/factory';
+import { Link, Waves, X, Zap } from 'lucide-react';
 
 export interface ForkJoinCardProps {
   step: BusinessStep;
@@ -96,7 +97,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
         borderRadius: 12,
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border-secondary)',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+        boxShadow: 'var(--cm-shadow-float)',
         overflow: 'hidden',
         transition: 'all 0.2s ease',
       }}
@@ -118,8 +119,8 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
               width: 32,
               height: 32,
               borderRadius: 8,
-              background: 'rgba(59, 130, 246, 0.15)',
-              color: 'var(--color-accent, #3b82f6)',
+              background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+              color: 'var(--color-accent)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -127,7 +128,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
               fontWeight: 700,
             }}
           >
-            ⚡
+            <Zap size={14} strokeWidth={1.75} aria-hidden="true" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -139,13 +140,13 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-                  color: 'var(--color-accent-text, #1e40af)',
+                  background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
+                  color: 'var(--color-accent-text)',
                   fontWeight: 600,
-                  border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 30%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
                 }}
               >
-                ⚡ 并行并发 (Fork / Join)
+                <Zap size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />并行并发 (Fork / Join)
               </span>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -211,7 +212,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13 }}>🏊</span>
+                <span style={{ fontSize: 13 }}><Waves size={13} strokeWidth={1.75} aria-hidden="true" /></span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                   {lane.laneLabel || `泳道 #${lIdx + 1}`}
                 </span>
@@ -241,7 +242,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
                     padding: '2px 4px',
                   }}
                 >
-                  ✕
+                  <X size={14} strokeWidth={1.75} aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -321,7 +322,7 @@ export const ForkJoinCard: React.FC<ForkJoinCardProps> = ({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span>🔗</span>
+          <span><Link size={14} strokeWidth={1.75} aria-hidden="true" /></span>
           <span>
             <strong>汇聚同步点 (Join)</strong>：所有 {lanes.length} 条并行泳道内步骤全部执行完毕后，在同步节点汇聚并继续向下执行。
           </span>

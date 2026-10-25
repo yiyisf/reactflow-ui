@@ -6,6 +6,7 @@ import { StepListEditor } from './StepListEditor';
 import ConfirmDialog from '../ConfirmDialog';
 import { useConfirm } from '../../hooks/useConfirm';
 import { createStepFromAction } from '../../stepmodel/factory';
+import { ArrowRight, CornerDownRight, GitBranch, Lightbulb, Shuffle, X } from 'lucide-react';
 
 export interface DecisionBranchCardProps {
   step: BusinessStep;
@@ -113,7 +114,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
         borderRadius: 12,
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border-secondary)',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+        boxShadow: 'var(--cm-shadow-float)',
         overflow: 'hidden',
         transition: 'all 0.2s ease',
       }}
@@ -135,8 +136,8 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
               width: 32,
               height: 32,
               borderRadius: 8,
-              background: 'rgba(139, 92, 246, 0.15)',
-              color: 'color-mix(in srgb, #8b5cf6 85%, var(--text-primary))',
+              background: 'color-mix(in srgb, var(--cm-ai) 15%, transparent)',
+              color: 'color-mix(in srgb, var(--cm-ai) 85%, var(--text-primary))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -144,7 +145,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
               fontWeight: 700,
             }}
           >
-            🔀
+            <Shuffle size={14} strokeWidth={1.75} aria-hidden="true" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -156,20 +157,20 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: 'rgba(139, 92, 246, 0.12)',
-                  color: 'color-mix(in srgb, #8b5cf6 85%, var(--text-primary))',
+                  background: 'color-mix(in srgb, var(--cm-ai) 12%, transparent)',
+                  color: 'color-mix(in srgb, var(--cm-ai) 85%, var(--text-primary))',
                   fontWeight: 600,
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                  border: '1px solid color-mix(in srgb, var(--cm-ai) 30%, transparent)',
                 }}
               >
-                🔀 条件路由 (Decision / Switch)
+                <Shuffle size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />条件路由 (Decision / Switch)
               </span>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
               判断参数:{' '}
               <code
                 style={{
-                  color: 'var(--color-accent-text, #1e40af)',
+                  color: 'var(--color-accent-text)',
                   background: 'var(--bg-secondary)',
                   padding: '1px 4px',
                   borderRadius: 4,
@@ -238,10 +239,10 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                   cursor: 'pointer',
                   fontSize: 12,
                   fontWeight: isActive ? 600 : 400,
-                  background: isActive ? 'var(--color-accent-bg, rgba(59, 130, 246, 0.15))' : 'var(--bg-secondary)',
-                  color: isActive ? 'var(--color-accent-text, #1e40af)' : 'var(--text-secondary)',
+                  background: isActive ? 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 15%, transparent))' : 'var(--bg-secondary)',
+                  color: isActive ? 'var(--color-accent-text)' : 'var(--text-secondary)',
                   border: `1px solid ${
-                    isActive ? 'var(--color-accent, #3b82f6)' : 'var(--border-primary)'
+                    isActive ? 'var(--color-accent)' : 'var(--border-primary)'
                   }`,
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -249,15 +250,15 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                   transition: 'all 0.15s ease',
                 }}
               >
-                <span>{isDefault ? '🍂' : '🌿'}</span>
+                <span style={{ display: 'inline-flex' }}>{isDefault ? <CornerDownRight size={14} strokeWidth={1.75} aria-hidden="true" /> : <GitBranch size={14} strokeWidth={1.75} aria-hidden="true" />}</span>
                 <span>{isDefault ? '默认分支 (Default)' : b.caseKey}</span>
                 <span
                   style={{
                     fontSize: 10,
                     padding: '0 4px',
                     borderRadius: 8,
-                    background: isActive ? 'var(--color-accent, #3b82f6)' : 'var(--bg-tertiary)',
-                    color: isActive ? 'var(--color-on-accent, #fff)' : 'var(--text-muted)',
+                    background: isActive ? 'var(--color-accent)' : 'var(--bg-tertiary)',
+                    color: isActive ? 'var(--color-on-accent)' : 'var(--text-muted)',
                   }}
                 >
                   {b.steps?.length || 0}
@@ -274,7 +275,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                       cursor: 'pointer',
                     }}
                   >
-                    ✕
+                    <X size={14} strokeWidth={1.75} aria-hidden="true" />
                   </span>
                 )}
               </div>
@@ -313,21 +314,21 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                 style={{
                   padding: '3px 6px',
                   borderRadius: 4,
-                  border: '1px solid var(--color-accent, #3b82f6)',
+                  border: '1px solid var(--color-accent)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-primary)',
                   fontSize: 11,
                   width: 110,
                 }}
               />
-              {caseError && <span style={{ fontSize: 11, color: '#ef4444' }}>{caseError}</span>}
+              {caseError && <span style={{ fontSize: 11, color: 'var(--cm-status-failed)' }}>{caseError}</span>}
               <button
                 onClick={handleAddBranch}
                 style={{
                   padding: '3px 8px',
                   borderRadius: 4,
-                  background: 'var(--color-accent, #3b82f6)',
-                  color: 'var(--color-on-accent, #fff)',
+                  background: 'var(--color-accent)',
+                  color: 'var(--color-on-accent)',
                   border: 'none',
                   fontSize: 11,
                   cursor: 'pointer',
@@ -372,7 +373,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
               }}
             >
               <span>
-                👉 当判断命中 <strong>{activeBranch.caseKey}</strong> 时，将依次串行执行以下步骤：
+                <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />当判断命中 <strong>{activeBranch.caseKey}</strong> 时，将依次串行执行以下步骤：
               </span>
               {!disabled && (
                 <button
@@ -380,9 +381,9 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                   style={{
                     padding: '3px 8px',
                     borderRadius: 4,
-                    background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-                    border: '1px solid var(--color-accent, #3b82f6)',
-                    color: 'var(--color-accent-text, #1e40af)',
+                    background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
+                    border: '1px solid var(--color-accent)',
+                    color: 'var(--color-accent-text)',
                     fontSize: 11,
                     cursor: 'pointer',
                     display: 'inline-flex',
@@ -445,7 +446,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
           gap: 4,
         }}
       >
-        <span>💡</span>
+        <span><Lightbulb size={14} strokeWidth={1.75} aria-hidden="true" /></span>
         <span>分支执行逻辑：运行时仅会精准执行匹配的分支路径，未命中的分支步骤将安全跳过。</span>
       </div>
       {confirmState && (

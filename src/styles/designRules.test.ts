@@ -27,7 +27,29 @@ describe('CMASTER rule 6: text on accent fills is never hard-coded white', () =>
     });
 });
 
-/** Files already migrated to Lucide icons. Add a file here once its emoji are gone, so they cannot come back. */
+/**
+ * UI code already migrated to CMASTER: no emoji (rule 7) and no raw colour literals (rule 1).
+ * Add a directory or file here once it is clean, so regressions fail `npm test`.
+ */
+const MIGRATED = [
+    '../components/AiNative/',
+    '../components/business/',
+    '../components/template/',
+    '../components/onboarding/',
+    '../components/import/',
+    '../demo/',
+    '../components/SandboxConfigModal.tsx',
+    '../components/FullscreenEditor.tsx',
+    '../components/PromptDialog.tsx',
+    '../components/ConfirmDialog.tsx',
+    '../components/Toast.tsx',
+    '../components/EmptyStatePanel.tsx',
+    '../components/EmptyStatePanel.css',
+];
+const isUiSource = (p: string) => /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p);
+const migrated = Object.keys(sources).filter((p) => isUiSource(p) && MIGRATED.some((m) => (m.endsWith('/') ? p.startsWith(m) : p === m)));
+
+/** Files migrated to Lucide icons before the directory list above existed. */
 const EMOJI_FREE = [
     '../components/Controls/ActionBar.tsx',
     '../components/Controls/ControlButton.tsx',
@@ -42,15 +64,7 @@ const EMOJI_FREE = [
     '../template/builtin/templates.ts',
     '../utils/taskTypeMeta.ts',
     '../components/icons/CmIcon.tsx',
-    '../components/business/StepListEditor.tsx',
-    '../components/business/StepFlowEditor.tsx',
-    '../components/business/ActionPickerModal.tsx',
-    '../components/business/RunStoryTimeline.tsx',
-    '../components/template/TemplateGallery.tsx',
-    '../components/template/TemplateSetupWizard.tsx',
-    '../demo/mockGovernance/libraryData.ts',
-    // The whole AI panel (every file in components/AiNative) is migrated.
-    ...Object.keys(sources).filter((p) => p.startsWith('../components/AiNative/') && /\.tsx?$/.test(p) && !/\.test\./.test(p)),
+    ...migrated.filter((p) => !p.endsWith('.css')),
 ];
 
 describe('CMASTER rule 7: no emoji in migrated UI files', () => {
@@ -67,11 +81,7 @@ describe('CMASTER rule 7: no emoji in migrated UI files', () => {
     });
 });
 
-/** Files whose colours are fully tokenized. Add a file here once it has no raw hex / rgb(a) literals left. */
-const TOKEN_ONLY_DIRS = ['../components/AiNative/', '../demo/'];
-const TOKEN_ONLY = Object.keys(sources).filter(
-    (p) => TOKEN_ONLY_DIRS.some((d) => p.startsWith(d)) && /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p),
-);
+const TOKEN_ONLY = migrated;
 
 describe('CMASTER rule 1: no raw colour literals in tokenized files', () => {
     it('the list is not empty', () => expect(TOKEN_ONLY.length).toBeGreaterThan(0));

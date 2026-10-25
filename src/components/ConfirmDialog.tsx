@@ -38,7 +38,7 @@ const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => 
                 left: 0,
                 width: '100vw',
                 height: '100vh',
-                backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                backgroundColor: 'var(--cm-overlay)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -57,7 +57,7 @@ const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => 
                     padding: '24px 28px',
                     maxWidth: '380px',
                     width: '90%',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.18)',
+                    boxShadow: 'var(--cm-shadow-float)',
                 }}
             >
                 <div style={{
@@ -96,7 +96,7 @@ const ConfirmDialog = ({ message, onConfirm, onCancel }: ConfirmDialogProps) => 
                             backgroundColor: 'var(--color-accent)',
                             border: 'none',
                             borderRadius: '6px',
-                            color: '#ffffff',
+                            color: 'var(--color-on-accent)',
                             cursor: 'pointer',
                             fontSize: '13px',
                             fontWeight: 600,

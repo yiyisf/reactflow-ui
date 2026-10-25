@@ -103,7 +103,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
+        background: 'var(--cm-overlay)',
         backdropFilter: 'blur(2px)',
         zIndex: 2000,
         display: 'flex',
@@ -128,7 +128,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
           color: 'var(--text-primary)',
           border: '1px solid var(--border-primary)',
           borderRadius: 12,
-          boxShadow: '0 20px 48px rgba(0, 0, 0, 0.35)',
+          boxShadow: 'var(--cm-shadow-float)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',

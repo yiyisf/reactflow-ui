@@ -1,4 +1,5 @@
 import type { ActionDefinition } from '../types';
+import { toNumberField } from './coerce';
 
 export const ecsCreateInstanceAction: ActionDefinition = {
   id: 'ecs.create_instance',
@@ -88,7 +89,7 @@ export const ecsCreateInstanceAction: ActionDefinition = {
       instanceType: values.instanceType ?? 'ecs.c7.xlarge',
       imageId: values.imageId ?? 'image-alilinux-3',
       instanceName: values.instanceName ?? 'app-node',
-      systemDiskSize: Number(values.systemDiskSize ?? 100),
+      systemDiskSize: toNumberField(values.systemDiskSize, 100),
       http_request: {
         uri: 'https://ecs.internal.cloud/api/v2/instances',
         method: 'POST',
@@ -97,7 +98,7 @@ export const ecsCreateInstanceAction: ActionDefinition = {
           instanceType: values.instanceType,
           imageId: values.imageId,
           instanceName: values.instanceName,
-          systemDiskSize: values.systemDiskSize,
+          systemDiskSize: toNumberField(values.systemDiskSize, 100),
         },
       },
     },
@@ -473,7 +474,7 @@ export const ecsCreateSnapshotAction: ActionDefinition = {
       actionName: '创建云盘快照',
       instanceId: values.instanceId,
       snapshotName: values.snapshotName,
-      retentionDays: Number(values.retentionDays ?? 7),
+      retentionDays: toNumberField(values.retentionDays, 7),
     },
   }),
   decompile: (task) => {
@@ -554,7 +555,7 @@ export const ecsRunCommandAction: ActionDefinition = {
       instanceId: values.instanceId,
       commandType: values.commandType ?? 'RunShellScript',
       commandContent: values.commandContent,
-      timeoutSeconds: Number(values.timeoutSeconds ?? 60),
+      timeoutSeconds: toNumberField(values.timeoutSeconds, 60),
     },
   }),
   decompile: (task) => {
@@ -620,7 +621,7 @@ export const ecsGetMonitorMetricsAction: ActionDefinition = {
       _actionId: 'ecs.get_monitor_metrics',
       actionName: '获取运行监控指标',
       instanceId: values.instanceId,
-      periodSeconds: Number(values.periodSeconds ?? 60),
+      periodSeconds: toNumberField(values.periodSeconds, 60),
     },
   }),
   decompile: (task) => {

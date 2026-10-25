@@ -1,4 +1,5 @@
 import type { ActionDefinition } from '../types';
+import { toNumberField } from './coerce';
 
 export const notifySendMessageAction: ActionDefinition = {
   id: 'notify.send_message',
@@ -108,13 +109,14 @@ export const humanApprovalAction: ActionDefinition = {
     },
     {
       key: 'timeoutMinutes',
-      label: '超时自动处理',
+      label: '无人审批时',
       type: 'select',
       defaultValue: 60,
+      help: '超时后流程以"已超时"结束，不会继续执行后续步骤',
       options: [
-        { label: '30 分钟无响应自动拒绝', value: 30 },
-        { label: '60 分钟无响应自动拒绝', value: 60 },
-        { label: '24 小时等待', value: 1440 },
+        { label: '30 分钟后超时结束流程', value: 30 },
+        { label: '60 分钟后超时结束流程', value: 60 },
+        { label: '24 小时后超时结束流程', value: 1440 },
       ],
     },
   ],
@@ -124,19 +126,26 @@ export const humanApprovalAction: ActionDefinition = {
     { key: 'comment', label: '审批意见', type: 'string', example: '已核实变更方案，同意执行' },
     { key: 'decisionTime', label: '审批时间', type: 'string', example: '2026-10-20T14:40:00Z' },
   ],
-  compile: (values, ctx) => ({
-    name: 'human_operation_approval',
-    taskReferenceName: ctx.taskReferenceName,
-    type: 'HUMAN',
-    description: `人工审批: ${values.promptMessage || ctx.taskReferenceName}`,
-    inputParameters: {
-      _actionId: 'human.approval',
-      actionName: '人工确认 / 审批',
-      assigneeRole: values.assigneeRole ?? 'devops_lead',
-      promptMessage: values.promptMessage,
-      timeoutMinutes: Number(values.timeoutMinutes ?? 60),
-    },
-  }),
+  compile: (values, ctx) => {
+    const timeoutMinutes = toNumberField(values.timeoutMinutes, 60);
+    return {
+      name: 'human_operation_approval',
+      taskReferenceName: ctx.taskReferenceName,
+      type: 'HUMAN',
+      description: `人工审批: ${values.promptMessage || ctx.taskReferenceName}`,
+      // 超时真正生效靠任务级 timeoutSeconds + timeoutPolicy；运行时取值（数据胶囊）无法静态换算，只保留在入参中
+      ...(typeof timeoutMinutes === 'number' && timeoutMinutes > 0
+        ? { timeoutSeconds: timeoutMinutes * 60, timeoutPolicy: 'TIME_OUT_WF' as const }
+        : {}),
+      inputParameters: {
+        _actionId: 'human.approval',
+        actionName: '人工确认 / 审批',
+        assigneeRole: values.assigneeRole ?? 'devops_lead',
+        promptMessage: values.promptMessage,
+        timeoutMinutes,
+      },
+    };
+  },
   decompile: (task) => {
     if (task.inputParameters?._actionId === 'human.approval') {
       return {
@@ -197,8 +206,14 @@ export const controlWaitAction: ActionDefinition = {
     if (task.inputParameters?._actionId === 'control.wait') {
       return { duration: task.inputParameters.duration ?? '10s' };
     }
+    // 只认领"仅有 duration"的原始 WAIT；until（等到某个时间点）或无参数（等待外部信号）的 WAIT
+    // 语义不同，交给专业步骤无损保留，避免被改写成"等待 10 秒"
     if (task.type === 'WAIT') {
-      return { duration: task.inputParameters?.duration ?? '10s' };
+      const keys = Object.keys(task.inputParameters || {});
+      const duration = task.inputParameters?.duration;
+      if (keys.length === 1 && keys[0] === 'duration' && typeof duration === 'string' && duration.trim() !== '') {
+        return { duration };
+      }
     }
     return null;
   },
@@ -298,8 +313,8 @@ export const controlLoopAction: ActionDefinition = {
       label: '循环继续条件表达式',
       type: 'text',
       required: true,
-      defaultValue: '$.status == "PENDING"',
-      placeholder: '例如 $.status == "PENDING"',
+      defaultValue: "if ($.loop_ref['iteration'] < 3) { true; } else { false; }",
+      placeholder: "例如 if ($.loop_ref['iteration'] < 3) { true; } else { false; }",
       acceptsPills: true,
     },
   ],

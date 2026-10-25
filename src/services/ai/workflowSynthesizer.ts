@@ -121,6 +121,51 @@ export interface NormalizeOptions {
 }
 
 /**
+ * SUB_WORKFLOW 引用规范化（normalizeTaskDef 与 pinSubWorkflowVersions 共用）：
+ * - `workflowName` / `inputParameters.workflowName` 写法规范化为 `subWorkflowParam.name`
+ * - 新建且未记录版本的子流程固定为流程库当前版本；已有版本号、画布上已存在的任务一律不改
+ */
+function normalizeSubWorkflowRef(task: TaskDef, autoFixed: string[], options: NormalizeOptions): TaskDef {
+    const t: any = { ...task };
+    const resolve = options.resolveLatestVersion;
+    // 画布上已有的步骤不自动补版本（版本号一旦记录就不被自动改变，未记录的也不被悄悄固定）
+    const isNewTask = !options.existingRefs?.has(t.taskReferenceName);
+    if (!t.subWorkflowParam?.name) {
+        const fallbackName = t.workflowName || t.inputParameters?.workflowName || t.inputParameters?.subWorkflowName;
+        if (fallbackName) {
+            let version = t.subWorkflowParam?.version;
+            if (version === undefined) {
+                const latest = isNewTask ? resolve?.(fallbackName) : undefined;
+                if (latest !== undefined) {
+                    version = latest;
+                    autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
+                } else {
+                    version = t.version ?? 1;
+                    if (resolve && isNewTask) {
+                        autoFixed.push(`子工作流「${fallbackName}」不在流程库目录中，版本未能固定（暂用 v${version}），请确认该版本是否存在`);
+                    }
+                }
+            }
+            t.subWorkflowParam = {
+                name: fallbackName,
+                version,
+                ...(t.subWorkflowParam ?? {}),
+            };
+            autoFixed.push(`将子工作流任务「${t.taskReferenceName}」的流程名规范化至 subWorkflowParam.name`);
+        }
+    } else if (resolve && isNewTask && t.subWorkflowParam.version === undefined) {
+        const latest = resolve(t.subWorkflowParam.name);
+        if (latest !== undefined) {
+            t.subWorkflowParam = { ...t.subWorkflowParam, version: latest };
+            autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
+        } else {
+            autoFixed.push(`子工作流「${t.subWorkflowParam.name}」不在流程库目录中，版本未能固定，请确认其是否存在`);
+        }
+    }
+    return t;
+}
+
+/**
  * Normalizes a single task's structure to prevent common LLM schema mismatches:
  * - Ensures `name` and `taskReferenceName` and `type` exist
  * - Normalizes `HTTP` task `httpRequest` / `inputParameters.uri` into `inputParameters.http_request`
@@ -176,41 +221,7 @@ export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = [], option
 
     // Normalize SUB_WORKFLOW task config
     if (t.type === 'SUB_WORKFLOW') {
-        const resolve = options.resolveLatestVersion;
-        // 画布上已有的步骤不自动补版本（版本号一旦记录就不被自动改变，未记录的也不被悄悄固定）
-        const isNewTask = !options.existingRefs?.has(t.taskReferenceName);
-        if (!t.subWorkflowParam?.name) {
-            const fallbackName = t.workflowName || t.inputParameters?.workflowName || t.inputParameters?.subWorkflowName;
-            if (fallbackName) {
-                let version = t.subWorkflowParam?.version;
-                if (version === undefined) {
-                    const latest = isNewTask ? resolve?.(fallbackName) : undefined;
-                    if (latest !== undefined) {
-                        version = latest;
-                        autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
-                    } else {
-                        version = t.version ?? 1;
-                        if (resolve && isNewTask) {
-                            autoFixed.push(`子工作流「${fallbackName}」不在流程库目录中，版本未能固定（暂用 v${version}），请确认该版本是否存在`);
-                        }
-                    }
-                }
-                t.subWorkflowParam = {
-                    name: fallbackName,
-                    version,
-                    ...(t.subWorkflowParam ?? {}),
-                };
-                autoFixed.push(`将子工作流任务「${t.taskReferenceName}」的流程名规范化至 subWorkflowParam.name`);
-            }
-        } else if (resolve && isNewTask && t.subWorkflowParam.version === undefined) {
-            const latest = resolve(t.subWorkflowParam.name);
-            if (latest !== undefined) {
-                t.subWorkflowParam = { ...t.subWorkflowParam, version: latest };
-                autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
-            } else {
-                autoFixed.push(`子工作流「${t.subWorkflowParam.name}」不在流程库目录中，版本未能固定，请确认其是否存在`);
-            }
-        }
+        Object.assign(t, normalizeSubWorkflowRef(t, autoFixed, options));
     }
 
     // Normalize TERMINATE task config
@@ -391,35 +402,22 @@ export function normalizeWorkflowDef(def: WorkflowDef, options: NormalizeOptions
 }
 
 /**
- * 只做「SUB_WORKFLOW 固定版本」的轻量规范化（供 replace_workflow / patch_workflow 使用，
+ * 只做 SUB_WORKFLOW 引用的轻量规范化（供 replace_workflow / patch_workflow 使用，
  * 这两条路径不经过完整的 normalizeWorkflowDef）：
- * 为新建的、未记录版本的子工作流任务填入流程库当前版本。已有版本号、画布上已存在的任务一律不改。
- * 未提供 resolveLatestVersion 时原样返回。
+ * - `workflowName` 写法规范化为 `subWorkflowParam.name`（否则 Conductor 拒收）
+ * - 为新建的、未记录版本的子工作流任务填入流程库当前版本。已有版本号、画布上已存在的任务一律不改。
  */
 export function pinSubWorkflowVersions(
     def: WorkflowDef,
     options: NormalizeOptions,
 ): { workflow: WorkflowDef; autoFixed: string[] } {
-    const resolve = options.resolveLatestVersion;
-    if (!resolve) return { workflow: def, autoFixed: [] };
     const autoFixed: string[] = [];
 
     const walk = (tasks: TaskDef[]): TaskDef[] =>
         tasks.map(task => {
             let t: TaskDef = task;
-            if (
-                t.type === 'SUB_WORKFLOW' &&
-                t.subWorkflowParam?.name &&
-                t.subWorkflowParam.version === undefined &&
-                !options.existingRefs?.has(t.taskReferenceName)
-            ) {
-                const latest = resolve(t.subWorkflowParam.name);
-                if (latest !== undefined) {
-                    t = { ...t, subWorkflowParam: { ...t.subWorkflowParam, version: latest } };
-                    autoFixed.push(`将子工作流任务「${t.taskReferenceName}」固定为流程库当前版本 v${latest}`);
-                } else {
-                    autoFixed.push(`子工作流「${t.subWorkflowParam.name}」不在流程库目录中，版本未能固定，请确认其是否存在`);
-                }
+            if (t.type === 'SUB_WORKFLOW') {
+                t = normalizeSubWorkflowRef(t, autoFixed, options);
             }
             if (t.decisionCases) {
                 const cases: Record<string, TaskDef[]> = {};
@@ -459,7 +457,7 @@ export function applyBlueprint(currentDraft: WorkflowDef | null, args: Blueprint
 /**
  * Phase 2: Scaffolds the task orchestration topology on top of the blueprint.
  */
-export function applyTopologyScaffold(currentDraft: WorkflowDef | null, args: TopologyArgs): {
+export function applyTopologyScaffold(currentDraft: WorkflowDef | null, args: TopologyArgs, options: NormalizeOptions = {}): {
     workflow: WorkflowDef;
     autoFixed: string[];
 } {
@@ -472,7 +470,7 @@ export function applyTopologyScaffold(currentDraft: WorkflowDef | null, args: To
     return normalizeWorkflowDef({
         ...base,
         tasks: args.tasks ?? [],
-    });
+    }, options);
 }
 
 /**

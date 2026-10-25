@@ -65,6 +65,25 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。
 
+### Fixed（v1.3.1 · AI）
+- **A1 方案叠加**：有待确认方案时继续提需求，AI 以该方案为起点修改（差异仍相对画布计算），旧方案里的改动不再丢失。
+- **A2 HTTP 错误按失败处理**：401 / 429 / 5xx 等流式错误不再把半成品草稿自动提交为方案；有进展时保存"失败"断点可续跑，否则提供"重试上一条消息"。
+- **A3 ⌘K 内联指令**：走与对话面板相同的 AI 配置、权限与方案流程（规范化、校验、子流程版本固定，叠加在待确认方案上）；未配置 AI 时提示如何配置，不再把提示文字当节点名插入画布；不再读取演示用的 localStorage 键。快捷动作仍是可撤销的普通编辑，运行视图下不可用。
+- **A4 配置持久化**：localStorage 只保存 provider / baseUrl / model，`transport` 与 endpoint 请求头不再落盘，旧版本存下的 transport 恢复时丢弃；`aiConfig.transport` 变化时整体替换。新增 `aiConfigStorageKey` prop，同页多实例可各用一个键（缺省仍为 `ai-workflow-config`）。AI 设置里清空 Base URL / 模型会回到默认值；提示文案改为"API Key 只保存在当前页面内存中"。
+- **A5 子流程引用**：`workflowName` 写法在 replace / patch / 四阶段编排各路径都规范化为 `subWorkflowParam.name`，并固定为流程库当前版本（不再一律 v1）；提示词改为让模型填写 `subWorkflowParam.name`。
+- **A6 对话流程图**：Mermaid 解析器（移到 `mermaidParser.ts`）支持带标签的边、圆形 / 平行四边形 / 菱形节点、链式写法、`&` 分组、行尾分号与中文 id；菱形、圆形、平行四边形按形状绘制。`workflowToMermaid` 不再把不同的中文引用名合并成同一个节点。
+- **A7 上下文**："执行方案"会把计划步骤一起发给模型；澄清选项连同原问题一起发送。
+- **A8 意图分类**：内置快捷指令分类正确（"改成并行"为重构、"生成修复方案"为诊断、"生成摘要报告"为解释）。
+- **A9 / A10 智能体循环**：有澄清 / 计划 / 推荐 / 修复卡片等待用户时不再兜底自动提交；自愈只针对方案新引入的校验错误，画布原有错误不再消耗轮次。达到单轮步数上限时说明已暂停并保存可续跑断点（不再显示"收到，已处理。"）；每次发送 / 续跑都有完整步数预算。
+- **A11 `patch_workflow`**：找不到目标任务（或父任务类型不支持）的操作返回失败结果并列出原因，不再静默成功或把任务追加到末尾；`add_switch_branch` / `add_fork_branch` 支持嵌套任务。差异计算与层级推断递归进入分支、并行与循环；本地流程库检索按空格拆分关键词、按命中数排序。
+- **A12 推荐流程"直接使用"**：新增工具 `load_library_workflow`（打开流程库完整定义，或以子流程步骤引用），推荐卡片的"直接使用"直接生成待确认方案。
+- **A13 修复动作**：每个修复动作只看自己的执行回调；不可执行时按钮禁用并说明原因，不再上报 `repair:executed` 或轮询；`modify_def` 切到编辑模式并让 AI 生成修改方案。
+- **A14 任务详情的 AI 辅助**：在 AiWorkflowIDE 中使用对话面板的 AI 配置（支持 endpoint / custom 传输）；只把真正的上游任务交给 AI；未接入 AI 时的建议标注为"示例"；错误在面板内提示，不再弹 `alert()`。
+- **A15 流程库插入**：有待确认方案时先询问"追加到待确认方案"还是"放弃方案并插入画布"。
+- **A16 旧版 AI 对话（WorkflowIDE）**：`aiService` 改走 protocolAdapter，支持 Anthropic、endpoint 与 custom 传输；错误给出可操作的中文说明；演示模式的示例只在空白画布上可应用，不会替换已有流程。
+- **错误提示**：保留 HTTP 状态码并识别 Anthropic `invalid x-api-key`、DeepSeek `Authentication Fails`、模型不存在、余额 / 额度不足、模型不支持 temperature、Base URL 404 与浏览器跨域（CORS）失败；直连模式的 401 提示检查自己的 API Key，代理模式才提示联系管理员。o 系列 / gpt-5 模型不再发送 temperature。
+- **其他**：停止生成时保留已输出的文字；"清空对话"不再让暂停的断点卡片回来；刷新后恢复的"运行中"断点显示恢复卡片；`ask_clarification` 不再要求 emoji 图标；编辑模式不再提供 `propose_repair`；运行卡片按声明类型发送数字 / 布尔 / JSON 输入并逐项提示格式错误。
+
 ### Fixed（v1.3.1 · 运行视图与 1.3.0 收尾）
 - **R1** 真实运行或加载示例后执行状态栏不再崩溃（hook 移到提前 return 之前）。
 - **R2** 执行轮询可取消：卸载、再次发起、回到编辑态时停止；请求出错或返回空连续 5 次后停止，并在状态栏说明原因与处理方式；不再把正在编辑的用户拉回运行态。新增 `src/utils/executionPoller.ts`。

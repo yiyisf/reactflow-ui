@@ -4,8 +4,14 @@ const SKIP_TYPES = new Set([
     'SET_VARIABLE', 'JSON_JQ_TRANSFORM', 'INLINE', 'LAMBDA', 'NOOP', 'KAFKA_PUBLISH',
 ]);
 
+/**
+ * Mermaid node id from a task ref. ASCII punctuation becomes `_`; non-ASCII characters
+ * (e.g. Chinese refs) become their code point, so different refs never collapse to the same id.
+ */
 const sanitizeId = (ref: string): string =>
-    ref.replace(/[^a-zA-Z0-9_]/g, '_');
+    Array.from(ref)
+        .map(ch => /[a-zA-Z0-9_]/.test(ch) ? ch : (ch.charCodeAt(0) > 127 ? `u${ch.codePointAt(0)!.toString(16)}` : '_'))
+        .join('');
 
 const sanitizeLabel = (text: string): string => {
     const s = String(text || '').replace(/"/g, "'").replace(/[<>[\]{}]/g, '');

@@ -6,7 +6,9 @@
  * 传输层反转）。两套实现将在后续版本收敛为一套，详见 `docs/design/` 下的架构规划。
  */
 
-import type { AiConfig } from './ai/protocolAdapter';
+import type { AiConfig, Message } from './ai/protocolAdapter';
+import { streamChat } from './ai/protocolAdapter';
+import { humanizeAiError } from './ai/errorMessages';
 
 /** @deprecated 使用 `AiConfig`（从 `services/ai/protocolAdapter` 或 `/ai` 入口导入）代替。保留为类型别名以避免破坏现有集成代码。 */
 export type AIServiceConfig = AiConfig;
@@ -16,11 +18,43 @@ export interface ChatMessage {
     content: string;
 }
 
-const DEFAULT_CONFIG: AIServiceConfig = {
-    apiKey: '', // To be provided by user
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o' // Default model
-};
+/** 未配置 AI 服务时抛出的错误文案（调用方直接展示给用户） */
+export const AI_NOT_CONFIGURED_MESSAGE = '未配置 AI 服务。请先填写 API Key（集成方通过 aiConfig 传入，或在 AI 设置中填写）后重试。';
+
+/** 是否已配置可用的 AI 服务：direct 模式需要 apiKey，endpoint / custom 传输不需要 */
+export function isAiConfigured(config: Partial<AIServiceConfig> | null | undefined): boolean {
+    return !!(config?.transport || config?.apiKey?.trim());
+}
+
+/**
+ * 统一走 protocolAdapter：按配置的 provider（OpenAI / Anthropic / 自动识别）或 transport
+ * （endpoint 代理 / custom）发送，不再固定请求 api.openai.com。
+ * 出错时抛出的 Error.message 已是面向用户的中文说明（发生了什么 + 怎么处理）。
+ */
+async function runText(
+    messages: ChatMessage[],
+    config: Partial<AIServiceConfig>,
+    onToken?: (token: string) => void,
+    signal?: AbortSignal,
+): Promise<string> {
+    if (!isAiConfigured(config)) {
+        throw new Error(AI_NOT_CONFIGURED_MESSAGE);
+    }
+    const full: AiConfig = { provider: 'auto', ...config, apiKey: config.apiKey ?? '' };
+    const mode = full.transport?.type ?? 'direct';
+    let text = '';
+    for await (const event of streamChat(messages as Message[], [], full, signal)) {
+        if (event.type === 'text') {
+            text += event.content;
+            onToken?.(event.content);
+        } else if (event.type === 'error') {
+            const err = new Error(humanizeAiError(event.message, { mode }).display);
+            (err as Error & { raw?: string }).raw = event.message;
+            throw err;
+        }
+    }
+    return text;
+}
 
 /**
  * 非流式调用（兼容旧逻辑）
@@ -29,35 +63,13 @@ export const callAICopilot = async (
     messages: ChatMessage[],
     config: Partial<AIServiceConfig> = {},
     signal?: AbortSignal
-) => {
-    const finalConfig = { ...DEFAULT_CONFIG, ...config };
-
-    if (!finalConfig.apiKey) {
-        throw new Error('Please configure AI API Key in settings.');
+): Promise<string> => {
+    try {
+        return await runText(messages, config, undefined, signal);
+    } catch (e: any) {
+        if (e?.name === 'AbortError' || e?.message === AI_NOT_CONFIGURED_MESSAGE || e?.raw) throw e;
+        throw new Error(humanizeAiError(e?.message, { mode: config.transport?.type ?? 'direct' }).display);
     }
-
-    const response = await fetch(`${finalConfig.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${finalConfig.apiKey}`
-        },
-        body: JSON.stringify({
-            model: finalConfig.model,
-            messages,
-            temperature: 0.7,
-            stream: false
-        }),
-        signal
-    });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'AI request failed');
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
 };
 
 /**
@@ -69,70 +81,15 @@ export const callAICopilotStream = async (
     onToken: (token: string) => void,
     onDone?: () => void,
     signal?: AbortSignal
-) => {
-    const finalConfig = { ...DEFAULT_CONFIG, ...config };
-
-    if (!finalConfig.apiKey) {
-        throw new Error('Please configure AI API Key in settings.');
+): Promise<string> => {
+    try {
+        const text = await runText(messages, config, onToken, signal);
+        onDone?.();
+        return text;
+    } catch (e: any) {
+        if (e?.name === 'AbortError' || e?.message === AI_NOT_CONFIGURED_MESSAGE || e?.raw) throw e;
+        throw new Error(humanizeAiError(e?.message, { mode: config.transport?.type ?? 'direct' }).display);
     }
-
-    const response = await fetch(`${finalConfig.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${finalConfig.apiKey}`
-        },
-        body: JSON.stringify({
-            model: finalConfig.model,
-            messages,
-            temperature: 0.7,
-            stream: true
-        }),
-        signal
-    });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'AI request failed');
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error('ReadableStream not supported');
-
-    const decoder = new TextDecoder();
-    let fullContent = '';
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-        for (const line of lines) {
-            if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') {
-                    onDone?.();
-                    return fullContent;
-                }
-
-                try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content;
-                    if (content) {
-                        fullContent += content;
-                        onToken(content);
-                    }
-                } catch {
-                    console.warn('[AI SSE] malformed chunk:', data);
-                }
-            }
-        }
-    }
-
-    onDone?.();
-    return fullContent;
 };
 
 /**
@@ -208,7 +165,11 @@ export const generateTaskParameters = async (
 
     // Strip potential markdown code blocks
     const cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    return JSON.parse(cleaned);
+    try {
+        return JSON.parse(cleaned);
+    } catch {
+        throw new Error('AI 返回的内容不是有效的 JSON 参数。请重试，或在 AI 设置中换用更强的模型。');
+    }
 };
 
 /**

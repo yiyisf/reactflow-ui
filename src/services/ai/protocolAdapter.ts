@@ -17,6 +17,7 @@
 
 import type { AiTransport } from './transport';
 import { streamEndpoint } from './transport';
+import { DIRECT_FETCH_FAILED, humanizeAiError } from './errorMessages';
 export type { AiTransport, AgentRequest } from './transport';
 
 // ─── 公共类型 ────────────────────────────────────────────────────────────────
@@ -132,6 +133,39 @@ function resolveConfig(config: AiConfig): Required<Omit<AiConfig, 'transport'>> 
     };
 }
 
+/**
+ * OpenAI o 系列推理模型（o1 / o3 / o4-mini …）与 gpt-5 系列只接受默认 temperature，
+ * 传 0.7 会直接 400。对这些模型不发送 temperature。
+ */
+export function modelSupportsTemperature(model: string): boolean {
+    return !/(^|\/)(o\d|gpt-5)/i.test(model.trim());
+}
+
+/** 直连请求的 HTTP 错误：保留状态码，附上服务商返回的错误原文（供 humanizeAiError 匹配） */
+async function describeHttpError(response: Response): Promise<string> {
+    const text = await response.text().catch(() => '');
+    let detail = '';
+    try {
+        const parsed = JSON.parse(text);
+        detail = parsed?.error?.message || parsed?.message || (typeof parsed?.error === 'string' ? parsed.error : '') ||
+            (parsed?.error?.type ? String(parsed.error.type) : '');
+    } catch {
+        detail = text.slice(0, 300);
+    }
+    if (!detail) detail = response.statusText;
+    return `HTTP ${response.status}${detail ? `: ${detail}` : ''}`;
+}
+
+/** 直连 fetch：浏览器层面的失败（网络 / CORS）转成可识别的错误事件，取消请求照常抛出 */
+async function directFetch(url: string, init: RequestInit): Promise<Response | { failed: string }> {
+    try {
+        return await fetch(url, init);
+    } catch (e: any) {
+        if (e?.name === 'AbortError') throw e;
+        return { failed: `${DIRECT_FETCH_FAILED}: ${e?.message ?? String(e)}` };
+    }
+}
+
 // ─── Message format converters ───────────────────────────────────────────────
 
 /**
@@ -224,19 +258,22 @@ async function* streamOpenAI(
     const body: Record<string, any> = {
         model: resolved.model,
         messages: toOpenAIMessages(messages),
-        temperature: 0.7,
         stream: true,
         // Ask for a final usage-only chunk (OpenAI + most compatible providers support
         // this; providers that don't recognize it simply ignore the field).
         stream_options: { include_usage: true },
     };
 
+    if (modelSupportsTemperature(resolved.model)) {
+        body.temperature = 0.7;
+    }
+
     if (tools.length > 0) {
         body.tools = tools;
         body.tool_choice = 'auto';
     }
 
-    const response = await fetch(`${resolved.baseUrl}/chat/completions`, {
+    const response = await directFetch(`${resolved.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -246,9 +283,12 @@ async function* streamOpenAI(
         signal,
     });
 
+    if ('failed' in response) {
+        yield { type: 'error', message: response.failed };
+        return;
+    }
     if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: { message: response.statusText } }));
-        yield { type: 'error', message: err.error?.message || `HTTP ${response.status}` };
+        yield { type: 'error', message: await describeHttpError(response) };
         return;
     }
 
@@ -382,7 +422,7 @@ async function* streamAnthropic(
     if (systemMsg) body.system = systemMsg.content;
     if (anthropicTools.length > 0) body.tools = anthropicTools;
 
-    const response = await fetch(`${resolved.baseUrl}/messages`, {
+    const response = await directFetch(`${resolved.baseUrl}/messages`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -394,9 +434,12 @@ async function* streamAnthropic(
         signal,
     });
 
+    if ('failed' in response) {
+        yield { type: 'error', message: response.failed };
+        return;
+    }
     if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: { message: response.statusText } }));
-        yield { type: 'error', message: err.error?.message || `HTTP ${response.status}` };
+        yield { type: 'error', message: await describeHttpError(response) };
         return;
     }
 
@@ -506,7 +549,7 @@ export async function* streamChat(
 
     // ── direct 模式（现状：浏览器直连模型服务商，仅限开发调试） ─────────────
     if (!config.apiKey) {
-        yield { type: 'error', message: '未配置 API Key，请在设置中填写。' };
+        yield { type: 'error', message: '未配置 API Key。请在 AI 设置中填写 API Key 后重试。' };
         yield { type: 'done' };
         return;
     }
@@ -545,7 +588,8 @@ export async function testConnection(config: AiConfig): Promise<TestConnectionRe
                 },
                 body: JSON.stringify({
                     model: resolved.model,
-                    max_tokens: 1,
+                    // o 系列 / gpt-5 推理模型不接受 max_tokens，只接受 max_completion_tokens
+                    ...(modelSupportsTemperature(resolved.model) ? { max_tokens: 1 } : { max_completion_tokens: 16 }),
                     messages: [{ role: 'user', content: 'Hi' }],
                 }),
                 signal: AbortSignal.timeout(12000),
@@ -559,22 +603,22 @@ export async function testConnection(config: AiConfig): Promise<TestConnectionRe
                 },
                 body: JSON.stringify({
                     model: resolved.model,
-                    max_tokens: 1,
+                    // o 系列 / gpt-5 推理模型不接受 max_tokens，只接受 max_completion_tokens
+                    ...(modelSupportsTemperature(resolved.model) ? { max_tokens: 1 } : { max_completion_tokens: 16 }),
                     messages: [{ role: 'user', content: 'Hi' }],
                 }),
                 signal: AbortSignal.timeout(12000),
             });
         }
         if (response.ok) return { ok: true, message: `连接成功（${resolved.resolvedProvider}）` };
-        const err = await response.json().catch(() => ({}));
-        return { ok: false, message: err.error?.message || `HTTP ${response.status}` };
+        return { ok: false, message: humanizeAiError(await describeHttpError(response)).display };
     } catch (e: any) {
         if (e.name === 'TimeoutError' || e.name === 'AbortError') {
-            return { ok: false, message: '连接超时，请检查 URL 是否正确' };
+            return { ok: false, message: '连接超时。请检查 Base URL 是否正确、网络是否可达。' };
         }
         if (e instanceof TypeError) {
-            return { ok: false, message: '网络连接失败，请检查 URL 和网络状态' };
+            return { ok: false, message: humanizeAiError(`${DIRECT_FETCH_FAILED}: ${e.message}`).display };
         }
-        return { ok: false, message: e.message || '连接失败' };
+        return { ok: false, message: humanizeAiError(e.message).display };
     }
 }

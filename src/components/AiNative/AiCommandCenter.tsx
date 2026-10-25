@@ -10,9 +10,11 @@ import { RotateCcw, X } from 'lucide-react';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import { useIdeStores } from '../../store/ideStoresContext';
-import { AgentRunner } from '../../services/ai/agentRunner';
+import { AgentRunner, formatPlanForModel, formatClarificationAnswer } from '../../services/ai/agentRunner';
 import type { AgentRunnerOptions } from '../../services/ai/agentRunner';
 import type { WorkflowInstance } from '../../types/conductor';
+import type { ClarificationOption, RepairAction } from '../../store/aiStore';
+import { isRepairActionExecutable, type RepairCapabilities } from './repairActions';
 import PlanCard from './PlanCard';
 import RepairCard from './RepairCard';
 import ClarificationCard from './ClarificationCard';
@@ -374,7 +376,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         if (!plan) return;
         clearPlan();
         onAiEvent?.({ type: 'plan:executed', timestamp: Date.now() });
-        runner.send('请按照上述计划执行');
+        // The plan's steps live only in the PlanCard, not in the chat history — send them along.
+        runner.send(`执行方案：${plan.title}`, { modelText: formatPlanForModel(plan) });
     }, [clearPlan, runner, onAiEvent]);
 
     const handleCancelPlan = useCallback(() => {
@@ -412,12 +415,31 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         // silent rather than guessing at an outcome we don't actually know.
     }, [onPollExecution, aiStore]);
 
-    const handleRepairAction = useCallback((action: import('../../store/aiStore').RepairAction) => {
-        // RepairCard only calls this after the user's inline second-click confirmation —
+    const canEditForRepair = aiPermissions?.canEdit !== false;
+    // 沙箱实例只在浏览器里：重跑 / 跳过 / 重试要调宿主接口，对它不可用（修改定义仍可用）
+    const hostActions = isSandboxInstance ? undefined : executionActions;
+    const repairCapabilities: RepairCapabilities = {
+        onRerunFromTask: hostActions?.onRerunFromTask,
+        onSkipTask: hostActions?.onSkipTask,
+        onRetry: hostActions?.onRetry,
+        canEditDefinition: canEditForRepair,
+    };
+
+    const handleRepairAction = useCallback((action: RepairAction) => {
+        // Each action is judged by its own callback; a non-executable one does nothing and
+        // reports nothing (no repair:executed, no polling).
+        if (!isRepairActionExecutable(action, {
+            onRerunFromTask: useWorkflowStore.getState().workflowInstance?.isSandbox ? undefined : executionActions?.onRerunFromTask,
+            onSkipTask: useWorkflowStore.getState().workflowInstance?.isSandbox ? undefined : executionActions?.onSkipTask,
+            onRetry: useWorkflowStore.getState().workflowInstance?.isSandbox ? undefined : executionActions?.onRetry,
+            canEditDefinition: canEditForRepair,
+        })) return;
+        // RepairCard only calls runtime actions after the user's inline second-click confirmation —
         // record that confirmation distinctly from the dispatch below for a complete audit trail.
         onAiEvent?.({ type: 'repair:confirmed', timestamp: Date.now(), repairActionType: action.type });
         const instance = useWorkflowStore.getState().workflowInstance;
         const wfId = instance?.workflowId ?? '';
+        const diagnosis = aiStore.getState().pendingRepair?.diagnosis ?? '';
         switch (action.type) {
             case 'rerun_from':
                 executionActions?.onRerunFromTask?.(wfId, action.taskRef ?? '');
@@ -431,12 +453,19 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                 executionActions?.onRetry?.(wfId);
                 pollRepairOutcome(wfId, '重试整个工作流');
                 break;
-            default:
+            case 'modify_def': {
+                // Definition changes need the edit-mode tools: switch to edit mode and ask the AI
+                // for a reviewable proposal (nothing is applied until the user accepts it).
+                clearRepair();
+                useWorkflowStore.getState().setMode('edit');
+                const modelText = `请根据下面的故障诊断修改工作流定义，并生成变更方案供我确认：\n诊断：${diagnosis}\n修改建议：${action.label}${action.description ? `（${action.description}）` : ''}`;
+                runner.send(`按修复建议修改工作流：${action.label}`, { modelText });
                 break;
+            }
         }
         onAiEvent?.({ type: 'repair:executed', timestamp: Date.now(), repairActionType: action.type });
         clearRepair();
-    }, [executionActions, clearRepair, onAiEvent, pollRepairOutcome]);
+    }, [executionActions, clearRepair, onAiEvent, pollRepairOutcome, canEditForRepair, aiStore, runner]);
 
     const handleDismissRepair = useCallback(() => {
         clearRepair();
@@ -460,10 +489,12 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
     // Staleness: proposal was generated against an older version of the workflow
     const isProposalStale = !!(pendingProposal && pendingProposal.baselineHash !== JSON.stringify(workflowDef));
 
-    const handleClarificationSelect = useCallback((optionText: string) => {
+    const handleClarificationSelect = useCallback((option: ClarificationOption) => {
+        const clarification = aiStore.getState().pendingClarification;
         clearClarification();
-        runner.send(optionText);
-    }, [clearClarification, runner]);
+        // Send the question along with the answer — the label alone means nothing to the model.
+        runner.send(option.label, clarification ? { modelText: formatClarificationAnswer(clarification, option) } : {});
+    }, [clearClarification, runner, aiStore]);
 
     const handleClarificationCustom = useCallback(() => {
         clearClarification();
@@ -472,7 +503,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
 
     const handleUseWorkflow = useCallback((workflowName: string) => {
         clearRecommendation();
-        runner.send(`加载并使用工作流：${workflowName}`);
+        // Load the library definition straight into a reviewable proposal (no model round-trip).
+        void runner.useLibraryWorkflow(workflowName);
     }, [clearRecommendation, runner]);
 
     const handleModifyWorkflow = useCallback((workflowName: string) => {
@@ -571,7 +603,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 <button onClick={onShowConfig} title="配置 AI 服务" aria-label="配置 AI 服务"><CmIcon name="settings" size={16} /></button>
                             )}
                             <button
-                                onClick={() => { runner.abort(); clearMessages(); }}
+                                onClick={() => { runner.reset(); clearMessages(); }}
                                 title="清空对话"
                                 aria-label="清空对话"
                             ><CmIcon name="trash" size={16} /></button>
@@ -731,7 +763,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         {pendingRepair && !isStreaming && (
                             <RepairCard
                                 repair={pendingRepair}
-                                canExecute={!isSandboxInstance && !!(executionActions?.onRerunFromTask || executionActions?.onSkipTask || executionActions?.onRetry)}
+                                capabilities={repairCapabilities}
                                 onExecuteAction={handleRepairAction}
                                 onDismiss={handleDismissRepair}
                             />
@@ -800,7 +832,8 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         )}
 
                         {/* PI Durable Session Recovery Card: resume interrupted or failed multi-stage synthesis */}
-                        {durableCheckpoint && (durableCheckpoint.status === 'paused' || durableCheckpoint.status === 'failed') && !isStreaming && !pendingProposal && (
+                        {/* "running" while not streaming = interrupted (e.g. restored from a draft after reload) */}
+                        {durableCheckpoint && durableCheckpoint.status !== 'completed' && !isStreaming && (
                             <div className={`ai-checkpoint-card ${durableCheckpoint.status}`} role="region" aria-label="断点续跑恢复">
                                 <div className="ai-checkpoint-header">
                                     <span className="ai-checkpoint-icon">
@@ -809,7 +842,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     <span className="ai-checkpoint-title">
                                         {durableCheckpoint.status === 'failed'
                                             ? '编排生成异常中断 · 已保存阶段断点'
-                                            : '编排生成已暂停 · 可从当前断点继续'}
+                                            : durableCheckpoint.status === 'running'
+                                                ? '编排生成被中断 · 可从当前断点继续'
+                                                : '编排生成已暂停 · 可从当前断点继续'}
                                     </span>
                                 </div>
                                 <div className="ai-checkpoint-meta">
@@ -828,6 +863,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                                 ? `（已构建 ${durableCheckpoint.workingDraft.tasks.length} 个顶层节点）`
                                                 : ''}
                                         </span>
+                                    )}
+                                    {durableCheckpoint.lastError && (
+                                        <span>原因：{durableCheckpoint.lastError}</span>
                                     )}
                                 </div>
                                 <div className="ai-checkpoint-actions">

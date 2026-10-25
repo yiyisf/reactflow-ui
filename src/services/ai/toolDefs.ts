@@ -314,7 +314,6 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
                                 id: { type: 'string' },
                                 label: { type: 'string', description: '简短标签（≤12字）' },
                                 description: { type: 'string', description: '一句话说明这个选项的含义' },
-                                icon: { type: 'string', description: 'emoji icon' },
                             },
                             required: ['id', 'label', 'description'],
                         },
@@ -443,7 +442,7 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
                 properties: {
                     query: {
                         type: 'string',
-                        description: '搜索关键词（业务描述、功能名称、标签等），支持模糊匹配',
+                        description: '搜索关键词（业务描述、功能名称、标签等）。多个关键词用空格分开，任一命中即返回，按命中数排序',
                     },
                     level: {
                         type: 'string',
@@ -456,6 +455,26 @@ export const TOOL_DEFINITIONS: ToolDef[] = [
                     },
                 },
                 required: ['query'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'load_library_workflow',
+            description: '加载流程库中已有的工作流并生成变更方案（等待用户确认）。用户选择"直接使用"某个已有工作流时调用：mode=open 把该工作流的完整定义作为方案（替换当前画布内容）；mode=reference 在当前流程末尾以 SUB_WORKFLOW 步骤引用它。',
+            parameters: {
+                type: 'object',
+                properties: {
+                    name: { type: 'string', description: '流程库中的工作流名称（与目录完全一致）' },
+                    version: { type: 'number', description: '版本号（不传则使用流程库当前版本）' },
+                    mode: {
+                        type: 'string',
+                        enum: ['open', 'reference'],
+                        description: 'open=打开完整定义（缺省）；reference=作为子流程步骤引用',
+                    },
+                },
+                required: ['name'],
             },
         },
     },

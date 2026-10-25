@@ -67,7 +67,7 @@ describe('transport / endpoint mode', () => {
             apiKey: '',
             transport: { type: 'endpoint', url: `http://localhost:${port}` },
         }));
-        expect(events).toContainEqual({ type: 'error', message: 'invalid session' });
+        expect(events).toContainEqual({ type: 'error', message: 'HTTP 401: invalid session' });
         expect(events).toContainEqual({ type: 'done' });
     });
 

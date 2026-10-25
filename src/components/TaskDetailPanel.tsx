@@ -2,12 +2,12 @@ import { memo, useState, useEffect, useMemo, useRef } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { TaskDef } from '../types/conductor';
-import { AIServiceConfig, callAICopilot, generateTaskParameters } from '../services/aiService';
+import { AIServiceConfig, AI_NOT_CONFIGURED_MESSAGE, callAICopilot, generateTaskParameters, isAiConfigured } from '../services/aiService';
 import { generateParameterHintPrompt } from '../services/promptTemplates';
 import { parseWorkflowInputParams } from '../types/conductor';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
-import { getCompletionItems } from '../services/wlsp/workflowLsp';
+import { getCompletionItems, getUpstreamAncestors } from '../services/wlsp/workflowLsp';
 import DraftCodeField from './DraftCodeField';
 import {
     parseJsonDraft,
@@ -102,39 +102,40 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     // P4.1: AI 参数填充状态
     const [aiFillLoading, setAiFillLoading] = useState(false);
     const [aiFillDiff, setAiFillDiff] = useState<{ generated: Record<string, any>; original: Record<string, any> } | null>(null);
+    /** In-panel AI notice (replaces alert()): not configured / failed */
+    const [aiNotice, setAiNotice] = useState<string | null>(null);
 
     /** 打开全屏编辑器的辅助函数 */
     const openFullscreen = (title: string, value: string, language: string, onSave: (v: string) => void) => {
         setFullscreenEditor({ title, value, language, onSave });
     };
 
-    const mockSuggestions: Suggestion[] = [
-        { label: '引用工作流输入', value: '${workflow.input.data}', description: '引用工作流启动时传入的原始数据' },
-        { label: '引用前序任务输出', value: '${previous_task.output.result}', description: '引用上一个节点的计算结果' },
-        { label: '环境变量', value: '${workflow.variables.api_key}', description: '引用工作流定义的全局变量' }
+    // Shown when AI is unavailable — labelled as examples so they are never mistaken for AI output.
+    const exampleSuggestions = (why: string): Suggestion[] => [
+        { label: '示例 · 引用工作流输入', value: '${workflow.input.data}', description: `${why}，以下为通用示例：引用工作流启动时传入的数据` },
+        { label: '示例 · 引用前序任务输出', value: '${previous_task.output.result}', description: '通用示例：引用上一个节点的输出（请替换为实际任务引用名）' },
+        { label: '示例 · 工作流变量', value: '${workflow.variables.api_key}', description: '通用示例：引用 SET_VARIABLE 设置的变量' },
     ];
 
     /** P4.1: 调用 AI 生成完整 inputParameters 块 */
     const handleAiFillParams = async () => {
-        const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
-        if (!apiKey) {
-            alert('请先在设置中配置 AI API Key');
+        if (!isAiConfigured(aiConfig)) {
+            setAiNotice(AI_NOT_CONFIGURED_MESSAGE);
             return;
         }
         if (!effectiveTask) return;
 
+        setAiNotice(null);
         setAiFillLoading(true);
         try {
-            const { workflowDef, taskMap } = useWorkflowStore.getState();
+            const { workflowDef } = useWorkflowStore.getState();
             const inputParamNames = parseWorkflowInputParams(workflowDef?.inputParameters, workflowDef).map(p => p.name);
-            const upstreamTasks = Object.values(taskMap)
-                .filter(t => t.taskReferenceName !== effectiveTask.taskReferenceName)
+            // Only real upstream ancestors (DAG order) — downstream tasks' outputs don't exist yet.
+            const upstreamTasks = getUpstreamAncestors(workflowDef, effectiveTask.taskReferenceName)
                 .map(t => ({ ref: t.taskReferenceName, type: t.type, name: t.name }))
                 .slice(0, 10); // Limit context size
 
-            const config: Partial<AIServiceConfig> = { apiKey };
-            if (aiConfig?.baseUrl) config.baseUrl = aiConfig.baseUrl;
-            if (aiConfig?.model) config.model = aiConfig.model;
+            const config: Partial<AIServiceConfig> = { ...aiConfig };
 
             const generated = await generateTaskParameters(
                 effectiveTask.type,
@@ -149,7 +150,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 original: effectiveTask.inputParameters ?? {},
             });
         } catch (err: any) {
-            alert(`AI 生成失败：${err?.message || '未知错误'}`);
+            setAiNotice(`AI 填充失败：${err?.message || 'AI 服务返回了无法识别的错误，请重试'}`);
         } finally {
             setAiFillLoading(false);
         }
@@ -167,18 +168,13 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         }
 
         setCurrentSuggestions([]);
-        const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
-        if (!apiKey) {
-            setCurrentSuggestions(mockSuggestions);
+        if (!isAiConfigured(aiConfig)) {
+            setCurrentSuggestions(exampleSuggestions('未配置 AI 服务'));
             return;
         }
 
         try {
-            const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
-            const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
-            const config: Record<string, string> = { apiKey };
-            if (baseUrl) config.baseUrl = baseUrl;
-            if (model) config.model = model;
+            const config: Partial<AIServiceConfig> = { ...aiConfig };
 
             const { workflowDef } = useWorkflowStore.getState();
             const prompt = generateParameterHintPrompt(effectiveTask!, workflowDef);
@@ -192,10 +188,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 const parsed = JSON.parse(jsonMatch[0]) as Suggestion[];
                 setCurrentSuggestions(parsed);
             } else {
-                setCurrentSuggestions(mockSuggestions);
+                setCurrentSuggestions(exampleSuggestions('AI 没有返回可用的建议'));
             }
-        } catch (err) {
-            setCurrentSuggestions(mockSuggestions);
+        } catch {
+            setCurrentSuggestions(exampleSuggestions('AI 建议获取失败'));
         }
     };
 
@@ -1081,6 +1077,15 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                         {s.label}
                                     </button>
                                 ))}
+                            </div>
+                        )}
+                        {aiNotice && (
+                            <div role="alert" style={{ marginBottom: '8px', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: '6px', color: 'var(--text-secondary)', border: '1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent)', background: 'color-mix(in srgb, var(--cm-status-warning) 8%, transparent)' }}>
+                                <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, marginTop: 1, color: 'var(--cm-status-warning)' }} />
+                                <span style={{ flex: 1 }}>{aiNotice}</span>
+                                <button onClick={() => setAiNotice(null)} aria-label="关闭提示" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>
+                                    <X size={12} strokeWidth={1.75} aria-hidden="true" />
+                                </button>
                             </div>
                         )}
                         {/* AI 填充 Diff 预览 */}

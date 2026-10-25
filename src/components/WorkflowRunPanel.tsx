@@ -38,7 +38,7 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
 
-    const params: WorkflowInputParam[] = parseWorkflowInputParams(workflowDef?.inputParameters);
+    const params: WorkflowInputParam[] = parseWorkflowInputParams(workflowDef?.inputParameters, workflowDef);
 
     // R2: one poller at a time. Cancelled on unmount, on re-trigger and when the user leaves run mode.
     const pollerRef = useRef<ExecutionPoller | null>(null);

@@ -2,15 +2,28 @@ import React, { useState, useEffect, useRef } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import useAiStoreSingleton from '../../store/aiStore';
+import useLibraryStoreSingleton from '../../store/libraryStore';
 import { useIdeStoresOptional } from '../../store/ideStoresContext';
-import { computeDiff } from '../../services/ai/toolExecutor';
-import { callAICopilot, AIServiceConfig } from '../../services/aiService';
+import { AgentRunner } from '../../services/ai/agentRunner';
+import { toolRegistry as toolRegistrySingleton } from '../../services/ai/toolRegistry';
+import { AI_NOT_CONFIGURED_MESSAGE, isAiConfigured, type AIServiceConfig } from '../../services/aiService';
 import { getUpstreamAncestors } from '../../services/wlsp/workflowLsp';
 import { TASK_TYPES } from '../../config/taskTypes';
 import { CircleCheck, CircleX, CornerDownLeft, GitBranch, Globe, Loader, Settings, ShieldCheck, TriangleAlert, Braces, X, type LucideIcon } from 'lucide-react';
 
 interface InlineCanvasCopilotProps {
+  /** Overrides the AI config read from the active aiStore (optional; normally not needed). */
   aiConfig?: Partial<AIServiceConfig>;
+}
+
+/**
+ * Builds the instruction sent through the normal AI pipeline: the anchor task and its
+ * upstream scope travel with the user's words, so the model edits the right place.
+ */
+function buildInlineInstruction(prompt: string, anchor: { ref: string; name?: string; type?: string } | null, upstreamRefs: string[]): string {
+  if (!anchor) return `【⌘K 画布指令】${prompt}`;
+  const scope = upstreamRefs.length > 0 ? `；可引用的上游任务：${upstreamRefs.join(', ')}` : '';
+  return `【⌘K 画布指令 · 锚点任务 ${anchor.ref}${anchor.type ? `（${anchor.type}）` : ''}${scope}】${prompt}\n请在锚点任务附近修改，并生成变更方案供我确认。`;
 }
 
 const QUICK_ACTIONS: { label: string; icon: LucideIcon; type?: string; name?: string; action?: string }[] = [
@@ -44,7 +57,12 @@ export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConf
       })));
 
   const ideStores = useIdeStoresOptional();
-  const setProposal = (ideStores?.aiStore ?? useAiStoreSingleton)((s) => s.setProposal);
+  const activeAiStore = ideStores?.aiStore ?? useAiStoreSingleton;
+  const storeConfig = activeAiStore((s) => s.config);
+  const isStreaming = activeAiStore((s) => s.isStreaming);
+  const mode = useWorkflowStore((s) => s.mode);
+  const runnerRef = useRef<AgentRunner | null>(null);
+  useEffect(() => () => { runnerRef.current?.abort(); }, []);
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ tone: StatusTone; text: string } | null>(null);
@@ -90,8 +108,13 @@ export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConf
       ? getUpstreamAncestors(workflowDef as any, targetRef)
       : [];
 
+  // Quick actions are ordinary (undoable) canvas edits through the store's own actions — not AI.
   const handleQuickAction = (item: (typeof QUICK_ACTIONS)[number]) => {
     if (!targetRef || targetRef === '__canvas_root__') return;
+    if (mode === 'run') {
+      setStatusMsg({ tone: 'warning', text: '运行视图下不能修改流程。请切换到编辑模式后再试。' });
+      return;
+    }
     if (item.action === 'retry_hardening' && targetTask) {
       updateTask(targetRef, {
         retryCount: 3,
@@ -131,92 +154,59 @@ export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConf
     const q = prompt.trim();
     if (!q || !workflowDef) return;
 
-    // Deterministic fast-path for local commands when no API key is configured or user asks for direct node insertion
-    const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
-    if (!apiKey) {
-      const lower = q.toLowerCase();
-      const anchor =
-        targetRef && targetRef !== '__canvas_root__'
-          ? targetRef
-          : workflowDef.tasks[workflowDef.tasks.length - 1]?.taskReferenceName;
-
-      if (anchor) {
-        let inferredType = 'SIMPLE';
-        if (lower.includes('http') || lower.includes('接口') || lower.includes('请求')) {
-          inferredType = 'HTTP';
-        } else if (lower.includes('switch') || lower.includes('分支') || lower.includes('判断')) {
-          inferredType = 'SWITCH';
-        } else if (lower.includes('loop') || lower.includes('循环')) {
-          inferredType = 'DO_WHILE';
-        } else if (lower.includes('jq') || lower.includes('转换')) {
-          inferredType = 'JSON_JQ_TRANSFORM';
-        } else if (lower.includes('wait') || lower.includes('等待')) {
-          inferredType = 'WAIT';
-        }
-        const cfg = TASK_TYPES.find((t) => t.type === inferredType);
-        const newRef = `${inferredType.toLowerCase()}_${Date.now().toString(36).slice(-4)}`;
-        addNode(
-          {
-            data: {
-              label: q.slice(0, 24) || cfg?.label || inferredType,
-              taskName: newRef,
-              taskReferenceName: newRef,
-              taskType: inferredType,
-            },
-          },
-          anchor,
-          '',
-          `inline-cmdk-${newRef}`,
-          {}
-        );
-        setPrompt('');
-        setInlineCopilotTaskRef(null);
-        return;
-      }
+    // Same AI config as the chat panel — never a demo-only localStorage key, never a
+    // "prompt as node name" fallback when nothing is configured.
+    const config = { ...storeConfig, ...(aiConfig ?? {}) };
+    if (!isAiConfigured(config)) {
+      setStatusMsg({ tone: 'warning', text: ideStores ? '未配置 AI 服务。请点击 AI 对话面板右上角的设置按钮填写 API Key 后重试。' : AI_NOT_CONFIGURED_MESSAGE });
+      return;
+    }
+    if (isStreaming) {
+      setStatusMsg({ tone: 'warning', text: 'AI 正在处理上一条指令，请等它完成后再发送。' });
+      return;
     }
 
+    const anchorRef = targetRef && targetRef !== '__canvas_root__' ? targetRef : null;
+    const instruction = buildInlineInstruction(
+      q,
+      anchorRef ? { ref: anchorRef, name: targetTask?.name, type: targetTask?.type } : null,
+      upstreamTasks.map((u) => u.taskReferenceName),
+    );
+
+    if (ideStores) {
+      // Inside <AiWorkflowIDE>: hand the instruction to the chat's AgentRunner, which applies the
+      // host's aiPermissions, system prompt and proposal pipeline (normalize / verify / pin,
+      // builds on a pending proposal instead of replacing it).
+      ideStores.aiStore.getState().setPendingAutoSend(instruction);
+      setPrompt('');
+      setStatusMsg({ tone: 'success', text: '已发送给 AI 助手。方案生成后会在画布上等待你确认，可在对话面板查看进度。' });
+      setTimeout(() => setInlineCopilotTaskRef(null), 1200);
+      return;
+    }
+
+    // Standalone canvas (WorkflowIDE): run the same AgentRunner against the shared stores.
+    if (aiConfig) activeAiStore.getState().setConfig({ ...aiConfig });
+    const runner = runnerRef.current ?? new AgentRunner(
+      () => ({ aiPermissions: { canEdit: useWorkflowStore.getState().mode !== 'run' } }),
+      { aiStore: useAiStoreSingleton, libraryStore: useLibraryStoreSingleton, toolRegistry: toolRegistrySingleton },
+    );
+    runnerRef.current = runner;
     setLoading(true);
-    setStatusMsg({ tone: 'working', text: '正在基于当前节点拓扑上下文生成 Shadow Graph 变更提案…' });
+    setStatusMsg({ tone: 'working', text: '正在基于当前节点上下文生成变更方案…' });
     try {
-      const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
-      const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
-      const config: Partial<AIServiceConfig> = { apiKey };
-      if (baseUrl) config.baseUrl = baseUrl;
-      if (model) config.model = model;
-
-      const sysPrompt = `You are a Conductor Workflow Architect. The user is invoking inline Cmd+K on task "${targetRef}" (type: ${targetTask?.type || 'ROOT'}).
-Upstream tasks in scope: ${upstreamTasks.map((u) => u.taskReferenceName).join(', ') || 'none'}.
-Current workflow JSON:
-${JSON.stringify(workflowDef, null, 2)}
-
-Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... \`\`\`) that fulfills the user's instruction.`;
-
-      const resp = await callAICopilot(
-        [
-          { role: 'system', content: sysPrompt },
-          { role: 'user', content: q },
-        ],
-        config
-      );
-
-      const match = resp.match(/```(?:json)?\s*([\s\S]*?)```/) || resp.match(/(\{[\s\S]*\})/);
-      if (match) {
-        const proposedDef = JSON.parse(match[1]);
-        if (proposedDef && Array.isArray(proposedDef.tasks)) {
-          const diff = computeDiff(workflowDef, proposedDef);
-          setProposal({
-            proposedDef,
-            diff,
-            messageId: `inline-cmdk-${Date.now()}`,
-          });
-          setPrompt('');
-          setInlineCopilotTaskRef(null);
-          return;
-        }
+      const before = useAiStoreSingleton.getState().pendingProposal?.id;
+      await runner.send(instruction);
+      const st = useAiStoreSingleton.getState();
+      if (st.pendingProposal && st.pendingProposal.id !== before) {
+        setPrompt('');
+        setStatusMsg({ tone: 'success', text: '已生成变更方案，请在画布上方确认应用或放弃。' });
+        setTimeout(() => setInlineCopilotTaskRef(null), 1200);
+      } else {
+        const last = [...st.messages].reverse().find((m) => m.role === 'assistant');
+        const text = (last?.content ?? '').replace(/\*\*/g, '').trim();
+        const failed = text.includes('出错了');
+        setStatusMsg({ tone: failed ? 'failed' : 'warning', text: text ? text.slice(0, 160) : 'AI 没有生成变更方案。请换个说法重试。' });
       }
-      setStatusMsg({ tone: 'warning', text: '未能解析 AI 返回的工作流 JSON，请换个说法重试' });
-    } catch (err: any) {
-      setStatusMsg({ tone: 'failed', text: `调用 AI 失败：${err?.message || '未知错误'}。请检查 AI 配置后重试` });
     } finally {
       setLoading(false);
     }

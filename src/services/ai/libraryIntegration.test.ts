@@ -360,3 +360,69 @@ describe('业务域：系统提示词与 search_workflow_library 过滤', () => 
     expect((r.text ?? '').includes('企微')).toBe(false);
   });
 });
+
+describe('A5 — workflowName 写法在所有提案路径上都规范化为 subWorkflowParam', () => {
+  const byName = (ref: string, workflowName: string): TaskDef =>
+    ({ name: ref, taskReferenceName: ref, type: 'SUB_WORKFLOW', workflowName } as unknown as TaskDef);
+
+  it('replace_workflow：workflowName → subWorkflowParam.name，并固定为库当前版本', () => {
+    const r = executeToolCall('replace_workflow', { workflow: wfDef([byName('s1', 'create_vm')]) }, baseCtx({ resolveLatestVersion: latest }));
+    expect(r.type).toBe('propose');
+    expect(r.proposed!.tasks[0].subWorkflowParam).toEqual({ name: 'create_vm', version: 5 });
+  });
+
+  it('patch_workflow add_task：workflowName 写法同样被规范化', () => {
+    const r = executeToolCall('patch_workflow', { ops: [{ op: 'add_task', task: byName('s2', 'notify') }] }, baseCtx({ resolveLatestVersion: latest }));
+    expect(r.proposed!.tasks[0].subWorkflowParam).toEqual({ name: 'notify', version: 2 });
+  });
+
+  it('不提供 resolver 时 replace_workflow 仍补齐 subWorkflowParam（否则 Conductor 拒收）', () => {
+    const r = executeToolCall('replace_workflow', { workflow: wfDef([byName('s1', 'create_vm')]) }, baseCtx());
+    expect(r.proposed!.tasks[0].subWorkflowParam?.name).toBe('create_vm');
+  });
+
+  it('scaffold_workflow_topology：用流程库版本固定，而不是 v1', () => {
+    const r = executeToolCall('scaffold_workflow_topology', { tasks: [byName('s1', 'create_vm')] }, baseCtx({ resolveLatestVersion: latest }));
+    expect(r.type).toBe('stage');
+    expect(r.workingDraft!.tasks[0].subWorkflowParam).toEqual({ name: 'create_vm', version: 5 });
+  });
+
+  it('嵌套在分支里的 workflowName 写法也被规范化', () => {
+    const sw = { name: 'sw', taskReferenceName: 'sw', type: 'SWITCH', decisionCases: { a: [byName('inner', 'notify')] } } as unknown as TaskDef;
+    const { workflow } = pinSubWorkflowVersions(wfDef([sw]), { resolveLatestVersion: latest });
+    expect(workflow.tasks[0].decisionCases!.a[0].subWorkflowParam).toEqual({ name: 'notify', version: 2 });
+  });
+});
+
+describe('A12 — load_library_workflow', () => {
+  const items: WorkflowLibraryItem[] = [{ workflowName: 'create_vm', workflowLevel: 'L2', version: '5', description: '创建虚机', tags: [] }];
+
+  it('mode=open：流程库提供完整定义时，以该定义作为方案', () => {
+    const full = wfDef([{ name: 'alloc', taskReferenceName: 'alloc', type: 'SIMPLE' } as TaskDef]);
+    const r = executeToolCall('load_library_workflow', { name: 'create_vm' }, baseCtx({ libraryItems: items, libraryWorkflowDef: { ...full, name: 'create_vm' } }));
+    expect(r.type).toBe('propose');
+    expect(r.proposed!.name).toBe('create_vm');
+    expect(r.diff!.added).toEqual(['alloc']);
+    expect(r.inferredLevel).toBe('L2');
+  });
+
+  it('mode=open：只有摘要时返回错误并提示改用 reference', () => {
+    const r = executeToolCall('load_library_workflow', { name: 'create_vm' }, baseCtx({ libraryItems: items }));
+    expect(r.type).toBe('error');
+    expect(r.text).toContain('reference');
+  });
+
+  it('mode=reference：在当前流程末尾追加引用，版本固定为库当前版本', () => {
+    const current = wfDef([{ name: 'a', taskReferenceName: 'a', type: 'SIMPLE' } as TaskDef]);
+    const r = executeToolCall('load_library_workflow', { name: 'create_vm', mode: 'reference' }, baseCtx({ workflowDef: current, libraryItems: items, resolveLatestVersion: latest }));
+    expect(r.type).toBe('propose');
+    expect(r.proposed!.tasks.map((t) => t.taskReferenceName)).toEqual(['a', 'create_vm_ref']);
+    expect(r.proposed!.tasks[1].subWorkflowParam).toEqual({ name: 'create_vm', version: 5 });
+  });
+
+  it('库中没有该名称时返回错误', () => {
+    const r = executeToolCall('load_library_workflow', { name: 'ghost' }, baseCtx({ libraryItems: items }));
+    expect(r.type).toBe('error');
+    expect(r.text).toContain('search_workflow_library');
+  });
+});

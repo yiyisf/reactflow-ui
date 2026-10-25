@@ -86,7 +86,31 @@ describe('protocolAdapter / streamChat', () => {
         it('surfaces the provider error message on non-2xx responses', async () => {
             fetchMock.mockResolvedValue(jsonErrorResponse(401, 'Incorrect API key provided'));
             const events = await collect(streamChat(USER_MSG, [], { apiKey: 'bad-key', provider: 'openai' }));
-            expect(events[0]).toEqual({ type: 'error', message: 'Incorrect API key provided' });
+            expect(events[0]).toEqual({ type: 'error', message: 'HTTP 401: Incorrect API key provided' });
+        });
+
+        it('keeps the status code and provider text for non-JSON error bodies', async () => {
+            fetchMock.mockResolvedValue(new Response('Authentication Fails (no such user)', { status: 401 }));
+            const events = await collect(streamChat(USER_MSG, [], { apiKey: 'bad-key', provider: 'openai' }));
+            expect(events[0]).toEqual({ type: 'error', message: 'HTTP 401: Authentication Fails (no such user)' });
+        });
+
+        it('turns a browser-level fetch failure (network / CORS) into an error event instead of throwing', async () => {
+            fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+            const events = await collect(streamChat(USER_MSG, [], { apiKey: 'sk-test', provider: 'openai' }));
+            expect(events[0].type).toBe('error');
+            expect((events[0] as { message: string }).message).toContain('DIRECT_FETCH_FAILED');
+        });
+
+        it('sends temperature for regular models but omits it for o-series / gpt-5 reasoning models', async () => {
+            fetchMock.mockImplementation(async () => sseResponse(['data: [DONE]\n\n']));
+            await collect(streamChat(USER_MSG, [], { apiKey: 'sk-test', provider: 'openai', model: 'gpt-4o' }));
+            await collect(streamChat(USER_MSG, [], { apiKey: 'sk-test', provider: 'openai', model: 'o3-mini' }));
+            await collect(streamChat(USER_MSG, [], { apiKey: 'sk-test', provider: 'openai', model: 'gpt-5' }));
+            const bodies = fetchMock.mock.calls.map(c => JSON.parse((c[1] as RequestInit).body as string));
+            expect(bodies[0].temperature).toBe(0.7);
+            expect(bodies[1]).not.toHaveProperty('temperature');
+            expect(bodies[2]).not.toHaveProperty('temperature');
         });
 
         it('requests stream_options.include_usage and emits a usage event from the trailing empty-choices chunk', async () => {
@@ -201,7 +225,8 @@ describe('protocolAdapter / streamChat', () => {
             fetchMock.mockResolvedValue(jsonErrorResponse(401, 'Incorrect API key provided'));
             const result = await testConnection({ apiKey: 'bad-key', provider: 'openai' });
             expect(result.ok).toBe(false);
-            expect(result.message).toBe('Incorrect API key provided');
+            expect(result.message).toContain('API Key');
+            expect(result.message).toContain('AI 设置');
         });
 
         it('reports a network-failure message when fetch throws a TypeError', async () => {

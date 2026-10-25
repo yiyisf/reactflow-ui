@@ -88,10 +88,12 @@ export async function* streamEndpoint(
 
     if (!response.ok) {
         const text = await response.text().catch(() => '');
+        // Keep the status code with the proxy's text so humanizeAiError can tell 401 / 429 / 5xx apart
         let message = `HTTP ${response.status}`;
         try {
             const parsed = JSON.parse(text);
-            message = parsed.error?.message || parsed.message || message;
+            const detail = parsed.error?.message || parsed.message;
+            if (detail) message = `${message}: ${detail}`;
         } catch {
             // response body wasn't JSON — keep the HTTP status message
         }

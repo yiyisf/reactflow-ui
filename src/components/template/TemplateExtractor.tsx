@@ -513,7 +513,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 padding: '6px 18px',
                 borderRadius: 6,
                 background: 'var(--color-accent, #3b82f6)',
-                color: '#fff',
+                color: 'var(--color-on-accent, #fff)',
                 border: 'none',
                 fontSize: 12,
                 fontWeight: 600,

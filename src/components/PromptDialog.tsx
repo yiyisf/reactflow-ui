@@ -162,7 +162,7 @@ const PromptDialog = ({
                             backgroundColor: value.trim() ? 'var(--color-accent)' : 'var(--bg-tertiary)',
                             border: 'none',
                             borderRadius: '6px',
-                            color: value.trim() ? '#ffffff' : 'var(--text-secondary)',
+                            color: value.trim() ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary)',
                             cursor: value.trim() ? 'pointer' : 'not-allowed',
                             fontSize: '13px',
                             fontWeight: 600,

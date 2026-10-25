@@ -5,6 +5,11 @@ import ControlButton from './ControlButton';
 import SandboxConfigModal from '../SandboxConfigModal';
 import { useStore } from 'zustand';
 import { ExecutionActions } from '../../types/workflow';
+import { ChartGantt, FlaskConical, Pencil, Redo2, Settings2, SlidersHorizontal, Sparkles, Stethoscope, Undo2, Waypoints } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+/** CMASTER toolbar icon: Lucide, stroke 1.75 (design/guidelines/brand.md · 图标). */
+const Icon = ({ as: Glyph }: { as: LucideIcon }) => <Glyph size={15} strokeWidth={1.75} aria-hidden="true" />;
 
 interface ActionBarProps {
     onShowHealthCheck: () => void;
@@ -98,7 +103,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
             {workflowDef && (
                 <>
                     <ControlButton
-                        icon="🔗"
+                        icon={<Icon as={Waypoints} />}
                         label="数据血缘"
                         title="W-LSP 数据流血缘图谱 (Data Flow Graph)"
                         onClick={() => setShowDataLineage(!showDataLineage)}
@@ -106,7 +111,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     />
                     {mode === 'edit' && (
                         <ControlButton
-                            icon="⌘K"
+                            icon={<Icon as={Sparkles} />}
                             label="AI微调"
                             title="画布内联 AI 指令栏 (Cmd+K)"
                             onClick={() =>
@@ -128,20 +133,20 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     <Divider />
                     <div style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}>
                         <ControlButton
-                            icon="↺"
+                            icon={<Icon as={Undo2} />}
                             title="撤销 (Cmd+Z)"
                             onClick={() => undo()}
                             disabled={pastStates.length === 0}
                         />
                         <ControlButton
-                            icon="↻"
+                            icon={<Icon as={Redo2} />}
                             title="重做 (Cmd+Shift+Z)"
                             onClick={() => redo()}
                             disabled={futureStates.length === 0}
                         />
                     </div>
                     <ControlButton
-                        icon="🩺"
+                        icon={<Icon as={Stethoscope} />}
                         label={hasErrors ? `错误 (${validationResults.errors.length})` : '诊断'}
                         title="流程健康检查"
                         onClick={onShowHealthCheck}
@@ -149,7 +154,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                         variant={hasErrors ? 'danger' : 'secondary'}
                     />
                     <ControlButton
-                        icon="⚙️"
+                        icon={<Icon as={Settings2} />}
                         label="配置"
                         title="工作流全局配置"
                         onClick={() => onShowSettings?.()}
@@ -163,18 +168,18 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     <Divider />
                     <div style={{ display: 'inline-flex', alignItems: 'center' }}>
                         <ControlButton
-                            icon="⚡"
+                            icon={<Icon as={FlaskConical} />}
                             label="沙箱试运行"
                             title="一键启动浏览器本地确定性沙箱试运行 (0ms Dry-Run)"
                             onClick={() => runLocalSandboxDryRun()}
                             variant="primary"
                             style={{
                                 borderRadius: '7px 0 0 7px',
-                                borderRight: '1px solid rgba(255, 255, 255, 0.25)',
+                                borderRight: '1px solid color-mix(in srgb, var(--color-on-accent, #fff) 25%, transparent)',
                             }}
                         />
                         <ControlButton
-                            icon="🧪"
+                            icon={<Icon as={SlidersHorizontal} />}
                             title="人工模拟数据配置台 (自定义 workflow.input / 节点 Mock 输出 / 故障注入 / 分支路由)"
                             onClick={() => setShowSandboxModal(true)}
                             variant="primary"
@@ -192,20 +197,20 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                 <>
                     <Divider />
                     <ControlButton
-                        icon="🧪"
+                        icon={<Icon as={SlidersHorizontal} />}
                         label="模拟数据重跑"
                         title="打开沙箱人工模拟数据配置台，调整入参、分支或注入节点故障后重跑"
                         onClick={() => setShowSandboxModal(true)}
                     />
                     <ControlButton
-                        icon="📊"
+                        icon={<Icon as={ChartGantt} />}
                         label="瀑布流回放"
                         title="并发甘特瀑布流与时间旅行调试器 (Time-Travel)"
                         onClick={() => setShowWaterfallPanel(!showWaterfallPanel)}
                         active={showWaterfallPanel}
                     />
                     <ControlButton
-                        icon="✏️"
+                        icon={<Icon as={Pencil} />}
                         label="返回编辑"
                         title="退出试跑/运行态视图，返回工作流编排画布"
                         onClick={() => setMode('edit')}

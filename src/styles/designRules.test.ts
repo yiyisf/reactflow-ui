@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest';
+
+/**
+ * Source-level guards for CMASTER design rules (CLAUDE.md "Hard rules"). They scan the source as text, like the
+ * telemetry guard tests, so a regression fails `npm test` before anyone has to spot it on screen.
+ */
+const sources = import.meta.glob('../**/*.{ts,tsx,css}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const files = Object.entries(sources).filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.includes('/styles/cmaster'));
+
+describe('CMASTER rule 6: text on accent fills is never hard-coded white', () => {
+    it('no style block pairs an accent background with #fff / white text', () => {
+        const offenders: string[] = [];
+        const white = /color:\s*['"]?(#fff|#ffffff|white)\b/gi;
+        for (const [path, text] of files) {
+            for (const m of text.matchAll(white)) {
+                const start = text.lastIndexOf('{', m.index);
+                const end = text.indexOf('}', m.index);
+                const block = text.slice(start, end);
+                const bg = /background(?:-color)?:\s*([^;,\n]+)/.exec(block)?.[1] ?? '';
+                if (bg.includes('color-accent') && !bg.includes('?')) {
+                    offenders.push(`${path}:${text.slice(0, m.index).split('\n').length}`);
+                }
+            }
+        }
+        // Use var(--color-on-accent) instead: dark on CMASTER orange, white on the deprecated blue brand.
+        expect(offenders).toEqual([]);
+    });
+});
+
+/** Files already migrated to Lucide icons. Add a file here once its emoji are gone, so they cannot come back. */
+const EMOJI_FREE = [
+    '../components/Controls/ActionBar.tsx',
+    '../components/Controls/ControlButton.tsx',
+    '../components/ThemeControls.tsx',
+    '../components/ExecutionStatusBar.tsx',
+    '../components/WorkflowDesigner.tsx',
+    '../WorkflowIDE.tsx',
+    '../AiWorkflowIDE.tsx',
+];
+
+describe('CMASTER rule 7: no emoji in migrated UI files', () => {
+    it.each(EMOJI_FREE)('%s contains no emoji', (path) => {
+        const text = sources[path];
+        expect(text, `${path} not found by the glob`).toBeTypeOf('string');
+        const hits = text
+            .split('\n')
+            .map((line, i) => [i + 1, line] as const)
+            .filter(([, line]) => /\p{Extended_Pictographic}/u.test(line))
+            .map(([n, line]) => `${n}: ${line.trim()}`);
+        expect(hits).toEqual([]);
+    });
+});

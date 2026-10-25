@@ -169,7 +169,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                         top: '4px',
                         right: '4px',
                         background: 'var(--color-accent)',
-                        color: '#fff',
+                        color: 'var(--color-on-accent, #fff)',
                         borderRadius: '4px',
                         fontSize: '9px',
                         fontWeight: '700',

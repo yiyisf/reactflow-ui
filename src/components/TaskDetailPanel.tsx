@@ -472,7 +472,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
             {modes.map(m => (
                 <button key={m.key} onClick={() => onChange(m.key)} disabled={!isEditMode}
-                    style={{ flex: 1, padding: '6px', borderRadius: '6px', border: `1px solid ${borderColor}`, cursor: 'pointer', fontSize: '11px', fontWeight: current === m.key ? 'bold' : 'normal', background: current === m.key ? 'var(--color-accent)' : inputBg, color: current === m.key ? '#fff' : textColor }}>
+                    style={{ flex: 1, padding: '6px', borderRadius: '6px', border: `1px solid ${borderColor}`, cursor: 'pointer', fontSize: '11px', fontWeight: current === m.key ? 'bold' : 'normal', background: current === m.key ? 'var(--color-accent)' : inputBg, color: current === m.key ? 'var(--color-on-accent, #fff)' : textColor }}>
                     {m.label}
                 </button>
             ))}
@@ -491,7 +491,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             {/* Header */}
             <div style={{ padding: '24px', borderBottom: `1px solid ${borderColor}`, background: 'var(--bg-secondary)', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <div style={{ background: 'var(--color-accent)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' }}>
+                    <div style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' }}>
                         {displayTask.type || 'TASK'}
                     </div>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', fontSize: '20px' }}>✕</button>
@@ -647,7 +647,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                             {['COMPLETED', 'FAILED'].map(s => (
                                 <button key={s} onClick={() => handleInputParamChange('terminationStatus', s)} disabled={!isEditMode}
-                                    style={{ flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer', background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg, color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? '#fff' : textColor, border: `1px solid ${borderColor}`, fontWeight: 'bold', fontSize: '11px' }}>
+                                    style={{ flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer', background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg, color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-on-accent, #fff)' : textColor, border: `1px solid ${borderColor}`, fontWeight: 'bold', fontSize: '11px' }}>
                                     {s}
                                 </button>
                             ))}
@@ -902,7 +902,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                         {aiFillLoading ? '⏳' : '✨'} AI 填充
                                     </button>
                                     <button onClick={() => setShowSnippets(!showSnippets)} title="快捷表达式"
-                                        style={{ fontSize: '11px', background: showSnippets ? 'var(--color-accent)' : 'none', border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: showSnippets ? '#fff' : secondaryTextColor }}>
+                                        style={{ fontSize: '11px', background: showSnippets ? 'var(--color-accent)' : 'none', border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: showSnippets ? 'var(--color-on-accent, #fff)' : secondaryTextColor }}>
                                         {'{}'} 片段
                                     </button>
                                 </div>
@@ -995,7 +995,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 <div style={{ padding: '24px', borderTop: `1px solid ${borderColor}`, background: 'var(--bg-secondary)', display: 'flex', gap: '12px', flexShrink: 0 }}>
                     <div style={{ flex: 1, fontSize: '11px', color: secondaryTextColor, display: 'flex', alignItems: 'center' }}>✅ 所有修改已实时同步</div>
                     <button onClick={onClose}
-                        style={{ padding: '10px 24px', background: 'var(--color-accent)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px var(--color-accent-bg)' }}>
+                        style={{ padding: '10px 24px', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px var(--color-accent-bg)' }}>
                         完成退出
                     </button>
                 </div>

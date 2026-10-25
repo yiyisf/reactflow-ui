@@ -49,6 +49,7 @@ import { useOnboardingController, OnboardingToolbarButtons, OnboardingOverlays }
 import './styles/tokens.css';
 import './styles/executionStyles.css';
 import './components/AiNative/AiNative.css';
+import { ChevronLeft, ChevronRight, Code2, LayoutList, Map as MapIcon, MessageSquare } from 'lucide-react';
 
 /** 恢复横幅文案，如"已恢复刚刚的编辑" / "已恢复 3 分钟前的编辑" */
 function formatRestoredBannerText(savedAt: number): string {
@@ -691,7 +692,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         // assistant messages, which break Anthropic API role-alternation requirements.
         const def = targetDef;
         const tasks = def.tasks ?? [];
-        const confirmationLine = `\n\n📌 工作流「${def.name}」已应用（${tasks.length} 个步骤）。`;
+        const confirmationLine = `\n\n工作流「${def.name}」已应用（${tasks.length} 个步骤）。`;
         let mermaidSection = '';
         try {
             const mermaidCode = workflowToMermaid(def);
@@ -834,7 +835,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     title={aiStore.chatPanelOpen ? '收起 AI 对话面板' : '展开 AI 对话面板'}
                     aria-label={aiStore.chatPanelOpen ? '收起 AI 对话面板' : '展开 AI 对话面板'}
                 >
-                    {aiStore.chatPanelOpen ? '◀' : '▶'}
+                    {aiStore.chatPanelOpen ? <ChevronLeft size={14} strokeWidth={1.75} aria-hidden="true" /> : <ChevronRight size={14} strokeWidth={1.75} aria-hidden="true" />}
                 </button>
             )}
 
@@ -851,7 +852,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                             onClick={() => aiStore.setChatPanelOpen(true)}
                             title="展开 AI 对话面板"
                         >
-                            💬 展开 AI 对话
+                            <MessageSquare size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />展开 AI 对话
                         </button>
                     )}
                     <OnboardingToolbarButtons c={onboarding} />
@@ -861,14 +862,14 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                             onClick={() => setShowBusinessView(false)}
                             title="技术视图"
                         >
-                            🔧 技术
+                            <Code2 size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />技术
                         </button>
                         <button
                             className={`biz-view-toggle-btn ${showBusinessView ? 'active' : ''}`}
                             onClick={() => setShowBusinessView(true)}
                             title="业务视图"
                         >
-                            📋 业务
+                            <LayoutList size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />业务
                         </button>
                     </div>
                 </div>
@@ -922,7 +923,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                     title={canvasVisible ? '返回对话' : '查看画布'}
                 >
                     <span className="ai-mobile-canvas-fab-icon">
-                        {canvasVisible ? '💬' : '🗺️'}
+                        {canvasVisible ? <MessageSquare size={18} strokeWidth={1.75} aria-hidden="true" /> : <MapIcon size={18} strokeWidth={1.75} aria-hidden="true" />}
                     </span>
                     <span className="ai-mobile-canvas-fab-label">
                         {canvasVisible ? '对话' : '画布'}

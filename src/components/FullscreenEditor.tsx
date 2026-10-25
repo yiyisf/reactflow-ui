@@ -152,7 +152,7 @@ const FullscreenEditor = ({
                         background: 'var(--color-accent)',
                         border: 'none',
                         borderRadius: '6px',
-                        color: '#fff',
+                        color: 'var(--color-on-accent, #fff)',
                         cursor: 'pointer',
                         fontSize: '12px',
                         fontWeight: 600,

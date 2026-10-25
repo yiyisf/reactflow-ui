@@ -213,7 +213,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
                         onClick={() => selectTaskAction(task || null)}
                         style={{
                             padding: '2px 8px', borderRadius: '12px',
-                            background: 'var(--color-accent)', color: '#fff',
+                            background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)',
                             fontSize: '10px', fontWeight: 700, cursor: 'pointer',
                             flexShrink: 0,
                         }}

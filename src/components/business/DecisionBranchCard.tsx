@@ -257,7 +257,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                     padding: '0 4px',
                     borderRadius: 8,
                     background: isActive ? 'var(--color-accent, #3b82f6)' : 'var(--bg-tertiary)',
-                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    color: isActive ? 'var(--color-on-accent, #fff)' : 'var(--text-muted)',
                   }}
                 >
                   {b.steps?.length || 0}
@@ -327,7 +327,7 @@ export const DecisionBranchCard: React.FC<DecisionBranchCardProps> = ({
                   padding: '3px 8px',
                   borderRadius: 4,
                   background: 'var(--color-accent, #3b82f6)',
-                  color: '#fff',
+                  color: 'var(--color-on-accent, #fff)',
                   border: 'none',
                   fontSize: 11,
                   cursor: 'pointer',

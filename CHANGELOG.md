@@ -35,6 +35,24 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 - **宣传页换用 CMASTER 视觉，每个版本一个主题色**：新增 `src/marketing/campaign.css`，页面在 `<html>` 上声明 `data-campaign`，强调色统一走 `--a / --a-hi / --on`，其余颜色走 tokens。首页 v1.3.0 用 Glacier，v1.2.0 / v1.1.0 / v1.0.0 历史页分别用 Signal / Nebula / Ember；页面结构、文案与交互演示保持不变，去掉全部 emoji（对照表里的 ✓ / ✗ 改为"支持 / 不支持"标记）。首页产品名改为 CMASTER。`public/product-launch.html` 与 `docs/product-launch-v1.0.0.html` 两份旧副本改为跳转到 `v1-0.html`。新增 `releasePages.test.ts`：每页一个主题色、相邻版本不重复、无 emoji、颜色只来自 tokens。轮换规则见 `design/guidelines/marketing.md`「主题色轮换」。
 
+### Fixed（v1.3.1 · 业务模式）
+- **B1 / B19 条件分支判断依据**：新建分支的"判断取值"可绑定数据胶囊（编译为 `inputParameters[caseParam]`，参数名默认 `caseValue`），并可切换"按数据取值 / 按表达式"；支持 SWITCH（`value-param` 的参数名、`javascript` 的脚本）往返；DECISION 的 `caseValueParam` 与 `caseExpression` 互斥写入；清空输入如实写空，不再回退到旧值。
+- **B2 / B3 默认分支**：反编译始终生成默认分支（为空也保留）；没有默认分支时编译为 `[]`，已删除的默认分支步骤不再复活。卡片上默认分支不再提供删除。
+- **B4 动态并行**：`FORK_JOIN_DYNAMIC` 作为专业步骤保留并与其 JOIN 配对，往返不再出现重复 JOIN、不再补出 `forkTasks: []`；配对 JOIN 的原始字段（name、description 等）往返保留。
+- **B5 原始 WAIT**：只认领带 `_actionId` 或仅有 `duration` 的 WAIT；`until` / 等待信号的 WAIT 保留为专业步骤，不再被改成"等待 10 秒"。
+- **B6 任务级配置**：已识别动作编译时以原任务定义为底，`optional / retryCount / timeoutSeconds / startDelay / description` 与 `http_request.headers` 等额外配置往返不丢；原任务名保留；SUB_WORKFLOW 的其它 `subWorkflowParam` 字段保留。
+- **B7 名称与描述**：控制流步骤的 name 与 description 分开保存，不再生成合成描述，多次往返不改名；已有工作流的空描述保持为空。普通动作步骤可重命名（写入 `description`），用于区分两个同类步骤。
+- **B8 / B9 / 数字字段**：数字字段中的数据胶囊原样保留（不再变成 `null`）；清空数字字段编译为默认值而不是 0（如快照保留天数 0 表示永久保留）；对象 / 数组入参以 JSON 编辑并按对象保存，不再显示和保存成 `[object Object]`。新增 `actions/builtin/coerce.ts`。
+- **B10 / 选择器**：取消动作选择器后不再把下一次插入落到上次的分支；嵌套插入的标题显示真实位置（如"分支 VIP · 第 2 步"），选择器与数据胶囊面板支持 Esc 关闭。
+- **B14 / B15 数据胶囊**：选择器显示工作流全局入参；控制流之后的步骤可引用其内部（任意层级）步骤的输出，并行组引用 JOIN 的汇聚输出，循环提供已执行轮次，并注明"仅在某分支执行时有值"等取值条件。胶囊改用数据青色。
+- **B16 校验与试跑徽标**：字段与卡片显示必填 / 数字 / 判断依据 / 循环条件 / 空泳道问题，并合并工作流校验器按任务给出的问题；试跑徽标按真实状态显示（成功 / 失败 / 已超时 / 已跳过 / 运行中 / 等待中），不再一律"试跑成功"。
+- **B17 撤销与删除确认**：卡片视图支持 Ctrl/Cmd+Z 撤销、Ctrl/Cmd+Shift+Z 与 Ctrl/Cmd+Y 重做、Ctrl/Cmd+S 保存（WorkflowIDE 中与画布共用撤销历史；单独使用 `StepFlowEditor` 时用内置历史）；删除步骤、嵌套控制流、分支、泳道统一确认，并说明连带删除的步骤数。`StepFlowEditor` 新增可选属性 `onSave / onUndo / onRedo / validationResults`；`ConfirmDialog` 新增可选 `confirmLabel`，`useConfirm().confirm(message, confirmLabel?)`。
+- **B18 嵌套步骤**：分支 / 泳道 / 循环体内的步骤可上移下移、在中间插入、重命名，并显示流程库版本徽标、敏感标记、校验与试跑状态。
+- **B19 循环**：新建循环的默认条件改为按自身已执行轮次判断（最多 3 轮），不再引用不存在的变量；去掉无依据的"引擎内置循环熔断保护"说明。
+- **B20 人工审批超时**：超时选项编译为任务级 `timeoutSeconds` + `timeoutPolicy: TIME_OUT_WF`，选项文案改为"N 分钟后超时结束流程"。
+- **可用性**：步骤头部、分支标签、分支 / 泳道删除、数据胶囊选项改为可键盘操作的按钮；表单 label 与控件关联，错误信息通过 `aria-describedby` 关联；下拉框当前值不在选项中时显示"当前值"而不是假装选中第一项；数字选项按原类型写回；`@` 只用于唤起数据面板，不再写进值里；"定位步骤"可定位到嵌套步骤；按钮文案改为动词开头（"添加分支""删除分支""升级到 vN"）。
+- **模板中心**：去掉内置模板与界面中编造的使用次数（含 1000 / 1200 兜底值），仅在模板数据提供时显示。
+
 ### Fixed
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。

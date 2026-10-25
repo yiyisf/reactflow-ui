@@ -122,8 +122,10 @@ export function buildSystemPrompt(
         parts.push(
             `## 待确认的变更方案\n` +
             `用户当前有一份尚未确认（未接受也未拒绝）的变更方案，画布上仍是旧版本。` +
-            `如果用户接下来的消息是在此方案基础上继续调整（而非提出全新需求），` +
-            `请基于下方 JSON 继续修改并通过 replace_workflow 重新生成完整方案，而不是从当前画布重新开始。\n\n` +
+            `本轮的 patch_workflow、get_workflow_state、validate_workflow 等工具都以这份方案为起点（不是画布），` +
+            `新方案的差异仍相对画布计算，因此方案里已有的改动会保留。` +
+            `如果用户是在此方案基础上继续调整，用 patch_workflow 只提交新增的修改即可；` +
+            `只有用户提出全新需求时才用 replace_workflow 重新生成完整方案。\n\n` +
             `\`\`\`json\n${JSON.stringify(pendingProposalDef, null, 2)}\n\`\`\``
         );
     }

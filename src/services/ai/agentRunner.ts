@@ -28,7 +28,7 @@ import type { DiffSummary, ToolExecutionContext } from './toolExecutor';
 import { buildSystemPrompt } from './systemPrompt';
 import type { WorkflowSnapshot } from './contextEngine';
 import { verifyWorkflowSemantics, type SynthesisPhase, type VerificationSummary } from './workflowSynthesizer';
-import { humanizeAiError } from './errorMessages';
+import { humanizeAiError, type AiTransportMode } from './errorMessages';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowLevel, WorkflowLibraryItem } from '../../types/workflowLibrary';
 import type { AiEvent } from '../../types/aiEvents';
@@ -38,6 +38,9 @@ import type { UseBoundStore, StoreApi } from 'zustand';
 const RUN_MODE_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(t =>
     ['get_workflow_state', 'validate_workflow', 'search_workflow_library', 'propose_repair'].includes(t.function.name)
 );
+
+/** 编辑模式不提供 propose_repair（修复动作只对运行中的实例有意义） */
+const EDIT_MODE_EXCLUDED_TOOLS = new Set(['propose_repair']);
 
 const MAX_AGENT_STEPS = 6;
 const MAX_SYNTHESIS_STEPS = 10;
@@ -54,6 +57,7 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
     replace_workflow: '正在生成新工作流…',
     patch_workflow: '正在应用变更…',
     propose_plan: '正在生成执行计划…',
+    load_library_workflow: '正在加载流程库中的工作流…',
 };
 
 /** Past-tense labels for AgentTimeline entries once a read-only tool call completes. */
@@ -85,6 +89,45 @@ export interface AgentRunnerStores {
     libraryCatalog?: LibraryCatalog;
 }
 
+/** 模型返回的流错误（HTTP 401 / 429 / 5xx 等）：与抛出的异常走同一条失败路径 */
+class AiStreamError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'AiStreamError';
+    }
+}
+
+/** 校验错误的去重键：用于区分"画布原有的错误"与"本次方案新引入的错误" */
+const errorKey = (e: { ref?: string; message: string }) => `${e.ref ?? ''}|${e.message}`;
+
+export interface SendOptions {
+    /**
+     * 发给模型的文本（缺省等于展示文本）。用于把聊天里看不到的上下文一起带给模型，
+     * 例如"执行方案"要附上计划步骤、澄清选项要附上原问题。
+     */
+    modelText?: string;
+}
+
+/** 把待执行计划整理成随"执行方案"一起发给模型的文本（计划卡片的步骤不在聊天记录里） */
+export function formatPlanForModel(plan: { title: string; steps: Array<{ step: number; action: string; tool?: string }>; summary?: string }): string {
+    const lines = [`请按照下面这份已确认的计划执行，完成后生成变更方案：`, `计划：${plan.title}`];
+    for (const st of plan.steps ?? []) {
+        lines.push(`${st.step}. ${st.action}${st.tool ? `（${st.tool}）` : ''}`);
+    }
+    if (plan.summary) lines.push(`预期效果：${plan.summary}`);
+    return lines.join('\n');
+}
+
+/** 把用户选择的澄清选项连同原问题一起整理给模型（只发标签时模型不知道在回答什么） */
+export function formatClarificationAnswer(
+    clarification: { question: string; context?: string },
+    option: { label: string; description?: string },
+): string {
+    const desc = option.description ? `（${option.description}）` : '';
+    const ctx = clarification.context ? `\n你之前的理解：${clarification.context}` : '';
+    return `关于你的问题「${clarification.question}」，我的选择是：${option.label}${desc}${ctx}\n请按这个选择继续。`;
+}
+
 function snapshotWorkflow(): WorkflowSnapshot {
     const s = useWorkflowStore.getState();
     return {
@@ -101,6 +144,8 @@ function snapshotWorkflow(): WorkflowSnapshot {
 
 export class AgentRunner {
     private controller: AbortController | null = null;
+    /** reset() 之后，仍在收尾的旧会话不能再写断点 / 消息（否则"清空对话"后断点卡片又回来了） */
+    private generation = 0;
 
     constructor(
         private getOptions: () => AgentRunnerOptions,
@@ -109,6 +154,17 @@ export class AgentRunner {
 
     abort(): void {
         this.controller?.abort();
+    }
+
+    /** 中止当前会话并丢弃它的收尾写入（断点、消息、流式状态）。用于"清空对话"。 */
+    reset(): void {
+        this.generation++;
+        this.controller?.abort();
+        this.controller = null;
+    }
+
+    private transportMode(): AiTransportMode {
+        return this.stores.aiStore.getState().config.transport?.type ?? 'direct';
     }
 
     private toolExecutionContext(workingDraft?: WorkflowDef | null): ToolExecutionContext {
@@ -172,6 +228,77 @@ export class AgentRunner {
         }
     }
 
+    /** 取流程库中某个工作流的完整定义（目录未提供 / 取不到时返回 null） */
+    private async fetchLibraryDefinition(name: string, version?: number, signal?: AbortSignal): Promise<WorkflowDef | null> {
+        const catalog = this.stores.libraryCatalog;
+        if (!catalog || !name) return null;
+        const v = version ?? catalog.latest(name)?.version;
+        if (v === undefined) return null;
+        try {
+            const record = await catalog.getVersion(name, v, signal);
+            return record?.def ?? null;
+        } catch {
+            return null;
+        }
+    }
+
+    private publishProposal(
+        result: { proposed: WorkflowDef; diff: DiffSummary; inferredLevel?: WorkflowLevel; verification?: VerificationSummary },
+        messageId: string,
+    ): void {
+        this.stores.aiStore.getState().setProposal({
+            proposedDef: result.proposed,
+            diff: result.diff,
+            inferredLevel: result.inferredLevel,
+            verification: result.verification,
+            messageId,
+        });
+        this.getOptions().onAiEvent?.({
+            type: 'proposal:created',
+            timestamp: Date.now(),
+            diff: {
+                added: result.diff.added.length,
+                modified: result.diff.modified.length,
+                removed: result.diff.removed.length,
+            },
+            inferredLevel: result.inferredLevel,
+        });
+    }
+
+    /**
+     * 推荐卡片"直接使用"：不经过模型，直接把流程库中的工作流变成待确认方案。
+     * 流程库提供完整定义时打开该定义；只有摘要时以 SUB_WORKFLOW 步骤引用它。
+     * 返回是否生成了方案。
+     */
+    async useLibraryWorkflow(name: string): Promise<boolean> {
+        const ai = this.stores.aiStore;
+        if (ai.getState().isStreaming) return false;
+        const { aiPermissions } = this.getOptions();
+        if (aiPermissions?.canEdit === false) {
+            ai.getState().addMessage({ role: 'assistant', content: 'AI 当前处于只读模式，不能把流程库中的工作流加入画布。' });
+            return false;
+        }
+        ai.getState().addMessage({ role: 'user', content: `直接使用流程库中的「${name}」` });
+        const def = await this.fetchLibraryDefinition(name);
+        const ctx = { ...this.toolExecutionContext(ai.getState().pendingProposal?.proposedDef ?? null), libraryWorkflowDef: def };
+        let result = executeToolCall('load_library_workflow', { name, mode: 'open' }, ctx);
+        let mode: 'open' | 'reference' = 'open';
+        if (result.type !== 'propose') {
+            result = executeToolCall('load_library_workflow', { name, mode: 'reference' }, ctx);
+            mode = 'reference';
+        }
+        if (result.type === 'propose' && result.proposed && result.diff) {
+            const intro = mode === 'open'
+                ? `已打开流程库中的「${name}」作为变更方案：${describeDiff(result.diff)}。`
+                : `流程库只提供了「${name}」的摘要，已在流程末尾以子流程步骤引用它：${describeDiff(result.diff)}。`;
+            const messageId = ai.getState().addMessage({ role: 'assistant', content: `${intro}\n请在下方应用或拒绝此变更。` });
+            this.publishProposal({ proposed: result.proposed, diff: result.diff, inferredLevel: result.inferredLevel, verification: result.verification }, messageId);
+            return true;
+        }
+        ai.getState().addMessage({ role: 'assistant', content: result.text ?? `无法加载「${name}」。请在工作流库标签页确认它是否存在。` });
+        return false;
+    }
+
     /**
      * Immediately promotes the current in-progress `workingDraft` (from an interrupted or paused
      * multi-phase session) into a reviewable `pendingProposal`.
@@ -186,25 +313,9 @@ export class AgentRunner {
         if (result.type === 'propose' && result.proposed && result.diff) {
             const lastAssistant = [...ai.getState().messages].reverse().find(m => m.role === 'assistant' && m.id !== 'welcome');
             const messageId = lastAssistant?.id ?? ai.getState().addMessage({ role: 'assistant', content: '已采用当前阶段的工作流草稿。' });
-            ai.getState().setProposal({
-                proposedDef: result.proposed,
-                diff: result.diff,
-                inferredLevel: result.inferredLevel,
-                verification: result.verification,
-                messageId,
-            });
+            this.publishProposal({ proposed: result.proposed, diff: result.diff, inferredLevel: result.inferredLevel, verification: result.verification }, messageId);
             ai.getState().saveCheckpoint(null);
             ai.getState().setSynthesisStage('completed', null);
-            this.getOptions().onAiEvent?.({
-                type: 'proposal:created',
-                timestamp: Date.now(),
-                diff: {
-                    added: result.diff.added.length,
-                    modified: result.diff.modified.length,
-                    removed: result.diff.removed.length,
-                },
-                inferredLevel: result.inferredLevel,
-            });
             return true;
         }
         return false;
@@ -233,6 +344,7 @@ export class AgentRunner {
         } else if (!store.messages.some(m => m.id === assistantMsgId)) {
             assistantMsgId = store.addMessage({ role: 'assistant', content: '' });
         }
+        store.setRetryInput(null);
 
         await this.runDurableLoop({
             sessionId: checkpoint.sessionId,
@@ -240,16 +352,18 @@ export class AgentRunner {
             assistantMsgId,
             agentHistory: history,
             initialDraft: checkpoint.workingDraft,
+            baseDraft: ai.getState().pendingProposal?.proposedDef ?? null,
             initialPhase: checkpoint.phase,
             startStep: checkpoint.stepIndex,
             initialSelfHealCount: checkpoint.selfHealCount,
         });
     }
 
-    async send(text: string): Promise<void> {
+    async send(text: string, options: SendOptions = {}): Promise<void> {
         const ai = this.stores.aiStore;
         const store = ai.getState();
         if (!text.trim() || store.isStreaming) return;
+        const modelText = options.modelText?.trim() ? options.modelText : text;
 
         // Snapshot messages BEFORE adding the new user turn — buildHistory appends
         // userInput itself, so using the pre-add list avoids double-counting it.
@@ -274,14 +388,17 @@ export class AgentRunner {
         }
 
         const assistantMsgId = store.addMessage({ role: 'assistant', content: '' });
-        const agentHistory = this.buildHistory(text, priorMessages);
+        const agentHistory = this.buildHistory(modelText, priorMessages);
 
         await this.runDurableLoop({
             sessionId: `sess_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            userPrompt: text,
+            userPrompt: modelText,
             assistantMsgId,
             agentHistory,
             initialDraft: null,
+            // A follow-up while a proposal is pending continues from that proposal (diffs stay
+            // against the canvas), instead of starting over from the canvas and dropping it.
+            baseDraft: ai.getState().pendingProposal?.proposedDef ?? null,
             initialPhase: 'idle',
             startStep: 0,
             initialSelfHealCount: 0,
@@ -293,7 +410,10 @@ export class AgentRunner {
         userPrompt: string;
         assistantMsgId: string;
         agentHistory: Message[];
+        /** 断点续跑：checkpoint 里的半成品草稿（视为本会话已有进展） */
         initialDraft: WorkflowDef | null;
+        /** 新会话的起点草稿（待确认方案）：工具在它之上修改，但它本身不算本会话的进展 */
+        baseDraft: WorkflowDef | null;
         initialPhase: SynthesisPhase;
         startStep: number;
         initialSelfHealCount: number;
@@ -302,11 +422,15 @@ export class AgentRunner {
         const toolRegistry = this.stores.toolRegistry;
         const { aiPermissions, onAiEvent } = this.getOptions();
         const config = ai.getState().config;
+        const transportMode = this.transportMode();
 
         this.controller?.abort();
         const controller = new AbortController();
         this.controller = controller;
         const { signal } = controller;
+        const generation = this.generation;
+        /** reset() 之后旧会话的收尾写入一律丢弃 */
+        const isCurrent = () => generation === this.generation;
 
         ai.getState().setStreaming(true);
         ai.getState().setStreamingText('');
@@ -319,16 +443,31 @@ export class AgentRunner {
             agentHistory,
         } = params;
 
-        let workingDraft: WorkflowDef | null = params.initialDraft;
+        let workingDraft: WorkflowDef | null = params.initialDraft ?? params.baseDraft;
         let currentPhase: SynthesisPhase = params.initialPhase;
         let selfHealCount = params.initialSelfHealCount;
         let currentStep = params.startStep;
+        /** 本会话（含续跑前）是否已经改动过草稿：决定兜底提交与失败时是否保存断点 */
+        let draftTouched = params.initialDraft !== null;
+        let proposalCreated = false;
+        let hitStepLimit = false;
+        let liveStepText = '';
+        let fullAssistantText = '';
 
-        if (workingDraft || currentPhase !== 'idle') {
+        // 画布上原有的校验错误：自愈只针对本次方案新引入的错误
+        const canvasDef = useWorkflowStore.getState().workflowDef;
+        const baselineErrors = new Set(
+            canvasDef && Array.isArray(canvasDef.tasks) && canvasDef.tasks.length > 0
+                ? verifyWorkflowSemantics(canvasDef).errors.map(errorKey)
+                : [],
+        );
+
+        if (params.initialDraft || currentPhase !== 'idle') {
             ai.getState().setSynthesisStage(currentPhase, workingDraft);
         }
 
         const persistCheckpoint = (status: DurableSessionCheckpoint['status'], lastError?: string) => {
+            if (!isCurrent()) return;
             // Only keep a resumable checkpoint on pause/failure if we have meaningful progress
             // (either a workingDraft or at least 1 completed tool step).
             if (status === 'completed') {
@@ -340,7 +479,7 @@ export class AgentRunner {
                 userPrompt,
                 assistantMsgId,
                 phase: currentPhase,
-                workingDraft,
+                workingDraft: draftTouched ? workingDraft : null,
                 agentHistory: [...agentHistory],
                 stepIndex: currentStep,
                 selfHealCount,
@@ -348,6 +487,10 @@ export class AgentRunner {
                 lastError,
                 updatedAt: Date.now(),
             });
+        };
+        const hasProgress = () => draftTouched || currentStep > params.startStep || params.startStep > 0;
+        const appendText = (text: string) => {
+            fullAssistantText += (fullAssistantText ? '\n\n' : '') + text;
         };
 
         try {
@@ -357,20 +500,25 @@ export class AgentRunner {
             const repairAllowed = aiPermissions?.canRepair !== false;
             let activeDefs = mode === 'run' || !editAllowed
                 ? RUN_MODE_TOOL_DEFINITIONS
-                : [...TOOL_DEFINITIONS, ...customDefs];
+                : [...TOOL_DEFINITIONS.filter(d => !EDIT_MODE_EXCLUDED_TOOLS.has(d.function.name)), ...customDefs];
             if (!repairAllowed) {
                 activeDefs = activeDefs.filter(d => d.function.name !== 'propose_repair');
             }
 
             const existingMsg = ai.getState().messages.find(m => m.id === assistantMsgId);
-            let fullAssistantText = existingMsg?.content ?? '';
+            fullAssistantText = existingMsg?.content ?? '';
 
             // ─── Durable Agentic Loop ───────────────────────────────────────
             for (let step = params.startStep; ; step++) {
-                const maxSteps = (workingDraft !== null || currentPhase !== 'idle')
+                const maxSteps = (draftTouched || currentPhase !== 'idle')
                     ? MAX_SYNTHESIS_STEPS
                     : MAX_AGENT_STEPS;
-                if (step >= maxSteps || signal.aborted) break;
+                if (signal.aborted) break;
+                // 每次 send / resume 都有完整的步数预算
+                if (step - params.startStep >= maxSteps) {
+                    hitStepLimit = true;
+                    break;
+                }
                 currentStep = step;
 
                 ai.getState().setStreamingText('');
@@ -379,33 +527,32 @@ export class AgentRunner {
                 }
 
                 const stepToolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
-                let stepText = '';
+                liveStepText = '';
 
                 for await (const event of streamChat(agentHistory, activeDefs, config, signal)) {
                     if (signal.aborted) break;
                     switch (event.type) {
                         case 'text':
-                            stepText += event.content;
+                            liveStepText += event.content;
                             ai.getState().appendStreamingText(event.content);
                             break;
                         case 'tool_call':
                             stepToolCalls.push({ id: event.id, name: event.name, args: event.args });
                             break;
-                        case 'error': {
-                            const humanized = humanizeAiError(event.message);
-                            stepText += `\n\n**出错了**：${humanized.display}`;
-                            onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
-                            break;
-                        }
+                        case 'error':
+                            // HTTP 401 / 429 / 5xx etc. arrive as events from direct/endpoint
+                            // transports — treat them exactly like a thrown error (failed checkpoint
+                            // or retry), never as a finished turn.
+                            throw new AiStreamError(event.message);
                         case 'usage':
                             ai.getState().recordUsage({ promptTokens: event.promptTokens, completionTokens: event.completionTokens });
                             break;
                     }
                 }
 
-                if (stepText) {
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + stepText;
-                }
+                const stepText = liveStepText;
+                liveStepText = '';
+                if (stepText) appendText(stepText);
 
                 if (!stepToolCalls.length || signal.aborted) break;
 
@@ -493,6 +640,13 @@ export class AgentRunner {
                             // Provider 支持服务端检索时走服务端（大目录），失败则退回本地匹配
                             toolCtx.librarySearchResults = await this.serverLibrarySearch(tc.args);
                         }
+                        if (tc.name === 'load_library_workflow') {
+                            toolCtx.libraryWorkflowDef = await this.fetchLibraryDefinition(
+                                String(tc.args.name ?? ''),
+                                typeof tc.args.version === 'number' ? tc.args.version : undefined,
+                                signal,
+                            );
+                        }
                         result = executeToolCall(tc.name, tc.args, toolCtx);
                     } catch (err: any) {
                         toolResultMsgs.push({ role: 'tool', content: `工具执行出错：${err?.message ?? '未知错误'}`, tool_call_id: tc.id });
@@ -502,7 +656,10 @@ export class AgentRunner {
                     let resultContent: string;
 
                     if (result.type === 'stage') {
-                        if (result.workingDraft) workingDraft = result.workingDraft;
+                        if (result.workingDraft) {
+                            workingDraft = result.workingDraft;
+                            draftTouched = true;
+                        }
                         if (result.phase) currentPhase = result.phase;
                         ai.getState().setSynthesisStage(currentPhase, workingDraft);
                         if (result.timelineLabel) {
@@ -512,18 +669,23 @@ export class AgentRunner {
                         resultContent = result.text ?? '阶段已完成。';
                     } else if (result.type === 'propose' && result.proposed && result.diff) {
                         const verification = result.verification ?? verifyWorkflowSemantics(result.proposed);
-                        if (verification.errors.length > 0 && selfHealCount < MAX_SELF_HEAL) {
+                        // Errors the canvas already had are not this proposal's fault — self-heal
+                        // only spends rounds on errors the proposal introduced.
+                        const newErrors = verification.errors.filter(e => !baselineErrors.has(errorKey(e)));
+                        if (newErrors.length > 0 && selfHealCount < MAX_SELF_HEAL) {
                             selfHealCount++;
                             workingDraft = result.proposed;
+                            draftTouched = true;
                             currentPhase = 'verify';
                             ai.getState().setSynthesisStage('verify', workingDraft);
-                            const errList = verification.errors.map(e => `• [${e.ref || 'GLOBAL'}] ${e.message}`).join('\n');
-                            resultContent = `工作流已生成，但整体校验发现 ${verification.errors.length} 个错误，请通过 configure_workflow_tasks 或 replace_workflow 修复后重新提交：\n${errList}`;
+                            const errList = newErrors.map(e => `• [${e.ref || 'GLOBAL'}] ${e.message}`).join('\n');
+                            resultContent = `工作流已生成，但整体校验发现 ${newErrors.length} 个新引入的错误，请通过 configure_workflow_tasks、patch_workflow 或 replace_workflow 修复后重新提交：\n${errList}`;
                             ai.getState().addTimelineEntry(
-                                `发现 ${verification.errors.length} 处校验问题，正在自动修正…`, 'warning',
+                                `发现 ${newErrors.length} 处校验问题，正在自动修正…`, 'warning',
                             );
                         } else {
                             workingDraft = result.proposed;
+                            draftTouched = true;
                             currentPhase = 'completed';
                             ai.getState().setSynthesisStage('completed', workingDraft);
                             pendingProposalResult = {
@@ -552,7 +714,7 @@ export class AgentRunner {
                 }
 
                 // Ensure every tool call in this step has a matching tool result message.
-                const coveredIds = new Set(toolResultMsgs.map(m => (m as any).tool_call_id));
+                const coveredIds = new Set(toolResultMsgs.map(m => m.tool_call_id));
                 for (const tc of stepToolCalls) {
                     if (!coveredIds.has(tc.id)) {
                         toolResultMsgs.push({ role: 'tool', content: '操作已中止，等待用户确认后继续。', tool_call_id: tc.id });
@@ -564,7 +726,7 @@ export class AgentRunner {
                 persistCheckpoint('running');
 
                 if (ai.getState().pendingRepair?.messageId === assistantMsgId) {
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + '我已诊断出故障原因并准备了修复方案，请查看下方修复卡片。';
+                    appendText('我已诊断出故障原因并准备了修复方案，请查看下方修复卡片。');
                     break;
                 }
                 if (ai.getState().pendingClarification?.messageId === assistantMsgId) break;
@@ -578,23 +740,13 @@ export class AgentRunner {
                         messageId: assistantMsgId,
                     });
                     onAiEvent?.({ type: 'plan:created', timestamp: Date.now() });
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + '我已为你准备了一个执行计划，请查看下方方案并决定是否执行。';
+                    appendText('我已为你准备了一个执行计划，请查看下方方案并决定是否执行。');
                     break;
                 }
 
                 if (pendingProposalResult) {
-                    ai.getState().setProposal({
-                        proposedDef: pendingProposalResult.proposed,
-                        diff: pendingProposalResult.diff,
-                        inferredLevel: pendingProposalResult.inferredLevel,
-                        verification: pendingProposalResult.verification,
-                        messageId: assistantMsgId,
-                    });
-                    onAiEvent?.({
-                        type: 'proposal:created', timestamp: Date.now(),
-                        diff: { added: pendingProposalResult.diff.added.length, modified: pendingProposalResult.diff.modified.length, removed: pendingProposalResult.diff.removed.length },
-                        inferredLevel: pendingProposalResult.inferredLevel,
-                    });
+                    this.publishProposal(pendingProposalResult, assistantMsgId);
+                    proposalCreated = true;
                     const desc = describeDiff(pendingProposalResult.diff);
                     const levelNote = pendingProposalResult.inferredLevel ? ` · ${pendingProposalResult.inferredLevel}` : '';
                     fullAssistantText += `\n\n---\n**已生成变更方案${levelNote}**：${desc}\n请在下方应用或拒绝此变更。`;
@@ -604,15 +756,28 @@ export class AgentRunner {
                 // Continue loop to next stage / model response
             }
 
+            // The loop paused for the user (clarification / plan / recommendation / repair) —
+            // those cards are the answer; never auto-commit a half-built draft over them.
+            const s = ai.getState();
+            const pausedForUser =
+                s.pendingClarification?.messageId === assistantMsgId ||
+                s.pendingPlan?.messageId === assistantMsgId ||
+                s.pendingRecommendation?.messageId === assistantMsgId ||
+                s.pendingRepair?.messageId === assistantMsgId;
+
             // Safety Net: If progressive synthesis built a non-empty workingDraft
             // and the model finished speaking without calling commit_workflow_proposal
             // (and wasn't aborted), automatically verify & commit the draft as a proposal!
             if (
+                isCurrent() &&
                 !signal.aborted &&
+                !hitStepLimit &&
+                !pausedForUser &&
+                !proposalCreated &&
+                draftTouched &&
                 workingDraft &&
                 Array.isArray(workingDraft.tasks) &&
-                workingDraft.tasks.length > 0 &&
-                !ai.getState().pendingProposal
+                workingDraft.tasks.length > 0
             ) {
                 const autoCommit = executeToolCall('commit_workflow_proposal', {}, this.toolExecutionContext(workingDraft));
                 if (autoCommit.type === 'propose' && autoCommit.proposed && autoCommit.diff) {
@@ -622,65 +787,79 @@ export class AgentRunner {
                         `阶段 4/4：已完成整体校验并生成方案 · 共 ${autoCommit.verification?.totalTasks ?? autoCommit.proposed.tasks.length} 个步骤`,
                         autoCommit.verification && !autoCommit.verification.isValid ? 'warning' : 'done',
                     );
-                    ai.getState().setProposal({
-                        proposedDef: autoCommit.proposed,
+                    this.publishProposal({
+                        proposed: autoCommit.proposed,
                         diff: autoCommit.diff,
                         inferredLevel: autoCommit.inferredLevel,
                         verification: autoCommit.verification,
-                        messageId: assistantMsgId,
-                    });
-                    onAiEvent?.({
-                        type: 'proposal:created', timestamp: Date.now(),
-                        diff: {
-                            added: autoCommit.diff.added.length,
-                            modified: autoCommit.diff.modified.length,
-                            removed: autoCommit.diff.removed.length,
-                        },
-                        inferredLevel: autoCommit.inferredLevel,
-                    });
+                    }, assistantMsgId);
+                    proposalCreated = true;
                     const desc = describeDiff(autoCommit.diff);
                     const levelNote = autoCommit.inferredLevel ? ` · ${autoCommit.inferredLevel}` : '';
                     fullAssistantText += `\n\n---\n**已生成变更方案${levelNote}**：${desc}\n请在下方应用或拒绝此变更。`;
                 }
             }
 
+            if (!isCurrent()) return;
+
             if (signal.aborted) {
-                if (workingDraft || currentStep > 0) {
+                if (hasProgress()) {
                     persistCheckpoint('paused');
                 }
-                const cur = ai.getState().messages.find(m => m.id === assistantMsgId);
-                if (!cur?.content && !fullAssistantText.trim()) {
-                    ai.getState().updateMessage(assistantMsgId, '（已中止）');
-                } else if (fullAssistantText.trim()) {
-                    ai.getState().updateMessage(assistantMsgId, fullAssistantText.trim());
-                }
+                ai.getState().updateMessage(assistantMsgId, this.abortedText(fullAssistantText, liveStepText));
+            } else if (hitStepLimit && !proposalCreated) {
+                const maxSteps = (draftTouched || currentPhase !== 'idle') ? MAX_SYNTHESIS_STEPS : MAX_AGENT_STEPS;
+                persistCheckpoint('paused', `已达到单轮 ${maxSteps} 步上限`);
+                ai.getState().setToolStatus('');
+                appendText(
+                    `**已暂停**：本轮已用完 ${maxSteps} 步的上限，AI 停在这里，还没有生成变更方案。` +
+                    '点击下方"从断点继续生成"让 AI 接着完成；或把需求拆成更小的步骤重新发送。',
+                );
+                ai.getState().updateMessage(assistantMsgId, fullAssistantText.trim());
             } else {
                 persistCheckpoint('completed');
                 ai.getState().setToolStatus('');
-                ai.getState().updateMessage(assistantMsgId, fullAssistantText.trim() || '收到，已处理。');
+                ai.getState().updateMessage(
+                    assistantMsgId,
+                    fullAssistantText.trim() || (pausedForUser || proposalCreated
+                        ? '请查看下方卡片。'
+                        : 'AI 没有返回任何内容。请换个说法重新发送；如持续出现，请在 AI 设置中检查模型配置。'),
+                );
             }
         } catch (err: any) {
+            if (!isCurrent()) return;
             ai.getState().setToolStatus('');
-            if (err.name !== 'AbortError') {
-                const humanized = humanizeAiError(err?.message);
-                ai.getState().updateMessage(assistantMsgId, `**出错了**：${humanized.display}`);
+            if (err?.name !== 'AbortError') {
+                const humanized = humanizeAiError(err?.message, { mode: transportMode });
+                const partial = [fullAssistantText, liveStepText].filter(t => t && t.trim()).join('\n\n').trim();
+                ai.getState().updateMessage(
+                    assistantMsgId,
+                    `${partial ? `${partial}\n\n` : ''}**出错了**：${humanized.display}`,
+                );
                 onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
-                if (workingDraft || currentStep > 0) {
+                if (hasProgress()) {
                     persistCheckpoint('failed', humanized.display);
                 } else {
                     ai.getState().setRetryInput(userPrompt);
                 }
             } else {
-                if (workingDraft || currentStep > 0) {
+                if (hasProgress()) {
                     persistCheckpoint('paused');
                 }
-                const cur = ai.getState().messages.find(m => m.id === assistantMsgId);
-                if (!cur?.content) ai.getState().updateMessage(assistantMsgId, '（已中止）');
+                ai.getState().updateMessage(assistantMsgId, this.abortedText(fullAssistantText, liveStepText));
             }
         } finally {
-            ai.getState().setStreaming(false);
-            ai.getState().setStreamingText('');
-            ai.getState().setToolStatus('');
+            if (isCurrent()) {
+                ai.getState().setStreaming(false);
+                ai.getState().setStreamingText('');
+                ai.getState().setToolStatus('');
+            }
         }
+    }
+
+    /** 停止生成：保留已经流式输出的文字，只在末尾注明已中止 */
+    private abortedText(fullText: string, liveText: string): string {
+        const kept = [fullText, liveText].filter(t => t && t.trim()).join('\n\n').trim();
+        return kept ? `${kept}\n\n（已中止）` : '（已中止）';
     }
 }

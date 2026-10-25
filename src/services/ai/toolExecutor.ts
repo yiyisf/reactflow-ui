@@ -97,6 +97,11 @@ export interface ToolExecutionContext {
      * 提供时 search_workflow_library 直接展示这些结果，不再在 libraryItems 内本地匹配。
      */
     librarySearchResults?: WorkflowLibraryItem[];
+    /**
+     * load_library_workflow 用：调用方预取的流程库完整定义（通常来自 LibraryCatalog.getVersion）。
+     * 只有摘要、取不到定义时为 null / undefined。
+     */
+    libraryWorkflowDef?: WorkflowDef | null;
 }
 
 /** 工作流库检索结果最多展示的条数（目录可能有上千项，避免一次塞满上下文） */
@@ -863,9 +868,82 @@ export function executeToolCall(
             return { type: 'info', text: lines.join('\n') };
         }
 
+        case 'load_library_workflow':
+            return buildLibraryWorkflowProposal(args, ctx);
+
         default:
             return { type: 'error', text: `未知工具: ${toolName}` };
     }
+}
+
+// ─── Library workflow → proposal ─────────────────────────────────────────────
+
+/** 为新引用生成不与现有任务冲突的引用名 */
+function uniqueRef(base: string, existing: Set<string>): string {
+    const cleaned = base.replace(/[^a-zA-Z0-9_]/g, '_') || 'sub_workflow';
+    let ref = `${cleaned}_ref`;
+    let n = 2;
+    while (existing.has(ref)) ref = `${cleaned}_ref_${n++}`;
+    return ref;
+}
+
+/**
+ * 把流程库里的一个工作流变成待确认方案（load_library_workflow 与推荐卡片的"直接使用"共用）：
+ * - mode=open：流程库提供了完整定义时，以该定义作为方案（相对画布计算差异）
+ * - mode=reference：在当前草稿 / 画布末尾追加一个引用它的 SUB_WORKFLOW 步骤（版本固定为库当前版本）
+ */
+export function buildLibraryWorkflowProposal(args: Record<string, any>, ctx: ToolExecutionContext): ToolCallResult {
+    const name = typeof args.name === 'string' ? args.name.trim() : '';
+    if (!name) {
+        return { type: 'error', text: 'load_library_workflow 缺少 name（流程库中的工作流名称）' };
+    }
+    const item = ctx.libraryItems.find(i => i.workflowName === name);
+    const fullDef = ctx.libraryWorkflowDef && Array.isArray(ctx.libraryWorkflowDef.tasks) && ctx.libraryWorkflowDef.tasks.length > 0
+        ? ctx.libraryWorkflowDef
+        : null;
+    if (!item && !fullDef) {
+        return { type: 'error', text: `流程库中没有名为「${name}」的工作流。请先用 search_workflow_library 确认名称后重试。` };
+    }
+    const mode = args.mode === 'reference' ? 'reference' : 'open';
+    const currentDef = ctx.workflowDef;
+
+    if (mode === 'open') {
+        if (!fullDef) {
+            return {
+                type: 'error',
+                text: `流程库只提供了「${name}」的摘要，没有完整定义，无法直接打开。可改用 mode=reference 以子流程步骤引用它。`,
+            };
+        }
+        const proposed: WorkflowDef = { ...fullDef, tasks: [...fullDef.tasks] };
+        const diff = computeDiff(currentDef, proposed);
+        const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
+        const verification = verifyWorkflowSemantics(proposed);
+        return {
+            type: 'propose',
+            proposed,
+            diff,
+            inferredLevel: item?.workflowLevel ?? inferredLevel ?? undefined,
+            verification,
+        };
+    }
+
+    const base: WorkflowDef = ctx.workingDraft ?? currentDef ?? { name: 'new_workflow', version: 1, schemaVersion: 2, tasks: [] };
+    const existingRefs = new Set(collectAllTasksInOrder(base.tasks ?? []).map(t => t.taskReferenceName));
+    const parsedVersion = item ? parseInt(String(item.version), 10) : NaN;
+    const version: number | undefined = typeof args.version === 'number'
+        ? args.version
+        : ctx.resolveLatestVersion?.(name) ?? fullDef?.version ?? (Number.isNaN(parsedVersion) ? undefined : parsedVersion);
+    const task: TaskDef = {
+        name: item?.description || name,
+        taskReferenceName: uniqueRef(name, existingRefs),
+        type: 'SUB_WORKFLOW',
+        subWorkflowParam: { name, ...(version !== undefined ? { version } : {}) },
+    };
+    const proposed = applyPatch(base, [{ op: 'add_task', task }]);
+    const diff = computeDiff(currentDef, proposed);
+    const { inferredLevel } = checkLevelCompliance(proposed, ctx.libraryItems);
+    const verification = verifyWorkflowSemantics(proposed);
+    return { type: 'propose', proposed, diff, inferredLevel: inferredLevel ?? undefined, verification };
 }
 
 // ─── Partial proposal apply ──────────────────────────────────────────────────

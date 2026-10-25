@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentRunner } from './agentRunner';
+import { AgentRunner, formatPlanForModel, formatClarificationAnswer } from './agentRunner';
 import type { AgentRunnerStores } from './agentRunner';
 import useAiStore from '../../store/aiStore';
 import useWorkflowStore from '../../store/workflowStore';
 import useLibraryStore from '../../store/libraryStore';
+import { LibraryCatalog } from '../../library/catalog';
 import { toolRegistry } from './toolRegistry';
 import type { StreamEvent } from './protocolAdapter';
 import type { AgentRequest } from './transport';
@@ -322,6 +323,48 @@ describe('AgentRunner', () => {
         expect(useAiStore.getState().isStreaming).toBe(false);
     });
 
+    it('keeps the text streamed so far when the user stops generation', async () => {
+        const stream = async function* (_req: AgentRequest, signal: AbortSignal): AsyncGenerator<StreamEvent> {
+            yield { type: 'text', content: '先说一半的分析' };
+            await new Promise(resolve => setTimeout(resolve, 20));
+            if (signal.aborted) throw Object.assign(new Error('The operation was aborted'), { name: 'AbortError' });
+            yield { type: 'text', content: '……后半段' };
+            yield { type: 'done' };
+        };
+        useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        const promise = runner.send('分析一下');
+        await new Promise(resolve => setTimeout(resolve, 5));
+        runner.abort();
+        await promise;
+
+        const content = fromEnd(useAiStore.getState().messages)?.content ?? '';
+        expect(content).toContain('先说一半的分析');
+        expect(content).toContain('（已中止）');
+    });
+
+    it('reset() during a run (清空对话) does not bring a paused checkpoint back afterwards', async () => {
+        const stream = async function* (_req: AgentRequest, signal: AbortSignal): AsyncGenerator<StreamEvent> {
+            if (!signal.aborted) {
+                yield { type: 'tool_call', id: `t_${Math.random()}`, name: 'scaffold_workflow_topology', args: { tasks: [{ name: 'a', taskReferenceName: 'a', type: 'SIMPLE' }] } };
+            }
+            await new Promise(resolve => setTimeout(resolve, 20));
+            if (signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+        };
+        useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        const promise = runner.send('构建流程');
+        await new Promise(resolve => setTimeout(resolve, 30));
+        runner.reset();
+        useAiStore.getState().clearMessages();
+        await promise;
+
+        expect(useAiStore.getState().durableCheckpoint).toBeNull();
+        expect(useAiStore.getState().messages).toHaveLength(1); // welcome only
+    });
+
     it('injects the pending proposal JSON into the system prompt so the model can iterate on it', async () => {
         useAiStore.getState().setProposal({
             proposedDef: { name: 'draft_wf', tasks: [{ name: 'a', taskReferenceName: 'a', type: 'SIMPLE' }] } as any,
@@ -509,5 +552,170 @@ describe('AgentRunner', () => {
         expect(useAiStore.getState().pendingProposal).not.toBeNull();
         expect(useAiStore.getState().pendingProposal?.proposedDef.tasks).toHaveLength(1);
     });
-});
+    // ─── v1.3.1 regressions ──────────────────────────────────────────────────
 
+    it('A1: a follow-up while a proposal is pending patches the proposal, not the canvas', async () => {
+        useWorkflowStore.getState().setWorkflow({ name: 'test_wf', version: 1, tasks: [{ name: 'a', taskReferenceName: 'a', type: 'SIMPLE' }] } as any);
+        useAiStore.getState().setProposal({
+            proposedDef: { name: 'test_wf', version: 1, tasks: [
+                { name: 'a', taskReferenceName: 'a', type: 'SIMPLE' },
+                { name: 'approve', taskReferenceName: 'approve', type: 'HUMAN' },
+            ] } as any,
+            diff: { added: ['approve'], modified: [], removed: [], propsChanged: false },
+            messageId: 'm_prev',
+        });
+        const { transport } = scriptedTransport([
+            [{ type: 'tool_call', id: 't1', name: 'patch_workflow', args: { ops: [{ op: 'add_task', afterRef: 'approve', task: { name: 'notify', taskReferenceName: 'notify', type: 'SIMPLE' } }] } }],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('审批后再发个通知');
+
+        const proposal = useAiStore.getState().pendingProposal;
+        expect(proposal?.proposedDef.tasks.map((t: any) => t.taskReferenceName)).toEqual(['a', 'approve', 'notify']);
+        // diff stays relative to the canvas, so the earlier change is still listed
+        expect(proposal?.diff.added).toEqual(['approve', 'notify']);
+    });
+
+    it('A2: an HTTP error event (401) is a failure — retry offered, no auto-commit, no completed checkpoint', async () => {
+        const { transport } = scriptedTransport([
+            [{ type: 'tool_call', id: 't1', name: 'scaffold_workflow_topology', args: { tasks: [{ name: 'a', taskReferenceName: 'a', type: 'SIMPLE' }] } }],
+            [{ type: 'error', message: 'HTTP 401: invalid x-api-key' }, { type: 'done' }],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('构建流程');
+
+        expect(useAiStore.getState().pendingProposal).toBeNull();
+        const cp = useAiStore.getState().durableCheckpoint;
+        expect(cp?.status).toBe('failed');
+        expect(cp?.workingDraft?.tasks).toHaveLength(1);
+        expect(fromEnd(useAiStore.getState().messages)?.content).toContain('出错了');
+    });
+
+    it('A2: an error event on the first step offers retry instead of finishing the turn', async () => {
+        const { transport } = scriptedTransport([[{ type: 'error', message: 'HTTP 429' }, { type: 'done' }]]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('你好');
+
+        expect(useAiStore.getState().retryInput).toBe('你好');
+        expect(fromEnd(useAiStore.getState().messages)?.content).toContain('频繁');
+    });
+
+    it('A9: no safety-net auto-commit while a clarification is pending for this message', async () => {
+        const { transport } = scriptedTransport([
+            [{ type: 'tool_call', id: 't1', name: 'scaffold_workflow_topology', args: { tasks: [{ name: 'a', taskReferenceName: 'a', type: 'SIMPLE' }] } }],
+            [{ type: 'tool_call', id: 't2', name: 'ask_clarification', args: { question: '审批几级？', options: [{ id: '1', label: '一级', description: '' }, { id: '2', label: '两级', description: '' }] } }],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('做个审批流程');
+
+        expect(useAiStore.getState().pendingClarification?.question).toBe('审批几级？');
+        expect(useAiStore.getState().pendingProposal).toBeNull();
+    });
+
+    it('A10: self-heal ignores validation errors the canvas already had', async () => {
+        // The canvas already has a duplicate-ref error; the model's proposal keeps it and adds a task.
+        useWorkflowStore.getState().setWorkflow({ name: 'test_wf', version: 1, tasks: [
+            { name: 'x', taskReferenceName: 'dup', type: 'SIMPLE' },
+            { name: 'y', taskReferenceName: 'dup', type: 'SIMPLE' },
+        ] } as any);
+        const { transport, callCount } = scriptedTransport([
+            [{ type: 'tool_call', id: 't1', name: 'patch_workflow', args: { ops: [{ op: 'add_task', task: { name: 'z', taskReferenceName: 'z', type: 'SIMPLE' } }] } }],
+            [{ type: 'text', content: 'should not be needed' }, { type: 'done' }],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('加一个任务');
+
+        expect(callCount()).toBe(1);
+        expect(useAiStore.getState().pendingProposal?.proposedDef.tasks).toHaveLength(3);
+    });
+
+    it('excludes propose_repair from the tools offered in edit mode', async () => {
+        const { transport, seenRequests } = scriptedTransport([[{ type: 'text', content: 'ok' }, { type: 'done' }]]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('看看');
+
+        const toolNames = seenRequests[0].tools.map(t => t.function.name);
+        expect(toolNames).not.toContain('propose_repair');
+        expect(toolNames).toContain('load_library_workflow');
+    });
+
+    it('says it stopped at the step limit (and saves a resumable checkpoint) instead of "收到，已处理。"', async () => {
+        const infiniteSteps = Array.from({ length: 10 }, (_, i) => (
+            [{ type: 'tool_call' as const, id: `t${i}`, name: 'get_workflow_state', args: {} }]
+        ));
+        const { transport } = scriptedTransport(infiniteSteps);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('一直问');
+
+        const content = fromEnd(useAiStore.getState().messages)?.content ?? '';
+        expect(content).toContain('上限');
+        expect(content).not.toContain('收到，已处理');
+        expect(useAiStore.getState().durableCheckpoint?.status).toBe('paused');
+    });
+
+    it('send(text, { modelText }) shows the short text but gives the model the full context', async () => {
+        const { transport, seenRequests } = scriptedTransport([[{ type: 'text', content: 'ok' }, { type: 'done' }]]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+        const modelText = formatPlanForModel({ title: '串行改并行', steps: [{ step: 1, action: '把 a 和 b 放进 FORK_JOIN', tool: 'patch_workflow' }] });
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        await runner.send('执行方案', { modelText });
+
+        expect(fromEnd(useAiStore.getState().messages, 2)?.content).toBe('执行方案');
+        const lastUser = fromEnd(seenRequests[0].messages.filter(m => m.role === 'user'));
+        expect(lastUser?.content).toContain('把 a 和 b 放进 FORK_JOIN');
+    });
+
+    it('formatClarificationAnswer carries the original question with the chosen option', () => {
+        const text = formatClarificationAnswer({ question: '审批几级？' }, { label: '两级', description: '主管 + HR' });
+        expect(text).toContain('审批几级？');
+        expect(text).toContain('两级');
+        expect(text).toContain('主管 + HR');
+    });
+
+    it('A12: load_library_workflow (mode=reference) adds a pinned SUB_WORKFLOW step as a proposal', async () => {
+        const catalog = new LibraryCatalog(undefined, {
+            staticItems: [{ workflowName: 'create_vm', workflowLevel: 'L1', version: '3', description: '创建虚机', tags: [] }],
+        });
+        useLibraryStore.getState().setLibrary([{ workflowName: 'create_vm', workflowLevel: 'L1', version: '3', description: '创建虚机', tags: [] }]);
+        const { transport } = scriptedTransport([
+            [{ type: 'tool_call', id: 't1', name: 'load_library_workflow', args: { name: 'create_vm', mode: 'reference' } }],
+        ]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+
+        const runner = new AgentRunner(() => ({}), { ...testStores, libraryCatalog: catalog });
+        await runner.send('直接用 create_vm');
+
+        const tasks = useAiStore.getState().pendingProposal?.proposedDef.tasks ?? [];
+        const sub = tasks.find((t: any) => t.type === 'SUB_WORKFLOW');
+        expect(sub?.subWorkflowParam).toEqual({ name: 'create_vm', version: 3 });
+    });
+
+    it('A12: useLibraryWorkflow() turns a recommendation into a proposal without calling the model', async () => {
+        const { transport, callCount } = scriptedTransport([[{ type: 'text', content: 'unused' }, { type: 'done' }]]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+        useLibraryStore.getState().setLibrary([{ workflowName: 'notify', workflowLevel: 'L1', version: '2', description: '发送通知', tags: [] }]);
+
+        const runner = new AgentRunner(() => ({}), testStores);
+        const ok = await runner.useLibraryWorkflow('notify');
+
+        expect(ok).toBe(true);
+        expect(callCount()).toBe(0);
+        const proposal = useAiStore.getState().pendingProposal;
+        expect(proposal?.proposedDef.tasks.some((t: any) => t.subWorkflowParam?.name === 'notify')).toBe(true);
+    });
+});

@@ -64,7 +64,7 @@ body {
   font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
-  color: var(--cm-brand-text);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;

@@ -6,74 +6,37 @@ interface BrandLogoProps {
     style?: React.CSSProperties;
 }
 
+/** The logo orange is the one colour literal CMASTER allows (CLAUDE.md rule 1): it stays the same in every theme. */
+const LOGO_ORANGE = '#ff6a13';
+
 /**
- * Conductor Workflow IDE 极简几何品牌 Logo
- *
- * 设计语言：深空圆角矩形底座 + 贝塞尔双分支编排流向 + 三色确定性拓扑节点（靛紫起点 → 青蓝分支 / 翠绿沙箱通过节点）
+ * CMASTER mark: a C-shaped arc linking three system nodes to a central hub (design/assets/cmaster-mark-*.svg).
+ * The node centres take the surrounding surface colour, so one component serves the dark and light marks.
  */
-export const BrandLogo: React.FC<BrandLogoProps> = ({ size = 26, className, style }) => {
-    const uid = React.useId().replace(/:/g, '');
-    return (
-        <svg
-            width={size}
-            height={size}
-            viewBox="0 0 32 32"
-            fill="none"
-             xmlns="http://www.w3.org/2000/svg"
-            className={className}
-            style={{ flexShrink: 0, display: 'inline-block', verticalAlign: 'middle', ...style }}
-            aria-label="Conductor Workflow IDE Logo"
-        >
-            <defs>
-                <linearGradient id={`bg-${uid}`} x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#11172B" />
-                    <stop offset="100%" stopColor="#090D18" />
-                </linearGradient>
-                <linearGradient id={`bd-${uid}`} x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#6366F1" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.5" />
-                </linearGradient>
-                <linearGradient id={`top-${uid}`} x1="9" y1="16" x2="23" y2="10" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#818CF8" />
-                    <stop offset="100%" stopColor="#22D3EE" />
-                </linearGradient>
-                <linearGradient id={`bot-${uid}`} x1="9" y1="16" x2="23" y2="22" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#6366F1" />
-                    <stop offset="100%" stopColor="#34D399" />
-                </linearGradient>
-            </defs>
-
-            <rect
-                x="1.25"
-                y="1.25"
-                width="29.5"
-                height="29.5"
-                rx="8"
-                fill={`url(#bg-${uid})`}
-                stroke={`url(#bd-${uid})`}
-                strokeWidth="1.5"
-            />
-
-            <path
-                d="M 9.5 16 C 15 16, 15.5 10, 22.5 10"
-                stroke={`url(#top-${uid})`}
-                strokeWidth="2.4"
-                strokeLinecap="round"
-            />
-            <path
-                d="M 9.5 16 C 15 16, 15.5 22, 22.5 22"
-                stroke={`url(#bot-${uid})`}
-                strokeWidth="2.4"
-                strokeLinecap="round"
-            />
-
-            <circle cx="9.5" cy="16" r="3.4" fill="#6366F1" />
-            <circle cx="9.5" cy="16" r="1.4" fill="#F8FAFC" />
-
-            <circle cx="22.5" cy="10" r="2.7" fill="#22D3EE" />
-            <circle cx="22.5" cy="22" r="2.7" fill="#34D399" />
-        </svg>
-    );
-};
+export const BrandLogo: React.FC<BrandLogoProps> = ({ size = 26, className, style }) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 100 100"
+        xmlns="http://www.w3.org/2000/svg"
+        className={className}
+        style={{ flexShrink: 0, display: 'inline-block', verticalAlign: 'middle', ...style }}
+        role="img"
+        aria-label="CMASTER"
+    >
+        <g stroke={LOGO_ORANGE} strokeWidth="3" opacity="0.7">
+            <line x1="50" y1="50" x2="75.5" y2="24.5" />
+            <line x1="50" y1="50" x2="14" y2="50" />
+            <line x1="50" y1="50" x2="75.5" y2="75.5" />
+        </g>
+        <path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke={LOGO_ORANGE} strokeWidth="9" strokeLinecap="round" />
+        <g stroke={LOGO_ORANGE} strokeWidth="5" style={{ fill: 'var(--cm-surface-1)' }}>
+            <circle cx="75.46" cy="24.54" r="7" />
+            <circle cx="14" cy="50" r="7" />
+            <circle cx="75.46" cy="75.46" r="7" />
+        </g>
+        <circle cx="50" cy="50" r="10" fill={LOGO_ORANGE} />
+    </svg>
+);
 
 export default BrandLogo;

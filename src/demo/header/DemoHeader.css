@@ -32,6 +32,16 @@
   flex-shrink: 0;
 }
 
+/* Wordmark: sans 800, -0.02em, the C in brand orange (design/guidelines/brand.md) */
+.dh .dh-brand-text {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.dh .dh-brand-c {
+  color: var(--cm-brand-500);
+}
+
 .dh .dh-version {
   font-size: 11px;
   font-weight: 600;

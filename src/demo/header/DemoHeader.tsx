@@ -64,7 +64,7 @@ export function DemoHeader(p: DemoHeaderProps) {
         <div className="dh-left">
           <h1 className="app-title dh-brand">
             <BrandLogo size={26} />
-            <span className="dh-brand-text">Conductor IDE</span>
+            <span className="dh-brand-text"><span className="dh-brand-c">C</span>MASTER</span>
             <span className="dh-version">v1.3</span>
           </h1>
 

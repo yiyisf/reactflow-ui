@@ -31,6 +31,8 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - `getTaskTypeMeta().color` 改为分类色 token（`--cm-cat-task / control / data / human`，终止为失败色）；`getCategoryIcon()` 返回图标名（配合 `CmIcon` 使用），`getCategoryColor()` 返回状态色 token；解析器生成的分支连线颜色改用 token。模板脱敏与接口导入生成的默认图标改为图标名。Mermaid 中 WAIT / HUMAN 节点改用圆角形状代替 emoji 前缀。
 - **守卫覆盖全部 UI 源码**：`designRules.test.ts` 对 `src/` 下所有 `.ts/.tsx/.css` 检查 emoji 与写死颜色，仅保留 6 个有理由的例外（tokens 桥接文件、Logo 图形、蓝色品牌色样、emoji 别名表、两个只给模型看的 AI 上下文文件）。
 
+- **统一使用 CMASTER 标志**：`BrandLogo` 换为 CMASTER 标志（C 形圆弧 + 三个系统节点 + 中心枢纽，标志橙 `#ff6a13`，节点内芯随主题取表面色），演示站顶栏字标改为 CMASTER（首字母 C 为品牌橙）；`public/logo.svg`（favicon）换为 CMASTER 应用图标；首页与 v1.0 / v1.1 / v1.2 历史发布页顶栏的标志与字标同步替换。`BrandLogo` 的 props 不变。
+
 ### Fixed
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。

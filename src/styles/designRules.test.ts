@@ -34,7 +34,7 @@ describe('CMASTER rule 6: text on accent fills is never hard-coded white', () =>
 const COLOUR_EXCEPTIONS: Record<string, string> = {
     // import.meta.glob keys files next to this test as './x', everything else as '../dir/x'
     './tokens.css': 'bridge from legacy variables to --cm-* tokens, including the deprecated blue brand',
-    '../components/BrandLogo.tsx': 'logo artwork',
+    '../components/BrandLogo.tsx': 'CMASTER logo: the logo orange is the one allowed literal (rule 1)',
     '../components/ThemeControls.tsx': 'brand swatch for the deprecated blue theme',
 };
 const EMOJI_EXCEPTIONS: Record<string, string> = {

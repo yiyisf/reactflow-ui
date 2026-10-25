@@ -82,6 +82,8 @@ test('IDE · light theme icons are not near-white', async ({ page }) => {
             // first ancestor with an opaque-ish background; white icons on red/orange fills are fine
             const groundOf = (el: Element | null): string => {
                 for (; el; el = el.parentElement) {
+                    // a gradient or image fill: ground colour unknown, treat as dark so the icon is not flagged
+                    if (getComputedStyle(el).backgroundImage !== 'none') return 'rgb(0, 0, 0)';
                     const bg = getComputedStyle(el).backgroundColor;
                     const a = rgb(bg)[3];
                     if (bg !== 'transparent' && (a === undefined || a > 0.5)) return bg;

@@ -45,7 +45,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     onPollExecution,
     onClose,
 }) => {
-    const inputParams = parseWorkflowInputParams(workflowDef.inputParameters as any);
+    const inputParams = parseWorkflowInputParams(workflowDef.inputParameters as any, workflowDef);
     const [phase, setPhase] = useState<Phase>('form');
     const [paramValues, setParamValues] = useState<Record<string, string>>(() =>
         Object.fromEntries(inputParams.map(p => [p.name, '']))

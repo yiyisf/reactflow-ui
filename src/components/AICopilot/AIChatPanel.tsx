@@ -4,7 +4,7 @@ import DiffCard from './DiffCard';
 
 import useWorkflowStore from '../../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
-import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage, AIServiceConfig } from '../../services/aiService';
+import { callAICopilotStream, CONDUCTOR_SYSTEM_PROMPT, ChatMessage, AIServiceConfig, isAiConfigured } from '../../services/aiService';
 import { generateWorkflowSuggestionPrompt } from '../../services/promptTemplates';
 import { AIChatMessage } from '../../types/workflow';
 import { applyWorkflowDiff, parseDiffFromAIResponse } from '../../utils/workflowDiff';
@@ -180,13 +180,16 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
         setStreamingContent('');
 
         try {
-            const apiKey = aiConfig?.apiKey || localStorage.getItem('AI_API_KEY') || '';
-            const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
-            const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
+            // Same config as every other AI entry point: provider / baseUrl / model / transport from
+            // the host's aiConfig (OpenAI, Anthropic, endpoint proxy or custom transport).
+            const apiConfig: Partial<AIServiceConfig> = { ...(aiConfig ?? {}) };
 
-            if (!apiKey) {
+            if (!isAiConfigured(apiConfig)) {
                 setTimeout(() => {
                     if (controller.signal.aborted) return;
+                    // Demo mode: the sample is offered only on an empty canvas, so "应用" can never
+                    // replace a workflow the user has already built.
+                    const canvasEmpty = !workflowDef || (workflowDef.tasks ?? []).length === 0;
                     const demoWorkflow = {
                         name: 'demo_approval_workflow',
                         description: '演示审批流程',
@@ -196,30 +199,33 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                             { name: 'process_result', taskReferenceName: 'process_result', type: 'SIMPLE' as TaskType, inputParameters: {} },
                         ],
                     };
-                    const aiMsg: AIChatMessage = {
-                        id: (Date.now() + 1).toString(),
-                        role: 'ai',
-                        content: '**演示模式**：未检测到 API Key，以下是一个示例审批流程供体验。请在标题栏 按钮中配置真实 API Key 以启用 AI 功能。',
-                        diff: {
-                            kind: 'replace',
-                            summary: '生成三步审批流程（演示）',
-                            rows: [
-                                { kind: 'add', desc: 'submit_request — 提交申请任务' },
-                                { kind: 'add', desc: 'human_approval — 人工审批任务' },
-                                { kind: 'add', desc: 'process_result — 处理审批结果' },
-                            ],
-                            payload: demoWorkflow,
-                        },
-                    };
+                    const configHint = '未配置 AI 服务，AI 助手暂时只能演示。请由集成方通过 `aiConfig` 传入 API Key 或代理服务（演示站点可点击标题栏的「AI 配置」按钮填写）后重试。';
+                    const aiMsg: AIChatMessage = canvasEmpty
+                        ? {
+                            id: (Date.now() + 1).toString(),
+                            role: 'ai',
+                            content: `**演示模式**：${configHint}\n\n下面是一个示例审批流程，可应用到空白画布上体验。`,
+                            diff: {
+                                kind: 'replace',
+                                summary: '生成三步审批流程（演示）',
+                                rows: [
+                                    { kind: 'add', desc: 'submit_request — 提交申请任务' },
+                                    { kind: 'add', desc: 'human_approval — 人工审批任务' },
+                                    { kind: 'add', desc: 'process_result — 处理审批结果' },
+                                ],
+                                payload: demoWorkflow,
+                            },
+                        }
+                        : {
+                            id: (Date.now() + 1).toString(),
+                            role: 'ai',
+                            content: `**演示模式**：${configHint}\n\n当前画布已有工作流，演示模式不会改动它。`,
+                        };
                     setMessages(prev => [...prev, aiMsg]);
                     setIsLoading(false);
                 }, 800);
                 return;
             }
-
-            const apiConfig: Record<string, string> = { apiKey };
-            if (baseUrl) apiConfig.baseUrl = baseUrl;
-            if (model) apiConfig.model = model;
 
             const chatHistory = buildChatHistory(text);
 
@@ -279,7 +285,8 @@ const AIChatPanel: React.FC<AIChatPanelProps> = ({ aiConfig }) => {
                 const errorMsg: AIChatMessage = {
                     id: Date.now().toString(),
                     role: 'ai',
-                    content: `抱歉，目前无法连接到 AI 服务: ${err.message}`,
+                    // aiService already turns provider errors into "what happened + how to fix it"
+                    content: `**出错了**：${err?.message || 'AI 服务返回了无法识别的错误。请重试；如持续出现，请联系管理员。'}`,
                 };
                 setMessages(prev => [...prev, errorMsg]);
                 setStreamingContent('');

@@ -56,6 +56,37 @@ test('IDE · the three views really differ', async ({ page }) => {
     expect(canvas.equals(pro)).toBe(false);
 });
 
+test('IDE · light theme icons are not near-white', async ({ page }) => {
+    // Regression guard: the light IDE once inherited the dark default text colour from the host body,
+    // so every currentColor icon on white cards vanished. Pixel-ratio screenshots miss a few small icons.
+    await page.addInitScript(() => {
+        localStorage.setItem('conductor-ui-prefs', JSON.stringify({ state: { theme: 'light', themeColor: 'orange' }, version: 1 }));
+    });
+    await page.goto('/app.html');
+    await settle(page);
+    const pale = await page.locator('[data-mode="light"] svg.lucide').evaluateAll((svgs) => {
+        const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).map(Number);
+        const light = (c: string) => {
+            const [r, g, b] = rgb(c);
+            return r > 225 && g > 225 && b > 225;
+        };
+        // first ancestor with an opaque-ish background; white icons on red/orange fills are fine
+        const groundOf = (el: Element | null): string => {
+            for (; el; el = el.parentElement) {
+                const bg = getComputedStyle(el).backgroundColor;
+                const a = rgb(bg)[3];
+                if (bg !== 'transparent' && (a === undefined || a > 0.5)) return bg;
+            }
+            return 'rgb(255, 255, 255)';
+        };
+        return svgs
+            .filter((s) => s.getBoundingClientRect().width > 0)
+            .filter((s) => light(getComputedStyle(s).color) && light(groundOf(s.parentElement)))
+            .map((s) => `${s.getAttribute('class')} in ${s.parentElement?.textContent?.trim().slice(0, 20)}`);
+    });
+    expect(pale, 'near-white icons on light grounds in light theme').toEqual([]);
+});
+
 test('IDE · primary buttons keep readable text on hover', async ({ page }) => {
     // Regression guard for the CMASTER rule "global link styles must not apply to buttons":
     // hovering an orange button must not turn its label orange.

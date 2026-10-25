@@ -599,10 +599,14 @@ import {
   UpstreamTaskInfo,
 
   // v1.0.0 新增：浏览器本地确定性沙箱引擎 API
-  executeLocalSandboxDryRun,
+  executeLocalSandboxDryRunAsync, // v1.3.1：真实执行 INLINE / JQ / SWITCH / DO_WHILE 等，推荐
+  executeLocalSandboxDryRun,      // 同步旧接口：不执行脚本，相关任务标为未执行
   buildDefaultWorkflowMockInput,
   generateDefaultTaskOutputPreview,
+  runJq,
+  createWorkerScriptEvaluator,
   SandboxDryRunOptions,
+  SandboxAsyncOptions,
   TaskMockOverride,
 } from '@yiyi_zhang/reactflow-ui';
 ```

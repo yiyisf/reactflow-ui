@@ -8,6 +8,14 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 > 主题：CMASTER 设计系统落地的第一步 —— 设计规范进仓库，并让人和 AI 都按同一套规则产出、被同一套检查把关。规范入口见 `design/README.md`。
 
+### Fixed（v1.3.1 · 沙箱）
+- **沙箱真实执行无外部依赖的任务**（S1–S8）：新增 `executeLocalSandboxDryRunAsync(def, options)`，IDE 的沙箱试运行、业务模式试跑、模板中心与模板向导都改用它。按 Conductor 语义真实执行：`INLINE` / `LAMBDA`（JavaScript，`$` 为解析后的入参，输出 `{ result }`，抛错则任务失败）；`JSON_JQ_TRANSFORM`（内置 jq 子集：路径、迭代、管道、构造、算术比较、`//`、`if`、`as $x`、`reduce`、字符串插值与常用函数，输出 `{ result, resultList }`；不支持的语法直接报错说明，不再只认 `.path`）；`SWITCH`（`value-param` 取 `expression` 指向的入参，`javascript` / `graaljs` 执行表达式，没有匹配的分支走 `defaultCase`，原来会走第一个分支）；`DECISION`（`caseValueParam` / `caseExpression`）；`DO_WHILE`（每轮后执行 `loopCondition`，`$` 含 `<循环ref>.iteration` 与各子任务输出，"最大轮次"改为安全上限，默认 20，到上限条件仍为真则停止并标为部分完成）；`FORK_JOIN_DYNAMIC`（按 `dynamicForkTasksParam` / `dynamicForkTasksInputParamName` 或 `forkTaskName` + `forkTaskInputs` 生成并行任务，`JOIN` 汇总其输出）；`TERMINATE`、`SET_VARIABLE`、`WAIT`、`NOOP`。HTTP、SIMPLE、HUMAN、EVENT、SUB_WORKFLOW、DYNAMIC 等调用外部系统的任务仍返回模拟数据（可在配置台覆盖）。
+- **脚本隔离**：脚本在专用 Web Worker 中运行，移除了 `fetch`、`XMLHttpRequest`、`WebSocket`、`importScripts`、`indexedDB` 等网络与存储接口；单个脚本默认 2 秒超时（`scriptTimeoutMs`），死循环会被终止并使任务失败，不会卡住页面。页面 CSP 不允许 blob: Worker 时，脚本标为未执行并说明原因。宿主可通过 `scriptEvaluator` 注入自己的执行器。
+- **引用解析**：`${...}` 支持数组下标（`${a.output.items[0].id}`）与 `${<ref>.input.x}`；取不到值的引用记入任务的 `sandboxWarnings`。默认模拟入参只包含声明的入参与流程实际引用的字段（S9）。
+- **结果可区分**：`TaskInstance` 新增可选字段 `sandboxExecution`（`executed` / `mocked` / `not_executed`）与 `sandboxWarnings`，`WorkflowInstance` 新增 `isSandbox`。运行视图工具栏显示"沙箱试运行 · 模拟数据"，任务详情显示"真实执行 / 模拟数据 / 未执行"与提示；沙箱实例不再显示宿主的终止、重试、重启、跳过、从此重跑与 AI 修复动作（R10）。
+- 沙箱结果经 `setMode('run')` 进入运行态，画布重新解析，不再残留"+"占位节点（R11）。空流程点击试运行提示"先添加步骤"，不再上报埋点；执行出错时弹出提示（R13）。`store.runLocalSandboxDryRun` 改为返回 `Promise<void>`，运行中按钮显示"试运行中"并禁用。
+- 兼容：同步接口 `executeLocalSandboxDryRun` 保留，但不再伪造脚本结果——`INLINE` 标为已跳过（`not_executed`），`javascript` 条件走默认分支并给出提示，`DO_WHILE` 按 `maxLoopIterations`（默认 2）运行。新增导出 `executeLocalSandboxDryRunAsync`、`SandboxAsyncOptions`、`runJq`、`JqError`、`createWorkerScriptEvaluator` 及相关类型。`TERMINATE` 的 `terminationStatus: COMPLETED` 现在让工作流以 `COMPLETED` 结束（与 Conductor 一致）。
+
 ### Added
 - **CMASTER 设计 tokens 编译**：`design/tokens.json` 为唯一来源，`npm run tokens:build` 生成 `src/styles/cmaster-tokens.css`（`--cm-*` 变量，`data-mode="dark" | "light"` 双主题）与 `src/styles/cmasterTokens.ts`（含 5 套活动主题色）；`npm run tokens:check` 进 CI，生成物过期即失败。新增单测 `cmasterTokens.test.ts`：两个主题下文字与地色对比度 ≥ 4.5:1、状态色与焦点环 ≥ 3:1、橙底文字与活动主题按钮文字 ≥ 4.5:1、标志橙在所有主题不变。
 - **AI 协作约定**：根目录 `CLAUDE.md`（硬规则与完成前检查）、`AGENTS.md`、项目 skill `.claude/skills/cmaster-design`（按任务类型指向规范与黄金示例，含交付前检查清单）；`design/` 收录品牌手册、IDE 布局、文档站、宣传页、海报与社媒规范，24 个组件规范、参考样式 `reference/components.css`、9 个黄金示例与 Logo。

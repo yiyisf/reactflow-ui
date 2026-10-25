@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate } from '../../template/types';
 import { applyTemplateVariables } from '../../template/applyTemplate';
-import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { executeLocalSandboxDryRunAsync } from '../../utils/localSandboxEngine';
 import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
@@ -50,13 +50,13 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
   };
 
   // 执行沙盒免授权试跑
-  const handleRunSandboxTest = () => {
+  const handleRunSandboxTest = async () => {
     setIsSimulating(true);
     try {
       const configuredDef = applyTemplateVariables(template, variableValues);
       const scenario = template.mockDataset.scenarios[0];
 
-      const instance = executeLocalSandboxDryRun(configuredDef, {
+      const instance = await executeLocalSandboxDryRunAsync(configuredDef, {
         workflowInput: scenario?.workflowInput || {},
         taskMocks: scenario?.taskOutputs || {},
       });
@@ -454,7 +454,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 </div>
 
                 <button
-                  onClick={handleRunSandboxTest}
+                  onClick={() => { void handleRunSandboxTest(); }}
                   disabled={isSimulating}
                   style={{
                     padding: '6px 14px',

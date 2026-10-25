@@ -6,7 +6,7 @@ import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { TemplateStore, defaultTemplateStore } from '../../template/templateStore';
 import { TemplateSetupWizard } from './TemplateSetupWizard';
-import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { executeLocalSandboxDryRunAsync } from '../../utils/localSandboxEngine';
 import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
@@ -42,10 +42,10 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   if (typeof document === 'undefined') return null;
 
   // 点击【试跑演示】直接在本地沙盒执行并展示结果
-  const handleQuickPreviewRun = (template: WorkflowTemplate) => {
+  const handleQuickPreviewRun = async (template: WorkflowTemplate) => {
     try {
       const scenario = template.mockDataset.scenarios[0];
-      const instance = executeLocalSandboxDryRun(template.definition, {
+      const instance = await executeLocalSandboxDryRunAsync(template.definition, {
         workflowInput: scenario?.workflowInput || {},
         taskMocks: scenario?.taskOutputs || {},
       });
@@ -331,7 +331,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                 {/* 操作按钮组 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                   <button
-                    onClick={() => handleQuickPreviewRun(tpl)}
+                    onClick={() => { void handleQuickPreviewRun(tpl); }}
                     style={{
                       flex: 1,
                       padding: '6px 10px',

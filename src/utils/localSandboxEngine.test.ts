@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { executeLocalSandboxDryRun } from './localSandboxEngine';
+import { executeLocalSandboxDryRun, executeLocalSandboxDryRunAsync } from './localSandboxEngine';
+import type { ScriptEvaluator } from './sandbox/scriptRunner';
 import type { WorkflowDef } from '../types/conductor';
 
 describe('In-Browser Deterministic Dry-Run Sandbox Engine', () => {
@@ -186,5 +187,185 @@ describe('In-Browser Deterministic Dry-Run Sandbox Engine', () => {
     const auditTask = instance.tasks.find((t) => t.referenceTaskName === 'manual_audit_ref');
     expect(auditTask?.status).toBe('FAILED');
     expect(auditTask?.reasonForIncompletion).toBe('Simulated audit rejection');
+  });
+
+  it('sync API does not invent script results: INLINE is marked not executed', () => {
+    const wf: WorkflowDef = {
+      name: 'sync_inline',
+      tasks: [{ name: 'calc', taskReferenceName: 'calc', type: 'INLINE', inputParameters: { evaluatorType: 'graaljs', expression: '1 + 1' } }],
+    };
+    const instance = executeLocalSandboxDryRun(wf);
+    expect(instance.isSandbox).toBe(true);
+    expect(instance.tasks[0].status).toBe('SKIPPED');
+    expect(instance.tasks[0].sandboxExecution).toBe('not_executed');
+  });
+});
+
+// Plain-function evaluator for node tests; the browser default runs scripts in an isolated Web Worker.
+const evaluate: ScriptEvaluator = async (expression, input) => {
+  try {
+    return { ok: true, value: new Function('$', '__src', 'return eval(__src);')(input, expression) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+};
+
+describe('Async sandbox: tasks without outside systems run for real', () => {
+  const wf: WorkflowDef = {
+    name: 'real_exec',
+    version: 1,
+    tasks: [
+      {
+        name: 'calc',
+        taskReferenceName: 'calc',
+        type: 'INLINE',
+        inputParameters: { evaluatorType: 'graaljs', a: '${workflow.input.a}', expression: '(function(){ return $.a * 2; })()' },
+      },
+      {
+        name: 'sum',
+        taskReferenceName: 'sum',
+        type: 'JSON_JQ_TRANSFORM',
+        inputParameters: { items: '${workflow.input.items}', queryExpression: '[.items[] | select(.n > 1) | .n] | add' },
+      },
+      {
+        name: 'size',
+        taskReferenceName: 'size',
+        type: 'SWITCH',
+        evaluatorType: 'javascript',
+        expression: '$.v > 10 ? "BIG" : "SMALL"',
+        inputParameters: { v: '${calc.output.result}' },
+        decisionCases: {
+          BIG: [{ name: 'big', taskReferenceName: 'big', type: 'NOOP' }],
+          SMALL: [{ name: 'small', taskReferenceName: 'small', type: 'NOOP' }],
+        },
+      },
+      {
+        name: 'route',
+        taskReferenceName: 'route',
+        type: 'SWITCH',
+        evaluatorType: 'value-param',
+        expression: 'k',
+        inputParameters: { k: 'NOPE' },
+        decisionCases: { A: [{ name: 'a', taskReferenceName: 'case_a', type: 'NOOP' }] },
+        defaultCase: [{ name: 'd', taskReferenceName: 'case_default', type: 'NOOP' }],
+      },
+      {
+        name: 'loop',
+        taskReferenceName: 'loop',
+        type: 'DO_WHILE',
+        loopCondition: '$.loop.iteration < 3',
+        loopOver: [{ name: 'tick', taskReferenceName: 'tick', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', expression: '1 + 1' } }],
+      },
+      {
+        name: 'fan',
+        taskReferenceName: 'fan',
+        type: 'FORK_JOIN_DYNAMIC',
+        dynamicForkTasksParam: 'tasks',
+        dynamicForkTasksInputParamName: 'inputs',
+        inputParameters: {
+          tasks: [
+            { name: 'x', taskReferenceName: 'x1', type: 'INLINE' },
+            { name: 'x', taskReferenceName: 'x2', type: 'INLINE' },
+          ],
+          inputs: {
+            x1: { evaluatorType: 'javascript', expression: '"one"' },
+            x2: { evaluatorType: 'javascript', expression: '"two"' },
+          },
+        },
+      },
+      { name: 'join', taskReferenceName: 'join', type: 'JOIN' },
+    ],
+    outputParameters: {
+      doubled: '${calc.output.result}',
+      sum: '${sum.output.result}',
+      joined: '${join.output}',
+      first: '${workflow.input.items[0].n}',
+      calcInput: '${calc.input.a}',
+    },
+  };
+
+  it('runs INLINE, JQ, SWITCH, DO_WHILE, FORK_JOIN_DYNAMIC with Conductor semantics', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(wf, {
+      workflowInput: { a: 7, items: [{ n: 1 }, { n: 2 }, { n: 3 }] },
+      scriptEvaluator: evaluate,
+    });
+    expect(instance.status).toBe('COMPLETED');
+    expect(instance.output).toEqual({
+      doubled: 14,
+      sum: 5,
+      joined: { x1: { result: 'one' }, x2: { result: 'two' } },
+      first: 1,
+      calcInput: 7,
+    });
+    const refs = instance.tasks.map((t) => t.referenceTaskName);
+    expect(refs).toContain('big');
+    expect(refs).not.toContain('small');
+    // unmatched value-param case goes to defaultCase, not the first case
+    expect(refs).toContain('case_default');
+    expect(refs).not.toContain('case_a');
+    // loop condition decides: 3 iterations
+    expect(refs.filter((r) => r.startsWith('tick'))).toEqual(['tick', 'tick__2', 'tick__3']);
+    expect(instance.tasks.find((t) => t.referenceTaskName === 'loop')?.iteration).toBe(3);
+    expect(instance.tasks.find((t) => t.referenceTaskName === 'calc')?.sandboxExecution).toBe('executed');
+  });
+
+  it('stops a loop whose condition stays true at the safety limit', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      { name: 'forever', tasks: [{ name: 'l', taskReferenceName: 'l', type: 'DO_WHILE', loopCondition: 'true', loopOver: [{ name: 'n', taskReferenceName: 'n', type: 'NOOP' }] }] },
+      { scriptEvaluator: evaluate, maxLoopIterations: 5 },
+    );
+    const loop = instance.tasks[0];
+    expect(loop.status).toBe('COMPLETED_WITH_ERRORS');
+    expect(loop.iteration).toBe(5);
+    expect(loop.reasonForIncompletion).toMatch(/上限 5 轮/);
+  });
+
+  it('fails the task with the script error, and jq errors say what went wrong', async () => {
+    const thrown = await executeLocalSandboxDryRunAsync(
+      { name: 'boom', tasks: [{ name: 'i', taskReferenceName: 'i', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', expression: 'throw new Error("boom")' } }] },
+      { scriptEvaluator: evaluate },
+    );
+    expect(thrown.status).toBe('FAILED');
+    expect(thrown.tasks[0].reasonForIncompletion).toBe('脚本执行失败：boom');
+
+    const jq = await executeLocalSandboxDryRunAsync(
+      { name: 'jqbad', tasks: [{ name: 'j', taskReferenceName: 'j', type: 'JSON_JQ_TRANSFORM', inputParameters: { queryExpression: '.a[]', a: 5 } }] },
+      { scriptEvaluator: evaluate },
+    );
+    expect(jq.status).toBe('FAILED');
+    expect(jq.tasks[0].reasonForIncompletion).toMatch(/^jq 执行失败/);
+  });
+
+  it('marks outside-system tasks as mocked and records unresolved references', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      { name: 'mocked', tasks: [{ name: 'h', taskReferenceName: 'h', type: 'HTTP', inputParameters: { id: '${nope.output.id}' } }] },
+      { scriptEvaluator: evaluate },
+    );
+    expect(instance.tasks[0].sandboxExecution).toBe('mocked');
+    expect(instance.tasks[0].sandboxWarnings?.[0]).toMatch(/nope\.output\.id/);
+  });
+
+  it('TERMINATE with COMPLETED ends the workflow as COMPLETED and skips the rest', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'term',
+        tasks: [
+          { name: 't', taskReferenceName: 't', type: 'TERMINATE', inputParameters: { terminationStatus: 'COMPLETED' } },
+          { name: 'n', taskReferenceName: 'n', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate },
+    );
+    expect(instance.status).toBe('COMPLETED');
+    expect(instance.tasks.map((t) => t.referenceTaskName)).toEqual(['t']);
+  });
+
+  it('without Web Worker support the default evaluator reports scripts as not executed', async () => {
+    const instance = await executeLocalSandboxDryRunAsync({
+      name: 'noworker',
+      tasks: [{ name: 'i', taskReferenceName: 'i', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', expression: '1' } }],
+    });
+    expect(instance.tasks[0].sandboxExecution).toBe('not_executed');
+    expect(instance.tasks[0].reasonForIncompletion).toMatch(/Web Worker/);
   });
 });

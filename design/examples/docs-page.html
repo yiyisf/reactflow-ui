@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>文档站正文页</title>
+<!--
+  CMASTER golden example: 文档站正文页
+  Demonstrates: docs-site.md 三栏布局、Callout、CodeBlock、Props 表
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (dark). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{text-decoration:none}a:not(.cm-btn){color:var(--cm-brand-text)}a:not(.cm-btn):hover{color:var(--cm-brand-400)}
+</style>
+</head>
+<body>
+<div data-mode="dark" style="background: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans); min-height: 100vh;">
+
+  <nav class="cm-nav" style="height: 64px; padding: 0 24px; flex-wrap: wrap;">
+    <a href="landing-release-v1.3.0.html" class="cm-nav__brand" style="color: var(--cm-text-primary);"><svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-surface-0)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg><span><em>C</em>MASTER <span style="font-weight: 500; color: var(--cm-text-muted);">Docs</span></span></a>
+    <span class="cm-version"><b>v1.3</b>当前版本</span>
+    <a href="#" style="color: var(--cm-text-primary); font-weight: 600;">指南</a>
+    <a href="#">参考</a>
+    <a href="#">更新日志</a>
+    <span style="flex-grow: 1;"></span>
+    <label class="cm-nav__search" for="docsearch"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><span id="docsearch">搜索文档</span><span class="cm-kbd">⌘K</span></label>
+    <a href="#" aria-label="GitHub" style="display: grid;"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.1-1.3-.3-2.5-1-3.5.3-1.2.3-2.4 0-3.5 0 0-1 0-3 1.5a10.6 10.6 0 0 0-6 0C8 2 7 2 7 2c-.3 1.1-.3 2.3 0 3.5-.7 1-1.1 2.2-1 3.5 0 3.5 3 5.5 6 5.5-.4.5-.7 1.1-.8 1.7-.2.6-.2 1.2-.2 1.8v4"></path><path d="M9 18c-4.5 2-5-2-7-2"></path></svg></a>
+    <a href="ide-standard-running.html" class="cm-btn cm-btn--sm cm-btn--primary">进入工作台</a>
+  </nav>
+
+  <div style="display: flex; flex-wrap: wrap; max-width: 1440px; margin: 0 auto;">
+    <aside class="cm-docs__side" style="width: 264px; flex: 1 1 264px; max-width: 264px; padding: 20px 16px; box-sizing: border-box; min-height: 1416px;">
+      <span class="cm-docs__group">GET STARTED</span>
+      <a href="#">5 分钟上手</a>
+      <a href="#">安装</a>
+      <a href="#" class="is-on">自助接入<span class="cm-tag cm-tag--std">新</span></a>
+      <a href="#">第一个流程</a>
+      <span class="cm-docs__group">GUIDES</span>
+      <a href="#">业务模式</a>
+      <a href="#">开发者模式</a>
+      <a href="#">接口导入</a>
+      <a href="#">AI 编排</a>
+      <span class="cm-docs__group">REFERENCE</span>
+      <a href="#">WorkflowIDE Props</a>
+      <a href="#">Providers</a>
+      <a href="#">埋点事件</a>
+      <span class="cm-docs__group">GOVERNANCE</span>
+      <a href="#">命名规范</a>
+      <a href="#">发布与版本锁定</a>
+    </aside>
+
+    <main style="flex: 999 1 560px; min-width: 0; padding: 40px 56px 64px; box-sizing: border-box;">
+      <div style="max-width: 760px; display: flex; flex-direction: column; gap: 18px;">
+        <span class="cm-docs__crumb">开始使用 / 自助接入</span>
+        <span class="cm-eyebrow">SINCE v1.3.0</span>
+        <h1 style="margin: 0; font-size: 36px; line-height: 44px; font-weight: 700; letter-spacing: -0.01em;">自助接入</h1>
+        <p style="margin: 0; font-size: 17px; line-height: 30px; color: var(--cm-text-secondary);">读完这一页，你可以让新团队在测试环境里独立登记产品、生成规范的流程名，并跑通第一个流程。</p>
+
+        <div class="cm-callout cm-callout--note"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 16v-4M12 8h.01"></path></svg><div><b>前提</b>宿主需要实现 <span class="cm-code">onboarding</span> provider；没有配置时，IDE 不显示"新建流程向导"和"申请上线"入口，行为与 1.2.0 一致。</div></div>
+
+        <h2 style="margin: 24px 0 0; font-size: 22px; line-height: 30px; font-weight: 600;">1. 安装</h2>
+        <div class="cm-term" style="max-width: none;"><div class="cm-term__tabs"><span class="is-on">npm</span><span>pnpm</span><span>yarn</span></div><div class="cm-term__body"><i>$</i><code><span class="k">npm install</span> @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom</code><button class="cm-btn cm-btn--sm">复制</button></div></div>
+
+        <h2 style="margin: 24px 0 0; font-size: 22px; line-height: 30px; font-weight: 600;">2. 在外层注册 providers</h2>
+        <p style="margin: 0; font-size: 16px; line-height: 28px; color: var(--cm-text-secondary);">provider 实例只创建一次，页面里所有 IDE 实例共用。</p>
+        <div class="cm-codeblock"><div class="cm-codeblock__bar">WorkflowStudio.tsx<button class="cm-btn cm-btn--sm cm-btn--ghost">复制</button></div><pre><span class="kw">import</span> { WorkflowIDE, WorkflowIdeProvider } <span class="kw">from</span> <span class="str">'@yiyi_zhang/reactflow-ui'</span>;
+
+<span class="kw">const</span> providers = {
+  <span class="attr">onboarding</span>: createOnboardingProvider(governanceApi), <span class="cmt">// 1.3.0 新增</span>
+};
+
+&lt;WorkflowIdeProvider <span class="attr">providers</span>={providers}&gt;
+  &lt;WorkflowIDE <span class="attr">uiMode</span>=<span class="str">"business"</span> /&gt;
+&lt;/WorkflowIdeProvider&gt;</pre></div>
+
+        <h2 style="margin: 24px 0 0; font-size: 22px; line-height: 30px; font-weight: 600;">3. 实现 onboarding 契约</h2>
+        <div style="border: 1px solid var(--cm-border-default); border-radius: var(--cm-radius-lg); overflow-x: auto; background: var(--cm-surface-2);">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 20px; min-width: 560px;">
+            <thead><tr style="background: var(--cm-surface-3); text-align: left;"><th style="padding: 10px 14px; font-weight: 600;">方法</th><th style="padding: 10px 14px; font-weight: 600;">治理服务接口</th><th style="padding: 10px 14px; font-weight: 600;">说明</th></tr></thead>
+            <tbody>
+              <tr style="border-top: 1px solid var(--cm-border-subtle);"><td style="padding: 10px 14px;"><span class="cm-code">listDomains</span><span style="color: var(--cm-status-failed);"> *</span></td><td style="padding: 10px 14px;" class="cm-mono">GET /api/library/domains</td><td style="padding: 10px 14px; color: var(--cm-text-secondary);">业务域列表</td></tr>
+              <tr style="border-top: 1px solid var(--cm-border-subtle);"><td style="padding: 10px 14px;"><span class="cm-code">startTrial</span><span style="color: var(--cm-status-failed);"> *</span></td><td style="padding: 10px 14px;" class="cm-mono">POST /api/onboarding/trial</td><td style="padding: 10px 14px; color: var(--cm-text-secondary);">登记产品并开通试用；冲突时返回 <span class="cm-code">conflict</span></td></tr>
+              <tr style="border-top: 1px solid var(--cm-border-subtle);"><td style="padding: 10px 14px;"><span class="cm-code">requestPromotion</span></td><td style="padding: 10px 14px;" class="cm-mono">POST /api/onboarding/promote</td><td style="padding: 10px 14px; color: var(--cm-text-secondary);">提交上线申请，返回 <span class="cm-code">requestId</span></td></tr>
+              <tr style="border-top: 1px solid var(--cm-border-subtle);"><td style="padding: 10px 14px;"><span class="cm-code">getPromotion</span></td><td style="padding: 10px 14px;" class="cm-mono">GET /api/onboarding/promote/{id}</td><td style="padding: 10px 14px; color: var(--cm-text-secondary);">审批进度 <span class="cm-mono" style="font-size: 12px;">SUBMITTED → APPROVED</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="cm-callout cm-callout--warn"><svg class="ic ic-lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg><div><b>注意</b>生产环境不出现"开始试用"；类型段只可选 <span class="cm-code">custom</span> 或 <span class="cm-code">std</span>。</div></div>
+
+        <h2 style="margin: 24px 0 0; font-size: 22px; line-height: 30px; font-weight: 600;">4. 验证</h2>
+        <div class="cm-tl" style="width: auto;">
+          <div class="cm-tl__row"><span class="cm-tl__dot" style="--fg: var(--cm-on-brand); --bg: var(--cm-brand-500); font: 600 12px var(--cm-font-mono);">1</span><div class="cm-tl__txt"><b>在 TEST 环境打开工作台</b><span>顶栏出现"开始试用"引导卡片</span></div><span></span></div>
+          <div class="cm-tl__row"><span class="cm-tl__dot" style="--fg: var(--cm-text-secondary); --bg: var(--cm-surface-3); font: 600 12px var(--cm-font-mono);">2</span><div class="cm-tl__txt"><b>新建流程，走完三步向导</b><span>流程名形如 <span class="cm-code">tmp-业务-云资源-order-create</span></span></div><span></span></div>
+          <div class="cm-tl__row"><span class="cm-tl__dot" style="--fg: var(--cm-text-secondary); --bg: var(--cm-surface-3); font: 600 12px var(--cm-font-mono);">3</span><div class="cm-tl__txt"><b>沙箱试跑后申请上线</b><span>控制台打印 <span class="cm-code">promotion_requested</span> 事件</span></div><span></span></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 16px;">
+          <a href="#" class="cm-card" style="padding: 18px 20px; gap: 4px; color: var(--cm-text-primary);"><span class="cm-cap">上一页</span><b style="font-size: 15px;">安装</b></a>
+          <a href="#" class="cm-card" style="padding: 18px 20px; gap: 4px; text-align: right; color: var(--cm-text-primary);"><span class="cm-cap">下一页</span><b style="font-size: 15px;">第一个流程</b></a>
+        </div>
+      </div>
+    </main>
+
+    <aside class="cm-docs__toc" style="flex: 1 1 200px; max-width: 220px; box-sizing: border-box; padding: 40px 20px;">
+      <b>ON THIS PAGE</b>
+      <span class="is-on">1. 安装</span>
+      <span>2. 在外层注册 providers</span>
+      <span>3. 实现 onboarding 契约</span>
+      <span>4. 验证</span>
+      <span style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--cm-border-subtle);">在 GitHub 上编辑此页</span>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

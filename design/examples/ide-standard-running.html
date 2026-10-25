@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDE 标准模式 · 试运行中</title>
+<!--
+  CMASTER golden example: IDE 标准模式 · 试运行中
+  Demonstrates: ide-layout.md 区域划分、浮动条、状态三重表达；data 冰蓝表示数据与运行
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (dark). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{text-decoration:none}a:not(.cm-btn){color:var(--cm-brand-text)}a:not(.cm-btn):hover{color:var(--cm-brand-400)}
+</style>
+</head>
+<body>
+<div data-mode="dark" style="height: 900px; display: flex; flex-direction: column; background: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans); overflow: hidden;">
+
+  <header class="cm-toolbar" style="flex-wrap: wrap; height: auto; min-height: 48px;">
+    <a href="landing-release-v1.3.0.html" aria-label="返回宣传页" style="display: grid;"><svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-surface-0)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg></a>
+    <div class="cm-toolbar__title"><b>一键开通测试环境</b><span class="cm-mono">std-业务-云资源-测试环境-一键开通 · 已保存</span></div>
+    <span class="cm-toolbar__spacer"></span>
+    <div class="cm-mode" role="group" aria-label="视图模式"><a href="ide-business-run-story.html" class="cm-btn cm-btn--sm cm-btn--ghost" style="border-radius: 999px; height: 28px;">业务</a><button aria-pressed="true">标准</button><button aria-pressed="false">开发者</button></div>
+    <span class="cm-toolbar__spacer"></span>
+    <button class="cm-btn cm-btn--icon cm-btn--ghost" title="撤销 ⌘Z" aria-label="撤销"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg></button>
+    <button class="cm-btn cm-btn--icon cm-btn--ghost" title="重做 ⌘⇧Z" aria-label="重做"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"></path></svg></button>
+    <span class="cm-toolbar__sep"></span>
+    <button class="cm-btn cm-btn--ghost"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v6a5 5 0 0 0 10 0V3"></path><path d="M10 14v2a5 5 0 0 0 10 0v-2"></path><circle cx="20" cy="12" r="2"></circle></svg>诊断</button>
+    <button class="cm-btn cm-btn--ghost"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-9M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>配置</button>
+    <span class="cm-toolbar__sep"></span>
+    <button class="cm-btn" style="border-color: var(--cm-data); color: var(--cm-data);"><span class="cm-spin"></span>试运行中 · 停止</button>
+    <button class="cm-btn cm-btn--primary"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>运行</button>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+    <aside style="width: 264px; flex: none; background: var(--cm-surface-1); border-right: 1px solid var(--cm-border-default); padding: 12px; display: flex; flex-direction: column; gap: 4px; overflow: hidden;">
+      <div class="cm-lib__search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>搜索能力<span class="cm-kbd">/</span></div>
+      <span class="cm-lib__group">CLOUD RESOURCE</span>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-task);"><span class="cm-dot"></span><div class="cm-lib__text"><b>创建云主机</b><span>云资源 · 128 个流程引用</span></div><span class="cm-tag cm-tag--std">std</span></div>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-task);"><span class="cm-dot"></span><div class="cm-lib__text"><b>开通数据库</b><span>数据服务</span></div><span class="cm-tag cm-tag--std">std</span></div>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-task);"><span class="cm-dot"></span><div class="cm-lib__text"><b>接入监控告警</b><span>监控运维</span></div><span class="cm-tag cm-tag--std">std</span></div>
+      <span class="cm-lib__group">CONTROL FLOW</span>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-control);"><span class="cm-dot"></span><div class="cm-lib__text"><b>并行执行</b><span>FORK_JOIN</span></div></div>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-control);"><span class="cm-dot"></span><div class="cm-lib__text"><b>条件分支</b><span>SWITCH</span></div></div>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-control);"><span class="cm-dot"></span><div class="cm-lib__text"><b>失败自动重试</b><span>DO_WHILE</span></div><span class="cm-tag">custom</span></div>
+      <span class="cm-lib__group">NOTIFY &amp; HUMAN</span>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-human);"><span class="cm-dot"></span><div class="cm-lib__text"><b>通知申请人</b><span>通知协助 · <span style="color: var(--cm-status-warning);">有新版本 v2</span></span></div><span class="cm-tag cm-tag--std">std</span></div>
+      <div class="cm-lib__item" style="--cat: var(--cm-cat-human);"><span class="cm-dot"></span><div class="cm-lib__text"><b>负责人审批</b><span>HUMAN</span></div></div>
+      <span style="flex-grow: 1;"></span>
+      <div class="cm-ref" style="font-size: 12px;"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>从接口导入<span class="cm-kbd" style="margin-left: auto;">OpenAPI</span></div>
+    </aside>
+
+    <main class="cm-canvas" style="flex-grow: 1; min-width: 0; position: relative; padding: 0; overflow: hidden;">
+      <div style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; background: var(--cm-surface-2); border: 1px solid var(--cm-border-default); box-shadow: var(--cm-shadow-float); z-index: 2; white-space: nowrap;">
+        <button class="cm-btn cm-btn--sm" style="border-radius: 999px; background: var(--cm-data-tint); color: var(--cm-data); border-color: transparent; box-shadow: none;"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2.5"></circle><circle cx="4.5" cy="19.5" r="2.5"></circle><circle cx="19.5" cy="19.5" r="2.5"></circle><path d="M10.6 6.6 5.9 17.4M13.4 6.6l4.7 10.8M7 19.5h10"></path></svg>数据血缘</button>
+        <button class="cm-btn cm-btn--sm cm-btn--ghost" style="border-radius: 999px;"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--cm-ai);"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M19 3v4M17 5h4"></path></svg>AI 微调<span class="cm-kbd">⌘K</span></button>
+        <span class="cm-toolbar__sep" style="margin: 0 2px;"></span>
+        <span class="cm-mono" style="font-size: 12px; color: var(--cm-text-muted); padding: 0 10px;">100%</span>
+      </div>
+
+      <div style="position: absolute; top: 64px; left: 24px; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--cm-radius-md); background: var(--cm-data-tint); color: var(--cm-data); font-size: 12px; font-weight: 600;"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6.5L4.5 19a1.3 1.3 0 0 0 1.1 2h12.8a1.3 1.3 0 0 0 1.1-2L14 9.5V3"></path></svg>试运行中 · 浏览器沙箱执行，不会调用真实系统</div>
+
+      <div style="position: absolute; left: 50%; top: 110px; width: 760px; height: 600px; margin-left: -380px;">
+        <svg width="760" height="600" viewBox="0 0 760 600" aria-hidden="true" style="position: absolute; inset: 0; overflow: visible;">
+          <g fill="none" stroke-width="2">
+            <path d="M380 36 V70" stroke="var(--cm-edge-active)"></path>
+            <path d="M380 126 V160" stroke="var(--cm-edge-active)"></path>
+            <path d="M380 216 C380 248 180 236 180 270" stroke="var(--cm-edge-active)"></path>
+            <path d="M380 216 C380 248 580 236 580 270" stroke="var(--cm-edge-active)"></path>
+            <path d="M580 326 C580 360 380 350 380 384" stroke="var(--cm-edge-active)"></path>
+            <path d="M180 326 C180 360 380 350 380 384" stroke="var(--cm-edge-default)"></path>
+            <path d="M380 440 V474" stroke="var(--cm-edge-default)"></path>
+            <path d="M500 98 C700 98 720 320 720 400 S640 502 500 502" stroke="var(--cm-edge-lineage)" stroke-dasharray="6 6"></path>
+          </g>
+          <g fill="var(--cm-edge-active)"><circle cx="380" cy="70" r="3"></circle><circle cx="380" cy="160" r="3"></circle></g>
+        </svg>
+        <div class="cm-node cm-node--pill" style="position: absolute; left: 320px; top: 0; width: 120px; justify-content: center;"><span style="width: 8px; height: 8px; border-radius: 999px; background: var(--cm-status-success);"></span>开始</div>
+        <div class="cm-node is-success" style="position: absolute; left: 260px; top: 70px; --cat: var(--cm-cat-task);"><span class="cm-node__cat"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1.5"></rect><rect x="3" y="14" width="18" height="7" rx="1.5"></rect></svg></span><div class="cm-node__body"><span class="cm-node__title">创建云主机 × 2</span><span class="cm-node__meta">create_vm · SIMPLE</span></div><span class="cm-badge cm-badge--success"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>1.2s</span></div>
+        <div class="cm-node is-success" style="position: absolute; left: 260px; top: 160px; --cat: var(--cm-cat-control);"><span class="cm-node__cat"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v12"></path><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg></span><div class="cm-node__body"><span class="cm-node__title">并行开通</span><span class="cm-node__meta">fork_env · FORK_JOIN</span></div><span class="cm-badge cm-badge--success"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span></div>
+        <div class="cm-node is-running is-selected" style="position: absolute; left: 60px; top: 270px; --cat: var(--cm-cat-task); border-color: var(--cm-status-running); box-shadow: 0 0 0 3px #ff6a1340, 0 0 0 6px #22d3ee26;"><span class="cm-node__cat"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"></path></svg></span><div class="cm-node__body"><span class="cm-node__title">开通 MySQL 数据库</span><span class="cm-node__meta">open_db · HTTP</span></div><span class="cm-badge cm-badge--running"><span class="cm-spin"></span>运行中</span></div>
+        <div class="cm-node is-success" style="position: absolute; left: 460px; top: 270px; --cat: var(--cm-cat-task);"><span class="cm-node__cat"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg></span><div class="cm-node__body"><span class="cm-node__title">接入监控告警</span><span class="cm-node__meta">add_alert · SIMPLE</span></div><span class="cm-badge cm-badge--success"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>0.8s</span></div>
+        <div class="cm-node" style="position: absolute; left: 260px; top: 384px; --cat: var(--cm-cat-control);"><span class="cm-node__cat"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v6a6 6 0 0 0 6 6 6 6 0 0 1 6 6M18 3v6a6 6 0 0 1-6 6"></path></svg></span><div class="cm-node__body"><span class="cm-node__title">汇合结果</span><span class="cm-node__meta">join_env · JOIN</span></div><span class="cm-badge cm-badge--pending">等待中</span></div>
+        <div class="cm-node" style="position: absolute; left: 260px; top: 474px; --cat: var(--cm-cat-human);"><span class="cm-node__cat"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"></path></svg></span><div class="cm-node__body"><span class="cm-node__title">把登录信息发给申请人</span><span class="cm-node__meta">notify · HTTP</span></div><span class="cm-badge cm-badge--pending">等待中</span></div>
+        <span class="cm-pill" style="position: absolute; left: 612px; top: 380px;">create_vm.output.ip</span>
+      </div>
+
+      <div style="position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 4px; padding: 4px; border-radius: var(--cm-radius-md); background: var(--cm-surface-2); border: 1px solid var(--cm-border-default); box-shadow: var(--cm-shadow-float);">
+        <button class="cm-btn cm-btn--icon cm-btn--ghost cm-btn--sm" aria-label="放大"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button>
+        <button class="cm-btn cm-btn--icon cm-btn--ghost cm-btn--sm" aria-label="缩小"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+      </div>
+    </main>
+
+    <aside style="width: 320px; flex: none; background: var(--cm-surface-1); border-left: 1px solid var(--cm-border-default); display: flex; flex-direction: column; overflow: hidden;">
+      <div class="cm-inspector__head" style="--cat: var(--cm-cat-task);"><span class="cm-node__cat"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path></svg></span><div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0;"><b>开通 MySQL 数据库</b><span class="cm-node__meta">open_db · HTTP</span></div><span class="cm-badge cm-badge--running"><span class="cm-spin"></span>18s</span></div>
+      <div class="cm-tabs"><span class="is-on">参数</span><span>输出</span><span>重试与超时</span></div>
+      <div class="cm-inspector__sec">
+        <span class="cm-eyebrow">INPUT</span>
+        <div class="cm-field"><span class="cm-field__label">所在网络 <span class="req">*</span><em>引用上游</em></span><div class="cm-input"><span class="cm-pill"><b>创建云主机</b> 私有网络 ID</span></div></div>
+        <div class="cm-field"><span class="cm-field__label">规格</span><div class="cm-input">2 核 4 GB</div></div>
+        <div class="cm-field"><span class="cm-field__label">版本</span><div class="cm-input">MySQL 8.0</div></div>
+        <div class="cm-field"><span class="cm-field__label">所属项目<em>自动带出</em></span><div class="cm-input">新项目-测试</div></div>
+      </div>
+      <div class="cm-inspector__sec" style="border-bottom: 0;">
+        <span class="cm-eyebrow">LIBRARY</span>
+        <div class="cm-ref"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v5"></path><path d="M9 10.8V4h6v6.8l3 3.2v2H6v-2z"></path></svg><span>标准能力 <span class="cm-mono">std v2</span> · 已锁定</span><a href="#">查看变更</a></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer style="height: 36px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 12px; background: var(--cm-surface-0); border-top: 1px solid var(--cm-border-default); font-size: 12px;">
+    <span style="padding: 0 10px; height: 36px; display: flex; align-items: center; border-bottom: 2px solid var(--cm-brand-500); font-weight: 600;">运行日志</span>
+    <span style="padding: 0 10px; color: var(--cm-text-secondary);">JSON</span>
+    <span style="padding: 0 10px; color: var(--cm-text-secondary);">瀑布流</span>
+    <span style="padding: 0 10px; color: var(--cm-text-secondary);">诊断</span>
+    <span class="cm-toolbar__sep"></span>
+    <span class="cm-mono" style="color: var(--cm-text-muted);">09:31:20</span><span class="cm-mono" style="color: var(--cm-data);">[open_db]</span><span style="color: var(--cm-text-secondary);">正在开通 MySQL 实例，预计 1 分钟</span>
+    <span style="flex-grow: 1;"></span>
+    <span class="cm-cap">3 / 6 个节点完成</span>
+  </footer>
+</div>
+</body>
+</html>

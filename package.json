@@ -49,7 +49,11 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "tokens:build": "node scripts/tokens/build.mjs",
+    "tokens:check": "node scripts/tokens/build.mjs --check",
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots"
   },
   "dependencies": {
     "dagre": "^0.8.5",

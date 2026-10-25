@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>竖版海报 · Nebula</title>
+<!--
+  CMASTER golden example: 竖版海报 · Nebula
+  Demonstrates: 非 Ember 主题时标志是唯一的橙色；系列编号
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (light, palette nebula). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div data-mode="light" style="--a: #6d28d9; --hi: #6d28d9; --on: #ffffff; --glow: #6d28d93d; --g0: #6d28d9; position: relative; width: 1080px; height: 1920px; overflow: hidden; box-sizing: border-box; padding: 96px; display: flex; flex-direction: column; gap: 56px; background: radial-gradient(ellipse 90% 45% at 20% -8%, var(--glow), transparent 70%), radial-gradient(ellipse 60% 35% at 100% 55%, var(--cm-aurora-data), transparent 65%), var(--cm-canvas); background-color: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans);">
+
+  <svg width="1080" height="1920" viewBox="0 0 1080 1920" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none;">
+    <circle cx="540" cy="2200" r="900" fill="none" stroke-width="3" style="stroke: var(--a); opacity: .42;"></circle>
+    <circle cx="540" cy="2200" r="740" fill="none" stroke-width="1.5" style="stroke: var(--a); opacity: .18;"></circle>
+    <circle cx="540" cy="1300" r="14" style="fill: var(--a);"></circle>
+    <circle cx="140" cy="1394" r="12" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+    <circle cx="940" cy="1394" r="12" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+  </svg>
+
+  <div style="position: relative; display: flex; align-items: center; gap: 16px;">
+    <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-canvas)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg>
+    <span style="font-size: 34px; font-weight: 800; letter-spacing: -0.02em;"><span style="color: #ff6a13;">C</span>MASTER</span>
+    <span style="margin-left: 8px; padding: 8px 18px; border-radius: 999px; border: 1.5px solid var(--a); color: var(--a); font: 500 20px/1 var(--cm-font-mono); letter-spacing: .08em;">AI 编排公开课</span>
+  </div>
+
+  <div style="position: relative; display: flex; flex-direction: column; gap: 32px;">
+    <span style="font: 500 22px/28px var(--cm-font-mono); letter-spacing: .18em; color: var(--a);">AI ORCHESTRATION · 01 / 05</span>
+    <h1 style="margin: 0; font-size: 112px; line-height: 120px; font-weight: 800; letter-spacing: -0.03em;">说一句话<br><span style="background-image: linear-gradient(90deg, var(--g0), var(--hi)); -webkit-background-clip: text; background-clip: text; color: transparent;">改好一条</span>流程</h1>
+    <p style="margin: 0; max-width: 780px; font-size: 32px; line-height: 48px; font-weight: 500; color: var(--cm-text-secondary);">选中节点按 ⌘K，用中文说出你要的改动。AI 先给出预览，你确认后才会落地。</p>
+  </div>
+
+  <div style="position: relative; display: flex; flex-direction: column; gap: 28px;">
+    <div style="border-radius: 28px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-2); box-shadow: var(--cm-shadow-dialog); overflow: hidden;">
+      <div style="height: 2px; background: linear-gradient(90deg, transparent, var(--a), transparent);"></div>
+      <div style="display: flex; align-items: center; gap: 20px; padding: 28px 32px; border-bottom: 1px solid var(--cm-border-subtle);">
+        <svg width="36" height="36" viewBox="0 0 24 24" aria-hidden="true" style="fill: none; stroke: var(--a); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round;"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"></path><path d="M19 3v4M17 5h4"></path></svg>
+        <span style="font-size: 32px; line-height: 44px;">失败时自动重试三次，每次间隔 10 秒</span>
+        <span style="margin-left: auto; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--cm-border-default); font: 500 20px var(--cm-font-mono); color: var(--cm-text-muted);">⌘K</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 20px 32px; font-size: 22px; color: var(--cm-text-muted);">作用于 <span style="padding: 6px 12px; border-radius: 8px; background: var(--cm-data-tint); color: var(--cm-data); font: 500 20px var(--cm-font-mono);">open_db</span> 开通 MySQL 数据库</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; padding: 0 16px;">
+      <div style="position: relative; padding: 24px; border-radius: 20px; background: var(--cm-surface-2); border: 2px solid var(--cm-diff-added); display: flex; flex-direction: column; gap: 8px;"><span style="position: absolute; top: -18px; right: 18px; padding: 4px 12px; border-radius: 8px; background: var(--cm-diff-added); color: var(--cm-canvas); font-size: 20px; font-weight: 700;">新增</span><b style="font-size: 26px; line-height: 34px;">失败自动重试</b><span style="font: 20px/28px var(--cm-font-mono); color: var(--cm-text-muted);">DO_WHILE × 3</span></div>
+      <div style="position: relative; padding: 24px; border-radius: 20px; background: var(--cm-surface-2); border: 2px solid var(--cm-diff-modified); display: flex; flex-direction: column; gap: 8px;"><span style="position: absolute; top: -18px; right: 18px; padding: 4px 12px; border-radius: 8px; background: var(--cm-diff-modified); color: var(--cm-canvas); font-size: 20px; font-weight: 700;">修改</span><b style="font-size: 26px; line-height: 34px;">开通数据库</b><span style="font: 20px/28px var(--cm-font-mono); color: var(--cm-text-muted);">超时 60s → 300s</span></div>
+      <div style="position: relative; padding: 24px; border-radius: 20px; background: var(--cm-surface-2); border: 2px dashed var(--cm-diff-removed); opacity: .6; display: flex; flex-direction: column; gap: 8px;"><span style="position: absolute; top: -18px; right: 18px; padding: 4px 12px; border-radius: 8px; background: var(--cm-diff-removed); color: var(--cm-canvas); font-size: 20px; font-weight: 700;">移除</span><b style="font-size: 26px; line-height: 34px;">临时调试输出</b><span style="font: 20px/28px var(--cm-font-mono); color: var(--cm-text-muted);">debug_log</span></div>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; flex-direction: column; gap: 18px; margin-top: auto;">
+    <span style="font: 500 22px/28px var(--cm-font-mono); letter-spacing: .18em; color: var(--cm-text-muted);">本系列 5 讲</span>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+      <span style="padding: 12px 20px; border-radius: 12px; background: var(--a); color: var(--on); font-size: 24px; font-weight: 700;">01 ⌘K 微调</span>
+      <span style="padding: 12px 20px; border-radius: 12px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font-size: 24px; color: var(--cm-text-secondary);">02 Shadow Graph 评审</span>
+      <span style="padding: 12px 20px; border-radius: 12px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font-size: 24px; color: var(--cm-text-secondary);">03 参数自动补全</span>
+      <span style="padding: 12px 20px; border-radius: 12px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font-size: 24px; color: var(--cm-text-secondary);">04 AI IDE 对话编排</span>
+      <span style="padding: 12px 20px; border-radius: 12px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1); font-size: 24px; color: var(--cm-text-secondary);">05 失败诊断</span>
+    </div>
+  </div>
+
+  <div style="position: relative; display: flex; align-items: center; gap: 32px; padding-top: 40px; border-top: 1px solid var(--cm-border-default);">
+    <div style="display: flex; flex-direction: column; gap: 18px; flex-grow: 1;">
+      <span style="align-self: flex-start; padding: 18px 28px; border-radius: 14px; background: var(--a); color: var(--on); font-size: 30px; font-weight: 800; box-shadow: 0 12px 36px var(--glow);">报名第 1 讲 · 联系人 zhang</span>
+      <span style="font-size: 22px; line-height: 32px; color: var(--cm-text-muted);">[日期 时间] · [地点 / 会议链接]</span>
+    </div>
+    <div style="width: 176px; height: 176px; flex: none; border-radius: 16px; background: #ffffff; display: grid; place-items: center; color: #5b6880; font-size: 22px;">[二维码]</div>
+  </div>
+</div>
+</body>
+</html>

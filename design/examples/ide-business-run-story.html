@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDE 业务模式 · 运行故事线</title>
+<!--
+  CMASTER golden example: IDE 业务模式 · 运行故事线
+  Demonstrates: StepCard、RunTimeline、失败诊断卡写法
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (dark). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{text-decoration:none}a:not(.cm-btn){color:var(--cm-brand-text)}a:not(.cm-btn):hover{color:var(--cm-brand-400)}
+</style>
+</head>
+<body>
+<div data-mode="dark" style="height: 900px; display: flex; flex-direction: column; background: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans); overflow: hidden;">
+
+  <header class="cm-toolbar" style="flex-wrap: wrap; height: auto; min-height: 48px;">
+    <a href="landing-release-v1.3.0.html" aria-label="返回宣传页" style="display: grid;"><svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-surface-0)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg></a>
+    <div class="cm-toolbar__title"><b>一键开通测试环境</b><span>运行于 09:31 · 3 / 4 步完成</span></div>
+    <span class="cm-toolbar__spacer"></span>
+    <div class="cm-mode" role="group" aria-label="视图模式"><button aria-pressed="true"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1"></rect><rect x="3" y="14" width="18" height="6" rx="1"></rect></svg>业务</button><a href="ide-standard-running.html" class="cm-btn cm-btn--sm cm-btn--ghost" style="border-radius: 999px; height: 28px;">标准</a><button aria-pressed="false">开发者</button></div>
+    <span class="cm-toolbar__spacer"></span>
+    <button class="cm-btn cm-btn--ghost"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"></path></svg>返回编辑</button>
+    <span class="cm-toolbar__sep"></span>
+    <button class="cm-btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>重试失败步骤</button>
+    <button class="cm-btn cm-btn--primary"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>重新运行</button>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+    <main class="cm-canvas" style="flex-grow: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 40px 24px;">
+      <div class="cm-node cm-node--pill"><span style="width: 8px; height: 8px; border-radius: 999px; background: var(--cm-status-success);"></span>收到环境申请 · 张工 09:30</div>
+      <div class="cm-insert"><button aria-label="在此插入步骤"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+
+      <div class="cm-step" style="width: 560px;">
+        <div class="cm-step__head"><span class="cm-step__num">1</span><span class="cm-step__title">创建云主机</span><span class="cm-tag cm-tag--std">std v3</span><span class="cm-badge cm-badge--success"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>成功</span></div>
+        <dl class="cm-step__body" style="margin: 0;"><dt>规格</dt><dd>4 核 8 GB · 2 台</dd><dt>操作系统</dt><dd>Ubuntu 22.04</dd></dl>
+      </div>
+      <div class="cm-insert"><button aria-label="在此插入步骤"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+
+      <div class="cm-step" style="width: 560px;">
+        <div class="cm-step__head"><span class="cm-step__num">2</span><span class="cm-step__title">同时开通</span><span class="cm-tag">2 条并行</span><span class="cm-badge cm-badge--success"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>成功</span></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 16px 16px 52px;">
+          <div style="padding: 12px; border-radius: var(--cm-radius-md); background: var(--cm-surface-1); border: 1px solid var(--cm-border-default); display: flex; flex-direction: column; gap: 6px;"><div style="display: flex; align-items: center; gap: 8px;"><span class="cm-dot" style="--cat: var(--cm-cat-task);"></span><b style="font-size: 14px;">开通 MySQL 数据库</b></div><span class="cm-cap">2 核 4 GB · 网络 <span class="cm-pill"><b>步骤 1</b> 私有网络</span></span></div>
+          <div style="padding: 12px; border-radius: var(--cm-radius-md); background: var(--cm-surface-1); border: 1px solid var(--cm-border-default); display: flex; flex-direction: column; gap: 6px;"><div style="display: flex; align-items: center; gap: 8px;"><span class="cm-dot" style="--cat: var(--cm-cat-task);"></span><b style="font-size: 14px;">接入监控告警</b></div><span class="cm-cap">CPU &gt; 80% 持续 5 分钟告警</span></div>
+        </div>
+      </div>
+      <div class="cm-insert"><button aria-label="在此插入步骤"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+
+      <div class="cm-step is-selected" style="width: 560px; border-color: var(--cm-status-failed); box-shadow: 0 0 0 3px var(--cm-failed-tint);">
+        <div class="cm-step__head"><span class="cm-step__num" style="background: var(--cm-status-failed); color: var(--cm-on-danger); box-shadow: none;">3</span><span class="cm-step__title">把登录信息发给申请人</span><span class="cm-tag cm-tag--std">std v1</span><span class="cm-badge cm-badge--failed"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>失败</span></div>
+        <dl class="cm-step__body" style="margin: 0;"><dt>接收人</dt><dd><span class="cm-pill"><b>申请单</b> 申请人</span></dd><dt>内容</dt><dd>主机 IP <span class="cm-pill"><b>步骤 1</b> 公网 IP</span>、数据库地址与初始密码</dd></dl>
+      </div>
+      <div class="cm-insert"><button aria-label="在此插入步骤"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg></button></div>
+      <div class="cm-node cm-node--pill" style="opacity: .6;">结束</div>
+    </main>
+
+    <aside style="width: 400px; flex: none; background: var(--cm-surface-1); border-left: 1px solid var(--cm-border-default); display: flex; flex-direction: column; overflow: hidden;">
+      <div style="padding: 20px 20px 16px; border-bottom: 1px solid var(--cm-border-subtle); display: flex; flex-direction: column; gap: 10px;">
+        <span class="cm-eyebrow">RUN STORY</span>
+        <div style="display: flex; align-items: center; gap: 10px;"><b style="font-size: 17px; line-height: 26px;">这次运行发生了什么</b><span style="flex-grow: 1;"></span><span class="cm-badge cm-badge--warning"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>部分完成</span></div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;">
+          <div style="padding: 10px; border-radius: var(--cm-radius-md); background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);"><div style="font-size: 22px; font-weight: 700;">1m43s</div><div class="cm-cap">总用时</div></div>
+          <div style="padding: 10px; border-radius: var(--cm-radius-md); background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);"><div style="font-size: 22px; font-weight: 700;">3 <span style="font-size: 13px; color: var(--cm-text-muted);">/ 4</span></div><div class="cm-cap">步骤成功</div></div>
+          <div style="padding: 10px; border-radius: var(--cm-radius-md); background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);"><div style="font-size: 22px; font-weight: 700;">4</div><div class="cm-cap">涉及系统</div></div>
+        </div>
+      </div>
+      <div style="padding: 20px; overflow: hidden;">
+        <div class="cm-tl" style="width: auto;">
+          <div class="cm-tl__row"><span class="cm-tl__dot" style="--fg: var(--cm-status-success); --bg: var(--cm-success-tint);"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span><div class="cm-tl__txt"><b>创建了 2 台云主机</b><span>4 核 8 GB · Ubuntu 22.04</span></div><span class="cm-tl__time">09:30:03</span></div>
+          <div class="cm-tl__row"><span class="cm-tl__dot" style="--fg: var(--cm-status-success); --bg: var(--cm-success-tint);"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span><div class="cm-tl__txt"><b>接入了监控告警</b><span>CPU 告警规则已生效</span></div><span class="cm-tl__time">09:30:41</span></div>
+          <div class="cm-tl__row"><span class="cm-tl__dot" style="--fg: var(--cm-status-success); --bg: var(--cm-success-tint);"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg></span><div class="cm-tl__txt"><b>开通了 MySQL 数据库</b><span>用时 1 分 17 秒</span></div><span class="cm-tl__time">09:31:20</span></div>
+          <div class="cm-tl__row"><span class="cm-tl__dot" style="--fg: var(--cm-status-failed); --bg: var(--cm-failed-tint);"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></span><div class="cm-tl__txt"><b>没能通知申请人</b><span>消息服务返回 503，暂时不可用</span>
+            <div class="cm-fix"><span>建议：消息服务通常几分钟内恢复。可以只重试这一步，前面创建的资源都会保留。</span><div style="display: flex; gap: 8px;"><button class="cm-btn cm-btn--sm cm-btn--primary">重试这一步</button><button class="cm-btn cm-btn--sm cm-btn--ghost">查看日志</button></div></div>
+          </div><span class="cm-tl__time">09:31:43</span></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

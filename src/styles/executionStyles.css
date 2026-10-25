@@ -3,17 +3,18 @@
    Based on Conductor OSS TaskStatus
    ============================================ */
 
-:root {
-    /* Execution Status Colors */
-    --status-scheduled: #64748B;
-    --status-in-progress: #3B82F6;
-    --status-completed: #0aad76;
-    --status-completed-with-errors: #FBBF24;
-    --status-failed: #EF4444;
+:root,
+[data-mode] {
+    /* Execution Status Colors — aliases of the CMASTER status tokens (mode-aware). */
+    --status-scheduled: var(--cm-status-pending);
+    --status-in-progress: var(--cm-status-running);
+    --status-completed: var(--cm-status-success);
+    --status-completed-with-errors: var(--cm-status-warning);
+    --status-failed: var(--cm-status-failed);
     --status-failed-terminal: #991B1B;
-    --status-timed-out: #F97316;
-    --status-skipped: #A1A1AA;
-    --status-canceled: #6B7280;
+    --status-timed-out: var(--cm-status-warning);
+    --status-skipped: var(--cm-status-skipped);
+    --status-canceled: var(--cm-text-muted);
 }
 
 /* ---- Status Animations ---- */
@@ -23,11 +24,11 @@
 
     0%,
     100% {
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+        box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.4);
     }
 
     50% {
-        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+        box-shadow: 0 0 0 8px rgba(34, 211, 238, 0);
     }
 }
 

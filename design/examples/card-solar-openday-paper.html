@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>群聊分享卡 · Solar · 纸面模式</title>
+<!--
+  CMASTER golden example: 群聊分享卡 · Solar · 纸面模式
+  Demonstrates: 纸面模式、横卡 7+5 分栏
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (light, palette solar). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div data-mode="light" style="--a: #a16207; --hi: #a16207; --on: #ffffff; --glow: #a162072e; --g0: #a16207; position: relative; width: 1200px; height: 630px; overflow: hidden; box-sizing: border-box; padding: 64px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; background: radial-gradient(ellipse 60% 80% at 100% 50%, var(--glow), transparent 70%), var(--cm-canvas); background-color: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans);">
+
+  <svg width="1200" height="630" viewBox="0 0 1200 630" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none;">
+    <circle cx="1080" cy="315" r="300" fill="none" stroke-width="3" style="stroke: var(--a); opacity: .5;"></circle>
+    <circle cx="1080" cy="315" r="210" fill="none" stroke-width="1.5" style="stroke: var(--a); opacity: .22;"></circle>
+    <circle cx="780" cy="315" r="13" style="fill: var(--a);"></circle>
+    <circle cx="868" cy="103" r="11" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+    <circle cx="868" cy="527" r="11" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+  </svg>
+
+  <div style="position: relative; grid-column: 1 / span 7; display: flex; flex-direction: column; gap: 22px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <svg width="36" height="36" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-canvas)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg>
+      <span style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em;"><span style="color: #ff6a13;">C</span>MASTER</span>
+      <span style="margin-left: 4px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--a); color: var(--a); font: 500 16px/1 var(--cm-font-mono); letter-spacing: .1em;">OPEN DAY</span>
+    </div>
+    <h1 style="margin: 12px 0 0; font-size: 64px; line-height: 76px; font-weight: 800; letter-spacing: -0.02em;">带上你的需求<br><span style="background-image: linear-gradient(90deg, var(--g0), var(--hi)); -webkit-background-clip: text; background-clip: text; color: transparent;">当场跑通</span>第一个流程</h1>
+    <p style="margin: 0; font-size: 24px; line-height: 36px; color: var(--cm-text-secondary);">编排平台开放日，一线同事、需要串联多系统的开发都欢迎。</p>
+    <div style="display: flex; align-items: center; gap: 20px; margin-top: auto;">
+      <span style="padding: 14px 24px; border-radius: 12px; background: var(--a); color: var(--on); font-size: 24px; font-weight: 800;">报名找 zhang</span>
+      <span style="font-size: 22px; color: var(--cm-text-muted);">[日期] · [地点]</span>
+    </div>
+  </div>
+
+  <div style="position: relative; grid-column: 9 / span 4; align-self: center; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; text-align: right; padding-right: 8px;">
+    <span style="font: 500 18px/24px var(--cm-font-mono); letter-spacing: .16em; color: var(--a);">HANDS-ON</span>
+    <span style="font-size: 96px; line-height: 96px; font-weight: 800; letter-spacing: -0.04em;">2<span style="font-size: 32px; margin-left: 6px; color: var(--cm-text-secondary);">小时</span></span>
+    <span style="font-size: 22px; line-height: 32px; color: var(--cm-text-secondary);">现场陪跑<br>带走一条能用的流程</span>
+  </div>
+</div>
+</body>
+</html>

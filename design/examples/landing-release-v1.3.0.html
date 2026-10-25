@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>版本宣传页（Bento Launchpad 完整示范）</title>
+<!--
+  CMASTER golden example: 版本宣传页（Bento Launchpad 完整示范）
+  Demonstrates: README 标志性元素 1-5；marketing.md 版本宣传页结构
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (dark). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{text-decoration:none}a:not(.cm-btn){color:var(--cm-brand-text)}a:not(.cm-btn):hover{color:var(--cm-brand-400)}
+</style>
+</head>
+<body>
+<div data-mode="dark" style="background: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans); min-height: 100vh;">
+
+<div class="cm-aurora" style="padding-bottom: 72px;">
+  <nav class="cm-nav" style="background: transparent; border-color: var(--cm-border-subtle); flex-wrap: wrap; height: auto; min-height: 64px; padding: 0 max(24px, 4vw);">
+    <span class="cm-nav__brand"><svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-canvas)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg><span><em>C</em>MASTER</span></span>
+    <span class="cm-version"><b>v1.3.0</b>最新发布</span>
+    <a href="#path" style="color: var(--cm-text-secondary); font-size: 13px;">自助接入</a>
+    <a href="#import" style="color: var(--cm-text-secondary); font-size: 13px;">接口导入</a>
+    <a href="#ext" style="color: var(--cm-text-secondary); font-size: 13px;">统一扩展点</a>
+    <a href="#next" style="color: var(--cm-text-secondary); font-size: 13px;">路线图</a>
+    <span style="flex-grow: 1;"></span>
+    <a href="#" style="color: var(--cm-text-secondary); font-size: 13px;">文档</a>
+    <a href="ide-standard-running.html" class="cm-btn cm-btn--sm cm-btn--primary">进入工作台</a>
+  </nav>
+
+  <div style="max-width: 860px; margin: 0 auto; padding: 88px 24px 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px;">
+    <span class="cm-eyebrow">CMASTER WORKFLOW IDE · v1.3.0</span>
+    <h1 style="margin: 0; font-size: 60px; line-height: 68px; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance;">自助接入<br><span class="cm-grad">自己把第一个流程跑起来</span></h1>
+    <p style="margin: 0; max-width: 640px; font-size: 17px; line-height: 30px; color: var(--cm-text-secondary);">新团队不再依赖陪跑：登记产品、规范命名、导入已有接口、沙箱试跑、申请上线，全部在测试环境里自助完成。</p>
+    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+      <span class="cm-chip"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22v-5M9 8V2M15 8V2"></path><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"></path></svg>统一扩展点 <span class="cm-code">WorkflowIdeProvider</span></span>
+      <span class="cm-chip"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>自助接入向导</span>
+      <span class="cm-chip"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1M16 21h1a2 2 0 0 0 2-2v-5a2 2 0 0 1 2-2 2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"></path></svg>OpenAPI / Postman / curl 导入</span>
+      <span class="cm-chip"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>接入埋点 <span class="cm-code">TelemetrySink</span></span>
+    </div>
+    <div class="cm-term" style="margin-top: 6px;">
+      <div class="cm-term__tabs"><span class="is-on">npm</span><span>pnpm</span><span>yarn</span></div>
+      <div class="cm-term__body"><i>$</i><code><span class="k">npm install</span> @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom</code><button class="cm-btn cm-btn--sm"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"></rect><path d="M4 16V5a1 1 0 0 1 1-1h11"></path></svg>复制</button></div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 4px;">
+      <a href="ide-standard-running.html" class="cm-btn cm-btn--lg cm-btn--primary cm-btn--cta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>五分钟走一遍</a>
+      <a href="docs-page.html" class="cm-btn cm-btn--lg"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>宿主接入指南</a>
+      <a href="#" class="cm-btn cm-btn--lg cm-btn--ghost">在工作台里亲手试</a>
+    </div>
+    <span class="cm-cap">v1.3.0 于 2026-10-24 发布 · 演示站运行在模拟治理服务上，没有接真实后端</span>
+  </div>
+</div>
+
+<div style="max-width: 1120px; margin: 0 auto; padding: 0 24px; display: flex; flex-direction: column; gap: 96px;">
+
+  <div class="cm-bento" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+    <div class="cm-stat"><b>5<small>步</small></b><strong>首个流程的自助路径</strong><span>登记 → 命名 → 起点 → 试跑 → 上线</span></div>
+    <div class="cm-stat"><b>4<small>种</small></b><strong>接口来源</strong><span>OpenAPI 3 · Swagger 2 · Postman · curl</span></div>
+    <div class="cm-stat"><b>3<small>个</small></b><strong>providers 字段</strong><span>配置一次，所有 IDE 共用</span></div>
+    <div class="cm-stat"><b>10<small>个</small></b><strong>首批埋点事件</strong><span>只记"用了什么"，不采参数值</span></div>
+  </div>
+
+  <section id="path" style="display: flex; flex-direction: column; gap: 32px;">
+    <div class="cm-section"><span class="cm-eyebrow">SELF-SERVICE PATH</span><h2>五分钟走完<span class="cm-grad">第一个流程</span></h2><p>命名校验的规则与 SDK 的 <span class="cm-code">validateWorkflowName</span> 一致，审批状态与演示站的模拟实现一致。</p></div>
+    <div class="cm-bento" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <div class="cm-card is-key" style="grid-column: span 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; align-items: start;">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="cm-card__label">TEST 环境 · 开放自助试用</span>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: var(--cm-radius-md); background: var(--cm-brand-tint); border: 1px solid #ff6a1366;"><span style="width: 26px; height: 26px; border-radius: 999px; background: var(--cm-brand-500); color: var(--cm-on-brand); display: grid; place-items: center; font: 600 12px var(--cm-font-mono);">1</span><div><div style="font-weight: 600; font-size: 14px;">登记产品</div><div class="cm-cap">开始试用 · 选业务域</div></div></div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 12px;"><span class="cm-step__num">2</span><div><div style="font-weight: 600; font-size: 14px;">规范命名</div><div class="cm-cap cm-mono">tmp-层级-业务域-产品-功能</div></div></div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 12px;"><span class="cm-step__num">3</span><div><div style="font-weight: 600; font-size: 14px;">选择起点</div><div class="cm-cap">空白 / 模板 / 从接口导入</div></div></div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 12px;"><span class="cm-step__num">4</span><div><div style="font-weight: 600; font-size: 14px;">沙箱试跑</div><div class="cm-cap">浏览器内执行，不依赖后端</div></div></div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 12px;"><span class="cm-step__num">5</span><div><div style="font-weight: 600; font-size: 14px;">申请上线</div><div class="cm-cap">提交 → 审批进度</div></div></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: var(--cm-radius-lg); background: var(--cm-surface-1); border: 1px solid var(--cm-border-default);">
+          <div style="display: flex; align-items: center; gap: 10px;"><span style="width: 24px; height: 24px; border-radius: 999px; background: var(--cm-brand-500); color: var(--cm-on-brand); display: grid; place-items: center; font: 600 12px var(--cm-font-mono);">1</span><span style="font-size: 17px; font-weight: 600;">登记产品</span><span class="cm-tag cm-tag--std">示意</span></div>
+          <p style="margin: 0; font-size: 13px; line-height: 22px; color: var(--cm-text-secondary);">产品名就是流程名里的"产品"段，所以不能含 <span class="cm-code">-</span>；业务域由治理服务提供。</p>
+          <div class="cm-field"><label class="cm-field__label" for="pname">产品名称 <span class="req">*</span></label><div class="cm-input is-focus" id="pname">order</div><span class="cm-help">试试 <span class="cm-mono">cmdb</span>（已被他人占用）或 <span class="cm-mono">ecs</span>（已是你的）</span></div>
+          <div class="cm-field"><label class="cm-field__label" for="pdomain">业务域<em>10 个可选</em></label><div class="cm-input" id="pdomain">云资源</div></div>
+          <div style="display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;"><button class="cm-btn cm-btn--sm">登记产品，开始试用</button><button class="cm-btn cm-btn--sm cm-btn--primary">下一步：规范命名</button></div>
+        </div>
+      </div>
+      <div class="cm-card">
+        <span class="cm-card__label cm-card__label--data">命名规范</span>
+        <h3>名字一次起对</h3>
+        <p>向导按治理规范拼出流程名，冲突与非法字符当场提示，不必等审批时被打回。</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="cm-cap" style="font-size: 11px;">类型</span><span class="cm-code">tmp</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="cm-cap" style="font-size: 11px;">层级</span><span class="cm-code">业务</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="cm-cap" style="font-size: 11px;">业务域</span><span class="cm-code">云资源</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="cm-cap" style="font-size: 11px;">产品</span><span class="cm-code">order</span></div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;"><span class="cm-cap" style="font-size: 11px;">功能</span><span class="cm-code">create</span></div>
+        </div>
+        <span class="cm-badge cm-badge--success" style="align-self: flex-start;"><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>命名规范校验通过</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="import" style="display: flex; flex-direction: column; gap: 32px;">
+    <div class="cm-section"><span class="cm-eyebrow">API IMPORT</span><h2>已有接口，<span class="cm-grad">几步变成流程步骤</span></h2><p>粘贴或上传，自动识别格式，勾选接口后插入。每个接口生成一个 Conductor <span class="cm-code">HTTP</span> 任务。</p></div>
+    <div class="cm-bento" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <div class="cm-card" style="grid-column: span 2;">
+        <span class="cm-card__label">四种来源</span>
+        <h3>粘贴就能认出格式</h3>
+        <div class="cm-codeblock"><div class="cm-codeblock__bar">curl → HTTP 任务<button class="cm-btn cm-btn--sm cm-btn--ghost">复制</button></div><pre><span class="cmt"># 粘贴的 curl</span>
+curl -X POST <span class="str">'https://itsm.example.com/api/tickets'</span> \
+  -H <span class="str">'Authorization: Bearer ••••••'</span> -d <span class="str">'{"title":"磁盘告警"}'</span>
+
+<span class="cmt">// 编译结果</span>
+{ <span class="attr">"type"</span>: <span class="str">"HTTP"</span>, <span class="attr">"uri"</span>: <span class="str">"https://itsm.example.com/api/tickets"</span>,
+  <span class="attr">"headers"</span>: { <span class="attr">"Authorization"</span>: <span class="str">"${workflow.input.authorization}"</span> } }</pre></div>
+      </div>
+      <div class="cm-card">
+        <span class="cm-card__label cm-card__label--data">敏感头不落定义</span>
+        <h3>凭据永远不写进流程</h3>
+        <ul class="cm-list">
+          <li><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span><span class="cm-code">Authorization</span> <span class="cm-code">Cookie</span> 自动换成 <span class="cm-code">${workflow.input.xxx}</span></span></li>
+          <li><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span>出参取 2xx 响应 schema，可直接被下游引用</span></li>
+          <li><svg class="ic ic-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg><span>YAML 格式请先转为 JSON（不引入 YAML 依赖）</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="ext" style="display: flex; flex-direction: column; gap: 32px;">
+    <div class="cm-section"><span class="cm-eyebrow">EXTENSION POINTS</span><h2>配置一次，<span class="cm-grad">处处生效</span></h2><p>在外层配置 <span class="cm-code">providers</span>，页面里所有 IDE 实例共用；没配的能力不显示入口。</p></div>
+    <div class="cm-bento" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <div class="cm-codeblock" style="grid-column: span 2; box-shadow: var(--cm-shadow-card);"><div class="cm-codeblock__bar">WorkflowStudio.tsx<button class="cm-btn cm-btn--sm cm-btn--ghost">复制</button></div><pre><span class="kw">import</span> { WorkflowIDE, WorkflowIdeProvider } <span class="kw">from</span> <span class="str">'@yiyi_zhang/reactflow-ui'</span>;
+
+<span class="kw">const</span> providers = {
+  <span class="attr">library</span>: libraryProvider,       <span class="cmt">// 1.2.0 已有：流程库</span>
+  <span class="attr">onboarding</span>: onboardingProvider, <span class="cmt">// 1.3.0 新增：新建流程向导 + 申请上线</span>
+  <span class="attr">telemetry</span>: telemetrySink,       <span class="cmt">// 1.3.0 新增：接入埋点</span>
+};
+
+<span class="kw">export function</span> WorkflowStudio() {
+  <span class="kw">return</span> &lt;WorkflowIdeProvider <span class="attr">providers</span>={providers}&gt;
+    &lt;WorkflowIDE <span class="attr">uiMode</span>=<span class="str">"business"</span> /&gt;
+  &lt;/WorkflowIdeProvider&gt;;
+}</pre></div>
+      <div class="cm-card">
+        <span class="cm-card__label">解析顺序</span>
+        <h3>逐字段，就近优先</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="cm-ref" style="font-size: 13px;"><span class="cm-step__num">1</span>组件专用 prop</div>
+          <div class="cm-ref" style="font-size: 13px;"><span class="cm-step__num">2</span>组件 <span class="cm-code">providers</span> prop</div>
+          <div class="cm-ref" style="font-size: 13px;"><span class="cm-step__num">3</span>外层 <span class="cm-code">WorkflowIdeProvider</span></div>
+          <div class="cm-ref" style="font-size: 13px;"><span class="cm-step__num">4</span>都没有：不显示该入口</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="next" style="display: flex; flex-direction: column; gap: 32px;">
+    <div class="cm-section"><span class="cm-eyebrow">WHAT'S NEXT</span><h2>接下来</h2><p>小步发版，每个小版本一个主题，每个扩展点同时提供契约文档与 Demo 模拟实现。</p></div>
+    <div class="cm-bento" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+      <div class="cm-card"><span class="cm-code" style="align-self: flex-start; color: var(--cm-brand-text);">v1.4.0</span><h3>放心上线</h3><p>发布审核、影子运行与一键回滚、AI 产出体检。</p><span class="cm-cap">目标 2026-12-11 · 规划中</span></div>
+      <div class="cm-card"><span class="cm-code" style="align-self: flex-start; color: var(--cm-brand-text);">v1.5.0</span><h3>持续好用</h3><p>执行样本、模板中心、新手引导与"解释这个流程"。</p><span class="cm-cap">目标 2027 Q1 · 规划中</span></div>
+      <div class="cm-card"><span class="cm-card__label cm-card__label--ai">Labs</span><h3>前沿探索</h3><p>先做可验证的意图到流程、历史回放与运行可观测。</p><span class="cm-cap">与稳定线并行 · 不承诺版本</span></div>
+    </div>
+  </section>
+
+  <section class="cm-card is-key" style="align-items: center; text-align: center; padding: 56px 24px; background: var(--cm-surface-2);">
+    <span class="cm-eyebrow">TRY IT</span>
+    <h2 style="margin: 0; font-size: 40px; line-height: 48px; font-weight: 700; letter-spacing: -0.01em;">拖一拖，<span class="cm-grad">流程就跑起来</span></h2>
+    <p style="max-width: 560px;">首个流程，我们陪你跑通。一线运维同事、需要串联多系统的开发都适用。</p>
+    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 8px;"><a href="ide-standard-running.html" class="cm-btn cm-btn--lg cm-btn--primary cm-btn--cta">进入工作台</a><span class="cm-btn cm-btn--lg">联系人 zhang</span></div>
+  </section>
+</div>
+
+<footer style="margin-top: 96px; border-top: 1px solid var(--cm-border-default); background: var(--cm-surface-0); padding: 28px 24px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; font-size: 13px; color: var(--cm-text-muted);">
+  <a href="#" style="color: var(--cm-text-secondary);">v1.2.0 历史页</a><a href="#" style="color: var(--cm-text-secondary);">v1.1.0 历史页</a><a href="ide-standard-running.html" style="color: var(--cm-text-secondary);">在线演练场</a><a href="#" style="color: var(--cm-text-secondary);">GitHub</a><a href="#" style="color: var(--cm-text-secondary);">npm</a><span>© 2026 CMASTER · @yiyi_zhang/reactflow-ui</span>
+</footer>
+</div>
+</body>
+</html>

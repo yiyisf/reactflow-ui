@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>社媒方图 · Signal</title>
+<!--
+  CMASTER golden example: 社媒方图 · Signal
+  Demonstrates: 大数字视觉主体；只放可核实的数字
+  Rendered with ../../src/styles/cmaster-tokens.css + ../reference/components.css. Shown in its default theme
+  (dark, palette signal). Copy the structure, not the copy or numbers.
+-->
+<link rel="stylesheet" href="../../src/styles/cmaster-tokens.css">
+<link rel="stylesheet" href="../reference/components.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</head>
+<body>
+<div data-mode="dark" style="--a: #34d399; --hi: #a7f3d0; --on: #032016; --glow: #34d3993d; --g0: #f3f6fb; position: relative; width: 1080px; height: 1080px; overflow: hidden; box-sizing: border-box; padding: 72px; display: flex; flex-direction: column; gap: 40px; background: radial-gradient(ellipse 80% 55% at 85% 110%, var(--glow), transparent 70%), radial-gradient(ellipse 50% 40% at 0% 0%, var(--cm-aurora-data), transparent 65%), var(--cm-canvas); background-color: var(--cm-canvas); color: var(--cm-text-primary); font-family: var(--cm-font-sans);">
+
+  <svg width="1080" height="1080" viewBox="0 0 1080 1080" aria-hidden="true" style="position: absolute; left: 0; top: 0; pointer-events: none;">
+    <g style="opacity: .35;"><circle cx="120" cy="140" r="2" style="fill: var(--cm-canvas-grid);"></circle></g>
+    <circle cx="1120" cy="1120" r="520" fill="none" stroke-width="3" style="stroke: var(--a); opacity: .45;"></circle>
+    <circle cx="1120" cy="1120" r="380" fill="none" stroke-width="1.5" style="stroke: var(--a); opacity: .2;"></circle>
+    <circle cx="752" cy="752" r="14" style="fill: var(--a);"></circle>
+    <circle cx="620" cy="1000" r="11" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+    <circle cx="1000" cy="620" r="11" style="fill: var(--cm-canvas); stroke: var(--a);" stroke-width="3"></circle>
+  </svg>
+
+  <div style="position: relative; display: flex; align-items: center; gap: 14px;">
+    <svg width="40" height="40" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"></path><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"></line><line x1="50" y1="50" x2="14" y2="50"></line><line x1="50" y1="50" x2="75.5" y2="75.5"></line></g><g fill="var(--cm-canvas)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"></circle><circle cx="14" cy="50" r="7"></circle><circle cx="75.46" cy="75.46" r="7"></circle></g><circle cx="50" cy="50" r="11" fill="#ff6a13"></circle></svg>
+    <span style="font-size: 28px; font-weight: 800; letter-spacing: -0.02em;"><span style="color: #ff6a13;">C</span>MASTER</span>
+    <span style="margin-left: 6px; padding: 7px 16px; border-radius: 999px; border: 1.5px solid var(--a); color: var(--a); font: 500 18px/1 var(--cm-font-mono); letter-spacing: .1em;">MILESTONE</span>
+  </div>
+
+  <div style="position: relative; display: flex; flex-direction: column; gap: 8px; margin-top: 40px;">
+    <span style="font: 500 22px/28px var(--cm-font-mono); letter-spacing: .18em; color: var(--a);">ON THE PLATFORM TODAY</span>
+    <span style="font-size: 220px; line-height: 220px; font-weight: 800; letter-spacing: -0.05em; background-image: linear-gradient(90deg, var(--g0), var(--hi)); -webkit-background-clip: text; background-clip: text; color: transparent;">1000+</span>
+    <span style="font-size: 52px; line-height: 64px; font-weight: 700;">条流程在 CMASTER 上运行</span>
+    <span style="font-size: 28px; line-height: 42px; color: var(--cm-text-secondary); max-width: 640px; margin-top: 12px;">云资源、监控运维、数据服务……这些现成能力，你的下一条流程可以直接复用。</span>
+  </div>
+
+  <div style="position: relative; display: flex; gap: 16px; margin-top: auto; flex-wrap: wrap;">
+    <span style="display: flex; align-items: baseline; gap: 8px; padding: 14px 22px; border-radius: 14px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1);"><b style="font-size: 36px; font-weight: 800;">10</b><span style="font-size: 22px; color: var(--cm-text-secondary);">个业务域</span></span>
+    <span style="display: flex; align-items: baseline; gap: 8px; padding: 14px 22px; border-radius: 14px; border: 1px solid var(--cm-border-default); background: var(--cm-surface-1);"><b style="font-size: 36px; font-weight: 800;">4</b><span style="font-size: 22px; color: var(--cm-text-secondary);">种接口一键导入</span></span>
+  </div>
+  <span style="position: relative; font-size: 22px; line-height: 32px; color: var(--cm-text-muted);">接入找 zhang · 首个流程我们陪你跑通</span>
+</div>
+</body>
+</html>

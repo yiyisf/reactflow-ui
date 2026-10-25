@@ -669,18 +669,39 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
             // 对于静态 Fork，如果分支中有空分支（即 joinOn 没涵盖的部分），需要处理
             const forkTasks = prevTask.forkTasks || [];
             forkTasks.forEach((branch, idx) => {
+                if (branch && branch.length > 0) {
+                    // joinOn 只等待部分分支时（Conductor 合法设计），未被等待的分支末尾用虚线连到 JOIN 并标注
+                    const lastTask = branch[branch.length - 1];
+                    if (!joinOn.includes(lastTask.taskReferenceName)) {
+                        getLastNodeIds(lastTask, hideEmptyBranches).forEach(lastNodeId => {
+                            const edgeId = `e-${lastNodeId}-${task.taskReferenceName}`;
+                            if (edges.some(e => e.id === edgeId)) return;
+                            edges.push({
+                                id: edgeId,
+                                source: lastNodeId,
+                                target: task.taskReferenceName,
+                                label: '不等待',
+                                animated: false,
+                                data: { notJoined: true },
+                                style: { strokeDasharray: '4,4', opacity: 0.6 },
+                            });
+                        });
+                    }
+                }
                 if (!branch || branch.length === 0) {
                     if (!hideEmptyBranches) {
-                        // 编辑模式：创建占位节点
+                        // 编辑模式：创建可点击的占位 "+" 节点，点击即向该分支插入第一个任务（E6）
                         const placeholderId = `${prevTask.taskReferenceName}_empty_branch_${idx}`;
                         nodes.push({
                             id: placeholderId,
-                            type: 'default',
+                            type: 'plusNode',
                             data: {
                                 label: `分支 ${idx + 1} (空)`,
                                 layoutDirection: direction,
                                 taskReferenceName: placeholderId,
                                 taskType: 'EMPTY_BRANCH',
+                                parentRef: prevTask.taskReferenceName,
+                                edgeData: { forkIndex: idx },
                             },
                             position: { x: 0, y: 0 },
                             sourcePosition: direction === 'LR' ? Position.Right : Position.Bottom,
@@ -711,6 +732,8 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
                             source: placeholderId,
                             target: task.taskReferenceName,
                             animated: true,
+                            // 在这条边上点 "+" 同样插入到该空分支
+                            data: { forkIndex: idx, branchParentRef: prevTask.taskReferenceName },
                             style: { strokeDasharray: '5,5' },
                         });
                     }
@@ -774,6 +797,8 @@ function connectTasks(fromTask: TaskDef, toTask: TaskDef, edges: Edge[], hideEmp
 
     const fromIds = getLastNodeIds(fromTask, hideEmptyBranches);
     const toId = toTask.taskReferenceName;
+    // E16：SWITCH / DECISION 的出口边记录所属的条件任务，"+" 插到条件任务之后（同层），而不是分支内部
+    const isSwitchExit = fromTask.type === 'DECISION' || fromTask.type === 'SWITCH';
 
     fromIds.forEach(fromId => {
         // 避免重复边
@@ -783,7 +808,8 @@ function connectTasks(fromTask: TaskDef, toTask: TaskDef, edges: Edge[], hideEmp
                 id: edgeId,
                 source: fromId,
                 target: toId,
-                animated: true
+                animated: true,
+                ...(isSwitchExit ? { data: { exitOf: fromTask.taskReferenceName } } : {}),
             });
         }
     });

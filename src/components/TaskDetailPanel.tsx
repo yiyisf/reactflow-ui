@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useMemo } from 'react';
+import { memo, useState, useEffect, useMemo, useRef } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { TaskDef } from '../types/conductor';
@@ -8,6 +8,14 @@ import { parseWorkflowInputParams } from '../types/conductor';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
 import { getCompletionItems, getUpstreamAncestors } from '../services/wlsp/workflowLsp';
+import DraftCodeField from './DraftCodeField';
+import {
+    parseJsonDraft,
+    patchTaskDefinitionField,
+    readTaskDefinitionField,
+    validateTaskRefName,
+    type TaskDefinitionField,
+} from '../utils/taskEditing';
 import { CircleCheck, Globe, Hourglass, Link, Mail, Maximize2, Package, Play, Repeat, Scale, ScrollText, Search, Send, Sparkles, Square, Target, TriangleAlert, User, Workflow, X, Zap, type LucideIcon } from 'lucide-react';
 
 interface TaskDetailPanelProps {
@@ -27,11 +35,21 @@ const QUICK_SNIPPETS = [
     { label: '工作流状态', value: '${workflow.status}', desc: '当前工作流状态' },
 ];
 
+/** FORK_JOIN_DYNAMIC 简化模式字段：Conductor ForkJoinDynamicTaskMapper 从 inputParameters 读取，兼容旧版顶层值 */
+const dynamicForkField = (task: TaskDef | null | undefined, key: string): any =>
+    task?.inputParameters?.[key] ?? (task as any)?.[key];
+
+function detectDynamicForkMode(task: TaskDef | null | undefined): 'classic' | 'task' | 'workflow' {
+    if (!task || task.type !== 'FORK_JOIN_DYNAMIC') return 'classic';
+    if (dynamicForkField(task, 'forkTaskWorkflow')) return 'workflow';
+    if (dynamicForkField(task, 'forkTaskType') || dynamicForkField(task, 'forkTaskName')) return 'task';
+    return 'classic';
+}
+
 const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailPanelProps) => {
-    const { mode, updateTask, checkTaskRefUniqueness, workflowDef, executionData, workflowInstance, lastRefactorNotice, clearRefactorNotice } = useWorkflowStore(useShallow((s) => ({
+    const { mode, updateTask, workflowDef, executionData, workflowInstance, lastRefactorNotice, clearRefactorNotice } = useWorkflowStore(useShallow((s) => ({
             mode: s.mode,
             updateTask: s.updateTask,
-            checkTaskRefUniqueness: s.checkTaskRefUniqueness,
             workflowDef: s.workflowDef,
             executionData: s.executionData,
             workflowInstance: s.workflowInstance,
@@ -53,12 +71,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     const [doWhileMode, setDoWhileMode] = useState<'condition' | 'items'>(() =>
         task?.type === 'DO_WHILE' && task.inputParameters?.items ? 'items' : 'condition'
     );
-    const [dynamicForkMode, setDynamicForkMode] = useState<'classic' | 'task' | 'workflow'>(() => {
-        if (!task || task.type !== 'FORK_JOIN_DYNAMIC') return 'classic';
-        if ((task as any).forkTaskWorkflow) return 'workflow';
-        if ((task as any).forkTaskType) return 'task';
-        return 'classic';
-    });
+    const [dynamicForkMode, setDynamicForkMode] = useState<'classic' | 'task' | 'workflow'>(() => detectDynamicForkMode(task));
 
     const [suggesterOpen, setSuggesterOpen] = useState(false);
     const [suggesterAnchor, setSuggesterAnchor] = useState<DOMRect | undefined>();
@@ -76,6 +89,11 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             workflowInstance?.input
         );
     }, [workflowDef, activeTaskRef, executionData, workflowInstance?.input]);
+
+    // 草稿式 JSON 输入框的写入函数（快捷片段插入时使用），按 data-field 索引
+    const draftAppliers = useRef<Record<string, (text: string) => void>>({});
+    // 引用名草稿的校验错误（E7）
+    const [refNameError, setRefNameError] = useState<string | null>(null);
 
     // 全屏编辑器状态
     type FullscreenState = { title: string; value: string; language: string; onSave: (v: string) => void } | null;
@@ -111,9 +129,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         setAiFillLoading(true);
         try {
             const { workflowDef } = useWorkflowStore.getState();
-            const inputParamNames = parseWorkflowInputParams(workflowDef?.inputParameters).map(p => p.name);
+            const inputParamNames = parseWorkflowInputParams(workflowDef?.inputParameters, workflowDef).map(p => p.name);
             // Only real upstream ancestors (DAG order) — downstream tasks' outputs don't exist yet.
-            const upstreamTasks = getUpstreamAncestors(workflowDef as any, effectiveTask.taskReferenceName)
+            const upstreamTasks = getUpstreamAncestors(workflowDef, effectiveTask.taskReferenceName)
                 .map(t => ({ ref: t.taskReferenceName, type: t.type, name: t.name }))
                 .slice(0, 10); // Limit context size
 
@@ -182,6 +200,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             setLocalTask(task);
             setSyncedRef(task.taskReferenceName); // 记录本次同步时的引用名，用于判断 localTask 是否对应当前 task
             setPendingRefName(null); // 清除草稿，切换到新任务时不保留旧的输入
+            setRefNameError(null);
             // 同步 WAIT 模式
             if (task.type === 'WAIT') {
                 setWaitMode(task.inputParameters?.until ? 'until' : 'duration');
@@ -192,9 +211,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             }
             // 同步 FORK_JOIN_DYNAMIC 模式
             if (task.type === 'FORK_JOIN_DYNAMIC') {
-                if ((task as any).forkTaskWorkflow) setDynamicForkMode('workflow');
-                else if ((task as any).forkTaskType) setDynamicForkMode('task');
-                else setDynamicForkMode('classic');
+                setDynamicForkMode(detectDynamicForkMode(task));
             }
         }
     }, [task]);
@@ -247,6 +264,108 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         updateTask(displayTask.taskReferenceName, updates);
     };
 
+    /** 一次提交多个字段（可传 undefined 删除字段） */
+    const applyPatch = (patch: Record<string, any>) => {
+        const updatedTask = { ...displayTask, ...patch } as TaskDef;
+        setLocalTask(updatedTask);
+        updateTask(displayTask.taskReferenceName, patch);
+    };
+
+    /** inputParameters 下的对象字段（如 kafka_request）的子键更新 */
+    const handleInputObjectChange = (objectKey: string, field: string, value: any) => {
+        const currentInputs = displayTask.inputParameters || {};
+        const currentObj = (currentInputs[objectKey] && typeof currentInputs[objectKey] === 'object') ? currentInputs[objectKey] : {};
+        handleInputParamChange(objectKey, { ...currentObj, [field]: value });
+    };
+
+    /** 写入 inputParameters 的同时删掉旧版写在顶层的同名字段（E2 / E20） */
+    const handleInputParamMigrating = (key: string, value: any) => {
+        const updatedInputs = { ...(displayTask.inputParameters || {}), [key]: value };
+        if (value === undefined || value === '') delete updatedInputs[key];
+        const patch: Record<string, any> = { inputParameters: updatedInputs };
+        if ((displayTask as any)[key] !== undefined) patch[key] = undefined;
+        applyPatch(patch);
+    };
+
+    /** E19：超时 / 重试策略写入 taskDefinition */
+    const handleTaskDefChange = (field: TaskDefinitionField, value: any) => {
+        applyPatch(patchTaskDefinitionField(displayTask, field, value, workflowDef?.ownerEmail));
+    };
+
+    /** E17：WAIT 切换模式时删除另一个字段，Conductor 不允许 duration 与 until 同时存在 */
+    const handleWaitModeChange = (next: 'duration' | 'until') => {
+        setWaitMode(next);
+        const inputs = { ...(displayTask.inputParameters || {}) };
+        const other = next === 'duration' ? 'until' : 'duration';
+        if (inputs[other] === undefined) return;
+        delete inputs[other];
+        applyPatch({ inputParameters: inputs });
+    };
+
+    /** JSON 草稿提交：解析成功才写入，失败返回原因 */
+    const commitJson = (onValue: (v: any) => void, opts: { allowEmpty?: boolean; requireObject?: boolean } = { allowEmpty: true, requireObject: true }) =>
+        (text: string): string | null => {
+            const res = parseJsonDraft(text, opts);
+            if (!res.ok) return res.error;
+            onValue(res.value);
+            return null;
+        };
+
+    /** 允许原始文本的字段（HTTP body、Kafka value）：能解析为 JSON 就存对象，否则存字符串 */
+    const commitJsonOrText = (onValue: (v: any) => void) => (text: string): string | null => {
+        const trimmed = text.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            const res = parseJsonDraft(trimmed, { allowEmpty: true });
+            if (!res.ok) return res.error;
+            onValue(res.value);
+            return null;
+        }
+        onValue(text);
+        return null;
+    };
+
+    const stringifyForDraft = (v: any, empty = '{}') =>
+        v === undefined || v === null ? empty : typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
+
+    /** 草稿式 JSON 输入框（E18）：逐字输入，失焦时解析并提示错误 */
+    const renderJsonArea = (
+        label: string,
+        fieldKey: string,
+        value: string,
+        onCommit: (text: string) => string | null,
+        options: { rows?: number; language?: string; style?: React.CSSProperties; placeholder?: string; dataField?: string } = {}
+    ) => (
+        <DraftCodeField
+            key={`${displayTask.taskReferenceName}:${fieldKey}`}
+            label={label}
+            value={value}
+            onCommit={onCommit}
+            editable={isEditMode}
+            rows={options.rows ?? 5}
+            placeholder={options.placeholder}
+            style={options.style}
+            dataField={options.dataField}
+            secondaryTextColor={secondaryTextColor}
+            onOpenFullscreen={(current, apply) =>
+                openFullscreen(label || fieldKey, current, options.language || 'json', (v) => { apply(v); setFullscreenEditor(null); })}
+            onTextareaFocus={(el) => setActiveTextareaRef(el)}
+            registerApply={options.dataField ? (fn) => {
+                if (fn) draftAppliers.current[options.dataField!] = fn;
+                else delete draftAppliers.current[options.dataField!];
+            } : undefined}
+            onTyping={(el, nextVal, apply) => {
+                const pos = el.selectionStart ?? 0;
+                if (pos >= 2 && nextVal.slice(pos - 2, pos) === '${') {
+                    setSuggesterAnchor(el.getBoundingClientRect());
+                    setOnSelectSuggestion(() => (selectedExpr: string) => {
+                        apply(nextVal.slice(0, pos - 2) + selectedExpr + nextVal.slice(pos));
+                    });
+                    setSuggesterOpen(true);
+                }
+            }}
+        />
+    );
+
     const insertSnippet = (snippet: string) => {
         if (!activeTextareaRef) return;
         const start = activeTextareaRef.selectionStart ?? 0;
@@ -254,7 +373,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         const current = activeTextareaRef.value;
         const newValue = current.substring(0, start) + snippet + current.substring(end);
         const fieldName = activeTextareaRef.getAttribute('data-field');
-        if (fieldName) handleChange(fieldName, newValue);
+        const applyDraft = fieldName ? draftAppliers.current[fieldName] : undefined;
+        if (applyDraft) applyDraft(newValue);
+        else if (fieldName) handleChange(fieldName, newValue);
         setShowSnippets(false);
     };
 
@@ -277,13 +398,16 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         const currentVal = isRefName && pendingRefName !== null
             ? pendingRefName
             : ((displayTask as any)[field] ?? '');
-        // 重复检测：用当前展示的值（草稿 or 已保存）与其他任务对比，排除自身
-        const isDuplicate = isRefName && !checkTaskRefUniqueness(currentVal, displayTask.taskReferenceName);
+        // E7：用当前展示的值（草稿 or 已保存）校验重复 / 非法字符 / 保留字，排除自身
+        const refError = isRefName && pendingRefName !== null
+            ? validateTaskRefName(workflowDef, String(currentVal), displayTask.taskReferenceName)
+            : (isRefName ? refNameError : null);
+        const isDuplicate = !!refError;
         return (
             <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase' }}>
                     {label}
-                    {isRefName && isDuplicate && <span style={{ color: 'var(--cm-status-failed)', marginLeft: '8px', textTransform: 'none' }}><TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已存在相同引用名</span>}
+                    {isRefName && refError && <span role="alert" style={{ color: 'var(--cm-status-failed)', marginLeft: '8px', textTransform: 'none', display: 'inline-block', fontWeight: 'normal' }}><TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />{refError}</span>}
                 </label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input
@@ -317,12 +441,21 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             }
                         } : undefined}
                         onBlur={isRefName ? (e) => {
-                            // 失焦时提交：值有变化且不为空时才写入 store
+                            // 失焦时提交：校验不通过则保留草稿并显示原因，不写入 store（E7）
                             const newRef = e.target.value.trim();
-                            setPendingRefName(null); // 清除草稿
-                            if (newRef && newRef !== displayTask.taskReferenceName) {
-                                handleChange('taskReferenceName', newRef);
+                            if (newRef === displayTask.taskReferenceName) {
+                                setPendingRefName(null);
+                                setRefNameError(null);
+                                return;
                             }
+                            const err = validateTaskRefName(workflowDef, newRef, displayTask.taskReferenceName);
+                            if (err) {
+                                setRefNameError(err);
+                                return;
+                            }
+                            setPendingRefName(null); // 清除草稿
+                            setRefNameError(null);
+                            handleChange('taskReferenceName', newRef);
                         } : undefined}
                         onKeyDown={isRefName ? (e) => {
                             if (e.key === 'Enter') e.currentTarget.blur(); // Enter 触发提交
@@ -477,6 +610,23 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
     );
 
     const httpRequest = displayTask.inputParameters?.http_request || displayTask.httpRequest || {};
+    // E2：INLINE 的 evaluatorType 在 inputParameters，兼容旧版写在顶层
+    const inlineEvaluator: string = displayTask.inputParameters?.evaluatorType || (displayTask as any).evaluatorType || 'graaljs';
+    // E4：KAFKA_PUBLISH 字段在 inputParameters.kafka_request，兼容旧版直接放在 inputParameters
+    const kafkaRequest: Record<string, any> = displayTask.inputParameters?.kafka_request || {};
+    const kafkaField = (k: string) => kafkaRequest[k] ?? displayTask.inputParameters?.[k];
+    // E1：SWITCH 读写 evaluatorType + expression
+    const switchEvaluator: string = (displayTask as any).evaluatorType || 'value-param';
+    // 兼容旧数据 / 业务模式只写了 DECISION 字段（caseValueParam / caseExpression）的 SWITCH
+    const switchExpression: string = displayTask.expression
+        ?? (switchEvaluator === 'value-param' ? displayTask.caseValueParam : displayTask.caseExpression)
+        ?? '';
+    /** SWITCH 写 expression；旧字段 caseValueParam 若存在则同步（业务模式仍读它），caseExpression 删除 */
+    const switchExpressionPatch = (v: string): Record<string, any> => ({
+        expression: v,
+        ...(displayTask.caseValueParam !== undefined && switchEvaluator === 'value-param' ? { caseValueParam: v } : {}),
+        ...(displayTask.caseExpression !== undefined ? { caseExpression: undefined } : {}),
+    });
 
     return (
         <>
@@ -547,37 +697,32 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                     style={{ width: '100%', padding: '8px', borderRadius: '6px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '12px' }} />
                             </div>
                         </div>
-                        <div style={{ marginBottom: '12px' }}>
-                            <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>HEADERS (JSON)</label>
-                            <textarea value={typeof httpRequest.headers === 'object' ? JSON.stringify(httpRequest.headers, null, 2) : '{}'}
-                                onChange={(e) => { try { handleHttpChange('headers', JSON.parse(e.target.value)); } catch { } }}
-                                disabled={!isEditMode} rows={3}
-                                style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
-                        </div>
-                        <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>BODY (RAW/JSON)</label>
-                        <textarea
-                            value={typeof httpRequest.body === 'object' ? JSON.stringify(httpRequest.body, null, 2) : (httpRequest.body || '')}
-                            onChange={(e) => { let v = e.target.value; try { v = JSON.parse(e.target.value); } catch { } handleHttpChange('body', v); }}
-                            disabled={!isEditMode} rows={4}
-                            style={{ width: '100%', padding: '8px', borderRadius: '8px', background: inputBg, color: textColor, border: `1px solid ${borderColor}`, fontSize: '11px', fontFamily: 'monospace' }} />
+                        {renderJsonArea('HEADERS (JSON)', 'http_headers',
+                            stringifyForDraft(httpRequest.headers),
+                            commitJson((v) => handleHttpChange('headers', v)),
+                            { rows: 3 })}
+                        {renderJsonArea('BODY (RAW/JSON)', 'http_body',
+                            stringifyForDraft(httpRequest.body, ''),
+                            commitJsonOrText((v) => handleHttpChange('body', v === '' ? undefined : v)),
+                            { rows: 4 })}
                     </>
                 ))}
 
                 {/* ── INLINE / LAMBDA ── */}
                 {(displayTask.type === 'INLINE' || displayTask.type === 'LAMBDA') && renderSpecialSection('内联脚本配置 (Inline)', ScrollText, 'var(--color-accent)', (
                     <>
-                        {renderSelect('脚本引擎', ['graaljs', 'javascript', 'value-param', 'python'],
-                            (displayTask as any).evaluatorType || 'graaljs',
-                            (v) => handleChange('evaluatorType', v)
+                        {displayTask.type === 'INLINE' && renderSelect('脚本引擎 (inputParameters.evaluatorType)', ['graaljs', 'javascript', 'value-param', 'python'],
+                            inlineEvaluator,
+                            (v) => handleInputParamMigrating('evaluatorType', v)
                         )}
                         {renderCodeArea(
-                            `EXPRESSION ${(displayTask as any).evaluatorType === 'value-param' ? '(值引用)' : '(脚本)'}`,
+                            `EXPRESSION ${inlineEvaluator === 'value-param' ? '(值引用)' : '(脚本)'}`,
                             displayTask.inputParameters?.expression || displayTask.inputParameters?.scriptExpression || '',
                             (v) => {
                                 const key = displayTask.inputParameters?.scriptExpression !== undefined ? 'scriptExpression' : 'expression';
                                 handleInputParamChange(key, v);
                             },
-                            { rows: 10, language: (displayTask as any).evaluatorType || 'javascript', style: { background: 'var(--cm-overlay)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' } }
+                            { rows: 10, language: inlineEvaluator === 'value-param' ? 'text' : 'javascript', style: { background: 'var(--cm-overlay)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' } }
                         )}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor, fontStyle: 'italic' }}>
                             提示: 使用 $.input.key 访问输入参数，返回值作为任务输出。
@@ -602,10 +747,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     <>
                         {renderSmallInput('WORKFLOW NAME *', displayTask.subWorkflowParam?.name || '', (v) => handleNestedChange('subWorkflowParam', 'name', v), 'text', 'e.g. my_workflow')}
                         {renderSmallInput('VERSION', displayTask.subWorkflowParam?.version ?? '', (v) => handleNestedChange('subWorkflowParam', 'version', v ? parseInt(v) : undefined), 'number', '1')}
-                        {renderCodeArea('INPUT PARAMETERS MAPPING (JSON)',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
-                            { rows: 5, language: 'json' })}
+                        {renderJsonArea('INPUT PARAMETERS MAPPING (JSON)', 'sub_inputs',
+                            stringifyForDraft(displayTask.inputParameters),
+                            commitJson((v) => handleChange('inputParameters', v)),
+                            { rows: 5 })}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
                             传递给子工作流的参数，支持 {'${workflow.input.xxx}'} 表达式
                         </div>
@@ -630,10 +775,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), correlationId: v };
                             handleInputParamChange('startWorkflow', sw);
                         }, 'text', '${workflow.correlationId}')}
-                        {renderCodeArea('WORKFLOW INPUT (JSON)',
-                            typeof displayTask.inputParameters?.startWorkflow?.input === 'object' ? JSON.stringify(displayTask.inputParameters.startWorkflow.input, null, 2) : '{}',
-                            (v) => { try { const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), input: JSON.parse(v) }; handleInputParamChange('startWorkflow', sw); } catch { } },
-                            { rows: 4, language: 'json' })}
+                        {renderJsonArea('WORKFLOW INPUT (JSON)', 'start_input',
+                            stringifyForDraft(displayTask.inputParameters?.startWorkflow?.input),
+                            commitJson((v) => handleInputParamChange('startWorkflow', { ...(displayTask.inputParameters?.startWorkflow || {}), input: v })),
+                            { rows: 4 })}
                     </>
                 ))}
 
@@ -642,7 +787,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>TERMINATION STATUS</label>
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                            {['COMPLETED', 'FAILED'].map(s => (
+                            {['COMPLETED', 'FAILED', 'TERMINATED'].map(s => (
                                 <button key={s} onClick={() => handleInputParamChange('terminationStatus', s)} disabled={!isEditMode}
                                     style={{ flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer', background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg, color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-on-accent)' : textColor, border: `1px solid ${borderColor}`, fontWeight: 'bold', fontSize: '11px' }}>
                                     {s}
@@ -650,10 +795,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             ))}
                         </div>
                         {renderSmallInput('TERMINATION REASON', displayTask.inputParameters?.terminationReason || '', (v) => handleInputParamChange('terminationReason', v), 'text', '终止原因...')}
-                        {renderCodeArea('WORKFLOW OUTPUT (JSON)',
-                            typeof displayTask.inputParameters?.workflowOutput === 'object' ? JSON.stringify(displayTask.inputParameters.workflowOutput, null, 2) : '{}',
-                            (v) => { try { handleInputParamChange('workflowOutput', JSON.parse(v)); } catch { } },
-                            { rows: 3, language: 'json' })}
+                        {renderJsonArea('WORKFLOW OUTPUT (JSON)', 'terminate_output',
+                            stringifyForDraft(displayTask.inputParameters?.workflowOutput),
+                            commitJson((v) => handleInputParamChange('workflowOutput', v)),
+                            { rows: 3 })}
                     </>
                 ))}
 
@@ -671,7 +816,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {/* ── WAIT ── */}
                 {displayTask.type === 'WAIT' && renderSpecialSection('等待状态配置', Hourglass, 'var(--color-accent)', (
                     <>
-                        {renderModeSwitch([{ key: 'duration', label: '等待时长' }, { key: 'until', label: '等待到指定时间' }], waitMode, (v) => setWaitMode(v as any))}
+                        {renderModeSwitch([{ key: 'duration', label: '等待时长' }, { key: 'until', label: '等待到指定时间' }], waitMode, (v) => handleWaitModeChange(v as 'duration' | 'until'))}
                         {waitMode === 'duration'
                             ? renderSmallInput('DURATION', displayTask.inputParameters?.duration || '', (v) => handleInputParamChange('duration', v), 'text', 'e.g. 30s, 10m, 2 hours')
                             : renderSmallInput('UNTIL (时间点)', displayTask.inputParameters?.until || '', (v) => handleInputParamChange('until', v), 'text', 'e.g. 2025-06-15 09:00 GMT+00:00')}
@@ -682,21 +827,37 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── DECISION / SWITCH ── */}
-                {(displayTask.type === 'DECISION' || displayTask.type === 'SWITCH') && renderSpecialSection('条件分支配置', Scale, 'var(--color-accent)', (
+                {displayTask.type === 'SWITCH' && renderSpecialSection('条件分支配置', Scale, 'var(--color-accent)', (
                     <>
                         {renderSelect('评估模式 (evaluatorType)',
-                            ['value-param', 'javascript'],
-                            (displayTask as any).evaluatorType || 'value-param',
+                            ['value-param', 'javascript', 'graaljs'],
+                            switchEvaluator,
                             (v) => handleChange('evaluatorType', v)
                         )}
-                        {((displayTask as any).evaluatorType || 'value-param') === 'value-param'
-                            ? renderSmallInput('CASE VALUE PARAM (参数名)', displayTask.caseValueParam || '', (v) => handleChange('caseValueParam', v), 'text', 'e.g. status')
-                            : <>
-                                {renderCodeArea('CASE EXPRESSION (JS)', displayTask.caseExpression || '',
-                                    (v) => handleChange('caseExpression', v),
-                                    { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
+                        {switchEvaluator === 'value-param'
+                            ? <>
+                                {renderSmallInput('EXPRESSION (inputParameters 中的参数名) *', switchExpression, (v) => applyPatch(switchExpressionPatch(v)), 'text', 'e.g. switchCaseValue')}
+                                <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '-4px', marginBottom: '8px' }}>
+                                    运行时取 inputParameters 中该参数的值，与分支名匹配
+                                </div>
                             </>
+                            : renderCodeArea('EXPRESSION (脚本) *', switchExpression,
+                                (v) => applyPatch(switchExpressionPatch(v)),
+                                { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })
                         }
+                        <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '8px' }}>
+                            分支可在图中通过右键节点→"添加分支"进行管理
+                        </div>
+                    </>
+                ))}
+
+                {/* ── DECISION（旧版，仍使用 caseValueParam / caseExpression） ── */}
+                {displayTask.type === 'DECISION' && renderSpecialSection('条件分支配置（DECISION）', Scale, 'var(--color-accent)', (
+                    <>
+                        {renderSmallInput('CASE VALUE PARAM (参数名)', displayTask.caseValueParam || '', (v) => handleChange('caseValueParam', v), 'text', 'e.g. status')}
+                        {renderCodeArea('CASE EXPRESSION (JS，可选)', displayTask.caseExpression || '',
+                            (v) => handleChange('caseExpression', v),
+                            { rows: 4, language: 'javascript', style: { color: 'var(--color-accent)' } })}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '8px' }}>
                             分支可在图中通过右键节点→"添加分支"进行管理
                         </div>
@@ -751,21 +912,21 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         )}
                         {dynamicForkMode === 'task' && (
                             <>
-                                {renderSmallInput('FORK TASK TYPE *', (displayTask as any).forkTaskType || '', (v) => handleChange('forkTaskType', v), 'text', 'e.g. HTTP')}
-                                {renderSmallInput('FORK TASK NAME (仅 SIMPLE 任务)', (displayTask as any).forkTaskName || '', (v) => handleChange('forkTaskName', v), 'text', 'e.g. my_task')}
-                                {renderSmallInput('FORK TASK INPUTS PARAM', (displayTask as any).forkTaskInputs || '', (v) => handleChange('forkTaskInputs', v), 'text', 'e.g. inputs')}
+                                {renderSmallInput('FORK TASK TYPE *', dynamicForkField(displayTask, 'forkTaskType') || '', (v) => handleInputParamMigrating('forkTaskType', v), 'text', 'e.g. HTTP')}
+                                {renderSmallInput('FORK TASK NAME (仅 SIMPLE 任务)', dynamicForkField(displayTask, 'forkTaskName') || '', (v) => handleInputParamMigrating('forkTaskName', v), 'text', 'e.g. my_task')}
+                                {renderSmallInput('FORK TASK INPUTS', typeof dynamicForkField(displayTask, 'forkTaskInputs') === 'string' ? dynamicForkField(displayTask, 'forkTaskInputs') : '', (v) => handleInputParamMigrating('forkTaskInputs', v), 'text', '${workflow.input.items}')}
                                 <div style={{ fontSize: '10px', color: secondaryTextColor }}>
-                                    所有分支执行相同任务类型，每个元素作为一个分支输入
+                                    所有分支执行相同任务类型，每个元素作为一个分支输入；以上字段写入 inputParameters
                                 </div>
                             </>
                         )}
                         {dynamicForkMode === 'workflow' && (
                             <>
-                                {renderSmallInput('FORK WORKFLOW NAME *', (displayTask as any).forkTaskWorkflow || '', (v) => handleChange('forkTaskWorkflow', v), 'text', 'e.g. sub_workflow')}
-                                {renderSmallInput('WORKFLOW VERSION', (displayTask as any).forkTaskWorkflowVersion || '', (v) => handleChange('forkTaskWorkflowVersion', v), 'text', '1')}
-                                {renderSmallInput('FORK TASK INPUTS PARAM', (displayTask as any).forkTaskInputs || '', (v) => handleChange('forkTaskInputs', v), 'text', 'e.g. inputs')}
+                                {renderSmallInput('FORK WORKFLOW NAME *', dynamicForkField(displayTask, 'forkTaskWorkflow') || '', (v) => handleInputParamMigrating('forkTaskWorkflow', v), 'text', 'e.g. sub_workflow')}
+                                {renderSmallInput('WORKFLOW VERSION', dynamicForkField(displayTask, 'forkTaskWorkflowVersion') ?? '', (v) => handleInputParamMigrating('forkTaskWorkflowVersion', v), 'text', '1')}
+                                {renderSmallInput('FORK TASK INPUTS', typeof dynamicForkField(displayTask, 'forkTaskInputs') === 'string' ? dynamicForkField(displayTask, 'forkTaskInputs') : '', (v) => handleInputParamMigrating('forkTaskInputs', v), 'text', '${workflow.input.items}')}
                                 <div style={{ fontSize: '10px', color: secondaryTextColor }}>
-                                    所有分支执行相同子工作流，每个元素作为一个子工作流输入
+                                    所有分支执行相同子工作流，每个元素作为一个子工作流输入；以上字段写入 inputParameters
                                 </div>
                             </>
                         )}
@@ -798,17 +959,20 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 {/* ── KAFKA_PUBLISH ── */}
                 {displayTask.type === 'KAFKA_PUBLISH' && renderSpecialSection('Kafka 推送配置', Send, 'var(--color-accent)', (
                     <>
-                        {renderSmallInput('BOOTSTRAP SERVERS *', displayTask.inputParameters?.bootStrapServers || '', (v) => handleInputParamChange('bootStrapServers', v), 'text', 'localhost:9092')}
-                        {renderSmallInput('TOPIC *', displayTask.inputParameters?.topic || '', (v) => handleInputParamChange('topic', v), 'text', 'my_topic')}
-                        {renderSmallInput('KEY (消息分区键)', displayTask.inputParameters?.key || '', (v) => handleInputParamChange('key', v), 'text', '')}
-                        {renderCodeArea('VALUE (消息内容)',
-                            typeof displayTask.inputParameters?.value === 'object' ? JSON.stringify(displayTask.inputParameters.value, null, 2) : (displayTask.inputParameters?.value || ''),
-                            (v) => { let val: any = v; try { val = JSON.parse(v); } catch { } handleInputParamChange('value', val); },
-                            { rows: 4, language: 'json' })}
-                        {renderCodeArea('HEADERS (JSON)',
-                            typeof displayTask.inputParameters?.headers === 'object' ? JSON.stringify(displayTask.inputParameters.headers, null, 2) : '{}',
-                            (v) => { try { handleInputParamChange('headers', JSON.parse(v)); } catch { } },
-                            { rows: 3, language: 'json' })}
+                        {renderSmallInput('BOOTSTRAP SERVERS *', kafkaField('bootStrapServers') || '', (v) => handleInputObjectChange('kafka_request', 'bootStrapServers', v), 'text', 'localhost:9092')}
+                        {renderSmallInput('TOPIC *', kafkaField('topic') || '', (v) => handleInputObjectChange('kafka_request', 'topic', v), 'text', 'my_topic')}
+                        {renderSmallInput('KEY (消息分区键)', kafkaField('key') || '', (v) => handleInputObjectChange('kafka_request', 'key', v), 'text', '')}
+                        {renderJsonArea('VALUE (消息内容)', 'kafka_value',
+                            stringifyForDraft(kafkaField('value'), ''),
+                            commitJsonOrText((v) => handleInputObjectChange('kafka_request', 'value', v)),
+                            { rows: 4 })}
+                        {renderJsonArea('HEADERS (JSON)', 'kafka_headers',
+                            stringifyForDraft(kafkaField('headers')),
+                            commitJson((v) => handleInputObjectChange('kafka_request', 'headers', v)),
+                            { rows: 3 })}
+                        <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
+                            以上字段写入 inputParameters.kafka_request
+                        </div>
                     </>
                 ))}
 
@@ -818,10 +982,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px' }}>
                             在 inputParameters 中定义要设置的变量名和值，后续任务通过 {'${workflow.variables.varName}'} 访问。
                         </div>
-                        {renderCodeArea('VARIABLES (JSON)',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : '{}',
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { } },
-                            { rows: 6, language: 'json' })}
+                        {renderJsonArea('VARIABLES (JSON)', 'set_variables',
+                            stringifyForDraft(displayTask.inputParameters),
+                            commitJson((v) => handleChange('inputParameters', v)),
+                            { rows: 6 })}
                     </>
                 ))}
 
@@ -950,15 +1114,15 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 </pre>
                             </div>
                         )}
-                        {renderCodeArea('',
-                            typeof displayTask.inputParameters === 'object' && displayTask.inputParameters !== null ? JSON.stringify(displayTask.inputParameters, null, 2) : (displayTask.inputParameters ?? ''),
-                            (v) => { try { handleChange('inputParameters', JSON.parse(v)); } catch { setLocalTask(prev => ({ ...prev!, inputParameters: v as any }) as any); } },
-                            { rows: 5, language: 'json', 'data-field': 'inputParameters', style: { outline: 'none' } })}
+                        {renderJsonArea('', 'inputParameters',
+                            stringifyForDraft(displayTask.inputParameters),
+                            commitJson((v) => handleChange('inputParameters', v)),
+                            { rows: 5, dataField: 'inputParameters', style: { outline: 'none' } })}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         {renderInput('重试次数', 'retryCount', 'number')}
-                        {renderInput('超时限制 (秒)', 'timeoutSeconds', 'number')}
+                        {renderSmallInput('超时限制 (秒，taskDefinition)', readTaskDefinitionField(displayTask, 'timeoutSeconds') ?? '', (v) => handleTaskDefChange('timeoutSeconds', v), 'number', '0 表示不限制')}
                     </div>
 
                     {/* 高级配置折叠区 */}
@@ -967,16 +1131,20 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                             ▸ 执行控制（高级）
                         </summary>
                         <div style={{ marginTop: '12px' }}>
-                            {renderSelect('重试策略 (retryLogic)',
+                            <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px', padding: '8px', borderRadius: '6px', background: 'var(--cm-warning-tint)', border: '1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent)', lineHeight: 1.6 }}>
+                                <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />
+                                超时、重试策略、重试延迟写入任务内嵌定义 <code>taskDefinition</code>。设置后 Conductor 会用这份内嵌定义代替同名的已注册任务定义；如需沿用注册中心的配置，请在任务定义中修改。
+                            </div>
+                            {renderSelect('重试策略 (taskDefinition.retryLogic)',
                                 ['FIXED', 'EXPONENTIAL_BACKOFF', 'LINEAR_BACKOFF'],
-                                (displayTask as any).retryLogic || 'FIXED',
-                                (v) => handleChange('retryLogic', v)
+                                readTaskDefinitionField(displayTask, 'retryLogic') || 'FIXED',
+                                (v) => handleTaskDefChange('retryLogic', v)
                             )}
-                            {renderSmallInput('重试延迟 (秒)', (displayTask as any).retryDelaySeconds ?? '', (v) => handleChange('retryDelaySeconds', v ? parseInt(v) : undefined), 'number', '0')}
-                            {renderSelect('超时策略 (timeoutPolicy)',
-                                ['TIME_OUT_WF', 'ALERT_ONLY', 'RETRY', 'FAIL_WORKFLOW'],
-                                (displayTask as any).timeoutPolicy || 'TIME_OUT_WF',
-                                (v) => handleChange('timeoutPolicy', v)
+                            {renderSmallInput('重试延迟 (秒，taskDefinition)', readTaskDefinitionField(displayTask, 'retryDelaySeconds') ?? '', (v) => handleTaskDefChange('retryDelaySeconds', v), 'number', '0')}
+                            {renderSelect('超时策略 (taskDefinition.timeoutPolicy)',
+                                ['TIME_OUT_WF', 'ALERT_ONLY', 'RETRY'],
+                                readTaskDefinitionField(displayTask, 'timeoutPolicy') || 'TIME_OUT_WF',
+                                (v) => handleTaskDefChange('timeoutPolicy', v)
                             )}
                             {renderSmallInput('启动延迟 (秒)', displayTask.startDelay ?? '', (v) => handleChange('startDelay', v ? parseInt(v) : undefined), 'number', '0')}
                             {renderToggle('可选任务 (optional) — 失败不影响工作流', !!displayTask.optional, (v) => handleChange('optional', v))}

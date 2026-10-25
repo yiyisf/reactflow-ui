@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import ConfirmDialog from '../ConfirmDialog';
+import { describeTaskRemoval } from '../../utils/taskEditing';
 import { ExecutionStatus } from '../../types/workflow';
 import { CircleAlert, TriangleAlert } from 'lucide-react';
 
@@ -190,7 +191,7 @@ const NodeWrapper = ({
 
             {showConfirm && (
                 <ConfirmDialog
-                    message="确定要删除此任务吗？"
+                    message={describeTaskRemoval(useWorkflowStore.getState().workflowDef, nodeId).message}
                     onConfirm={() => {
                         removeNode(nodeId);
                         setShowConfirm(false);

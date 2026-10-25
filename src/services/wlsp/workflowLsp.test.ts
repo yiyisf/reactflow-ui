@@ -171,3 +171,35 @@ describe('Workflow Language Server (W-LSP)', () => {
     );
   });
 });
+
+describe('W-LSP · v1.3.1', () => {
+  it('offers subWorkflowId (Conductor SUB_WORKFLOW output) instead of workflowId / result', () => {
+    const fields = inferTaskOutputSchema({ name: 'child', taskReferenceName: 'child', type: 'SUB_WORKFLOW', subWorkflowParam: { name: 'c' } });
+    expect(fields.map(f => f.path)).toEqual(['subWorkflowId']);
+    expect(fields[0].expression).toBe('${child.output.subWorkflowId}');
+  });
+
+  it('refactors SWITCH caseExpression references too', () => {
+    const def: WorkflowDef = {
+      name: 'wf',
+      tasks: [
+        { name: 'a', taskReferenceName: 'a', type: 'SIMPLE' },
+        { name: 'd', taskReferenceName: 'd', type: 'DECISION', caseExpression: '$.a.output.ok ? "y" : "n"', decisionCases: {} },
+      ],
+    };
+    const { updatedDef } = refactorTaskReferenceName(def, 'a', 'a2');
+    expect(updatedDef.tasks[1].caseExpression).toBe('$.a2.output.ok ? "y" : "n"');
+  });
+
+  it('reads structured input params from inputSchema for completions', () => {
+    const def: WorkflowDef = {
+      name: 'wf',
+      inputParameters: ['n'],
+      inputSchema: { name: 'wf_input', type: 'JSON', data: { properties: { n: { type: 'number', description: '数量' } } } },
+      tasks: [{ name: 'a', taskReferenceName: 'a', type: 'SIMPLE' }],
+    };
+    const item = getCompletionItems(def, 'a').find(i => i.label === 'workflow.input.n')!;
+    expect(item.valueType).toBe('number');
+    expect(item.description).toBe('数量');
+  });
+});

@@ -15,7 +15,6 @@ export const templateEcsAutoProvision: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 35,
     typicalRunsPerWeek: 12,
-    popularityCount: 1420,
   },
   difficulty: 'starter',
   variables: [
@@ -162,7 +161,6 @@ export const templateEcsDailySnapshotBackup: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 15,
     typicalRunsPerWeek: 7,
-    popularityCount: 2310,
   },
   difficulty: 'starter',
   variables: [
@@ -258,7 +256,6 @@ export const templateEcsHighLoadAutoscale: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 40,
     typicalRunsPerWeek: 5,
-    popularityCount: 980,
   },
   difficulty: 'intermediate',
   variables: [
@@ -370,7 +367,6 @@ export const templateEcsVulnerabilityPatch: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 45,
     typicalRunsPerWeek: 4,
-    popularityCount: 760,
   },
   difficulty: 'intermediate',
   variables: [
@@ -486,7 +482,6 @@ export const templateEcsNightIdleShutdown: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 20,
     typicalRunsPerWeek: 5,
-    popularityCount: 3100,
   },
   difficulty: 'starter',
   variables: [
@@ -580,7 +575,6 @@ export const templateEcsMorningBoot: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 15,
     typicalRunsPerWeek: 5,
-    popularityCount: 2890,
   },
   difficulty: 'starter',
   variables: [
@@ -676,7 +670,6 @@ export const templateEcsDiskExpansion: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 30,
     typicalRunsPerWeek: 6,
-    popularityCount: 1650,
   },
   difficulty: 'intermediate',
   variables: [
@@ -779,7 +772,6 @@ export const templateEcsEmergencyIsolation: WorkflowTemplate = {
   roi: {
     minutesSavedPerRun: 60,
     typicalRunsPerWeek: 1,
-    popularityCount: 890,
   },
   difficulty: 'advanced',
   variables: [

@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { BusinessStep, PillToken } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
+import { buildPillGroups } from '../../stepmodel/pills';
 import { Tag, X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
@@ -21,85 +22,27 @@ export const PillPicker: React.FC<PillPickerProps> = ({
 }) => {
   const [search, setSearch] = useState('');
 
-  // Build grouped options by upstream step
-  const groups = useMemo(() => {
-    const list: {
-      stepTitle: string;
-      stepIcon: string;
-      stepRef: string;
-      items: {
-        rawRef: string;
-        label: string;
-        type: string;
-        example?: any;
-        stepLabel: string;
-      }[];
-    }[] = [];
+  const rootRef = useRef<HTMLDivElement>(null);
 
-    // 1. Workflow input parameters group
-    if (workflowInputParams && workflowInputParams.length > 0) {
-      list.push({
-        stepTitle: '工作流全局入参',
-        stepIcon: 'globe',
-        stepRef: 'workflow.input',
-        items: workflowInputParams.map((param) => {
-          const name = typeof param === 'string' ? param : param.name;
-          return {
-            rawRef: `workflow.input.${name}`,
-            label: typeof param === 'object' && param.description ? param.description : name,
-            type: typeof param === 'object' && param.type ? param.type : 'string',
-            example: typeof param === 'object' ? param.example ?? param.defaultValue : undefined,
-            stepLabel: '全局入参',
-          };
-        }),
-      });
-    }
+  // 可选项：全局入参 + 上游步骤输出（含控制流内部步骤，见 stepmodel/pills）
+  const groups = useMemo(
+    () => buildPillGroups(upstreamSteps, registry, workflowInputParams),
+    [upstreamSteps, registry, workflowInputParams]
+  );
 
-    // 2. Upstream steps
-    for (let i = 0; i < upstreamSteps.length; i++) {
-      const step = upstreamSteps[i];
-      const action = registry.getAction(step.actionId);
-      const stepTitle = `#${i + 1} ${step.name || action?.name || step.taskReferenceName}`;
-      const stepIcon = action?.icon || 'settings';
-      const items: {
-        rawRef: string;
-        label: string;
-        type: string;
-        example?: any;
-        stepLabel: string;
-      }[] = [];
-
-      if (action && action.outputs.length > 0) {
-        for (const out of action.outputs) {
-          items.push({
-            rawRef: `${step.taskReferenceName}.output.${out.key}`,
-            label: out.label,
-            type: out.type,
-            example: out.example,
-            stepLabel: step.name || action.name,
-          });
-        }
-      } else {
-        // Fallback generic outputs for pro fallback or custom steps
-        items.push({
-          rawRef: `${step.taskReferenceName}.output`,
-          label: '完整输出对象',
-          type: 'object',
-          example: '{ ... }',
-          stepLabel: step.name,
-        });
+  // Esc 关闭（在面板内任意位置）
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
       }
-
-      list.push({
-        stepTitle,
-        stepIcon,
-        stepRef: step.taskReferenceName,
-        items,
-      });
-    }
-
-    return list;
-  }, [upstreamSteps, registry, workflowInputParams]);
+    };
+    el.addEventListener('keydown', onKey);
+    return () => el.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   // Filter by search query
   const filteredGroups = useMemo(() => {
@@ -119,6 +62,9 @@ export const PillPicker: React.FC<PillPickerProps> = ({
 
   return (
     <div
+      ref={rootRef}
+      role="dialog"
+      aria-label="插入数据"
       style={{
         position: 'absolute',
         top: '100%',
@@ -152,7 +98,8 @@ export const PillPicker: React.FC<PillPickerProps> = ({
         <input
           autoFocus
           type="text"
-          placeholder="搜索上游输出字段..."
+          aria-label="搜索可插入的数据"
+          placeholder="搜索上游输出或全局入参…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -165,7 +112,9 @@ export const PillPicker: React.FC<PillPickerProps> = ({
           }}
         />
         <button
+          type="button"
           onClick={onClose}
+          aria-label="关闭"
           style={{
             background: 'none',
             border: 'none',
@@ -197,13 +146,13 @@ export const PillPicker: React.FC<PillPickerProps> = ({
               fontSize: 12,
             }}
           >
-            {upstreamSteps.length === 0
-              ? '当前步骤是第 1 步，前面暂无可引用的上游步骤输出'
-              : '未找到匹配的字段'}
+            {groups.length === 0
+              ? '前面还没有可引用的步骤输出，也没有声明工作流全局入参'
+              : '没有匹配的字段，换个关键字试试'}
           </div>
         ) : (
           filteredGroups.map((group) => (
-            <div key={group.stepRef} style={{ marginBottom: 8 }}>
+            <div key={group.key} role="group" aria-label={group.title} style={{ marginBottom: 8 }}>
               <div
                 style={{
                   fontSize: 11,
@@ -215,12 +164,16 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                   gap: 6,
                 }}
               >
-                <span style={{ display: 'inline-flex' }}><CmIcon name={group.stepIcon} size={13} /></span>
-                <span>{group.stepTitle}</span>
+                <span style={{ display: 'inline-flex' }}><CmIcon name={group.icon} size={13} /></span>
+                <span>{group.title}</span>
               </div>
+              {group.note && (
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '0 8px 2px 27px' }}>{group.note}</div>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {group.items.map((item) => (
-                  <div
+                  <button
+                    type="button"
                     key={item.rawRef}
                     onClick={() => {
                       onSelect({
@@ -231,6 +184,12 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                       onClose();
                     }}
                     style={{
+                      width: '100%',
+                      border: 'none',
+                      background: 'transparent',
+                      color: 'inherit',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
                       padding: '6px 10px',
                       borderRadius: 6,
                       cursor: 'pointer',
@@ -246,8 +205,14 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
                     }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-highlight)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
                       <span
                         style={{
                           fontWeight: 500,
@@ -269,17 +234,17 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                       >
                         {item.rawRef}
                       </span>
-                    </div>
+                    </span>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {item.example !== undefined && (
                         <span
                           style={{
                             fontSize: 10,
                             padding: '1px 5px',
                             borderRadius: 4,
-                            background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
-                            color: 'var(--color-accent-text)',
+                            background: 'var(--cm-data-tint)',
+                            color: 'var(--cm-data)',
                             fontFamily: 'monospace',
                             maxWidth: 90,
                             overflow: 'hidden',
@@ -302,8 +267,8 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                       >
                         {item.type}
                       </span>
-                    </div>
-                  </div>
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -321,7 +286,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
           textAlign: 'right',
         }}
       >
-        点击将变量以数据胶囊形式插入
+        选择一项，以数据胶囊插入到光标处；Esc 关闭
       </div>
     </div>
   );

@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { BusinessStep } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
+import { validateBusinessSteps } from '../../stepmodel/validate';
 import { DataPillInput } from './DataPillInput';
-import { ClipboardList, Lightbulb, Tag, Wrench } from 'lucide-react';
+import { useBusinessEditor } from './BusinessEditorContext';
+import { IssueList } from './StepCardParts';
+import { CircleAlert, ClipboardList, Lightbulb, Tag, Wrench } from 'lucide-react';
 
 export interface ActionFormProps {
   step: BusinessStep;
@@ -22,6 +25,14 @@ export const ActionForm: React.FC<ActionFormProps> = ({
   disabled = false,
 }) => {
   const action = registry.getAction(step.actionId);
+  const ctx = useBusinessEditor();
+  const inputParams = workflowInputParams ?? ctx.workflowInputParams;
+
+  // 字段级校验（必填 / 数字）就地计算；工作流校验器给出的整步问题来自上下文
+  const fieldIssues = useMemo(() => validateBusinessSteps([step], registry)[step.taskReferenceName] || [], [step, registry]);
+  const stepIssues = (ctx.issues[step.taskReferenceName] || []).filter(
+    (i) => !i.field && !fieldIssues.some((f) => f.message === i.message)
+  );
 
   // Fallback for technical Conductor tasks not mapped to business actions
   if (step.isProFallback || !action) {
@@ -52,6 +63,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
           该步骤属于底层控制流或未映射的 Conductor 任务。在业务模式下已为您无损保留其参数与依赖关系。如需深度修改其底层 JQ 脚本或 JSON Schema，请切换至右上方「全景画布模式」。
         </p>
+        <IssueList issues={stepIssues} />
       </div>
     );
   }
@@ -83,15 +95,25 @@ export const ActionForm: React.FC<ActionFormProps> = ({
         </div>
       )}
 
+      <IssueList issues={stepIssues} />
+
       {/* Dynamic Action Fields */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {action.fields.map((field) => {
           const val = step.values[field.key] ?? field.defaultValue;
+          const controlId = `cm-field-${step.taskReferenceName}-${field.key}`;
+          const issue = fieldIssues.find((i) => i.field === field.key);
+          const errorId = issue ? `${controlId}-error` : undefined;
+          const helpId = field.help ? `${controlId}-help` : undefined;
+          const describedBy = [errorId, helpId].filter(Boolean).join(' ') || undefined;
+          const controlBorder = issue ? '1px solid var(--cm-status-failed)' : '1px solid var(--border-secondary)';
 
           return (
             <div key={field.key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <label
+                  htmlFor={field.type === 'boolean' ? undefined : controlId}
+                  id={`${controlId}-label`}
                   style={{
                     fontSize: 12,
                     fontWeight: 600,
@@ -102,10 +124,10 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   }}
                 >
                   {field.label}
-                  {field.required && <span style={{ color: 'var(--cm-status-failed)' }}>*</span>}
+                  {field.required && <span style={{ color: 'var(--cm-status-failed)' }} aria-label="必填">*</span>}
                 </label>
                 {field.help && (
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  <span id={helpId} style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                     {field.help}
                   </span>
                 )}
@@ -114,13 +136,16 @@ export const ActionForm: React.FC<ActionFormProps> = ({
               {/* Render field control based on type */}
               {field.type === 'select' ? (
                 <SelectField
+                  id={controlId}
+                  invalid={!!issue}
+                  describedBy={describedBy}
                   value={val}
                   options={field.options ?? []}
                   allowDynamic={field.acceptsPills !== false}
                   disabled={disabled}
                   placeholder={field.placeholder}
                   upstreamSteps={upstreamSteps}
-                  workflowInputParams={workflowInputParams}
+                  workflowInputParams={inputParams}
                   registry={registry}
                   onChange={(nextVal) => handleFieldChange(field.key, nextVal)}
                 />
@@ -137,6 +162,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 >
                   <input
                     type="checkbox"
+                    aria-labelledby={`${controlId}-label`}
                     disabled={disabled}
                     checked={Boolean(val)}
                     onChange={(e) => handleFieldChange(field.key, e.target.checked)}
@@ -144,19 +170,25 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   />
                   <span>开启 / 启用</span>
                 </label>
-              ) : field.acceptsPills ? (
+              ) : field.acceptsPills || (val !== null && typeof val === 'object') ? (
                 <DataPillInput
+                  id={controlId}
+                  invalid={!!issue}
+                  describedBy={describedBy}
                   disabled={disabled}
                   value={val}
                   placeholder={field.placeholder}
                   multiline={field.type === 'textarea'}
                   upstreamSteps={upstreamSteps}
-                  workflowInputParams={workflowInputParams}
+                  workflowInputParams={inputParams}
                   registry={registry}
                   onChange={(nextVal) => handleFieldChange(field.key, nextVal)}
                 />
               ) : field.type === 'textarea' ? (
                 <textarea
+                  id={controlId}
+                  aria-invalid={!!issue || undefined}
+                  aria-describedby={describedBy}
                   disabled={disabled}
                   rows={3}
                   value={val ?? ''}
@@ -166,7 +198,7 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                     padding: '6px 10px',
                     borderRadius: 6,
                     background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-secondary)',
+                    border: controlBorder,
                     color: 'var(--text-primary)',
                     fontSize: 13,
                     outline: 'none',
@@ -175,6 +207,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                 />
               ) : (
                 <input
+                  id={controlId}
+                  aria-invalid={!!issue || undefined}
+                  aria-describedby={describedBy}
                   disabled={disabled}
                   type={field.type === 'number' ? 'number' : 'text'}
                   value={val ?? ''}
@@ -182,20 +217,34 @@ export const ActionForm: React.FC<ActionFormProps> = ({
                   onChange={(e) =>
                     handleFieldChange(
                       field.key,
-                      field.type === 'number' ? Number(e.target.value) : e.target.value
+                      // 清空数字字段保存为空（编译时回落默认值），不变成 0：0 可能有特殊含义（如"永久保留"）
+                      field.type === 'number'
+                        ? e.target.value === ''
+                          ? ''
+                          : Number(e.target.value)
+                        : e.target.value
                     )
                   }
                   style={{
                     padding: '6px 10px',
                     borderRadius: 6,
                     background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-secondary)',
+                    border: controlBorder,
                     color: 'var(--text-primary)',
                     fontSize: 13,
                     outline: 'none',
                     fontFamily: 'inherit',
                   }}
                 />
+              )}
+              {issue && (
+                <div
+                  id={errorId}
+                  style={{ fontSize: 11, color: 'var(--cm-status-failed)', display: 'flex', alignItems: 'center', gap: 4 }}
+                >
+                  <CircleAlert size={14} strokeWidth={1.75} aria-hidden="true" />
+                  {issue.message}
+                </div>
               )}
             </div>
           );
@@ -257,6 +306,9 @@ export const ActionForm: React.FC<ActionFormProps> = ({
 const isExpression = (v: unknown): boolean => typeof v === 'string' && v.includes('${');
 
 interface SelectFieldProps {
+  id?: string;
+  invalid?: boolean;
+  describedBy?: string;
   value: any;
   options: { label: string; value: any }[];
   /** 是否允许改为「插入数据」动态取值（字段 acceptsPills 显式为 false 时不允许） */
@@ -274,6 +326,9 @@ interface SelectFieldProps {
  * 已保存的值是 ${...} 表达式时自动处于动态取值状态。
  */
 const SelectField: React.FC<SelectFieldProps> = ({
+  id,
+  invalid,
+  describedBy,
   value,
   options,
   allowDynamic,
@@ -303,6 +358,9 @@ const SelectField: React.FC<SelectFieldProps> = ({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <DataPillInput
+          id={id}
+          invalid={invalid}
+          describedBy={describedBy}
           disabled={disabled}
           value={isExpression(value) ? value : ''}
           placeholder={placeholder || '插入上游数据，运行时取值'}
@@ -334,27 +392,45 @@ const SelectField: React.FC<SelectFieldProps> = ({
     );
   }
 
+  // 当前值不在可选项里（如专业模式改过的值）时，单独列出"当前值"，不让下拉框假装选中第一项
+  const hasValue = value !== undefined && value !== null && value !== '';
+  const inOptions = options.some((o) => String(o.value) === String(value));
+  const selectValue = hasValue ? String(value) : '';
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <select
+        id={id}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
         disabled={disabled}
-        value={isExpression(value) ? '' : value ?? ''}
-        onChange={(e) => onChange(e.target.value)}
+        value={selectValue}
+        onChange={(e) => {
+          // 选项值可能是数字（如 60 / 300），按原类型写回
+          const opt = options.find((o) => String(o.value) === e.target.value);
+          onChange(opt ? opt.value : e.target.value);
+        }}
         style={{
           flex: 1,
           minWidth: 0,
           padding: '7px 10px',
           borderRadius: 6,
           background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-secondary)',
+          border: invalid ? '1px solid var(--cm-status-failed)' : '1px solid var(--border-secondary)',
           color: 'var(--text-primary)',
           fontSize: 13,
           outline: 'none',
           cursor: 'pointer',
         }}
       >
+        {!hasValue && (
+          <option value="" disabled>
+            请选择
+          </option>
+        )}
+        {hasValue && !inOptions && <option value={selectValue}>当前值：{selectValue}</option>}
         {options.map((opt) => (
-          <option key={String(opt.value)} value={opt.value}>
+          <option key={String(opt.value)} value={String(opt.value)}>
             {opt.label}
           </option>
         ))}

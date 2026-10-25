@@ -266,7 +266,10 @@ export interface WorkflowActions {
     setSelectedTask: (task: TaskDef | null) => void;
     setSelectedTaskInstance: (instance: TaskInstance | null) => void;
     checkTaskRefUniqueness: (newRef: string, currentRef: string) => boolean;
+    /** 按字段合并更新任务；引用名改成重复 / 非法值时整次更新被拒绝 */
     updateTask: (taskRef: string, field: string | Record<string, any>, value?: any) => void;
+    /** 用新的任务对象整体替换（JSON 面板“应用到画布”使用，删掉的键会真正删除）；成功返回 null，失败返回原因 */
+    replaceTask: (taskRef: string, nextTask: TaskDef) => string | null;
     updateWorkflowProperties: (properties: Partial<WorkflowDef>) => void;
     addNode: (newNode: any, sourceId: string, targetId: string, edgeId: string, edgeData?: any) => void;
     removeNode: (nodeId: string) => void;
@@ -274,7 +277,8 @@ export interface WorkflowActions {
     removeLoopTask: (loopRef: string, taskRef: string) => void;
     addDecisionBranch: (taskRef: string, caseName: string) => void;
     removeDecisionBranch: (taskRef: string, caseName: string) => void;
-    renameDecisionBranch: (taskRef: string, oldName: string, newName: string) => void;
+    /** 重命名分支；新名称为空、为保留字 default 或与已有分支重名时拒绝并返回 false */
+    renameDecisionBranch: (taskRef: string, oldName: string, newName: string) => boolean;
     addForkBranch: (taskRef: string) => void;
     copyTask: (task: TaskDef) => void;
     pasteTask: (task: TaskDef) => void;

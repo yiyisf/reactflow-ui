@@ -118,7 +118,7 @@ export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({
     const message = diff
       ? buildUpgradeConfirmMessage(ref.name, from, to, diff)
       : `流程库「${ref.name}」已有新版本 v${to}（当前引用 v${from}）。升级后入参、出参可能发生变化，请升级后检查本步骤配置。确定升级吗？`;
-    const ok = await confirm(message);
+    const ok = await confirm(message, `升级到 v${to}`);
     if (ok) onUpgrade(to, diff);
   };
 
@@ -179,7 +179,12 @@ export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({
       {/* 弹窗经 Portal 渲染，但 React 事件仍会冒泡到步骤头部（会误触发展开/收起），这里拦截 */}
       {confirmState && (
         <span onClick={(e) => e.stopPropagation()}>
-          <ConfirmDialog message={confirmState.message} onConfirm={handleConfirm} onCancel={handleCancel} />
+          <ConfirmDialog
+            message={confirmState.message}
+            confirmLabel={confirmState.confirmLabel}
+            onConfirm={handleConfirm}
+            onCancel={handleCancel}
+          />
         </span>
       )}
     </>

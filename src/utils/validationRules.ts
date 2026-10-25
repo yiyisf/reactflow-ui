@@ -2,9 +2,11 @@
  * Conductor 校验规则配置
  */
 
+const hasText = (v: any) => typeof v === 'string' && v.trim() !== '';
+
 export const WORKFLOW_RULES = [
     { field: 'name', type: 'required', message: '工作流名称 (name) 必填' },
-    { field: 'version', type: 'required', message: '工作流版本 (version) 必填' },
+    // version 缺省时 Conductor 按 1 处理，不再报错（E21）
     { field: 'tasks', type: 'min_length', value: 1, message: '工作流必须包含至少一个任务' }
 ];
 
@@ -28,6 +30,10 @@ export const TASK_RULES = {
                 field: 'inputParameters.expression', type: 'custom',
                 validate: (_val: any, task: any) => !!(task?.inputParameters?.expression || task?.inputParameters?.scriptExpression),
                 message: 'INLINE 任务缺少脚本表达式 (expression)'
+            },
+            {
+                field: 'inputParameters.evaluatorType', type: 'required', level: 'warning',
+                message: 'INLINE 任务未在 inputParameters 中指定 evaluatorType：Conductor 需要它来选择脚本引擎，建议填 graaljs'
             }
         ],
         'LAMBDA': [
@@ -51,7 +57,7 @@ export const TASK_RULES = {
         ],
         'TERMINATE': [
             { field: 'inputParameters.terminationStatus', type: 'required', level: 'warning', message: '终止任务未指定状态 (terminationStatus)' },
-            { field: 'inputParameters.terminationStatus', type: 'enum', value: ['COMPLETED', 'FAILED'], message: '终止状态必须为 COMPLETED 或 FAILED' }
+            { field: 'inputParameters.terminationStatus', type: 'enum', value: ['COMPLETED', 'FAILED', 'TERMINATED'], message: '终止状态必须为 COMPLETED、FAILED 或 TERMINATED' }
         ],
         'DO_WHILE': [
             {
@@ -70,13 +76,32 @@ export const TASK_RULES = {
             }
         ],
         'SWITCH': [
-            { field: 'decisionCases', type: 'custom', validate: (val: any) => Object.keys(val || {}).length > 0, message: 'Switch 任务必须至少包含一个分支' }
+            { field: 'decisionCases', type: 'custom', validate: (val: any) => Object.keys(val || {}).length > 0, message: 'Switch 任务必须至少包含一个分支' },
+            {
+                field: 'expression', type: 'custom',
+                validate: (val: any, task: any) => hasText(val) || hasText(task?.caseValueParam) || hasText(task?.caseExpression),
+                message: 'SWITCH 任务缺少条件表达式 (expression)：value-param 模式填 inputParameters 中的参数名，脚本模式填返回分支名的脚本'
+            },
+            {
+                field: 'evaluatorType', type: 'custom',
+                validate: (val: any, task: any) => hasText(val) || !hasText(task?.expression),
+                message: 'SWITCH 任务缺少评估模式 (evaluatorType)：请选择 value-param、javascript 或 graaljs'
+            },
+            {
+                // 旧数据 / AI 生成的 SWITCH 只写了 DECISION 的字段：Conductor 的 SWITCH 不读它们
+                field: 'expression', type: 'custom', level: 'warning',
+                validate: (val: any, task: any) => hasText(val) || !(hasText(task?.caseValueParam) || hasText(task?.caseExpression)),
+                message: 'SWITCH 任务只配置了 caseValueParam / caseExpression（DECISION 字段），Conductor 会忽略：请在面板中设置评估模式和 expression'
+            }
         ],
         'FORK_JOIN_DYNAMIC': [
             {
                 field: 'dynamicForkTasksParam', type: 'custom',
                 validate: (_val: any, task: any) => !!(
                     task?.dynamicForkTasksParam ||
+                    task?.inputParameters?.forkTaskType ||
+                    task?.inputParameters?.forkTaskName ||
+                    task?.inputParameters?.forkTaskWorkflow ||
                     (task as any)?.forkTaskType ||
                     (task as any)?.forkTaskWorkflow
                 ),

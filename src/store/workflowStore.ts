@@ -1,10 +1,29 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { temporal } from 'zundo';
-import { addEdge, applyNodeChanges, applyEdgeChanges, Connection, EdgeChange, NodeChange } from 'reactflow';
+import { applyNodeChanges, applyEdgeChanges, Connection, EdgeChange, NodeChange } from 'reactflow';
 import { parseWorkflow } from '../parser/conductorParser';
 import { getLayoutedElements } from '../layout/autoLayout';
-import { removeTaskFromDef, insertTaskAfter, findTaskByRef, insertFirstTaskIntoBranch, syncForkJoinOn, findContainerList, findJoinForFork, findForkForJoin } from '../parser/conductorGenerator';
+import {
+    removeTaskFromDef,
+    insertTaskAfter,
+    findTaskByRef,
+    insertFirstTaskIntoBranch,
+    syncForkJoinOn,
+    findContainerList,
+    findJoinForFork,
+    findForkForJoin,
+    findPairedJoinRef,
+    collectTaskRefs,
+    normalizeLegacyTaskFields,
+} from '../parser/conductorGenerator';
+import {
+    createDefaultTask,
+    createJoinTaskFor,
+    prepareTaskForPaste,
+    validateBranchName,
+    validateTaskRefName,
+} from '../utils/taskEditing';
 import { validateWorkflow } from '../utils/validator';
 import {
     WorkflowStore,
@@ -79,6 +98,99 @@ function stripSelected(nodes: WorkflowStore['nodes']): WorkflowStore['nodes'] {
 /** 撤销历史最大条数（zundo 默认不限制，长时间编辑会持续占用内存） */
 const MAX_UNDO_HISTORY = 100;
 
+/**
+ * 文本字段编辑的撤销合并（P2）：同一任务同一字段的连续修改（间隔小于窗口）只记一条撤销记录，
+ * 而不是每次按键一条。中间插入了其他会记录历史的操作时不合并。
+ */
+const COALESCE_WINDOW_MS = 1500;
+let lastCoalesce: { key: string; at: number; anchor: unknown } | null = null;
+
+type TemporalApi = {
+    pastStates: unknown[];
+    isTracking: boolean;
+    pause: () => void;
+    resume: () => void;
+};
+
+function getTemporal(): TemporalApi | null {
+    const api = (useWorkflowStore as unknown as { temporal?: { getState: () => TemporalApi } }).temporal;
+    return api ? api.getState() : null;
+}
+
+function runCoalesced(key: string | null, apply: () => void) {
+    const t = getTemporal();
+    if (!t) {
+        apply();
+        return;
+    }
+    const now = Date.now();
+    const anchor = t.pastStates[t.pastStates.length - 1];
+    const canMerge =
+        !!key &&
+        !!lastCoalesce &&
+        lastCoalesce.key === key &&
+        now - lastCoalesce.at < COALESCE_WINDOW_MS &&
+        lastCoalesce.anchor === anchor &&
+        anchor !== undefined &&
+        t.isTracking;
+    if (canMerge) {
+        t.pause();
+        try {
+            apply();
+        } finally {
+            getTemporal()?.resume();
+        }
+        lastCoalesce!.at = now;
+        return;
+    }
+    apply();
+    if (key) {
+        const after = getTemporal();
+        lastCoalesce = { key, at: now, anchor: after?.pastStates[after.pastStates.length - 1] };
+    } else {
+        lastCoalesce = null;
+    }
+}
+
+/** 计算撤销合并键：只有非结构性字段编辑才合并；对象字段细化到子键（如 inputParameters.http_request） */
+function coalesceKeyFor(taskRef: string, oldTask: TaskDef | null, patch: Record<string, any>, structural: boolean): string | null {
+    if (structural || !oldTask) return null;
+    const parts: string[] = [];
+    Object.keys(patch).sort().forEach(k => {
+        const next = patch[k];
+        const prev = (oldTask as any)[k];
+        if (next && prev && typeof next === 'object' && typeof prev === 'object' && !Array.isArray(next)) {
+            const sub = Array.from(new Set([...Object.keys(next), ...Object.keys(prev)]))
+                .filter(sk => JSON.stringify(next[sk]) !== JSON.stringify(prev[sk]))
+                .sort();
+            parts.push(`${k}.${sub.join('+')}`);
+        } else {
+            parts.push(k);
+        }
+    });
+    return `${taskRef}:${parts.join(',')}`;
+}
+
+/** 按定义重新解析画布、布局与校验（结构性编辑后统一走这里） */
+function rebuildFromDef(def: WorkflowDef, state: Pick<WorkflowStore, 'layoutDirection' | 'mode'>) {
+    const { nodes, edges, taskMap } = parseWorkflow(def, state.layoutDirection, { hideEmptyBranches: state.mode !== 'edit' });
+    const laid = getLayoutedElements(nodes, edges, { direction: state.layoutDirection, mode: state.mode });
+    return {
+        workflowDef: def,
+        nodes: laid.nodes,
+        edges: laid.edges,
+        taskMap,
+        validationResults: validateWorkflow(def),
+    };
+}
+
+/** 选中的任务在新定义里已不存在时，清空选中并关闭详情面板（E12） */
+function selectionPatch(state: Pick<WorkflowStore, 'selectedTask'>, taskMap: Record<string, TaskDef>) {
+    const ref = state.selectedTask?.taskReferenceName;
+    if (ref && !taskMap[ref]) return { selectedTask: null, isDetailPanelOpen: false };
+    return {};
+}
+
 const useWorkflowStore = create<WorkflowStore>()(
     persist(
         temporal(
@@ -143,6 +255,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
                     const dir = direction || get().layoutDirection;
                     const workflowWithSync = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
+                    normalizeLegacyTaskFields(workflowWithSync.tasks);
+                    // 加载时只补齐缺失的 joinOn，导入的部分 joinOn 原样保留（E5）
                     syncForkJoinOn(workflowWithSync.tasks);
 
                     const { nodes, edges, taskMap } = parseWorkflow(workflowWithSync, dir, { hideEmptyBranches: get().mode !== 'edit' });
@@ -163,6 +277,7 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 setWorkflowDefOnly: (workflowJson: any) => {
                     const workflowWithSync = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
+                    normalizeLegacyTaskFields(workflowWithSync.tasks);
                     syncForkJoinOn(workflowWithSync.tasks);
                     set({
                         workflowDef: workflowWithSync,
@@ -320,17 +435,12 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
                 },
 
-                onConnect: (connection: Connection) => {
-                    const { edges, layoutDirection } = get();
-                    const updatedEdges = addEdge(connection, edges);
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(get().nodes, updatedEdges, { direction: layoutDirection, mode: get().mode });
-                    set({ edges: layoutedEdges, nodes: layoutedNodes });
-                },
+                // E11：连线由定义推导，手拉的连线无法写回 Conductor 定义，因此不再接受。保留空实现以兼容旧调用方。
+                onConnect: (_connection: Connection) => {},
 
                 checkTaskRefUniqueness: (newRef: string, currentRef: string) => {
                     if (newRef === currentRef) return true;
-                    const { taskMap } = get();
-                    return !taskMap[newRef];
+                    return !collectTaskRefs(get().workflowDef?.tasks).has(newRef);
                 },
 
                 updateTask: (taskRef: string, field: string | Record<string, any>, value?: any) => {
@@ -338,22 +448,23 @@ const useWorkflowStore = create<WorkflowStore>()(
                     if (!workflowDef) return;
                     let newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
                     let refactorNotice = get().lastRefactorNotice;
+                    const patch: Record<string, any> = typeof field === 'object' ? field : { [field]: value };
 
-                    const changedKeys = typeof field === 'object' ? Object.keys(field) : [field];
-                    const nextRefCandidate =
-                        typeof field === 'object'
-                            ? field.taskReferenceName
-                            : field === 'taskReferenceName'
-                            ? value
-                            : undefined;
+                    const changedKeys = Object.keys(patch);
+                    const nextRefCandidate = patch.taskReferenceName;
 
                     let effectiveRef = taskRef;
                     if (
                         typeof nextRefCandidate === 'string' &&
-                        nextRefCandidate.trim() &&
                         nextRefCandidate.trim() !== taskRef
                     ) {
                         const trimmedRef = nextRefCandidate.trim();
+                        // E7：重复、非法或保留的引用名直接拒绝，不做任何改动
+                        const refError = validateTaskRefName(newDef, trimmedRef, taskRef);
+                        if (refError) {
+                            console.warn(`[workflowStore] ${refError}`);
+                            return;
+                        }
                         const refactorRes = refactorTaskReferenceName(newDef, taskRef, trimmedRef);
                         newDef = refactorRes.updatedDef;
                         effectiveRef = trimmedRef;
@@ -368,28 +479,30 @@ const useWorkflowStore = create<WorkflowStore>()(
                         }
                     }
 
+                    // 改名后的定义作为 joinOn 同步的"编辑前"基线，避免把改名误判成结构变化
+                    const baselineTasks = JSON.parse(JSON.stringify(newDef.tasks)) as TaskDef[];
+                    const oldTask = findTaskByRef(workflowDef.tasks, taskRef);
                     const task = findTaskByRef(newDef.tasks, effectiveRef);
-                    if (task) {
-                        if (typeof field === 'object') {
-                            Object.assign(task, field, { taskReferenceName: effectiveRef });
-                        } else if (field !== 'taskReferenceName') {
-                            (task as any)[field] = value;
-                        }
+                    if (!task) return;
 
-                        syncForkJoinOn(newDef.tasks);
-                        const validationResults = validateWorkflow(newDef);
+                    Object.assign(task, patch, { taskReferenceName: effectiveRef });
 
-                        const STRUCTURAL_FIELDS = new Set([
-                            'taskReferenceName',
-                            'type',
-                            'decisionCases',
-                            'defaultCase',
-                            'forkTasks',
-                            'loopOver',
-                            'joinOn',
-                        ]);
-                        const isStructuralChange = changedKeys.some(k => STRUCTURAL_FIELDS.has(k));
+                    syncForkJoinOn(newDef.tasks, baselineTasks);
+                    const validationResults = validateWorkflow(newDef);
 
+                    const STRUCTURAL_FIELDS = new Set([
+                        'taskReferenceName',
+                        'type',
+                        'decisionCases',
+                        'defaultCase',
+                        'forkTasks',
+                        'loopOver',
+                        'joinOn',
+                    ]);
+                    const isStructuralChange = changedKeys.some(k => STRUCTURAL_FIELDS.has(k) && (k !== 'taskReferenceName' || effectiveRef !== taskRef));
+                    const coalesceKey = coalesceKeyFor(taskRef, oldTask, patch, isStructuralChange);
+
+                    runCoalesced(coalesceKey, () => {
                         if (isStructuralChange) {
                             const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                             const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
@@ -432,7 +545,39 @@ const useWorkflowStore = create<WorkflowStore>()(
                                 validationResults,
                             });
                         }
+                    });
+                },
+
+                replaceTask: (taskRef: string, nextTask: TaskDef) => {
+                    const { workflowDef } = get();
+                    if (!workflowDef) return '当前没有打开的工作流：请先加载或新建一个工作流';
+                    if (!nextTask || typeof nextTask !== 'object' || Array.isArray(nextTask)) {
+                        return '任务 JSON 必须是一个对象：请检查最外层是否为 { ... }';
                     }
+                    let newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
+                    const nextRef = typeof nextTask.taskReferenceName === 'string' ? nextTask.taskReferenceName.trim() : '';
+                    if (nextRef !== taskRef) {
+                        const refError = validateTaskRefName(newDef, nextRef, taskRef);
+                        if (refError) return refError;
+                        newDef = refactorTaskReferenceName(newDef, taskRef, nextRef).updatedDef;
+                    }
+                    const baselineTasks = JSON.parse(JSON.stringify(newDef.tasks)) as TaskDef[];
+                    const container = findContainerList(newDef.tasks, nextRef);
+                    const idx = container ? container.findIndex(t => t.taskReferenceName === nextRef) : -1;
+                    if (!container || idx < 0) return `没有找到任务 "${taskRef}"：它可能已被删除，请刷新后重试`;
+
+                    // E23：整体替换任务对象，JSON 里删掉的键在定义里也会被删掉
+                    const replacement = { ...(JSON.parse(JSON.stringify(nextTask)) as TaskDef), taskReferenceName: nextRef };
+                    container[idx] = replacement;
+                    syncForkJoinOn(newDef.tasks, baselineTasks);
+
+                    const rebuilt = rebuildFromDef(newDef, get());
+                    const selected = get().selectedTask;
+                    set({
+                        ...rebuilt,
+                        selectedTask: selected?.taskReferenceName === taskRef ? replacement : selected,
+                    });
+                    return null;
                 },
 
                 updateWorkflowProperties: (properties: Partial<WorkflowDef>) => {
@@ -441,7 +586,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
                     Object.assign(newDef, properties);
-                    syncForkJoinOn(newDef.tasks);
+                    syncForkJoinOn(newDef.tasks, workflowDef.tasks);
                     const validationResults = validateWorkflow(newDef);
 
                     if ('tasks' in properties) {
@@ -462,176 +607,85 @@ const useWorkflowStore = create<WorkflowStore>()(
                     }
                 },
 
-                addNode: (newNode: any, sourceId: string, _targetId: string, _edgeId: string, edgeData: any = {}) => {
-                    const { workflowDef, layoutDirection } = get();
+                addNode: (newNode: any, sourceIdIn: string, _targetId: string, _edgeId: string, edgeDataIn: any = {}) => {
+                    const { workflowDef } = get();
                     if (!workflowDef) return;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
-                    const newTask: TaskDef = {
-                        name: newNode.data.label,
-                        taskReferenceName: newNode.data.taskReferenceName,
-                        type: newNode.data.taskType || 'SIMPLE',
-                        inputParameters: {}
-                    };
-
-                    // 初始化不同类型任务的默认参数
-                    switch (newTask.type) {
-                        case 'HTTP':
-                            newTask.httpRequest = {
-                                method: 'GET',
-                                uri: 'https://example.com/api',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: {}
-                            };
-                            break;
-                        case 'KAFKA_PUBLISH':
-                            newTask.inputParameters = {
-                                topic: 'my_topic',
-                                value: '${workflow.input.value}',
-                                bootStrapServers: 'localhost:9092',
-                                headers: {},
-                                key: 'msg_key'
-                            };
-                            break;
-                        case 'JSON_JQ_TRANSFORM':
-                            newTask.inputParameters = {
-                                queryExpression: '.name',
-                                input: {}
-                            };
-                            break;
-                        case 'SET_VARIABLE':
-                            newTask.inputParameters = {
-                                variableName: 'variableValue'
-                            };
-                            break;
-                        case 'SUB_WORKFLOW':
-                            newTask.subWorkflowParam = {
-                                name: 'execution_workflow',
-                                version: 1
-                            };
-                            break;
-                        case 'EVENT':
-                            newTask.sink = 'conductor';
-                            break;
-                        case 'WAIT':
-                            // 默认等待 30秒
-                            newTask.inputParameters = { duration: '30s' };
-                            break;
-                        case 'TERMINATE':
-                            newTask.inputParameters = {
-                                terminationStatus: 'COMPLETED',
-                                workflowOutput: {}
-                            };
-                            break;
+                    let sourceId = sourceIdIn;
+                    let edgeData: any = edgeDataIn || {};
+                    if (edgeData.exitOf) {
+                        // E16：SWITCH 出口边上的 "+"：插到 SWITCH 之后（同层），而不是分支内部
+                        sourceId = edgeData.exitOf;
+                        edgeData = {};
+                    } else if (edgeData.branchParentRef !== undefined && edgeData.forkIndex !== undefined) {
+                        // E6：空 FORK 分支占位 → JOIN 的边：插入到该分支
+                        sourceId = edgeData.branchParentRef;
+                        edgeData = { forkIndex: edgeData.forkIndex };
                     }
 
-                    if (newTask.type === 'FORK_JOIN' || newTask.type === 'FORK_JOIN_DYNAMIC') {
-                        if (newTask.type === 'FORK_JOIN') {
-                            newTask.forkTasks = [[], []];
-                        } else {
-                            // 默认使用经典 dynamicForkTasksParam 模式
-                            newTask.dynamicForkTasksParam = 'dynamic_tasks';
-                            newTask.dynamicForkTasksInputParamName = 'input';
+                    const existingRefs = collectTaskRefs(newDef.tasks);
+                    let ref: string = newNode.data.taskReferenceName;
+                    if (existingRefs.has(ref)) {
+                        let n = 2;
+                        while (existingRefs.has(`${ref}_${n}`)) n++;
+                        ref = `${ref}_${n}`;
+                    }
+                    const newTask = createDefaultTask(newNode.data.taskType || 'SIMPLE', newNode.data.label, ref);
+                    const isFork = newTask.type === 'FORK_JOIN' || newTask.type === 'FORK_JOIN_DYNAMIC';
+                    const joinTask = isFork ? createJoinTaskFor(newTask, new Set([...existingRefs, ref])) : null;
+
+                    const isBranchInsert = edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd;
+                    if (!isBranchInsert && !edgeData.isWorkflowStart && !edgeData.isLoopBodyStart) {
+                        // 不能插在 FORK 与配对 JOIN 之间：改为插到 JOIN 之后
+                        const src = findTaskByRef(newDef.tasks, sourceId);
+                        if (src && (src.type === 'FORK_JOIN' || src.type === 'FORK_JOIN_DYNAMIC')) {
+                            sourceId = findPairedJoinRef(newDef.tasks, sourceId) ?? sourceId;
                         }
-                        const joinTask: TaskDef = {
-                            name: `${newTask.name}_join`,
-                            taskReferenceName: `${newTask.taskReferenceName}_join`,
-                            type: 'JOIN',
-                            joinOn: []
-                        };
-                        if (edgeData.isWorkflowStart) {
-                            // 在第一个任务前插入
-                            newDef.tasks.unshift(joinTask);
-                            newDef.tasks.unshift(newTask);
-                        } else if (edgeData.isLoopBodyStart) {
-                            // 在循环体第一个任务前插入（sourceId = loopNodeId = DO_WHILE taskRef）
-                            const loopTask = findTaskByRef(newDef.tasks, sourceId);
-                            if (loopTask) {
-                                if (!loopTask.loopOver) loopTask.loopOver = [];
-                                loopTask.loopOver.unshift(joinTask);
-                                loopTask.loopOver.unshift(newTask);
-                            }
-                        } else if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
-                            insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
-                            insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
-                        } else {
-                            if (newDef.tasks.length === 0) {
-                                newDef.tasks.push(newTask, joinTask);
-                            } else {
-                                insertTaskAfter(newDef.tasks, sourceId, newTask);
-                                insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
-                            }
+                    }
+
+                    let inserted = false;
+                    if (edgeData.isWorkflowStart) {
+                        newDef.tasks.unshift(newTask);
+                        inserted = true;
+                    } else if (edgeData.isLoopBodyStart) {
+                        // 在循环体第一个任务前插入（sourceId = loopNodeId = DO_WHILE taskRef）
+                        const loopTask = findTaskByRef(newDef.tasks, sourceId);
+                        if (loopTask) {
+                            if (!loopTask.loopOver) loopTask.loopOver = [];
+                            loopTask.loopOver.unshift(newTask);
+                            inserted = true;
                         }
+                    } else if (isBranchInsert) {
+                        inserted = insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
+                    } else if (newDef.tasks.length === 0) {
+                        newDef.tasks.push(newTask);
+                        inserted = true;
                     } else {
-                        if (newTask.type === 'DECISION' || newTask.type === 'SWITCH') {
-                            newTask.evaluatorType = 'value-param';
-                            newTask.caseValueParam = 'case_param';
-                            newTask.decisionCases = { "case1": [] };
-                            newTask.defaultCase = [];
-                        } else if (newTask.type === 'DO_WHILE') {
-                            newTask.loopCondition = "$.taskReferenceName.output.value < 10";
-                            newTask.loopOver = [];
-                        } else if (newTask.type === 'INLINE') {
-                            newTask.evaluatorType = 'graaljs';
-                            newTask.inputParameters = { expression: 'function execute(input) {\n  return { result: input };\n}\nexecute($.input);' };
-                        } else if (newTask.type === 'DYNAMIC') {
-                            newTask.dynamicTaskNameParam = 'taskToExecute';
-                            newTask.inputParameters = { taskToExecute: '${workflow.input.taskName}' };
-                        } else if (newTask.type === 'HUMAN') {
-                            newTask.humanTaskDef = { userFormTemplate: '', assignmentCompletionStrategy: 'LEAVE_OPEN' };
-                        } else if (newTask.type === 'START_WORKFLOW') {
-                            newTask.inputParameters = { startWorkflow: { name: '', version: 1, input: {}, correlationId: '' } };
-                        } else if (newTask.type === 'NOOP') {
-                            newTask.inputParameters = {};
-                        }
-
-                        if (edgeData.isWorkflowStart) {
-                            // 在第一个任务前插入
-                            newDef.tasks.unshift(newTask);
-                        } else if (edgeData.isLoopBodyStart) {
-                            // 在循环体第一个任务前插入（sourceId = loopNodeId = DO_WHILE taskRef）
-                            const loopTask = findTaskByRef(newDef.tasks, sourceId);
-                            if (loopTask) {
-                                if (!loopTask.loopOver) loopTask.loopOver = [];
-                                loopTask.loopOver.unshift(newTask);
-                            }
-                        } else if (edgeData.branchCase !== undefined || edgeData.forkIndex !== undefined || edgeData.isLoopAdd) {
-                            insertFirstTaskIntoBranch(newDef.tasks, sourceId, edgeData, newTask);
-                        } else {
-                            if (newDef.tasks.length === 0) {
-                                newDef.tasks.push(newTask);
-                            } else {
-                                insertTaskAfter(newDef.tasks, sourceId, newTask);
-                            }
-                        }
+                        inserted = insertTaskAfter(newDef.tasks, sourceId, newTask);
                     }
+                    if (!inserted) {
+                        console.warn(`[workflowStore] 未找到插入位置 "${sourceId}"，没有添加任务`);
+                        return;
+                    }
+                    if (joinTask) insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
 
-                    syncForkJoinOn(newDef.tasks);
-                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
-                    const validationResults = validateWorkflow(newDef);
-
-                    set({
-                        workflowDef: newDef,
-                        nodes: layoutedNodes,
-                        edges: layoutedEdges,
-                        taskMap,
-                        validationResults
-                    });
+                    syncForkJoinOn(newDef.tasks, workflowDef.tasks);
+                    set(rebuildFromDef(newDef, get()));
                     // 埋点：专业模式新增步骤（画布「+」与 Cmd+K 内联 Copilot 都经此处）
                     notifyStepAdded('builtin');
                 },
 
                 removeNode: (nodeId: string) => {
-                    const { workflowDef, layoutDirection, nodes: currentNodes } = get();
+                    const { workflowDef } = get();
                     if (!workflowDef) return;
 
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
-                    // Fork/Join 成组删除：FORK_JOIN* 删除时同时删配对 JOIN，反之亦然
+                    // Fork/Join 成组删除：FORK_JOIN* 删除时同时删配对 JOIN，反之亦然（确认文案见 describeTaskRemoval）
                     const container = findContainerList(newDef.tasks, nodeId);
                     if (container) {
-                        const taskType = currentNodes.find(n => n.id === nodeId)?.data?.taskType as string | undefined;
+                        const taskType = container.find(t => t.taskReferenceName === nodeId)?.type as string | undefined;
                         if (taskType === 'FORK_JOIN' || taskType === 'FORK_JOIN_DYNAMIC') {
                             const joinRef = findJoinForFork(container, nodeId);
                             if (joinRef) removeTaskFromDef(newDef.tasks, joinRef);
@@ -641,20 +695,11 @@ const useWorkflowStore = create<WorkflowStore>()(
                         }
                     }
 
-                    removeTaskFromDef(newDef.tasks, nodeId);
-                    syncForkJoinOn(newDef.tasks);
+                    if (!removeTaskFromDef(newDef.tasks, nodeId)) return;
+                    syncForkJoinOn(newDef.tasks, workflowDef.tasks);
 
-                    const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
-                    const validationResults = validateWorkflow(newDef);
-
-                    set({
-                        workflowDef: newDef,
-                        nodes: layoutedNodes,
-                        edges: layoutedEdges,
-                        taskMap,
-                        validationResults
-                    });
+                    const rebuilt = rebuildFromDef(newDef, get());
+                    set({ ...rebuilt, ...selectionPatch(get(), rebuilt.taskMap) });
                 },
 
                 addLoopTask: (loopRef: string, taskType: string) => {
@@ -665,14 +710,12 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const loopTask = findTaskByRef(newDef.tasks, loopRef);
                     if (loopTask && loopTask.type === 'DO_WHILE') {
                         if (!loopTask.loopOver) loopTask.loopOver = [];
-                        const newTask: TaskDef = {
-                            name: `new_${taskType.toLowerCase()}`,
-                            taskReferenceName: `${loopRef}_sub_${Date.now()}`,
-                            type: taskType as any,
-                            inputParameters: {}
-                        };
+                        const newTask = createDefaultTask(taskType, `new_${taskType.toLowerCase()}`, `${loopRef}_sub_${Date.now()}`);
                         loopTask.loopOver.push(newTask);
-                        syncForkJoinOn(newDef.tasks);
+                        if (newTask.type === 'FORK_JOIN' || newTask.type === 'FORK_JOIN_DYNAMIC') {
+                            loopTask.loopOver.push(createJoinTaskFor(newTask, collectTaskRefs(newDef.tasks)));
+                        }
+                        syncForkJoinOn(newDef.tasks, workflowDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
@@ -681,7 +724,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 },
 
                 removeLoopTask: (loopRef: string, taskRef: string) => {
-                    const { workflowDef, layoutDirection } = get();
+                    const { workflowDef } = get();
                     if (!workflowDef) return;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
@@ -700,11 +743,9 @@ const useWorkflowStore = create<WorkflowStore>()(
                             }
                         }
                         removeTaskFromDef(loopTask.loopOver, taskRef);
-                        syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
-                        const validationResults = validateWorkflow(newDef);
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
+                        syncForkJoinOn(newDef.tasks, workflowDef.tasks);
+                        const rebuilt = rebuildFromDef(newDef, get());
+                        set({ ...rebuilt, ...selectionPatch(get(), rebuilt.taskMap) });
                     }
                 },
 
@@ -718,10 +759,15 @@ const useWorkflowStore = create<WorkflowStore>()(
                         if (caseName === 'default') {
                             if (!task.defaultCase) task.defaultCase = [];
                         } else {
+                            const branchError = validateBranchName(task, caseName);
+                            if (branchError) {
+                                console.warn(`[workflowStore] ${branchError}`);
+                                return;
+                            }
                             if (!task.decisionCases) task.decisionCases = {};
-                            if (!task.decisionCases[caseName]) task.decisionCases[caseName] = [];
+                            task.decisionCases[caseName.trim()] = [];
                         }
-                        syncForkJoinOn(newDef.tasks);
+                        syncForkJoinOn(newDef.tasks, workflowDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
@@ -730,7 +776,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                 },
 
                 removeDecisionBranch: (taskRef: string, caseName: string) => {
-                    const { workflowDef, layoutDirection } = get();
+                    const { workflowDef } = get();
                     if (!workflowDef) return;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
@@ -741,31 +787,37 @@ const useWorkflowStore = create<WorkflowStore>()(
                         } else if (task.decisionCases) {
                             delete task.decisionCases[caseName];
                         }
-                        syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
-                        const validationResults = validateWorkflow(newDef);
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
+                        syncForkJoinOn(newDef.tasks, workflowDef.tasks);
+                        const rebuilt = rebuildFromDef(newDef, get());
+                        set({ ...rebuilt, ...selectionPatch(get(), rebuilt.taskMap) });
                     }
                 },
 
                 renameDecisionBranch: (taskRef: string, oldName: string, newName: string) => {
-                    const { workflowDef, layoutDirection } = get();
-                    if (!workflowDef || !newName.trim() || oldName === newName) return;
+                    const { workflowDef } = get();
+                    if (!workflowDef) return false;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
 
                     const task = findTaskByRef(newDef.tasks, taskRef);
-                    if (task && (task.type === 'DECISION' || task.type === 'SWITCH')) {
-                        if (!task.decisionCases || !task.decisionCases[oldName]) return;
-                        // 将原分支任务列表迁移到新键名，重新解析会自动更新连线 label
-                        task.decisionCases[newName.trim()] = task.decisionCases[oldName];
-                        delete task.decisionCases[oldName];
-                        syncForkJoinOn(newDef.tasks);
-                        const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
-                        const validationResults = validateWorkflow(newDef);
-                        set({ workflowDef: newDef, nodes: layoutedNodes, edges: layoutedEdges, taskMap, validationResults });
+                    if (!task || (task.type !== 'DECISION' && task.type !== 'SWITCH')) return false;
+                    if (!task.decisionCases || !task.decisionCases[oldName]) return false;
+                    const trimmed = (newName ?? '').trim();
+                    if (trimmed === oldName) return true;
+                    // E14：拒绝空名、保留字 default 与已存在的分支名（否则会覆盖原分支）
+                    const branchError = validateBranchName(task, trimmed, oldName);
+                    if (branchError) {
+                        console.warn(`[workflowStore] ${branchError}`);
+                        return false;
                     }
+                    // 保持分支顺序不变地改键名，重新解析会自动更新连线 label
+                    const renamed: Record<string, TaskDef[]> = {};
+                    Object.entries(task.decisionCases).forEach(([k, v]) => {
+                        renamed[k === oldName ? trimmed : k] = v;
+                    });
+                    task.decisionCases = renamed;
+                    syncForkJoinOn(newDef.tasks, workflowDef.tasks);
+                    set(rebuildFromDef(newDef, get()));
+                    return true;
                 },
 
                 addForkBranch: (taskRef: string) => {
@@ -777,7 +829,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                     if (task && task.type === 'FORK_JOIN') {
                         if (!task.forkTasks) task.forkTasks = [];
                         task.forkTasks.push([]);
-                        syncForkJoinOn(newDef.tasks);
+                        syncForkJoinOn(newDef.tasks, workflowDef.tasks);
                         const { nodes, edges, taskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
                         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
                         const validationResults = validateWorkflow(newDef);
@@ -788,60 +840,32 @@ const useWorkflowStore = create<WorkflowStore>()(
                 copyTask: (task: TaskDef) => set({ copiedTask: task }),
 
                 pasteTask: (task: TaskDef) => {
-                    const { workflowDef, layoutDirection, selectedTask } = get();
-                    if (!workflowDef) return;
+                    const { workflowDef, selectedTask } = get();
+                    if (!workflowDef || !task) return;
                     const newDef = JSON.parse(JSON.stringify(workflowDef)) as WorkflowDef;
-                    const timestamp = Date.now();
-                    const suffix = `_copy_${timestamp}`;
-                    const newTask = JSON.parse(JSON.stringify(task)) as TaskDef;
+                    const existingRefs = collectTaskRefs(newDef.tasks);
 
-                    const deepRename = (t: TaskDef) => {
-                        t.taskReferenceName = `${t.taskReferenceName}${suffix}`;
-                        if (t.decisionCases) Object.values(t.decisionCases).forEach(branch => branch.forEach(deepRename));
-                        if (t.defaultCase) t.defaultCase.forEach(deepRename);
-                        if (t.forkTasks) t.forkTasks.forEach(branch => branch.forEach(deepRename));
-                        if (t.loopOver) t.loopOver.forEach(deepRename);
-                    };
+                    // E15：子树内引用名统一改名（含 loopCondition / ${兄弟.output} / joinOn），FORK 类任务补配对 JOIN
+                    const { task: newTask, join: joinTask } = prepareTaskForPaste(task, existingRefs, `_copy_${Date.now()}`);
 
-                    deepRename(newTask);
-                    const sourceRef = selectedTask ? selectedTask.taskReferenceName : (
-                        newDef.tasks.length > 0 ? newDef.tasks[newDef.tasks.length - 1].taskReferenceName : 'start'
-                    );
-
-                    if (newTask.type === 'FORK_JOIN') {
-                        if (!newTask.forkTasks) newTask.forkTasks = [[], []];
-                        const joinTask: TaskDef = {
-                            name: `${newTask.name}_join`,
-                            taskReferenceName: `${newTask.taskReferenceName}_join`,
-                            type: 'JOIN',
-                            joinOn: []
-                        };
-                        if (newDef.tasks.length === 0) {
-                            newDef.tasks.push(newTask, joinTask);
-                        } else {
-                            insertTaskAfter(newDef.tasks, sourceRef, newTask);
-                            insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
-                        }
-                    } else {
-                        if (newDef.tasks.length === 0) {
-                            newDef.tasks.push(newTask);
-                        } else {
-                            insertTaskAfter(newDef.tasks, sourceRef, newTask);
-                        }
+                    let sourceRef = selectedTask && existingRefs.has(selectedTask.taskReferenceName)
+                        ? selectedTask.taskReferenceName
+                        : (newDef.tasks.length > 0 ? newDef.tasks[newDef.tasks.length - 1].taskReferenceName : 'start');
+                    // E8：选中 FORK 时插到配对 JOIN 之后，不能插进 FORK 与 JOIN 之间
+                    const sourceTask = findTaskByRef(newDef.tasks, sourceRef);
+                    if (sourceTask && (sourceTask.type === 'FORK_JOIN' || sourceTask.type === 'FORK_JOIN_DYNAMIC')) {
+                        sourceRef = findPairedJoinRef(newDef.tasks, sourceRef) ?? sourceRef;
                     }
 
-                    syncForkJoinOn(newDef.tasks);
-                    const { nodes, edges, taskMap: newTaskMap } = parseWorkflow(newDef, layoutDirection, { hideEmptyBranches: get().mode !== 'edit' });
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: layoutDirection, mode: get().mode });
-                    const validationResults = validateWorkflow(newDef);
+                    if (newDef.tasks.length === 0) {
+                        newDef.tasks.push(newTask);
+                    } else if (!insertTaskAfter(newDef.tasks, sourceRef, newTask)) {
+                        newDef.tasks.push(newTask);
+                    }
+                    if (joinTask) insertTaskAfter(newDef.tasks, newTask.taskReferenceName, joinTask);
 
-                    set({
-                        workflowDef: newDef,
-                        nodes: layoutedNodes,
-                        edges: layoutedEdges,
-                        taskMap: newTaskMap,
-                        validationResults,
-                    });
+                    syncForkJoinOn(newDef.tasks, workflowDef.tasks);
+                    set(rebuildFromDef(newDef, get()));
                 },
 
                 flashNodes: (refs: string[]) => {
@@ -1048,25 +1072,16 @@ const useWorkflowStore = create<WorkflowStore>()(
                     set({ inlineCopilotTaskRef: taskRef }),
             }),
             {
-                // 只记录业务定义相关的状态，过滤掉运行时的 UI 状态（如 selected, dragging）
-                // 重点：排除 width 和 height，因为它们在 undo 时会重新测量，可能导致 zundo 误判为新状态
-                // 修正：必须包含 theme/mode 等全局状态，否则 undo 时会因字段缺失导致 crash
+                // E9：撤销快照只含流程数据。主题、模式、连线样式、布局方向、锁定状态、剪贴板等偏好不进历史，
+                // ⌘Z 不会把它们一起撤回（zundo 撤销时按部分状态合并，缺省的字段保持当前值）。
                 partialize: (state: WorkflowStore) => ({
                     workflowDef: state.workflowDef,
-                    layoutDirection: state.layoutDirection,
                     // Strip `selected` so flash-selection is never captured in undo history.
-                    // Explicit cast avoids TypeScript exposing ReactFlow's internal symbol type.
                     nodes: stripSelected(state.nodes),
-                    // 与 nodes 一起快照：撤销到"画布数据过期"的历史点时，仍会在回到画布前被刷新
-                    graphStale: state.graphStale,
                     edges: state.edges,
                     taskMap: state.taskMap,
-                    theme: state.theme,
-                    themeColor: state.themeColor,
-                    mode: state.mode,
-                    edgeType: state.edgeType,
-                    nodesLocked: state.nodesLocked,
-                    copiedTask: state.copiedTask
+                    // 与 nodes 一起快照：撤销到"画布数据过期"的历史点时，仍会在回到画布前被刷新
+                    graphStale: state.graphStale,
                 }),
                 // 等值检查：只有当核心业务逻辑 (workflowDef) 发生变化时才记录 Undo
                 // 这样可以忽略 节点拖拽(仅坐标变化)、缩放、主题切换等非业务操作
@@ -1103,5 +1118,22 @@ const useWorkflowStore = create<WorkflowStore>()(
         }
     )
 );
+
+/**
+ * E12：撤销 / 重做 / 删除后，若选中的任务已不在定义里，清空选中并关闭详情面板；
+ * 若还在但内容变了（例如撤销了它的修改），让面板显示最新内容。
+ */
+let lastSeenTaskMap: WorkflowStore['taskMap'] | null = null;
+useWorkflowStore.subscribe((state: WorkflowStore) => {
+    if (state.taskMap === lastSeenTaskMap) return;
+    lastSeenTaskMap = state.taskMap;
+    if (state.mode !== 'edit' || state.graphStale || !state.selectedTask) return;
+    const fresh = state.taskMap[state.selectedTask.taskReferenceName];
+    if (!fresh) {
+        useWorkflowStore.setState({ selectedTask: null, isDetailPanelOpen: false });
+    } else if (fresh !== state.selectedTask && JSON.stringify(fresh) !== JSON.stringify(state.selectedTask)) {
+        useWorkflowStore.setState({ selectedTask: { ...fresh } });
+    }
+});
 
 export default useWorkflowStore;

@@ -859,7 +859,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === 0 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary, #b0bec5)',
+                            color: idx === 0 ? 'var(--cm-text-disabled)' : 'var(--text-secondary, #b0bec5)',
                             cursor: idx === 0 ? 'default' : 'pointer',
                             fontSize: 14,
                             padding: '4px',
@@ -874,7 +874,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === steps.length - 1 ? 'rgba(255,255,255,0.2)' : 'var(--text-secondary, #b0bec5)',
+                            color: idx === steps.length - 1 ? 'var(--cm-text-disabled)' : 'var(--text-secondary, #b0bec5)',
                             cursor: idx === steps.length - 1 ? 'default' : 'pointer',
                             fontSize: 14,
                             padding: '4px',

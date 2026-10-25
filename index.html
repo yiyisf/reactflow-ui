@@ -1,49 +1,27 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-mode="dark" data-campaign="glacier">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Conductor Workflow IDE v1.3.0：自助接入。新团队不靠陪跑，自己把第一个流程跑起来——登记产品、规范命名、接口导入、统一扩展点与接入埋点。" />
+  <meta name="description" content="CMASTER Workflow IDE v1.3.0：自助接入。新团队不靠陪跑，自己把第一个流程跑起来——登记产品、规范命名、接口导入、统一扩展点与接入埋点。" />
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
-  <title>Conductor Workflow IDE v1.3.0 · 自助接入 · 新团队不靠陪跑，自己把第一个流程跑起来</title>
+  <title>CMASTER v1.3.0 · 自助接入 · 新团队不靠陪跑，自己把第一个流程跑起来</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="/src/styles/cmaster-tokens.css" />
+  <link rel="stylesheet" href="/src/marketing/campaign.css" />
   <style>
     /* STYLE: Bento Launchpad（沿用 v1.1.0 视觉语言与令牌，v1.3.0 叙事：自助接入） */
-    :root {
-      --bg-dark: #06080F;
-      --bg-card: #0E1322;
-      --bg-card-hover: #141C32;
-      --bg-panel: #090D18;
-      --bg-glass: rgba(14, 19, 34, 0.85);
-
-      --border-dim: #1E2942;
-      --border-glow: #6366F1;
-      --border-accent: #10B981;
-
-      --text-white: #F8FAFC;
-      --text-body: #94A3B8;
-      --text-muted: #64748B;
-
-      --brand-primary: #6366F1;
-      --brand-cyan: #06B6D4;
-      --brand-emerald: #10B981;
-      --brand-amber: #F59E0B;
-      --brand-rose: #F43F5E;
-      --brand-blue: #3B82F6;
-
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-
-      --radius-md: 12px;
-      --radius-lg: 18px;
-    }
+    /* colours, fonts and radii come from src/marketing/campaign.css */
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background:
-        radial-gradient(ellipse 85% 55% at 50% -10%, rgba(16, 185, 129, 0.22), transparent 70%),
-        radial-gradient(ellipse 60% 40% at 85% 25%, rgba(6, 182, 212, 0.16), transparent 65%),
-        radial-gradient(ellipse 50% 35% at 15% 45%, rgba(99, 102, 241, 0.14), transparent 60%),
+        radial-gradient(ellipse 85% 55% at 50% -10%, color-mix(in srgb, var(--a) 22%, transparent), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 85% 25%, color-mix(in srgb, var(--a) 16%, transparent), transparent 65%),
+        radial-gradient(ellipse 50% 35% at 15% 45%, color-mix(in srgb, var(--a) 14%, transparent), transparent 60%),
         var(--bg-dark);
       color: var(--text-white);
       font-family: var(--font-sans);
@@ -56,7 +34,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(6, 8, 15, 0.88);
+      background: var(--cm-overlay);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border-dim);
       padding: 0.75rem 2rem;
@@ -88,9 +66,9 @@
       font-family: var(--font-mono);
       font-size: 0.74rem;
       font-weight: 700;
-      color: #6EE7B7;
-      background: rgba(16, 185, 129, 0.16);
-      border: 1px solid rgba(16, 185, 129, 0.42);
+      color: var(--a);
+      background: color-mix(in srgb, var(--a) 16%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 42%, transparent);
       padding: 0.2rem 0.7rem;
       border-radius: 999px;
       display: inline-flex;
@@ -102,7 +80,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      background: rgba(30, 41, 59, 0.6);
+      background: var(--cm-overlay);
       border: 1px solid var(--border-dim);
       padding: 0.15rem 0.4rem;
       border-radius: 8px;
@@ -119,8 +97,8 @@
     }
 
     .version-switch a.active {
-      background: rgba(16, 185, 129, 0.25);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 25%, transparent);
+      color: var(--a);
       font-weight: 700;
     }
 
@@ -140,9 +118,9 @@
       font-size: 0.72rem;
       font-family: var(--font-mono);
       font-weight: 700;
-      color: #A7F3D0;
-      background: rgba(16, 185, 129, 0.2);
-      border: 1px solid rgba(16, 185, 129, 0.42);
+      color: var(--a);
+      background: color-mix(in srgb, var(--a) 20%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 42%, transparent);
       padding: 0.25rem 0.7rem;
       border-radius: 8px;
       display: inline-flex;
@@ -172,11 +150,11 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      background: rgba(15, 23, 42, 0.98);
+      background: color-mix(in srgb, var(--cm-surface-1) 98%, transparent);
       border: 1px solid var(--border-dim);
       border-radius: 8px;
       padding: 0.3rem;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--cm-shadow-float);
       z-index: 300;
     }
 
@@ -190,14 +168,14 @@
     }
 
     .vd-menu a.active {
-      background: rgba(16, 185, 129, 0.25);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 25%, transparent);
+      color: var(--a);
       font-weight: 700;
     }
 
     .vd-menu a:hover:not(.active) {
       color: var(--text-white);
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--bg-highlight);
     }
 
     .nav-right {
@@ -207,7 +185,7 @@
     }
 
     .ghost-btn {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-highlight);
       color: var(--text-body);
       border: 1px solid var(--border-dim);
       padding: 0.44rem 0.9rem;
@@ -226,7 +204,7 @@
 
     .cta-btn {
       background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan));
-      color: #061816;
+      color: var(--on);
       border: none;
       padding: 0.46rem 1.15rem;
       border-radius: 8px;
@@ -261,8 +239,8 @@
       font-family: var(--font-mono);
       font-size: 0.78rem;
       color: var(--brand-emerald);
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.35);
+      background: color-mix(in srgb, var(--a) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 35%, transparent);
       padding: 0.32rem 1rem;
       border-radius: 999px;
       margin-bottom: 1.1rem;
@@ -275,7 +253,7 @@
       font-weight: 800;
       letter-spacing: -0.025em;
       margin-bottom: 1.1rem;
-      background: linear-gradient(180deg, #FFFFFF 0%, #A7F3D0 100%);
+      background: linear-gradient(180deg, var(--cm-text-primary) 0%, var(--a) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -291,7 +269,7 @@
     }
 
     .hero-subtitle strong {
-      color: #F8FAFC;
+      color: var(--text-primary);
     }
 
     /* Quick Install Command Box */
@@ -306,7 +284,7 @@
     .pm-tabs {
       display: inline-flex;
       gap: 0.35rem;
-      background: rgba(14, 19, 34, 0.9);
+      background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent);
       padding: 0.22rem;
       border-radius: 8px;
       border: 1px solid var(--border-dim);
@@ -326,8 +304,8 @@
     }
 
     .pm-tab.active {
-      background: rgba(16, 185, 129, 0.25);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 25%, transparent);
+      color: var(--a);
     }
 
     .install-shell {
@@ -335,13 +313,13 @@
       align-items: center;
       gap: 0.9rem;
       background: var(--bg-panel);
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      box-shadow: 0 0 32px rgba(16, 185, 129, 0.2);
+      border: 1px solid color-mix(in srgb, var(--a) 50%, transparent);
+      box-shadow: 0 0 32px color-mix(in srgb, var(--a) 20%, transparent);
       padding: 0.62rem 0.8rem 0.62rem 1.2rem;
       border-radius: 10px;
       font-family: var(--font-mono);
       font-size: 0.88rem;
-      color: #E2E8F0;
+      color: var(--text-primary);
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -349,9 +327,9 @@
     .install-shell .prompt-char { color: var(--brand-emerald); user-select: none; font-weight: 700; }
 
     .copy-cli-btn {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.3));
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      color: #FFF;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--a) 30%, transparent), color-mix(in srgb, var(--a) 30%, transparent));
+      border: 1px solid color-mix(in srgb, var(--a) 50%, transparent);
+      color: var(--text-primary);
       padding: 0.36rem 0.85rem;
       border-radius: 6px;
       font-size: 0.76rem;
@@ -361,7 +339,7 @@
       transition: all 0.15s;
     }
 
-    .copy-cli-btn:hover { background: rgba(16, 185, 129, 0.5); }
+    .copy-cli-btn:hover { background: color-mix(in srgb, var(--a) 50%, transparent); }
 
     /* L1 Dual Grid: Before/After vs Interactive Dual-Mode Showcase */
     .first-screen-grid {
@@ -406,8 +384,8 @@
       border-radius: 4px;
     }
 
-    .badge-diff.before { background: rgba(244, 63, 94, 0.15); color: #FB7185; border: 1px solid rgba(244, 63, 94, 0.3); }
-    .badge-diff.after { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-diff.before { background: color-mix(in srgb, var(--cm-status-failed) 15%, transparent); color: var(--cm-status-failed); border: 1px solid color-mix(in srgb, var(--cm-status-failed) 30%, transparent); }
+    .badge-diff.after { background: color-mix(in srgb, var(--cm-status-success) 15%, transparent); color: var(--cm-status-success); border: 1px solid color-mix(in srgb, var(--cm-status-success) 40%, transparent); }
 
     /* Interactive Dual Mode Live Preview in Hero */
     .interactive-mode-box {
@@ -443,14 +421,14 @@
     }
 
     .mode-tab-btn.active {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25));
-      color: #A7F3D0;
-      border: 1px solid rgba(16, 185, 129, 0.4);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--a) 25%, transparent), color-mix(in srgb, var(--a) 25%, transparent));
+      color: var(--a);
+      border: 1px solid color-mix(in srgb, var(--a) 40%, transparent);
       font-weight: 700;
     }
 
     .preview-card-viewport {
-      background: #090D18;
+      background: var(--bg-primary);
       border: 1px solid var(--border-dim);
       border-radius: 10px;
       padding: 1.1rem;
@@ -461,8 +439,8 @@
 
     /* Business Step Card Mock */
     .mock-step-card {
-      background: #131A2B;
-      border: 1px solid #1E293B;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
       border-radius: 8px;
       padding: 0.75rem 0.9rem;
       margin-bottom: 0.75rem;
@@ -473,7 +451,7 @@
     }
 
     .mock-step-card:hover {
-      border-color: rgba(16, 185, 129, 0.5);
+      border-color: color-mix(in srgb, var(--a) 50%, transparent);
       transform: translateX(2px);
     }
 
@@ -485,9 +463,9 @@
       border-radius: 4px;
       font-size: 0.72rem;
       font-family: var(--font-mono);
-      background: rgba(59, 130, 246, 0.15);
-      color: #93C5FD;
-      border: 1px solid rgba(59, 130, 246, 0.3);
+      background: color-mix(in srgb, var(--a) 15%, transparent);
+      color: var(--a);
+      border: 1px solid color-mix(in srgb, var(--a) 30%, transparent);
     }
 
     /* ROI Calculator */
@@ -581,7 +559,7 @@
       font-size: 2.3rem;
       font-weight: 800;
       font-family: var(--font-mono);
-      background: linear-gradient(180deg, #FFFFFF, #A7F3D0);
+      background: linear-gradient(180deg, var(--cm-text-primary), var(--a));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 0.3rem;
@@ -650,9 +628,9 @@
     }
 
     .bento-card:hover {
-      border-color: rgba(16, 185, 129, 0.4);
+      border-color: color-mix(in srgb, var(--a) 40%, transparent);
       transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--cm-shadow-float);
     }
 
     .bento-card.span-2 {
@@ -672,10 +650,10 @@
       width: fit-content;
     }
 
-    .bento-badge.green { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.35); }
-    .bento-badge.cyan { background: rgba(6, 182, 212, 0.15); color: #22D3EE; border: 1px solid rgba(6, 182, 212, 0.35); }
-    .bento-badge.purple { background: rgba(139, 92, 246, 0.15); color: #A78BFA; border: 1px solid rgba(139, 92, 246, 0.35); }
-    .bento-badge.orange { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.35); }
+    .bento-badge.green { background: color-mix(in srgb, var(--cm-status-success) 15%, transparent); color: var(--cm-status-success); border: 1px solid color-mix(in srgb, var(--cm-status-success) 35%, transparent); }
+    .bento-badge.cyan { background: color-mix(in srgb, var(--a) 15%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 35%, transparent); }
+    .bento-badge.purple { background: color-mix(in srgb, var(--a) 15%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 35%, transparent); }
+    .bento-badge.orange { background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent); color: var(--cm-status-warning); border: 1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent); }
 
     .bento-card h3 {
       font-size: 1.25rem;
@@ -732,7 +710,7 @@
     }
 
     .compare-table tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--bg-highlight);
     }
 
     .compare-table strong { color: var(--text-white); }
@@ -765,9 +743,9 @@
     }
 
     .qs-tab.active {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: rgba(16, 185, 129, 0.5);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 20%, transparent);
+      border-color: color-mix(in srgb, var(--a) 50%, transparent);
+      color: var(--a);
     }
 
     .code-container {
@@ -781,7 +759,7 @@
       padding: 1.2rem;
       font-family: var(--font-mono);
       font-size: 0.82rem;
-      color: #E2E8F0;
+      color: var(--text-primary);
       line-height: 1.6;
       white-space: pre;
       overflow-x: auto;
@@ -791,7 +769,7 @@
       position: absolute;
       top: 0.75rem;
       right: 0.75rem;
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--bg-highlight);
       border: 1px solid var(--border-dim);
       color: var(--text-body);
       padding: 0.3rem 0.65rem;
@@ -801,11 +779,11 @@
       font-weight: 600;
     }
 
-    .copy-code-btn:hover { color: #FFF; border-color: var(--brand-emerald); }
+    .copy-code-btn:hover { color: var(--text-primary); border-color: var(--brand-emerald); }
 
     /* Historical Banner Link */
     .history-card-box {
-      background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
+      background: linear-gradient(135deg, var(--cm-overlay), var(--cm-overlay));
       border: 1px solid var(--border-dim);
       border-radius: var(--radius-lg);
       padding: 1.8rem;
@@ -845,7 +823,7 @@
     /* ==========================================================================
        v1.2.0 起的无障碍与新组件（沿用 1.1 的 Bento Launchpad 令牌与组件）
        ========================================================================== */
-    :root { --text-muted: #8493AA; } /* 提亮次要文字，保证小字号对比度 >= 4.5:1 */
+    :root { --text-muted: var(--text-muted); } /* 提亮次要文字，保证小字号对比度 >= 4.5:1 */
 
     html { scroll-behavior: smooth; }
     img, svg { max-width: 100%; }
@@ -853,12 +831,12 @@
 
     .skip-link {
       position: absolute; left: 1rem; top: -4rem; z-index: 400;
-      background: var(--brand-emerald); color: #04130F; font-weight: 800;
+      background: var(--brand-emerald); color: var(--on); font-weight: 800;
       padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none;
     }
     .skip-link:focus { top: 0.75rem; }
 
-    :focus-visible { outline: 2px solid #34D399; outline-offset: 2px; border-radius: 4px; }
+    :focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 4px; }
 
     .nav-tagline { color: var(--text-muted); font-size: 0.8rem; }
     .section { margin-bottom: 4.5rem; scroll-margin-top: 5rem; }
@@ -870,10 +848,10 @@
       display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; list-style: none; margin: 0 auto 1.6rem; max-width: 900px;
     }
     .hero-adds li {
-      font-size: 0.8rem; color: #CBD5E1; background: rgba(14, 19, 34, 0.9); border: 1px solid var(--border-dim);
+      font-size: 0.8rem; color: var(--text-secondary); background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent); border: 1px solid var(--border-dim);
       padding: 0.3rem 0.8rem; border-radius: 999px;
     }
-    .hero-adds li b { color: #6EE7B7; font-weight: 700; margin-right: 0.25rem; }
+    .hero-adds li b { color: var(--a); font-weight: 700; margin-right: 0.25rem; }
     .hero-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.9rem; }
     .install-shell #cli-cmd { word-break: break-all; text-align: left; }
 
@@ -884,20 +862,20 @@
     .bento-card p:last-child { margin-bottom: 0; }
     .bento-card ul.tick { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-body); }
     .bento-card ul.tick li { padding-left: 1.3rem; position: relative; line-height: 1.6; }
-    .bento-card ul.tick li::before { content: '✓'; position: absolute; left: 0; color: var(--brand-emerald); font-weight: 800; }
+    .bento-card ul.tick li::before { content: ''; width: 0.95em; height: 0.95em; margin-top: 0.3em; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; position: absolute; left: 0; color: var(--brand-emerald); font-weight: 800; }
     code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
     p code, li code, td code, dd code {
-      background: rgba(99, 102, 241, 0.14); color: #C7D2FE; padding: 0.05rem 0.38rem; border-radius: 4px; word-break: break-all;
+      background: color-mix(in srgb, var(--a) 14%, transparent); color: var(--a); padding: 0.05rem 0.38rem; border-radius: 4px; word-break: break-all;
     }
 
     /* 流水线：定义 → 动作 → SUB_WORKFLOW */
     .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 0.6rem; align-items: stretch; }
-    .pipe-box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.85rem; font-size: 0.78rem; color: var(--text-body); }
+    .pipe-box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.85rem; font-size: 0.78rem; color: var(--text-body); }
     .pipe-box h4 { font-size: 0.82rem; color: var(--text-white); margin-bottom: 0.4rem; }
-    .pipe-box pre { font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
+    .pipe-box pre { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
     .pipe-arrow { align-self: center; color: var(--brand-emerald); font-size: 1.3rem; font-weight: 800; }
-    .form-line { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px dashed #1E293B; padding: 0.22rem 0; }
-    .form-line span:last-child { color: #A7F3D0; font-family: var(--font-mono); font-size: 0.72rem; }
+    .form-line { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px dashed var(--border-primary); padding: 0.22rem 0; }
+    .form-line span:last-child { color: var(--a); font-family: var(--font-mono); font-size: 0.72rem; }
 
     /* 版本固定演示 */
     .pin-demo { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 1.5rem; align-items: start; }
@@ -908,66 +886,66 @@
       padding: 0.75rem 0.9rem; border-radius: 10px; cursor: pointer; font-size: 0.84rem; font-family: inherit;
     }
     .state-btn strong { display: block; color: var(--text-white); margin-bottom: 0.15rem; }
-    .state-btn[aria-pressed="true"] { border-color: rgba(16, 185, 129, 0.7); background: rgba(16, 185, 129, 0.1); }
-    .state-btn:hover { border-color: rgba(16, 185, 129, 0.45); }
+    .state-btn[aria-pressed="true"] { border-color: color-mix(in srgb, var(--a) 70%, transparent); background: color-mix(in srgb, var(--a) 10%, transparent); }
+    .state-btn:hover { border-color: color-mix(in srgb, var(--a) 45%, transparent); }
 
-    .mock-app { background: #090D18; border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.1rem; position: relative; min-height: 22rem; }
+    .mock-app { background: var(--bg-primary); border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.1rem; position: relative; min-height: 22rem; }
     .mock-app-bar { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.9rem; font-size: 0.72rem; color: var(--text-muted); }
-    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: #1E293B; display: inline-block; }
-    .mock-step { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.9rem; }
+    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bg-secondary); display: inline-block; }
+    .mock-step { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.9rem; }
     .mock-step-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
     .mock-step-title { font-weight: 700; color: var(--text-white); font-size: 0.95rem; }
     .mock-step-name { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); width: 100%; word-break: break-all; }
     .badge-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0; align-items: center; }
-    .lib-badge { font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; background: rgba(59, 130, 246, 0.14); color: #93C5FD; border: 1px solid rgba(59, 130, 246, 0.3); font-family: inherit; }
-    .lib-badge.up { border: 1px solid #F59E0B; background: rgba(245, 158, 11, 0.12); color: #FBBF24; cursor: pointer; }
-    .lib-badge.up:hover { background: rgba(245, 158, 11, 0.25); }
-    .lib-badge.bad { border: 1px solid #F43F5E; background: rgba(244, 63, 94, 0.12); color: #FB7185; }
-    .lib-badge.ok { border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.12); color: #6EE7B7; }
+    .lib-badge { font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; background: color-mix(in srgb, var(--a) 14%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 30%, transparent); font-family: inherit; }
+    .lib-badge.up { border: 1px solid var(--cm-status-warning); background: color-mix(in srgb, var(--cm-status-warning) 12%, transparent); color: var(--cm-status-warning); cursor: pointer; }
+    .lib-badge.up:hover { background: color-mix(in srgb, var(--cm-status-warning) 25%, transparent); }
+    .lib-badge.bad { border: 1px solid var(--cm-status-failed); background: color-mix(in srgb, var(--cm-status-failed) 12%, transparent); color: var(--cm-status-failed); }
+    .lib-badge.ok { border: 1px solid color-mix(in srgb, var(--cm-status-success) 45%, transparent); background: color-mix(in srgb, var(--cm-status-success) 12%, transparent); color: var(--cm-status-success); }
     .mock-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.75rem; margin-bottom: 0.7rem; }
-    .mock-field { background: #0B1020; border: 1px solid #1E293B; border-radius: 6px; padding: 0.35rem 0.55rem; color: var(--text-body); }
+    .mock-field { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 6px; padding: 0.35rem 0.55rem; color: var(--text-body); }
     .mock-field small { display: block; color: var(--text-muted); font-size: 0.66rem; }
-    .compile-box { background: #05070D; border: 1px solid #1E293B; border-radius: 8px; padding: 0.65rem 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
-    .compile-box .hl { color: #FBBF24; font-weight: 700; }
+    .compile-box { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.65rem 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
+    .compile-box .hl { color: var(--cm-status-warning); font-weight: 700; }
     .pin-note { font-size: 0.78rem; color: var(--text-body); margin-top: 0.7rem; min-height: 2.6em; }
 
     .mock-dialog {
-      position: absolute; inset: 1rem; z-index: 5; background: #0F172A; border: 1px solid #334155; border-radius: 12px;
-      padding: 1rem; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6); overflow: auto; display: none;
+      position: absolute; inset: 1rem; z-index: 5; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 12px;
+      padding: 1rem; box-shadow: var(--cm-shadow-float); overflow: auto; display: none;
     }
     .mock-dialog.open { display: block; }
     .mock-dialog h4 { font-size: 0.92rem; color: var(--text-white); margin-bottom: 0.5rem; line-height: 1.5; }
     .diff-group { font-size: 0.78rem; font-weight: 700; margin: 0.7rem 0 0.3rem; }
-    .diff-group.impact { color: #FBBF24; }
-    .diff-group.plain { color: #93C5FD; }
-    .mock-dialog ul { list-style: none; font-size: 0.78rem; color: #CBD5E1; display: flex; flex-direction: column; gap: 0.3rem; }
+    .diff-group.impact { color: var(--cm-status-warning); }
+    .diff-group.plain { color: var(--a); }
+    .mock-dialog ul { list-style: none; font-size: 0.78rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.3rem; }
     .mock-dialog li { padding-left: 0.9rem; position: relative; line-height: 1.55; }
     .mock-dialog li::before { content: '·'; position: absolute; left: 0.2rem; }
-    .tag-demo { font-size: 0.64rem; border: 1px solid #475569; color: #94A3B8; padding: 0 4px; border-radius: 3px; margin-left: 4px; white-space: nowrap; }
+    .tag-demo { font-size: 0.64rem; border: 1px solid var(--border-primary); color: var(--text-muted); padding: 0 4px; border-radius: 3px; margin-left: 4px; white-space: nowrap; }
     .dialog-foot { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.8rem; line-height: 1.55; }
     .dialog-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.9rem; }
-    .mini-btn { font-family: inherit; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-dim); background: rgba(255, 255, 255, 0.06); color: var(--text-white); }
-    .mini-btn.primary { background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan)); color: #061816; border: none; }
+    .mini-btn { font-family: inherit; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-dim); background: var(--bg-highlight); color: var(--text-white); }
+    .mini-btn.primary { background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan)); color: var(--on); border: none; }
 
     /* 命名规范 + 分层选择器 */
     .name-parse { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: stretch; list-style: none; margin: 0.6rem 0 1rem; }
     .name-seg { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 8px; padding: 0.4rem 0.7rem; text-align: center; min-width: 4.2rem; }
-    .name-seg b { display: block; font-family: var(--font-mono); font-size: 0.9rem; color: #E2E8F0; font-weight: 700; }
+    .name-seg b { display: block; font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-primary); font-weight: 700; }
     .name-seg span { font-size: 0.68rem; color: var(--text-muted); }
-    .name-seg.c1 b { color: #A5B4FC; } .name-seg.c2 b { color: #FBBF24; } .name-seg.c3 b { color: #6EE7B7; } .name-seg.c4 b { color: #22D3EE; } .name-seg.c5 b { color: #F9A8D4; }
+    .name-seg.c1 b { color: var(--a); } .name-seg.c2 b { color: var(--cm-status-warning); } .name-seg.c3 b { color: var(--a); } .name-seg.c4 b { color: var(--a); } .name-seg.c5 b { color: var(--a); }
     .name-sep { align-self: center; color: var(--text-muted); font-family: var(--font-mono); }
     .domain-demo { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1.5rem; }
     .level-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.6rem 0 0.9rem; font-size: 0.8rem; color: var(--text-body); }
     .seg-btn { font-family: var(--font-mono); font-size: 0.76rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 7px; border: 1px solid var(--border-dim); background: var(--bg-panel); color: var(--text-body); cursor: pointer; }
-    .seg-btn[aria-pressed="true"] { background: rgba(16, 185, 129, 0.22); border-color: rgba(16, 185, 129, 0.6); color: #A7F3D0; }
+    .seg-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--a) 22%, transparent); border-color: color-mix(in srgb, var(--a) 60%, transparent); color: var(--a); }
     .picker-groups { display: flex; flex-direction: column; gap: 0.7rem; }
     .picker-group h4 { font-size: 0.74rem; color: var(--brand-cyan); letter-spacing: 0.04em; margin-bottom: 0.3rem; }
     .picker-items { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; }
-    .picker-item { display: inline-flex; align-items: center; gap: 0.4rem; background: #131A2B; border: 1px solid #1E293B; border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--text-white); }
+    .picker-item { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--text-white); }
     .lv { font-family: var(--font-mono); font-size: 0.65rem; padding: 0 5px; border-radius: 3px; font-weight: 700; }
-    .lv.L1 { background: rgba(16, 185, 129, 0.18); color: #6EE7B7; }
-    .lv.L2 { background: rgba(245, 158, 11, 0.18); color: #FBBF24; }
-    .lv.L3 { background: rgba(244, 63, 94, 0.18); color: #FB7185; }
+    .lv.L1 { background: color-mix(in srgb, var(--a) 18%, transparent); color: var(--a); }
+    .lv.L2 { background: color-mix(in srgb, var(--cm-status-warning) 18%, transparent); color: var(--cm-status-warning); }
+    .lv.L3 { background: color-mix(in srgb, var(--cm-status-failed) 18%, transparent); color: var(--cm-status-failed); }
     .picker-status { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.8rem; min-height: 1.5em; }
     .rule-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
     .rule-table th, .rule-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); }
@@ -975,18 +953,18 @@
 
     /* 一个数据源，两个 IDE */
     .fanout { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; }
-    .fan-center { background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(6, 182, 212, 0.16)); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 14px; padding: 1.1rem; text-align: center; }
-    .fan-center code { background: none; color: #A7F3D0; font-size: 1rem; font-weight: 700; padding: 0; }
+    .fan-center { background: linear-gradient(135deg, color-mix(in srgb, var(--a) 16%, transparent), color-mix(in srgb, var(--a) 16%, transparent)); border: 1px solid color-mix(in srgb, var(--a) 50%, transparent); border-radius: 14px; padding: 1.1rem; text-align: center; }
+    .fan-center code { background: none; color: var(--a); font-size: 1rem; font-weight: 700; padding: 0; }
     .fan-center p { margin: 0.4rem 0 0; font-size: 0.78rem; }
     .fan-col { display: flex; flex-direction: column; gap: 0.7rem; }
-    .fan-box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.8rem; font-size: 0.8rem; color: var(--text-body); }
+    .fan-box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.8rem; font-size: 0.8rem; color: var(--text-body); }
     .fan-box h4 { color: var(--text-white); font-size: 0.88rem; margin-bottom: 0.25rem; }
     .fan-arrow { color: var(--brand-emerald); font-size: 1.4rem; font-weight: 800; text-align: center; }
 
     /* 接入 */
     .qs-tab { color: var(--text-body); }
     .qs-note { font-size: 0.82rem; color: var(--text-body); margin-top: 1rem; line-height: 1.7; }
-    .qs-note a, .link-inline { color: #6EE7B7; }
+    .qs-note a, .link-inline { color: var(--a); }
     .code-body { max-height: 30rem; overflow: auto; }
     .two-col { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 1.5rem; }
 
@@ -1000,19 +978,19 @@
     /* 接下来 */
     .roadmap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; list-style: none; }
     .rm-card { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: var(--radius-md); padding: 1.1rem; }
-    .rm-card .ver { font-family: var(--font-mono); font-weight: 800; color: #6EE7B7; font-size: 1rem; }
+    .rm-card .ver { font-family: var(--font-mono); font-weight: 800; color: var(--a); font-size: 1rem; }
     .rm-card h3 { font-size: 1.05rem; color: var(--text-white); margin: 0.2rem 0; }
     .rm-card .when { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 0.5rem; }
     .rm-card p { font-size: 0.8rem; color: var(--text-body); line-height: 1.6; }
-    .rm-card.labs { border-style: dashed; border-color: rgba(139, 92, 246, 0.5); }
-    .rm-card.labs .ver { color: #C4B5FD; }
+    .rm-card.labs { border-style: dashed; border-color: color-mix(in srgb, var(--a) 50%, transparent); }
+    .rm-card.labs .ver { color: var(--a); }
 
     /* 上手 */
     .try-steps { counter-reset: s; list-style: none; display: flex; flex-direction: column; gap: 0.8rem; }
     .try-steps li { counter-increment: s; position: relative; padding-left: 2.6rem; font-size: 0.88rem; color: var(--text-body); line-height: 1.7; }
     .try-steps li::before {
       content: counter(s); position: absolute; left: 0; top: 0.1rem; width: 1.8rem; height: 1.8rem; border-radius: 50%;
-      background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #A7F3D0; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
+      background: color-mix(in srgb, var(--a) 20%, transparent); border: 1px solid color-mix(in srgb, var(--a) 50%, transparent); color: var(--a); font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
     }
     .try-steps strong { color: var(--text-white); }
     .link-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
@@ -1022,7 +1000,7 @@
 
     footer { padding: 2.5rem 1.5rem; }
     footer a { display: inline-block; margin: 0.25rem 0.6rem; }
-    footer a { color: #A9B6CA; }
+    footer a { color: var(--text-secondary); }
 
     @media (prefers-reduced-motion: no-preference) {
       .bento-card, .state-btn, .lib-badge { transition: border-color 0.2s, transform 0.2s, background 0.2s; }
@@ -1073,15 +1051,15 @@
       background: var(--bg-panel); border: 1px solid var(--border-dim); color: var(--text-body);
       padding: 0.65rem 0.8rem; border-radius: 10px; cursor: pointer;
     }
-    .j-step-btn:hover { border-color: rgba(16, 185, 129, 0.45); }
+    .j-step-btn:hover { border-color: color-mix(in srgb, var(--a) 45%, transparent); }
     .j-step-btn .num {
       flex: none; width: 1.8rem; height: 1.8rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-      background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.45); color: #A7F3D0; font-weight: 800; font-size: 0.8rem;
+      background: color-mix(in srgb, var(--a) 16%, transparent); border: 1px solid color-mix(in srgb, var(--a) 45%, transparent); color: var(--a); font-weight: 800; font-size: 0.8rem;
     }
     .j-step-btn strong { display: block; color: var(--text-white); font-size: 0.88rem; }
     .j-step-btn small { display: block; color: var(--text-muted); font-size: 0.72rem; line-height: 1.4; }
-    .j-step-btn[aria-current="step"] { border-color: rgba(16, 185, 129, 0.75); background: rgba(16, 185, 129, 0.1); }
-    .j-step-btn.done .num { background: var(--brand-emerald); color: #04130F; border-color: var(--brand-emerald); }
+    .j-step-btn[aria-current="step"] { border-color: color-mix(in srgb, var(--a) 75%, transparent); background: color-mix(in srgb, var(--a) 10%, transparent); }
+    .j-step-btn.done .num { background: var(--cm-status-success); color: var(--on); border-color: var(--cm-status-success); }
 
     .j-panel { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.3rem; min-width: 0; }
     .j-panel[hidden] { display: none; }
@@ -1094,45 +1072,45 @@
     .field small { color: var(--text-muted); font-size: 0.72rem; line-height: 1.5; }
     .field.full { grid-column: 1 / -1; }
     .input {
-      width: 100%; min-width: 0; font: inherit; font-size: 0.86rem; color: #E2E8F0; background: #0B1020;
-      border: 1px solid #2F3D5E; border-radius: 8px; padding: 0.5rem 0.7rem;
+      width: 100%; min-width: 0; font: inherit; font-size: 0.86rem; color: var(--text-primary); background: var(--bg-primary);
+      border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.5rem 0.7rem;
     }
     select.input { cursor: pointer; }
     .input:disabled { opacity: 0.7; cursor: not-allowed; }
     .input.mono { font-family: var(--font-mono); font-size: 0.82rem; }
     textarea.input { font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.55; min-height: 9rem; resize: vertical; }
     .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; margin: 0.2rem 0 0; }
-    .chip { font-size: 0.76rem; background: #131A2B; border: 1px solid #1E293B; border-radius: 999px; padding: 0.15rem 0.7rem; color: #CBD5E1; }
-    .chip b { color: #6EE7B7; font-weight: 700; }
+    .chip { font-size: 0.76rem; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 999px; padding: 0.15rem 0.7rem; color: var(--text-secondary); }
+    .chip b { color: var(--a); font-weight: 700; }
     .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.9rem; }
     .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .mini-btn:hover:not(:disabled) { border-color: rgba(16, 185, 129, 0.6); }
-    .result { margin-top: 0.9rem; padding: 0.7rem 0.9rem; border-radius: 10px; font-size: 0.82rem; line-height: 1.65; border: 1px solid var(--border-dim); background: #0B1020; color: var(--text-body); }
+    .mini-btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--a) 60%, transparent); }
+    .result { margin-top: 0.9rem; padding: 0.7rem 0.9rem; border-radius: 10px; font-size: 0.82rem; line-height: 1.65; border: 1px solid var(--border-dim); background: var(--bg-primary); color: var(--text-body); }
     .result:empty { display: none; }
-    .result.ok { border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.1); color: #A7F3D0; }
-    .result.warn { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.1); color: #FCD34D; }
-    .result.err { border-color: rgba(244, 63, 94, 0.5); background: rgba(244, 63, 94, 0.1); color: #FDA4AF; }
+    .result.ok { border-color: color-mix(in srgb, var(--cm-status-success) 50%, transparent); background: color-mix(in srgb, var(--cm-status-success) 10%, transparent); color: var(--cm-status-success); }
+    .result.warn { border-color: color-mix(in srgb, var(--cm-status-warning) 50%, transparent); background: color-mix(in srgb, var(--cm-status-warning) 10%, transparent); color: var(--cm-status-warning); }
+    .result.err { border-color: color-mix(in srgb, var(--cm-status-failed) 50%, transparent); background: color-mix(in srgb, var(--cm-status-failed) 10%, transparent); color: var(--cm-status-failed); }
     .result ul { list-style: none; display: flex; flex-direction: column; gap: 0.2rem; }
     .result li { padding-left: 1rem; position: relative; }
     .result li::before { content: '·'; position: absolute; left: 0.2rem; }
 
     .name-segs { margin: 0.7rem 0 0; }
-    .tag-sample { font-size: 0.68rem; font-weight: 700; color: #FBBF24; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); padding: 0.05rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; white-space: nowrap; vertical-align: middle; }
+    .tag-sample { font-size: 0.68rem; font-weight: 700; color: var(--cm-status-warning); background: color-mix(in srgb, var(--cm-status-warning) 14%, transparent); border: 1px solid color-mix(in srgb, var(--cm-status-warning) 40%, transparent); padding: 0.05rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; white-space: nowrap; vertical-align: middle; }
 
     .radio-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
-    .radio-card { position: relative; display: block; background: #0B1020; border: 1px solid var(--border-dim); border-radius: 10px; padding: 0.7rem 0.8rem; cursor: pointer; font-size: 0.8rem; color: var(--text-body); min-width: 0; }
+    .radio-card { position: relative; display: block; background: var(--bg-primary); border: 1px solid var(--border-dim); border-radius: 10px; padding: 0.7rem 0.8rem; cursor: pointer; font-size: 0.8rem; color: var(--text-body); min-width: 0; }
     .radio-card input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; }
     .radio-card strong { display: block; color: var(--text-white); font-size: 0.88rem; margin-bottom: 0.1rem; }
-    .radio-card.on { border-color: rgba(16, 185, 129, 0.75); background: rgba(16, 185, 129, 0.1); }
-    .radio-card:focus-within { outline: 2px solid #34D399; outline-offset: 2px; }
+    .radio-card.on { border-color: color-mix(in srgb, var(--a) 75%, transparent); background: color-mix(in srgb, var(--a) 10%, transparent); }
+    .radio-card:focus-within { outline: 2px solid var(--a); outline-offset: 2px; }
 
     .run-list { list-style: none; display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.9rem; }
-    .run-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; background: #131A2B; border: 1px solid #1E293B; border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.8rem; color: var(--text-body); }
+    .run-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.8rem; color: var(--text-body); }
     .run-row .st { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 4px; }
-    .st.COMPLETED { background: rgba(16, 185, 129, 0.18); color: #6EE7B7; }
-    .st.FAILED { background: rgba(244, 63, 94, 0.18); color: #FDA4AF; }
-    .st.SKIPPED { background: rgba(100, 116, 139, 0.25); color: #CBD5E1; }
-    .run-row code { background: none; padding: 0; color: #C7D2FE; }
+    .st.COMPLETED { background: color-mix(in srgb, var(--cm-status-success) 18%, transparent); color: var(--cm-status-success); }
+    .st.FAILED { background: color-mix(in srgb, var(--cm-status-failed) 18%, transparent); color: var(--cm-status-failed); }
+    .st.SKIPPED { background: color-mix(in srgb, var(--cm-text-muted) 25%, transparent); color: var(--text-secondary); }
+    .run-row code { background: none; padding: 0; color: var(--a); }
     .check-line { display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: var(--text-body); margin-top: 0.8rem; }
     .check-line input { accent-color: var(--brand-emerald); width: 1rem; height: 1rem; }
 
@@ -1140,58 +1118,58 @@
     .tl li { position: relative; padding: 0 0 0.9rem 2rem; font-size: 0.82rem; color: var(--text-muted); min-height: 2.2rem; }
     .tl li::before { content: ''; position: absolute; left: 0.43rem; top: 1.1rem; bottom: -0.1rem; width: 2px; background: var(--border-dim); }
     .tl li:last-child::before { display: none; }
-    .tl li .dot { position: absolute; left: 0; top: 0.15rem; width: 0.95rem; height: 0.95rem; border-radius: 50%; border: 2px solid #475569; background: var(--bg-panel); }
-    .tl li.done .dot { background: var(--brand-emerald); border-color: var(--brand-emerald); }
-    .tl li.cur .dot { border-color: #FBBF24; background: #FBBF24; }
-    .tl li.rej .dot { border-color: #F43F5E; background: #F43F5E; }
+    .tl li .dot { position: absolute; left: 0; top: 0.15rem; width: 0.95rem; height: 0.95rem; border-radius: 50%; border: 2px solid var(--border-primary); background: var(--bg-panel); }
+    .tl li.done .dot { background: var(--cm-status-success); border-color: var(--cm-status-success); }
+    .tl li.cur .dot { border-color: var(--cm-status-warning); background: var(--cm-status-warning); }
+    .tl li.rej .dot { border-color: var(--cm-status-failed); background: var(--cm-status-failed); }
     .tl li.done, .tl li.cur, .tl li.rej { color: var(--text-white); }
-    .tl li code { background: none; padding: 0; color: #A7F3D0; font-weight: 700; }
+    .tl li code { background: none; padding: 0; color: var(--a); font-weight: 700; }
     .tl li small { display: block; color: var(--text-body); font-size: 0.75rem; }
 
     .fmt-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
     .fmt-table th, .fmt-table td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); vertical-align: top; }
     .fmt-table th { color: var(--text-white); }
-    .fmt-table .no { color: #FDA4AF; }
+    .fmt-table .no { color: var(--cm-status-failed); }
     .table-scroll { overflow-x: auto; }
 
     .import-demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem; }
-    .imp-out { background: #090D18; border: 1px solid var(--border-dim); border-radius: 12px; padding: 1rem; min-width: 0; font-size: 0.8rem; color: var(--text-body); }
+    .imp-out { background: var(--bg-primary); border: 1px solid var(--border-dim); border-radius: 12px; padding: 1rem; min-width: 0; font-size: 0.8rem; color: var(--text-body); }
     .imp-out h4 { font-size: 0.82rem; color: var(--text-white); margin: 0.8rem 0 0.35rem; }
     .imp-out h4:first-child { margin-top: 0; }
-    .method { display: inline-block; font-family: var(--font-mono); font-weight: 800; font-size: 0.78rem; padding: 0.1rem 0.55rem; border-radius: 5px; background: rgba(59, 130, 246, 0.18); color: #93C5FD; border: 1px solid rgba(59, 130, 246, 0.4); margin-right: 0.5rem; }
-    .method.POST { background: rgba(16, 185, 129, 0.16); color: #6EE7B7; border-color: rgba(16, 185, 129, 0.4); }
-    .method.DELETE { background: rgba(244, 63, 94, 0.16); color: #FDA4AF; border-color: rgba(244, 63, 94, 0.4); }
-    .method.PUT, .method.PATCH { background: rgba(245, 158, 11, 0.16); color: #FCD34D; border-color: rgba(245, 158, 11, 0.4); }
-    .url-line { font-family: var(--font-mono); font-size: 0.78rem; color: #E2E8F0; word-break: break-all; }
+    .method { display: inline-block; font-family: var(--font-mono); font-weight: 800; font-size: 0.78rem; padding: 0.1rem 0.55rem; border-radius: 5px; background: color-mix(in srgb, var(--a) 18%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 40%, transparent); margin-right: 0.5rem; }
+    .method.POST { background: color-mix(in srgb, var(--a) 16%, transparent); color: var(--a); border-color: color-mix(in srgb, var(--a) 40%, transparent); }
+    .method.DELETE { background: color-mix(in srgb, var(--cm-status-failed) 16%, transparent); color: var(--cm-status-failed); border-color: color-mix(in srgb, var(--cm-status-failed) 40%, transparent); }
+    .method.PUT, .method.PATCH { background: color-mix(in srgb, var(--cm-status-warning) 16%, transparent); color: var(--cm-status-warning); border-color: color-mix(in srgb, var(--cm-status-warning) 40%, transparent); }
+    .url-line { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-primary); word-break: break-all; }
     .hdr-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; table-layout: fixed; }
-    .hdr-table th, .hdr-table td { text-align: left; padding: 0.3rem 0.4rem; border-bottom: 1px dashed #1E293B; vertical-align: top; word-break: break-all; }
+    .hdr-table th, .hdr-table td { text-align: left; padding: 0.3rem 0.4rem; border-bottom: 1px dashed var(--border-primary); vertical-align: top; word-break: break-all; }
     .hdr-table th { color: var(--text-muted); font-weight: 600; }
-    .hdr-table td:first-child { font-family: var(--font-mono); color: #CBD5E1; }
-    .sub { color: #FBBF24; font-family: var(--font-mono); font-weight: 700; }
+    .hdr-table td:first-child { font-family: var(--font-mono); color: var(--text-secondary); }
+    .sub { color: var(--cm-status-warning); font-family: var(--font-mono); font-weight: 700; }
     .mask { color: var(--text-muted); font-family: var(--font-mono); text-decoration: line-through; }
-    pre.mini-code { font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; background: #05070D; border: 1px solid #1E293B; border-radius: 8px; padding: 0.6rem 0.75rem; white-space: pre-wrap; word-break: break-all; line-height: 1.55; max-height: 14rem; overflow: auto; }
+    pre.mini-code { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.6rem 0.75rem; white-space: pre-wrap; word-break: break-all; line-height: 1.55; max-height: 14rem; overflow: auto; }
     .preset-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 0; align-items: center; font-size: 0.78rem; color: var(--text-muted); }
 
     .resolve { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 0.5rem; align-items: stretch; list-style: none; }
-    .resolve li.box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.7rem; font-size: 0.78rem; color: var(--text-body); min-width: 0; }
+    .resolve li.box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.7rem; font-size: 0.78rem; color: var(--text-body); min-width: 0; }
     .resolve li.box b { display: block; color: var(--text-white); font-size: 0.82rem; margin-bottom: 0.2rem; }
     .resolve li.box.last { border-style: dashed; }
     .resolve li.arr { align-self: center; color: var(--brand-emerald); font-weight: 800; }
     .ev-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
     .ev-table th, .ev-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); vertical-align: top; }
     .ev-table th { color: var(--text-white); }
-    .ev-table td:first-child code { color: #A7F3D0; background: rgba(16, 185, 129, 0.12); }
+    .ev-table td:first-child code { color: var(--a); background: color-mix(in srgb, var(--a) 12%, transparent); }
     .funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; list-style: none; margin-bottom: 1.2rem; counter-reset: f; }
-    .funnel li { counter-increment: f; background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.7rem 0.8rem; font-size: 0.78rem; color: var(--text-body); position: relative; }
-    .funnel li::before { content: counter(f); position: absolute; top: 0.5rem; right: 0.7rem; font-family: var(--font-mono); font-weight: 800; color: #475569; font-size: 1.2rem; }
+    .funnel li { counter-increment: f; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.7rem 0.8rem; font-size: 0.78rem; color: var(--text-body); position: relative; }
+    .funnel li::before { content: counter(f); position: absolute; top: 0.5rem; right: 0.7rem; font-family: var(--font-mono); font-weight: 800; color: var(--text-secondary); font-size: 1.2rem; }
     .funnel li b { display: block; color: var(--text-white); font-size: 0.88rem; }
-    .funnel li code { background: none; padding: 0; color: #A7F3D0; font-size: 0.72rem; }
-    .term { background: #05070D; border: 1px solid #1E293B; border-radius: 10px; padding: 0.8rem 0.9rem; font-family: var(--font-mono); font-size: 0.74rem; color: #CBD5E1; min-height: 8rem; max-height: 16rem; overflow: auto; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
-    .term .grp { color: #6EE7B7; font-weight: 700; }
-    .term .ev { color: #93C5FD; }
+    .funnel li code { background: none; padding: 0; color: var(--a); font-size: 0.72rem; }
+    .term { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.8rem 0.9rem; font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-secondary); min-height: 8rem; max-height: 16rem; overflow: auto; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+    .term .grp { color: var(--a); font-weight: 700; }
+    .term .ev { color: var(--a); }
     .term .empty { color: var(--text-muted); }
     .no-collect { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin-top: 0.8rem; }
-    .no-collect li { font-size: 0.78rem; background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.35); color: #FDA4AF; padding: 0.15rem 0.7rem; border-radius: 999px; }
+    .no-collect li { font-size: 0.78rem; background: color-mix(in srgb, var(--cm-status-failed) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cm-status-failed) 35%, transparent); color: var(--cm-status-failed); padding: 0.15rem 0.7rem; border-radius: 999px; }
     .roadmap-grid.three { grid-template-columns: repeat(3, 1fr); }
     .try-steps .try-list { list-style: none; padding-left: 0; margin-top: 0.3rem; display: flex; flex-direction: column; gap: 0.2rem; }
     .try-steps .try-list li { counter-increment: none; padding-left: 0; font-size: 0.82rem; }
@@ -1241,12 +1219,12 @@
       </a>
 
       <details class="version-dropdown" id="version-dropdown">
-        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.3.0">⚡ v1.3.0 最新发布 <span class="vd-caret" aria-hidden="true">▾</span></summary>
+        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.3.0">v1.3.0 最新发布 <span class="vd-caret" aria-hidden="true">▾</span></summary>
         <div class="vd-menu">
-          <a href="./" class="active" aria-current="page" title="当前版本：v1.3.0 自助接入">⚡ v1.3.0 最新发布</a>
-          <a href="./v1-2.html" title="查阅 v1.2.0 流程库就绪宣传页">📜 v1.2.0 历史回顾</a>
-          <a href="./v1-1.html" title="查阅 v1.1.0 业务全融合宣传页">📜 v1.1.0 历史回顾</a>
-          <a href="./v1-0.html" title="查阅 v1.0.0 确定性 IDE 历史首发页">📜 v1.0.0 历史回顾</a>
+          <a href="./" class="active" aria-current="page" title="当前版本：v1.3.0 自助接入">v1.3.0 最新发布</a>
+          <a href="./v1-2.html" title="查阅 v1.2.0 流程库就绪宣传页">v1.2.0 历史回顾</a>
+          <a href="./v1-1.html" title="查阅 v1.1.0 业务全融合宣传页">v1.1.0 历史回顾</a>
+          <a href="./v1-0.html" title="查阅 v1.0.0 确定性 IDE 历史首发页">v1.0.0 历史回顾</a>
         </div>
       </details>
 
@@ -1254,7 +1232,7 @@
     </div>
 
     <div class="nav-right">
-      <a href="./app" class="cta-btn">🎮 进入工作台 (/app)</a>
+      <a href="./app" class="cta-btn">进入工作台 (/app)</a>
     </div>
   </header>
 
@@ -1263,7 +1241,7 @@
     <!-- ===================== Hero ===================== -->
     <section class="hero-section" aria-labelledby="hero-title">
       <div class="hero-eyebrow">
-        <span>⚡ Conductor Workflow IDE v1.3.0</span>
+        <span>CMASTER Workflow IDE v1.3.0</span>
         <span style="opacity: 0.4;" aria-hidden="true">|</span>
         <span>自助接入</span>
       </div>
@@ -1297,9 +1275,9 @@
       </div>
 
       <div class="hero-actions">
-        <a href="#journey" class="cta-btn lg">▶ 先在页面里走一遍</a>
-        <a href="./app" class="ghost-btn lg">🎮 在工作台里亲手试</a>
-        <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" class="ghost-btn lg" target="_blank" rel="noreferrer">📘 宿主接入指南</a>
+        <a href="#journey" class="cta-btn lg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;"><polygon points="6 3 20 12 6 21 6 3"/></svg>先在页面里走一遍</a>
+        <a href="./app" class="ghost-btn lg">在工作台里亲手试</a>
+        <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" class="ghost-btn lg" target="_blank" rel="noreferrer">宿主接入指南</a>
       </div>
       <p class="hero-note">v1.3.0 已于 2026-10-24 发布，详见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG</a>。演示站运行在<strong>模拟治理服务</strong>上，没有接真实后端；不接这些扩展点时，SDK 行为与 1.2.0 完全一致。</p>
     </section>
@@ -1339,8 +1317,8 @@
         <div class="env-bar">
           <span id="env-label">演示环境</span>
           <div class="seg-group" role="group" aria-labelledby="env-label">
-            <button type="button" class="seg-btn" data-env="TEST" aria-pressed="true">🧪 TEST</button>
-            <button type="button" class="seg-btn" data-env="PROD" aria-pressed="false">🏭 PROD</button>
+            <button type="button" class="seg-btn" data-env="TEST" aria-pressed="true">TEST</button>
+            <button type="button" class="seg-btn" data-env="PROD" aria-pressed="false">PROD</button>
           </div>
           <span id="env-hint" style="font-size:0.76rem; color:var(--text-muted);">TEST 开放自助试用，流程名类型固定为 <code>tmp</code></span>
         </div>
@@ -1357,7 +1335,7 @@
           <div>
             <!-- Step 1 -->
             <div class="j-panel" id="jp-0" role="group" aria-labelledby="jp-0-t">
-              <h3 id="jp-0-t">① 登记产品 <span class="tag-sample">示意</span></h3>
+              <h3 id="jp-0-t">1.登记产品 <span class="tag-sample">示意</span></h3>
               <p class="j-lead">新团队先登记自己的产品，登记后自动成为负责人。产品名就是流程名里的“产品”段，所以<strong>不能含 <code>-</code></strong>；业务域由服务端提供（<code>listDomains</code>）。</p>
               <div class="field full" style="margin-bottom:0.8rem;">
                 <span class="lbl" id="myprod-lbl">我的产品</span>
@@ -1382,7 +1360,7 @@
 
             <!-- Step 2 -->
             <div class="j-panel" id="jp-1" role="group" aria-labelledby="jp-1-t" hidden>
-              <h3 id="jp-1-t">② 规范命名 <span class="tag-sample">示意</span></h3>
+              <h3 id="jp-1-t">2.规范命名 <span class="tag-sample">示意</span></h3>
               <p class="j-lead">命名生成器（<code>WorkflowNameBuilder</code>）按 <code>类型-层级-业务域-产品-功能</code> 五段拼出名称，实时校验。<strong>完整名称框可以直接改</strong>，试试删掉一段、写错层级。</p>
               <div class="form-grid">
                 <div class="field">
@@ -1400,7 +1378,7 @@
                 <div class="field">
                   <label for="nb-product">产品</label>
                   <select class="input" id="nb-product"></select>
-                  <small>业务域取自所选产品：<span id="nb-domain-view" style="color:#6EE7B7; font-weight:700;"></span></small>
+                  <small>业务域取自所选产品：<span id="nb-domain-view" style="color:var(--cm-status-success); font-weight:700;"></span></small>
                 </div>
                 <div class="field">
                   <label for="nb-desc">功能说明（可选）</label>
@@ -1423,7 +1401,7 @@
 
             <!-- Step 3 -->
             <div class="j-panel" id="jp-2" role="group" aria-labelledby="jp-2-t" hidden>
-              <h3 id="jp-2-t">③ 选择起点 <span class="tag-sample">示意</span></h3>
+              <h3 id="jp-2-t">3.选择起点 <span class="tag-sample">示意</span></h3>
               <p class="j-lead">向导的最后一步选起点，完成后生成<strong>骨架定义</strong>并设为当前流程（<code>version: 1</code>、<code>schemaVersion: 2</code>、空 <code>tasks</code>）。模板与接口导入两项，仅在宿主提供对应入口时出现。</p>
               <div class="radio-cards" role="radiogroup" aria-label="选择起点">
                 <label class="radio-card on"><input type="radio" name="start" value="blank" checked /><strong>空白</strong>从空画布开始，自己添加步骤。</label>
@@ -1438,10 +1416,10 @@
 
             <!-- Step 4 -->
             <div class="j-panel" id="jp-3" role="group" aria-labelledby="jp-3-t" hidden>
-              <h3 id="jp-3-t">④ 沙箱试跑 <span class="tag-sample">示意</span></h3>
+              <h3 id="jp-3-t">4.沙箱试跑 <span class="tag-sample">示意</span></h3>
               <p class="j-lead">编辑后直接在浏览器里本地试跑（v1.0 起的确定性沙箱），不需要后端、不会碰生产。可以在配置台里设置 Mock 输出，或注入 <code>FAILED</code> / <code>TIMED_OUT</code> 故障。下面是一个<strong>虚构的 2 步流程</strong>的试跑效果。</p>
               <div class="check-line"><input type="checkbox" id="inject-fail" /><label for="inject-fail">注入故障：让第 2 步失败</label></div>
-              <div class="btn-row"><button type="button" class="mini-btn primary" id="btn-run">▶ 试跑</button></div>
+              <div class="btn-row"><button type="button" class="mini-btn primary" id="btn-run"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;"><polygon points="6 3 20 12 6 21 6 3"/></svg>试跑</button></div>
               <ul class="run-list" id="run-list" aria-live="polite"></ul>
               <div class="result" id="run-result" role="status" aria-live="polite"></div>
               <div class="j-foot"><button type="button" class="mini-btn" data-go="2">← 上一步</button><button type="button" class="mini-btn primary" data-go="4">下一步：申请上线 →</button></div>
@@ -1449,7 +1427,7 @@
 
             <!-- Step 5 -->
             <div class="j-panel" id="jp-4" role="group" aria-labelledby="jp-4-t" hidden>
-              <h3 id="jp-4-t">⑤ 申请上线 <span class="tag-sample">示意</span></h3>
+              <h3 id="jp-4-t">5.申请上线 <span class="tag-sample">示意</span></h3>
               <p class="j-lead">只有 <code>tmp</code> 类型的临时流程可以申请上线：选择目标类型，预览正式名称（类型段被替换），提交后在 IDE 里看审批进度。真实 SDK 用指数退避轮询（2 秒起，30 秒封顶），到 <code>APPROVED</code> / <code>REJECTED</code> / <code>SYNCED</code> 停止；这里每点一次“刷新进度”相当于一次轮询。</p>
               <div class="form-grid">
                 <div class="field">
@@ -1491,23 +1469,23 @@
 
       <div class="bento-grid" style="margin-bottom:1.5rem;">
         <div class="bento-card span-2">
-          <span class="bento-badge green">📥 四种来源</span>
+          <span class="bento-badge green">四种来源</span>
           <h3>粘贴就能认出格式</h3>
           <div class="table-scroll">
             <table class="fmt-table">
               <thead><tr><th scope="col">格式</th><th scope="col">1.3.0</th><th scope="col">说明</th></tr></thead>
               <tbody>
-                <tr><th scope="row">OpenAPI 3.x（JSON）</th><td>✓</td><td>选择一个或多个 operation；<code>servers[0].url</code>、本地 <code>$ref</code>、<code>security</code> 推断认证头</td></tr>
-                <tr><th scope="row">Swagger 2.0（JSON）</th><td>✓</td><td><code>schemes</code> / <code>host</code> / <code>basePath</code>、<code>definitions</code> 引用</td></tr>
-                <tr><th scope="row">Postman Collection v2.1（JSON）</th><td>✓</td><td>文件夹作为标签；<code>{{var}}</code> 转为 <code>${workflow.input.var}</code></td></tr>
-                <tr><th scope="row">curl 命令</th><td>✓</td><td>方法、URL、头、<code>-d</code> / <code>--data-raw</code> 请求体、<code>-u</code>、行尾 <code>\</code> 续行</td></tr>
-                <tr><th scope="row">YAML 格式的 OpenAPI</th><td class="no">✗</td><td>暂不支持：<strong>请先转为 JSON</strong> 再导入（不引入 YAML 依赖）</td></tr>
+                <tr><th scope="row">OpenAPI 3.x（JSON）</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td>选择一个或多个 operation；<code>servers[0].url</code>、本地 <code>$ref</code>、<code>security</code> 推断认证头</td></tr>
+                <tr><th scope="row">Swagger 2.0（JSON）</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td><code>schemes</code> / <code>host</code> / <code>basePath</code>、<code>definitions</code> 引用</td></tr>
+                <tr><th scope="row">Postman Collection v2.1（JSON）</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td>文件夹作为标签；<code>{{var}}</code> 转为 <code>${workflow.input.var}</code></td></tr>
+                <tr><th scope="row">curl 命令</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td>方法、URL、头、<code>-d</code> / <code>--data-raw</code> 请求体、<code>-u</code>、行尾 <code>\</code> 续行</td></tr>
+                <tr><th scope="row">YAML 格式的 OpenAPI</th><td class="no"><span class="cm-mark cm-mark--no"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>不支持</span></td><td>暂不支持：<strong>请先转为 JSON</strong> 再导入（不引入 YAML 依赖）</td></tr>
               </tbody>
             </table>
           </div>
         </div>
         <div class="bento-card">
-          <span class="bento-badge orange">🔐 敏感头不落定义</span>
+          <span class="bento-badge orange">敏感头不落定义</span>
           <h3>凭据永远不写进流程</h3>
           <ul class="tick">
             <li><code>Authorization</code> / <code>Cookie</code> / <code>X-Api-Key</code>、名称含 token、secret、api-key 的头，以及 curl <code>-u</code>，一律换成 <code>${workflow.input.xxx}</code> 占位</li>
@@ -1519,7 +1497,7 @@
 
       <div class="fs-panel">
         <div class="fs-panel-header">
-          <h3 class="fs-title">🧪 粘贴 curl，看它怎么被识别 <span class="tag-sample">示意</span></h3>
+          <h3 class="fs-title">粘贴 curl，看它怎么被识别 <span class="tag-sample">示意</span></h3>
         </div>
         <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.8rem;">这是<strong>简化版</strong>的浏览器内演示：只解析常见写法，内容不会上传。真实解析由 SDK 的 <code>parseCurl</code> / <code>detectFormat</code> 完成，覆盖更全。</p>
         <div class="import-demo">
@@ -1565,18 +1543,18 @@
 
       <h3 style="font-size:1.05rem; margin:2rem 0 0.8rem; text-align:center;">解析顺序：逐字段，高优先级缺这个字段才落到下一层</h3>
       <ol class="resolve" aria-label="providers 解析顺序">
-        <li class="box"><b>① 组件专用 prop</b>如 <code>libraryProvider</code></li>
+        <li class="box"><b>1.组件专用 prop</b>如 <code>libraryProvider</code></li>
         <li class="arr" aria-hidden="true">→</li>
-        <li class="box"><b>② 组件 <code>providers</code> prop</b>只覆盖这个组件</li>
+        <li class="box"><b>2.组件 <code>providers</code> prop</b>只覆盖这个组件</li>
         <li class="arr" aria-hidden="true">→</li>
-        <li class="box"><b>③ 外层 <code>WorkflowIdeProvider</code></b>页面级默认配置</li>
+        <li class="box"><b>3.外层 <code>WorkflowIdeProvider</code></b>页面级默认配置</li>
         <li class="arr" aria-hidden="true">→</li>
-        <li class="box last"><b>④ 无</b>该功能不显示入口</li>
+        <li class="box last"><b>4.无</b>该功能不显示入口</li>
       </ol>
 
       <div class="bento-grid" style="margin-top:1.5rem;">
         <div class="bento-card span-2">
-          <span class="bento-badge cyan">🔌 OnboardingProvider ↔ 治理服务</span>
+          <span class="bento-badge cyan">OnboardingProvider 对接治理服务</span>
           <h3>契约与治理服务接口一一对应</h3>
           <div class="table-scroll">
             <table class="fmt-table">
@@ -1593,7 +1571,7 @@
           </div>
         </div>
         <div class="bento-card">
-          <span class="bento-badge purple">🛡 升级无感</span>
+          <span class="bento-badge purple">升级无感</span>
           <h3>不接就不变</h3>
           <ul class="tick">
             <li>只传 <code>libraryProvider</code>、不用 <code>WorkflowIdeProvider</code> 的现有写法，行为与 1.2.0 一致</li>
@@ -1621,7 +1599,7 @@
 
       <div class="bento-grid" style="margin-bottom:0;">
         <div class="bento-card span-2">
-          <span class="bento-badge green">📊 首批事件（设计 §5.2）</span>
+          <span class="bento-badge green">首批事件（设计 §5.2）</span>
           <h3>事件与用途</h3>
           <div class="table-scroll">
             <table class="ev-table">
@@ -1641,7 +1619,7 @@
           </div>
         </div>
         <div class="bento-card">
-          <span class="bento-badge orange">🚫 不采集</span>
+          <span class="bento-badge orange">不采集</span>
           <h3>只记“用了什么”</h3>
           <p>事件只有名称、时间、IDE 类型、流程名与简单属性（<code>props</code> 里非 string / number / boolean 的值会被剔除）。</p>
           <ul class="no-collect" aria-label="不采集的内容">
@@ -1653,7 +1631,7 @@
 
       <div class="fs-panel" style="margin-top:1.5rem;">
         <div class="fs-panel-header">
-          <h3 class="fs-title">🖥 回放一次示意事件流 <span class="tag-sample">示意</span></h3>
+          <h3 class="fs-title">回放一次示意事件流 <span class="tag-sample">示意</span></h3>
           <button type="button" class="mini-btn primary" id="btn-events">回放</button>
         </div>
         <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.8rem;">演示站里同样的事件会按批次打印到浏览器控制台（<code>[telemetry]</code>）。下面按上面“五分钟走完”的名称回放一批示意事件，注意里面<strong>没有任何参数值</strong>。</p>
@@ -1685,8 +1663,8 @@
       <div class="fs-panel">
         <div class="two-col">
           <ol class="try-steps">
-            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>。顶栏 <strong>🧪 演示设置</strong> 里的 <strong>环境</strong> 默认是 <strong>TEST</strong>（开放自助试用）；切到 <strong>PROD</strong> 可以看到降级：没有“开始试用”，新建流程的类型可选 <code>custom</code> / <code>std</code>。</li>
-            <li>在 <strong>🧪 演示设置</strong> 里点 <strong>🔄 重置产品</strong>（在 TEST 下）：画布清空，出现 <strong>开始试用</strong> 引导卡片。登记产品时试试 <code>cmdb</code>，会得到“已被他人占用”及负责人列表。</li>
+            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>。顶栏 <strong>演示设置</strong> 里的 <strong>环境</strong> 默认是 <strong>TEST</strong>（开放自助试用）；切到 <strong>PROD</strong> 可以看到降级：没有“开始试用”，新建流程的类型可选 <code>custom</code> / <code>std</code>。</li>
+            <li>在 <strong>演示设置</strong> 里点 <strong>重置产品</strong>（在 TEST 下）：画布清空，出现 <strong>开始试用</strong> 引导卡片。登记产品时试试 <code>cmdb</code>，会得到“已被他人占用”及负责人列表。</li>
             <li>工具栏 <strong>新建流程</strong>：3 步向导（产品 → 命名 → 起点），完成后得到 <code>tmp-…</code> 骨架流程。</li>
             <li>用本地沙箱试跑，然后点 <strong>申请上线</strong>：选 <code>custom</code> / <code>std</code>，提交后进度约经 3–4 次轮询走完。</li>
             <li>工具栏 <strong>导入接口</strong>：上传下面任一样例文件（也可粘贴内容），勾选接口后插入；看 <code>Authorization</code> 是否变成了占位。
@@ -1699,11 +1677,11 @@
             <li>打开浏览器开发者工具的控制台，观察按批次打印的 <code>[telemetry]</code> 事件。</li>
           </ol>
           <ul class="link-list">
-            <li><a href="./app">🎮 打开工作台 /app<small>TEST / PROD 环境 · 重置产品 · 导入接口</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/design/v1.3.0-%E8%87%AA%E5%8A%A9%E6%8E%A5%E5%85%A5%E8%AE%BE%E8%AE%A1.md" target="_blank" rel="noreferrer">🧭 v1.3.0 设计文档<small>docs/design/v1.3.0-自助接入设计.md</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">📘 宿主接入指南<small>第 4.5 – 4.7 节：providers、自助接入、接口导入</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">📝 CHANGELOG<small>[Unreleased] 即 1.3.0 的变更</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">🗺 演进路线图<small>docs/roadmap.md</small></a></li>
+            <li><a href="./app">打开工作台 /app<small>TEST / PROD 环境 · 重置产品 · 导入接口</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/design/v1.3.0-%E8%87%AA%E5%8A%A9%E6%8E%A5%E5%85%A5%E8%AE%BE%E8%AE%A1.md" target="_blank" rel="noreferrer">v1.3.0 设计文档<small>docs/design/v1.3.0-自助接入设计.md</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南<small>第 4.5 – 4.7 节：providers、自助接入、接口导入</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG<small>[Unreleased] 即 1.3.0 的变更</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">演进路线图<small>docs/roadmap.md</small></a></li>
           </ul>
         </div>
       </div>
@@ -1712,15 +1690,15 @@
 
   <footer>
     <nav aria-label="页脚导航" style="margin-bottom: 1rem;">
-      <a href="./">⚡ v1.3.0 最新宣传页</a>
-      <a href="./v1-2.html">📜 v1.2.0 历史页</a>
-      <a href="./v1-1.html">📜 v1.1.0 历史页</a>
-      <a href="./v1-0.html">📜 v1.0.0 历史首发页</a>
-      <a href="./app">🎮 在线演练场</a>
+      <a href="./">v1.3.0 最新宣传页</a>
+      <a href="./v1-2.html">v1.2.0 历史页</a>
+      <a href="./v1-1.html">v1.1.0 历史页</a>
+      <a href="./v1-0.html">v1.0.0 历史首发页</a>
+      <a href="./app">在线演练场</a>
       <a href="https://github.com/yiyisf/reactflow-ui" target="_blank" rel="noreferrer">GitHub 仓库</a>
       <a href="https://www.npmjs.com/package/@yiyi_zhang/reactflow-ui" target="_blank" rel="noreferrer">npm 包主页</a>
     </nav>
-    <div>© 2026 Conductor Workflow IDE (@yiyi_zhang/reactflow-ui). All rights reserved.</div>
+    <div>© 2026 CMASTER · @yiyi_zhang/reactflow-ui</div>
   </footer>
 
   <script>
@@ -1774,7 +1752,7 @@
       navigator.clipboard.writeText(text).then(function () { btn.textContent = doneText; reset(); }, fail);
     } catch (e) { fail(); }
   }
-  $('copy-install').addEventListener('click', function (e) { copyText($('cli-cmd').textContent, e.currentTarget, '✓ 已复制'); });
+  $('copy-install').addEventListener('click', function (e) { copyText($('cli-cmd').textContent, e.currentTarget, '已复制'); });
 
   // 版本下拉：Esc 关闭并回到触发器
   var vd = $('version-dropdown');
@@ -1970,7 +1948,7 @@
       setResult(out, 'err', wrap);
       markUndone(1);
     } else {
-      setResult(out, 'ok', '✓ validateWorkflowName 通过：0 个错误。保存前 SDK 会用它提示命名问题（不阻断，服务端做权威校验）。');
+      setResult(out, 'ok', 'validateWorkflowName 通过：0 个错误。保存前 SDK 会用它提示命名问题（不阻断，服务端做权威校验）。');
       if (S.step === 1) markDone(1);
     }
     renderSegs(name);
@@ -2128,7 +2106,7 @@
     var out = $('promo-result');
     if (s === 'APPROVED') {
       S.promoTerminal = true; $('btn-poll').disabled = true; markDone(4);
-      setResult(out, 'ok', '🎉 申请已通过，正式名称 ' + S.promo.target + '。五步走完：登记 → 命名 → 起点 → 试跑 → 上线申请。上报 promotion_state { state: "APPROVED" }。');
+      setResult(out, 'ok', '申请已通过，正式名称 ' + S.promo.target + '。五步走完：登记 → 命名 → 起点 → 试跑 → 上线申请。上报 promotion_state { state: "APPROVED" }。');
     } else if (s === 'REJECTED') {
       S.promoTerminal = true; $('btn-poll').disabled = true;
       setResult(out, 'err', '申请被驳回：' + PROMO_COMMENT.REJECTED + '。修改流程后可重新申请上线。上报 promotion_state { state: "REJECTED" }。');
@@ -2364,7 +2342,7 @@
   var codeNotes = {
     register: '<code>providers</code> 对象每次渲染新建没关系：SDK 按字段比较引用，只有某个 provider 实例变了才重新加载对应数据。但 provider 本身（如 <code>createGovernanceLibraryProvider(...)</code>）应只创建一次。组件按父容器高度撑满，请给容器明确的高度。',
     override: '<code>WorkflowIdeProvider</code> 与 <code>useIdeProviders</code>、<code>IdeProviders</code> 类型均从主入口和 <code>/ai</code> 入口导出。',
-    demo: '演示站接的全是模拟实现：Demo 顶栏「🧪 演示设置」可切换 TEST / PROD 环境、重置产品；登记 <code>cmdb</code> 会得到冲突，上线申请约经 3–4 次轮询走完。契约与示例实现见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a> 4.5 – 4.6 节。'
+    demo: '演示站接的全是模拟实现：Demo 顶栏「演示设置」可切换 TEST / PROD 环境、重置产品；登记 <code>cmdb</code> 会得到冲突，上线申请约经 3–4 次轮询走完。契约与示例实现见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a> 4.5 – 4.6 节。'
   };
   var codeKey = 'register';
   function renderCode() {
@@ -2378,7 +2356,7 @@
       codeKey = btn.dataset.code; renderCode();
     });
   });
-  $('copy-code').addEventListener('click', function (e) { copyText(codeSnippets[codeKey], e.currentTarget, '✓ 已复制代码'); });
+  $('copy-code').addEventListener('click', function (e) { copyText(codeSnippets[codeKey], e.currentTarget, '已复制代码'); });
   renderCode();
 
   // ======================================================================
@@ -2402,7 +2380,7 @@
     ];
     var offset = 0;
     batches.forEach(function (b, bi) {
-      term.appendChild(el('span', 'grp', '▸ [telemetry] ' + b.length + ' 条事件' + (bi === 0 ? '（5 秒攒批）' : bi === 1 ? '（下一批）' : '（页面隐藏时 flush）') + '\n'));
+      term.appendChild(el('span', 'grp', '[telemetry] ' + b.length + ' 条事件' + (bi === 0 ? '（5 秒攒批）' : bi === 1 ? '（下一批）' : '（页面隐藏时 flush）') + '\n'));
       b.forEach(function (ev) {
         offset += 7;
         var props = ev[1];

@@ -132,18 +132,20 @@ export default function AiApp() {
 
 ```tsx
 import {
-  executeLocalSandboxDryRun,
+  executeLocalSandboxDryRunAsync,
   buildDataFlowGraph,
   getCompletionItems,
 } from '@yiyi_zhang/reactflow-ui';
 
-// 1. 0ms 浏览器本地确定性沙箱试跑（支持自定义入参与故障注入）
-const { instance } = executeLocalSandboxDryRun(workflowDef, {
+// 1. 浏览器本地沙箱试跑：INLINE / JQ / SWITCH / DO_WHILE 等真实执行（脚本在隔离的 Web Worker 中运行），
+//    HTTP 等调用外部系统的任务返回模拟数据，可按任务覆盖输出或注入故障
+const instance = await executeLocalSandboxDryRunAsync(workflowDef, {
   workflowInput: { orderId: 'ORD-2026', vipLevel: 3 },
-  taskOverrides: {
-    charge_card: { status: 'FAILED', errorMessage: '模拟支付网关 502 超时' },
+  taskMocks: {
+    charge_card_ref: { status: 'FAILED', reasonForIncompletion: '模拟支付网关 502 超时' },
   },
 });
+// 每个任务的 sandboxExecution 说明它是 'executed' / 'mocked' / 'not_executed'
 
 // 2. 构建工作流全局数据血缘图谱
 const lineageGraph = buildDataFlowGraph(workflowDef);

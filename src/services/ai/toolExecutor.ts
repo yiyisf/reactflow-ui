@@ -232,18 +232,51 @@ function insertTaskAfterRefRecursively(
 
 // ─── Pure JSON patch function ────────────────────────────────────────────────
 
-export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
+function describePatchOp(op: PatchOp): string {
+    switch (op.op) {
+        case 'add_task': {
+            const where = op.parentRef ? `parentRef=${op.parentRef}` : op.afterRef ? `afterRef=${op.afterRef}` : '';
+            return `add_task(${op.task?.taskReferenceName ?? '?'}${where ? `, ${where}` : ''})`;
+        }
+        case 'update_task': return `update_task(${op.ref})`;
+        case 'remove_task': return `remove_task(${op.ref})`;
+        case 'add_switch_branch': return `add_switch_branch(${op.ref}, ${op.caseName})`;
+        case 'add_fork_branch': return `add_fork_branch(${op.ref})`;
+        default: return String((op as { op?: string }).op ?? 'unknown');
+    }
+}
+
+export interface PatchReport {
+    workflow: WorkflowDef;
+    /** 没有生效的操作（目标 ref 不存在、父任务类型不支持等），每条附原因 */
+    unmatched: string[];
+}
+
+/**
+ * 应用 patch 操作并报告没有生效的操作。找不到目标时不再静默跳过或追加到末尾：
+ * 调用方（patch_workflow）据此返回失败结果，让模型修正 ref 后重试。
+ */
+export function applyPatchWithReport(def: WorkflowDef, ops: PatchOp[]): PatchReport {
     let result: WorkflowDef = { ...def, tasks: [...(def.tasks ?? [])] };
+    const unmatched: string[] = [];
+    const miss = (op: PatchOp, reason: string) => unmatched.push(`${describePatchOp(op)}：${reason}`);
 
     for (const op of ops) {
         switch (op.op) {
             case 'add_task': {
                 const task = op.task;
+                if (!task || typeof task !== 'object') {
+                    miss(op, '缺少 task 定义');
+                    break;
+                }
                 if (op.parentRef) {
+                    let found = false;
+                    let supported = true;
                     result.tasks = transformTasksRecursively(
                         result.tasks,
                         t => t.taskReferenceName === op.parentRef,
                         parent => {
+                            found = true;
                             if (parent.type === 'SWITCH' || parent.type === 'DECISION') {
                                 const branchKey = op.branchName || Object.keys(parent.decisionCases ?? {})[0] || 'default';
                                 if (branchKey === 'default') {
@@ -264,71 +297,114 @@ export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
                             if (parent.type === 'DO_WHILE') {
                                 return { ...parent, loopOver: [...(parent.loopOver ?? []), task] };
                             }
+                            supported = false;
                             return parent;
                         },
                     );
+                    if (!found) miss(op, `找不到父任务 ${op.parentRef}`);
+                    else if (!supported) miss(op, `父任务 ${op.parentRef} 不是 SWITCH / FORK_JOIN / DO_WHILE，不能放入子任务`);
                 } else if (op.afterRef) {
                     const res = insertTaskAfterRefRecursively(result.tasks, op.afterRef, task);
-                    result.tasks = res.inserted ? res.tasks : [...result.tasks, task];
+                    if (res.inserted) result.tasks = res.tasks;
+                    else miss(op, `找不到 afterRef 指向的任务 ${op.afterRef}`);
                 } else {
                     result.tasks = [...result.tasks, task];
                 }
                 break;
             }
 
-            case 'update_task':
+            case 'update_task': {
+                let found = false;
                 result.tasks = transformTasksRecursively(
                     result.tasks,
                     t => t.taskReferenceName === op.ref,
-                    t => ({ ...t, ...op.changes }),
+                    t => { found = true; return { ...t, ...op.changes }; },
                 );
+                if (!found) miss(op, `找不到任务 ${op.ref}`);
                 break;
+            }
 
-            case 'remove_task':
+            case 'remove_task': {
+                let found = false;
                 result.tasks = transformTasksRecursively(
                     result.tasks,
                     t => t.taskReferenceName === op.ref,
-                    () => null,
+                    () => { found = true; return null; },
                 );
+                if (!found) miss(op, `找不到任务 ${op.ref}`);
                 break;
+            }
 
             case 'update_props': {
-                const { tasks: _tasks, ...propsOnly } = op.props as any;
+                const { tasks: _tasks, ...propsOnly } = (op.props ?? {}) as Partial<WorkflowDef>;
+                void _tasks;
                 result = { ...result, ...propsOnly };
                 break;
             }
 
             case 'add_switch_branch': {
-                result.tasks = result.tasks.map(t => {
-                    if (t.taskReferenceName !== op.ref) return t;
-                    if (op.caseName === 'default') {
-                        // Guard: don't overwrite existing defaultCase
-                        if (t.defaultCase) return t;
-                        return { ...t, defaultCase: [] };
-                    }
-                    const decisionCases = { ...(t.decisionCases ?? {}) };
-                    // Guard: don't overwrite existing branch
-                    if (decisionCases[op.caseName]) return t;
-                    decisionCases[op.caseName] = [];
-                    return { ...t, decisionCases };
-                });
+                let found = false;
+                let supported = true;
+                result.tasks = transformTasksRecursively(
+                    result.tasks,
+                    t => t.taskReferenceName === op.ref,
+                    t => {
+                        found = true;
+                        if (t.type !== 'SWITCH' && t.type !== 'DECISION') {
+                            supported = false;
+                            return t;
+                        }
+                        if (op.caseName === 'default') {
+                            // Guard: don't overwrite existing defaultCase
+                            if (t.defaultCase) return t;
+                            return { ...t, defaultCase: [] };
+                        }
+                        const decisionCases = { ...(t.decisionCases ?? {}) };
+                        // Guard: don't overwrite existing branch
+                        if (decisionCases[op.caseName]) return t;
+                        decisionCases[op.caseName] = [];
+                        return { ...t, decisionCases };
+                    },
+                );
+                if (!found) miss(op, `找不到 SWITCH 任务 ${op.ref}`);
+                else if (!supported) miss(op, `任务 ${op.ref} 不是 SWITCH，不能添加分支`);
                 break;
             }
 
             case 'add_fork_branch': {
-                result.tasks = result.tasks.map(t => {
-                    if (t.taskReferenceName !== op.ref) return t;
-                    const forkTasks = (t.forkTasks ?? []) as TaskDef[][];
-                    // Use branch count as suffix — deterministic, no timestamp collision
-                    const newBranchRef = `${op.ref}_branch_${forkTasks.length + 1}`;
-                    return { ...t, forkTasks: [...forkTasks, [{ name: newBranchRef, taskReferenceName: newBranchRef, type: 'SIMPLE' }]] };
-                });
+                let found = false;
+                let supported = true;
+                result.tasks = transformTasksRecursively(
+                    result.tasks,
+                    t => t.taskReferenceName === op.ref,
+                    t => {
+                        found = true;
+                        if (t.type !== 'FORK_JOIN') {
+                            supported = false;
+                            return t;
+                        }
+                        const forkTasks = (t.forkTasks ?? []) as TaskDef[][];
+                        // Use branch count as suffix — deterministic, no timestamp collision
+                        const newBranchRef = `${op.ref}_branch_${forkTasks.length + 1}`;
+                        return { ...t, forkTasks: [...forkTasks, [{ name: newBranchRef, taskReferenceName: newBranchRef, type: 'SIMPLE' }]] };
+                    },
+                );
+                if (!found) miss(op, `找不到 FORK_JOIN 任务 ${op.ref}`);
+                else if (!supported) miss(op, `任务 ${op.ref} 不是 FORK_JOIN，不能添加并行分支`);
                 break;
             }
+
+            default:
+                miss(op, '不支持的操作类型');
         }
     }
 
-    return result;
+    return { workflow: result, unmatched };
+}
+
+/** 应用 patch 操作（没有生效的操作会被忽略；需要知道哪些没生效时用 applyPatchWithReport） */
+export function applyPatch(def: WorkflowDef, ops: PatchOp[]): WorkflowDef {
+    return applyPatchWithReport(def, ops).workflow;
 }
 
 // ─── Diff computation ────────────────────────────────────────────────────────
@@ -382,19 +458,41 @@ function describeTaskFieldChanges(before: TaskDef, after: TaskDef): string[] {
     return changes;
 }
 
+/**
+ * 任务的「自身」视图：子任务只保留引用名结构（分支名 / 分支数 / 顺序），
+ * 这样嵌套子任务的改动只记在子任务上，不会让外层 SWITCH / FORK 整体显示为"已修改"。
+ */
+function shallowTask(t: TaskDef): TaskDef {
+    const refs = (list: TaskDef[] | undefined) => (list ?? []).map(c => c?.taskReferenceName);
+    const out: Record<string, unknown> = { ...t };
+    if (t.decisionCases && typeof t.decisionCases === 'object') {
+        out.decisionCases = Object.fromEntries(Object.entries(t.decisionCases).map(([k, v]) => [k, refs(v)]));
+    }
+    if (Array.isArray(t.defaultCase)) out.defaultCase = refs(t.defaultCase);
+    if (Array.isArray(t.forkTasks)) out.forkTasks = t.forkTasks.map(b => refs(b));
+    if (Array.isArray(t.loopOver)) out.loopOver = refs(t.loopOver);
+    return out as unknown as TaskDef;
+}
+
+/**
+ * 计算两份定义的任务差异。会递归进入 SWITCH 分支、FORK 并行分支和 DO_WHILE 循环体，
+ * 嵌套任务的新增 / 修改 / 删除同样会列出（之前只比较顶层任务，分支内的改动被漏掉）。
+ */
 export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): DiffSummary {
     const afterTasks = after.tasks ?? [];
+    const afterAll = collectAllTasksInOrder(afterTasks);
     if (!before) {
         return {
-            added: afterTasks.map(t => t.taskReferenceName),
+            added: afterAll.map(t => t.taskReferenceName),
             modified: [],
             removed: [],
             propsChanged: false,
         };
     }
 
-    const beforeMap = new Map((before.tasks ?? []).map(t => [t.taskReferenceName, t]));
-    const afterMap = new Map(afterTasks.map(t => [t.taskReferenceName, t]));
+    const beforeAll = collectAllTasksInOrder(before.tasks ?? []);
+    const beforeMap = new Map(beforeAll.map(t => [t.taskReferenceName, t]));
+    const afterMap = new Map(afterAll.map(t => [t.taskReferenceName, t]));
 
     const added: string[] = [];
     const modified: string[] = [];
@@ -405,10 +503,11 @@ export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): Dif
         if (!beforeMap.has(ref)) {
             added.push(ref);
         } else {
-            const beforeTask = beforeMap.get(ref)!;
-            if (JSON.stringify(task) !== JSON.stringify(beforeTask)) {
+            const beforeTask = shallowTask(beforeMap.get(ref)!);
+            const afterTask = shallowTask(task);
+            if (JSON.stringify(afterTask) !== JSON.stringify(beforeTask)) {
                 modified.push(ref);
-                modifiedDetails.push({ ref, changes: describeTaskFieldChanges(beforeTask, task) });
+                modifiedDetails.push({ ref, changes: describeTaskFieldChanges(beforeTask, afterTask) });
             }
         }
     }
@@ -427,12 +526,15 @@ export function computeDiff(before: WorkflowDef | null, after: WorkflowDef): Dif
         JSON.stringify(before.inputParameters) !== JSON.stringify(after.inputParameters) ||
         JSON.stringify(before.outputParameters) !== JSON.stringify(after.outputParameters);
 
-    // Detect task reordering: compare the relative order of shared tasks
+    // Detect task reordering: compare the relative order of shared top-level tasks
+    // (order inside branches is part of the parent's shallow view above).
+    const topAfter = new Set(afterTasks.map(t => t.taskReferenceName));
+    const topBefore = new Set((before.tasks ?? []).map(t => t.taskReferenceName));
     const beforeOrder = (before.tasks ?? [])
-        .filter(t => afterMap.has(t.taskReferenceName))
+        .filter(t => topAfter.has(t.taskReferenceName))
         .map(t => t.taskReferenceName);
     const afterOrder = afterTasks
-        .filter(t => beforeMap.has(t.taskReferenceName))
+        .filter(t => topBefore.has(t.taskReferenceName))
         .map(t => t.taskReferenceName);
     const reordered = beforeOrder.join(',') !== afterOrder.join(',');
 
@@ -454,7 +556,8 @@ function checkLevelCompliance(proposed: WorkflowDef, library: WorkflowLibraryIte
     if (library.length === 0) return { inferredLevel: null, violations: [] };
 
     const libraryMap = new Map(library.map(w => [w.workflowName, w]));
-    const subWorkflowTasks = (proposed.tasks ?? []).filter(t => t.type === 'SUB_WORKFLOW');
+    // 递归收集：分支 / 并行 / 循环里的子流程同样决定层级
+    const subWorkflowTasks = collectAllTasksInOrder(proposed.tasks ?? []).filter(t => t.type === 'SUB_WORKFLOW');
 
     if (subWorkflowTasks.length === 0) return { inferredLevel: 'L1', violations: [] };
 
@@ -530,7 +633,7 @@ export function executeToolCall(
             }
             const { workflow: nextDraft, autoFixed } = applyTopologyScaffold(activeDraft, {
                 tasks: args.tasks as TaskDef[],
-            });
+            }, buildNormalizeOptions(ctx));
             const allTasks = collectAllTasksInOrder(nextDraft.tasks);
             const refsList = allTasks.map(t => `${t.taskReferenceName}(${t.type})`).join(' → ');
             const autoFixNote = autoFixed.length > 0 ? `\n自动规范化：${autoFixed.join('；')}` : '';
@@ -631,7 +734,15 @@ export function executeToolCall(
             if (!targetBase) {
                 return { type: 'error', text: '当前没有加载工作流，请先创建或加载一个工作流' };
             }
-            const patched = applyPatch(targetBase, ops);
+            const { workflow: patched, unmatched } = applyPatchWithReport(targetBase, ops);
+            if (unmatched.length > 0) {
+                return {
+                    type: 'error',
+                    text: `patch_workflow 有 ${unmatched.length} 个操作没有生效，本次变更未提交：\n` +
+                        unmatched.map(u => `- ${u}`).join('\n') +
+                        `\n请用 get_workflow_state 核对任务引用名（taskReferenceName）后，重新调用 patch_workflow 提交全部操作。`,
+                };
+            }
             const pinned = pinSubWorkflowVersions(patched, buildNormalizeOptions(ctx));
             const proposed = pinned.workflow;
             const diff = computeDiff(currentDef, proposed);
@@ -698,7 +809,11 @@ export function executeToolCall(
 
         case 'search_workflow_library': {
             const library = ctx.libraryItems;
-            const query = (args.query as string || '').toLowerCase();
+            // 按空白 / 标点切成多个关键词：任一关键词命中名称、描述或标签即算匹配，按命中数排序
+            const tokens = String(args.query ?? '').toLowerCase()
+                .split(/[\s,，、;；|/]+/)
+                .map(t => t.trim())
+                .filter(Boolean);
             const levelFilter = args.level as WorkflowLevel | undefined;
             const domainFilter = typeof args.domain === 'string' && args.domain.trim() ? args.domain.trim() : undefined;
 
@@ -707,15 +822,23 @@ export function executeToolCall(
             if (!serverHits && library.length === 0) {
                 return { type: 'info', text: '当前没有配置工作流库，无法搜索。' };
             }
-            const matched = (serverHits ?? library.filter(item => {
-                if (levelFilter && item.workflowLevel !== levelFilter) return false;
-                if (domainFilter && item.domain !== domainFilter) return false;
-                return (
-                    item.workflowName.toLowerCase().includes(query) ||
-                    (item.description ?? '').toLowerCase().includes(query) ||
-                    (item.tags ?? []).some(t => t.toLowerCase().includes(query))
-                );
-            })).filter(item => !domainFilter || item.domain === domainFilter);
+            const score = (item: WorkflowLibraryItem): number => {
+                if (tokens.length === 0) return 1;
+                const fields = [
+                    item.workflowName.toLowerCase(),
+                    (item.description ?? '').toLowerCase(),
+                    ...(item.tags ?? []).map(t => t.toLowerCase()),
+                ];
+                return tokens.filter(tok => fields.some(f => f.includes(tok))).length;
+            };
+            const localHits = () => library
+                .filter(item => !levelFilter || item.workflowLevel === levelFilter)
+                .filter(item => !domainFilter || item.domain === domainFilter)
+                .map(item => ({ item, hits: score(item) }))
+                .filter(x => x.hits > 0)
+                .sort((a, b) => b.hits - a.hits)
+                .map(x => x.item);
+            const matched = (serverHits ?? localHits()).filter(item => !domainFilter || item.domain === domainFilter);
 
             if (matched.length === 0) {
                 return { type: 'info', text: `未找到与「${args.query}」相关的子工作流。` };
@@ -763,24 +886,35 @@ export function applyPartialProposal(
 
     const addedSet = new Set(diff.added);
     const modifiedSet = new Set(diff.modified);
+    const diffRefs = new Set([...diff.added, ...diff.modified, ...diff.removed]);
+    const selectedRefs = new Set([...selection.added, ...selection.modified, ...selection.removed]);
+
+    // Nested changes (inside SWITCH / FORK / DO_WHILE) are applied with their top-level
+    // container: the container takes the proposed version when any change inside it is selected.
+    const nestedRefs = (t: TaskDef, cur?: TaskDef) => [
+        ...collectAllTasksInOrder([t]).slice(1).map(c => c.taskReferenceName),
+        ...(cur ? collectAllTasksInOrder([cur]).slice(1).map(c => c.taskReferenceName) : []),
+    ];
 
     // Walk proposedDef task order as basis (handles reordering naturally)
     const newTasks: TaskDef[] = [];
 
     for (const proposedTask of (proposedDef.tasks ?? [])) {
         const ref = proposedTask.taskReferenceName;
+        const cur = currentTaskMap.get(ref);
+        const inner = nestedRefs(proposedTask, cur);
+        const innerChanged = inner.some(r => diffRefs.has(r));
         if (addedSet.has(ref)) {
             if (selection.added.has(ref)) newTasks.push(proposedTask);
             // else: skip — don't add
-        } else if (modifiedSet.has(ref)) {
+        } else if (modifiedSet.has(ref) || innerChanged) {
             // Use proposed if selected, current otherwise.
             // currentTaskMap may not have the ref if the user manually deleted the task
             // after the proposal was computed — fall back to proposedTask to avoid undefined.
-            const cur = currentTaskMap.get(ref);
-            newTasks.push(selection.modified.has(ref) ? proposedTask : (cur ?? proposedTask));
+            const selected = selection.modified.has(ref) || inner.some(r => diffRefs.has(r) && selectedRefs.has(r));
+            newTasks.push(selected ? proposedTask : (cur ?? proposedTask));
         } else {
             // Unchanged: keep current version
-            const cur = currentTaskMap.get(ref);
             if (cur) newTasks.push(cur);
         }
     }

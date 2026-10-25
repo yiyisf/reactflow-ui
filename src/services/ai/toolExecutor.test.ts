@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    applyPatch, computeDiff, applyPartialProposal, describeDiff, executeToolCall,
+    applyPatch, applyPatchWithReport, computeDiff, applyPartialProposal, describeDiff, executeToolCall,
     type PatchOp, type DiffSummary, type PartialAcceptSelection, type ToolExecutionContext,
 } from './toolExecutor';
 import type { WorkflowDef, TaskDef } from '../../types/conductor';
@@ -79,6 +79,38 @@ describe('applyPatch', () => {
         expect(branches[0][0].taskReferenceName).toBe('fork_branch_1');
         expect(branches[1][0].taskReferenceName).toBe('fork_branch_2');
     });
+
+    it('add_switch_branch / add_fork_branch reach SWITCH and FORK_JOIN tasks nested inside other branches', () => {
+        const innerSwitch = task('inner_sw', { type: 'SWITCH', decisionCases: { A: [] } } as any);
+        const innerFork = task('inner_fork', { type: 'FORK_JOIN', forkTasks: [] } as any);
+        const wf = def([task('outer', { type: 'SWITCH', decisionCases: { X: [innerSwitch] }, defaultCase: [innerFork] } as any)]);
+        const { workflow, unmatched } = applyPatchWithReport(wf, [
+            { op: 'add_switch_branch', ref: 'inner_sw', caseName: 'B' },
+            { op: 'add_fork_branch', ref: 'inner_fork' },
+        ]);
+        expect(unmatched).toEqual([]);
+        const outer = workflow.tasks[0] as any;
+        expect(Object.keys(outer.decisionCases.X[0].decisionCases)).toEqual(['A', 'B']);
+        expect(outer.defaultCase[0].forkTasks).toHaveLength(1);
+    });
+
+    it('reports ops whose target does not exist instead of silently ignoring them', () => {
+        const wf = def([task('a'), task('sw', { type: 'SWITCH', decisionCases: {} } as any)]);
+        const { workflow, unmatched } = applyPatchWithReport(wf, [
+            { op: 'update_task', ref: 'ghost', changes: { timeoutSeconds: 5 } },
+            { op: 'remove_task', ref: 'ghost2' },
+            { op: 'add_task', task: task('b'), afterRef: 'missing' },
+            { op: 'add_task', task: task('c'), parentRef: 'nope' },
+            { op: 'add_task', task: task('d'), parentRef: 'a' },
+            { op: 'add_switch_branch', ref: 'a', caseName: 'X' },
+            { op: 'add_fork_branch', ref: 'sw' },
+        ]);
+        expect(unmatched).toHaveLength(7);
+        expect(unmatched[0]).toContain('ghost');
+        expect(unmatched[2]).toContain('missing');
+        // A missing afterRef no longer appends the task at the end
+        expect(workflow.tasks.map(t => t.taskReferenceName)).toEqual(['a', 'sw']);
+    });
 });
 
 describe('computeDiff', () => {
@@ -134,6 +166,34 @@ describe('computeDiff', () => {
         const before = def([task('a'), task('b')]);
         const after = def([task('b'), task('a')]);
         expect(computeDiff(before, after).reordered).toBe(true);
+    });
+
+    it('recurses into SWITCH / FORK / DO_WHILE branches and attributes nested changes to the nested task only', () => {
+        const before = def([
+            task('sw', { type: 'SWITCH', decisionCases: { A: [task('in_a', { timeoutSeconds: 10 })] }, defaultCase: [task('in_default')] } as any),
+            task('loop', { type: 'DO_WHILE', loopOver: [task('in_loop')] } as any),
+        ]);
+        const after = def([
+            task('sw', { type: 'SWITCH', decisionCases: { A: [task('in_a', { timeoutSeconds: 20 })] }, defaultCase: [] } as any),
+            task('loop', { type: 'DO_WHILE', loopOver: [task('in_loop'), task('in_loop_new')] } as any),
+        ]);
+        const diff = computeDiff(before, after);
+        expect(diff.added).toEqual(['in_loop_new']);
+        expect(diff.removed).toEqual(['in_default']);
+        expect(diff.modified).toContain('in_a');
+        // The loop's membership changed (a child was added) …
+        expect(diff.modified).toContain('loop');
+        // … but a field change deep inside a branch does not mark unrelated containers.
+        const onlyInner = computeDiff(
+            def([task('sw', { type: 'SWITCH', decisionCases: { A: [task('in_a', { timeoutSeconds: 10 })] } } as any)]),
+            def([task('sw', { type: 'SWITCH', decisionCases: { A: [task('in_a', { timeoutSeconds: 20 })] } } as any)]),
+        );
+        expect(onlyInner.modified).toEqual(['in_a']);
+    });
+
+    it('lists nested tasks as added when there is no prior def', () => {
+        const diff = computeDiff(null, def([task('fork', { type: 'FORK_JOIN', forkTasks: [[task('b1')], [task('b2')]] } as any)]));
+        expect(diff.added).toEqual(['fork', 'b1', 'b2']);
     });
 
     it('does not flag reorder when shared task order is unchanged', () => {
@@ -200,6 +260,16 @@ describe('applyPartialProposal', () => {
         expect(result.tasks.map(t => t.taskReferenceName)).not.toContain('drop');
     });
 
+    it('applies a nested change with its top-level container when the nested change is selected', () => {
+        const cur = def([task('sw', { type: 'SWITCH', decisionCases: { A: [task('in_a', { timeoutSeconds: 10 })] } } as any)]);
+        const prop = def([task('sw', { type: 'SWITCH', decisionCases: { A: [task('in_a', { timeoutSeconds: 20 })] } } as any)]);
+        const nestedDiff = computeDiff(cur, prop);
+        const kept = applyPartialProposal(cur, prop, nestedDiff, selection());
+        expect((kept.tasks[0] as any).decisionCases.A[0].timeoutSeconds).toBe(10);
+        const applied = applyPartialProposal(cur, prop, nestedDiff, selection({ modified: new Set(['in_a']) }));
+        expect((applied.tasks[0] as any).decisionCases.A[0].timeoutSeconds).toBe(20);
+    });
+
     it('merges workflow-level props only when propsChanged is selected', () => {
         const propsDiff: DiffSummary = { added: [], modified: [], removed: [], propsChanged: true };
         const currentWithDesc = def([task('a')], { description: 'old' });
@@ -258,6 +328,29 @@ describe('executeToolCall', () => {
         expect(result.proposed?.tasks.some(t => t.taskReferenceName === 'new_task')).toBe(true);
     });
 
+    it('patch_workflow returns an error (no proposal) when an op targets a task that does not exist', () => {
+        const result = executeToolCall('patch_workflow', {
+            ops: [
+                { op: 'update_task', ref: 'a', changes: { timeoutSeconds: 30 } },
+                { op: 'update_task', ref: 'typo_ref', changes: { timeoutSeconds: 30 } },
+            ] as PatchOp[],
+        }, ctx());
+        expect(result.type).toBe('error');
+        expect(result.proposed).toBeUndefined();
+        expect(result.text).toContain('typo_ref');
+        expect(result.text).toContain('get_workflow_state');
+    });
+
+    it('patch_workflow builds on the working draft (e.g. a pending proposal) while diffing against the canvas', () => {
+        const draft = def([task('a'), task('from_proposal')]);
+        const result = executeToolCall('patch_workflow', {
+            ops: [{ op: 'add_task', task: task('follow_up'), afterRef: 'from_proposal' }] as PatchOp[],
+        }, ctx({ workingDraft: draft }));
+        expect(result.type).toBe('propose');
+        expect(result.proposed?.tasks.map(t => t.taskReferenceName)).toEqual(['a', 'from_proposal', 'follow_up']);
+        expect(result.diff?.added).toEqual(['from_proposal', 'follow_up']);
+    });
+
     it('get_workflow_state reports empty canvas when nothing is loaded', () => {
         const result = executeToolCall('get_workflow_state', {}, ctx({ workflowDef: null }));
         expect(result.type).toBe('info');
@@ -294,6 +387,20 @@ describe('executeToolCall', () => {
         expect(result.text).toContain('send_email');
     });
 
+    it('search_workflow_library matches each keyword separately and ranks by number of hits', () => {
+        const library: WorkflowLibraryItem[] = [
+            { workflowName: 'send_sms', workflowLevel: 'L1', version: '1', description: '发送短信', tags: ['通知'] },
+            { workflowName: 'create_vm', workflowLevel: 'L1', version: '1', description: '创建虚机', tags: ['计算'] },
+            { workflowName: 'create_vm_and_notify', workflowLevel: 'L2', version: '1', description: '创建虚机并通知', tags: ['计算', '通知'] },
+            { workflowName: 'billing', workflowLevel: 'L1', version: '1', description: '计费', tags: [] },
+        ];
+        const result = executeToolCall('search_workflow_library', { query: '虚机 通知' }, ctx({ libraryItems: library }));
+        expect(result.text).toContain('找到 3 个');
+        expect(result.text).toContain('create_vm_and_notify');
+        expect(result.text).toContain('send_sms');
+        expect(result.text).not.toContain('billing');
+    });
+
     it('search_workflow_library respects the level filter', () => {
         const library: WorkflowLibraryItem[] = [
             { workflowName: 'l1_wf', workflowLevel: 'L1', version: '1', description: '基础任务', tags: [] },
@@ -314,6 +421,18 @@ describe('executeToolCall', () => {
         } as any)]);
         const result = executeToolCall('replace_workflow', { workflow: proposed }, ctx({ libraryItems: library }));
         expect(result.inferredLevel).toBe('L2');
+    });
+
+    it('infers the level from SUB_WORKFLOW tasks nested inside branches', () => {
+        const library: WorkflowLibraryItem[] = [
+            { workflowName: 'approve', workflowLevel: 'L2', version: '1', description: '审批', tags: [] },
+        ];
+        const proposed = def([task('sw', {
+            type: 'SWITCH',
+            decisionCases: { yes: [task('call_sub', { type: 'SUB_WORKFLOW', subWorkflowParam: { name: 'approve', version: 1 } } as any)] },
+        } as any)]);
+        const result = executeToolCall('replace_workflow', { workflow: proposed }, ctx({ libraryItems: library }));
+        expect(result.inferredLevel).toBe('L3');
     });
 
     it('returns the truncated-args error without inspecting the rest of the context', () => {

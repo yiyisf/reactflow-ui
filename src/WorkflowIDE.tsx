@@ -478,7 +478,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 {uiMode === 'business' && mode !== 'run' && (
                     <div style={{
                         display: 'inline-flex',
-                        background: 'rgba(255, 255, 255, 0.06)',
+                        background: 'var(--bg-highlight)',
                         borderRadius: 6,
                         padding: 2,
                         border: '1px solid var(--border-secondary)',
@@ -488,7 +488,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             style={{
                                 height: 24, padding: '0 8px', borderRadius: 4, border: 'none',
                                 background: businessViewLayout === 'card' ? 'var(--color-accent)' : 'transparent',
-                                color: businessViewLayout === 'card' ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary)',
+                                color: businessViewLayout === 'card' ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                                 cursor: 'pointer', fontSize: 11, fontWeight: 500,
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                             }}
@@ -500,7 +500,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             style={{
                                 height: 24, padding: '0 8px', borderRadius: 4, border: 'none',
                                 background: businessViewLayout === 'canvas' ? 'var(--color-accent)' : 'transparent',
-                                color: businessViewLayout === 'canvas' ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary)',
+                                color: businessViewLayout === 'canvas' ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                                 cursor: 'pointer', fontSize: 11, fontWeight: 500,
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                             }}

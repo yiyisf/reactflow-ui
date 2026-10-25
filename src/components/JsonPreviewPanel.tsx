@@ -1,6 +1,7 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
+import { ClipboardList, RefreshCw, Target, X } from 'lucide-react';
 
 interface JsonPreviewPanelProps {
     isOpen: boolean;
@@ -83,7 +84,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
             height: '100vh',
             background: bgColor,
             borderRight: `1px solid ${borderColor}`,
-            boxShadow: '10px 0 30px rgba(0,0,0,0.2)',
+            boxShadow: 'var(--cm-shadow-float)',
             zIndex: 1500,
             display: 'flex',
             flexDirection: 'column',
@@ -103,11 +104,11 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'rgba(0,0,0,0.06)'
+                background: 'var(--cm-surface-0)'
             }}>
                 <div>
                     <h3 style={{ margin: 0, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: textColor }}>
-                        <span>🔄</span> 双向实时 JSON 代码视图
+                        <span><RefreshCw size={14} strokeWidth={1.75} aria-hidden="true" /></span> 双向实时 JSON 代码视图
                     </h3>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>
                         画布点击节点双向联动 · 支持代码热更新
@@ -116,7 +117,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                 <button
                     onClick={onClose}
                     style={{ background: 'none', border: 'none', color: textColor, fontSize: '18px', cursor: 'pointer' }}
-                >✕</button>
+                ><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
             </div>
 
             {/* Scope Switcher + Bidirectional Node Jump Bar */}
@@ -126,7 +127,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
-                background: 'rgba(15, 23, 42, 0.3)'
+                background: 'color-mix(in srgb, var(--cm-surface-1) 30%, transparent)'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -137,9 +138,9 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                                 fontSize: '11px',
                                 padding: '4px 10px',
                                 borderRadius: '6px',
-                                border: `1px solid ${scopeMode === 'full' ? '#38bdf8' : borderColor}`,
-                                background: scopeMode === 'full' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
-                                color: scopeMode === 'full' ? '#38bdf8' : textColor,
+                                border: `1px solid ${scopeMode === 'full' ? 'var(--cm-data)' : borderColor}`,
+                                background: scopeMode === 'full' ? 'color-mix(in srgb, var(--cm-data) 16%, transparent)' : 'transparent',
+                                color: scopeMode === 'full' ? 'var(--cm-data)' : textColor,
                                 cursor: 'pointer',
                                 fontWeight: 600,
                             }}
@@ -154,15 +155,15 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                                 fontSize: '11px',
                                 padding: '4px 10px',
                                 borderRadius: '6px',
-                                border: `1px solid ${scopeMode === 'selected' ? '#38bdf8' : borderColor}`,
-                                background: scopeMode === 'selected' ? 'rgba(56, 189, 248, 0.16)' : 'transparent',
-                                color: scopeMode === 'selected' ? '#38bdf8' : textColor,
+                                border: `1px solid ${scopeMode === 'selected' ? 'var(--cm-data)' : borderColor}`,
+                                background: scopeMode === 'selected' ? 'color-mix(in srgb, var(--cm-data) 16%, transparent)' : 'transparent',
+                                color: scopeMode === 'selected' ? 'var(--cm-data)' : textColor,
                                 cursor: selectedTask ? 'pointer' : 'not-allowed',
                                 opacity: selectedTask ? 1 : 0.45,
                                 fontWeight: 600,
                             }}
                         >
-                            🎯 当前选中节点 {selectedTask ? `(${selectedTask.taskReferenceName})` : ''}
+                            <Target size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />当前选中节点 {selectedTask ? `(${selectedTask.taskReferenceName})` : ''}
                         </button>
                     </div>
                     <button
@@ -178,7 +179,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                             cursor: 'pointer',
                         }}
                     >
-                        📋 复制
+                        <ClipboardList size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />复制
                     </button>
                 </div>
 
@@ -203,9 +204,9 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                                         fontFamily: 'monospace',
                                         padding: '2px 8px',
                                         borderRadius: '999px',
-                                        border: isSel ? '1px solid #38bdf8' : `1px solid ${borderColor}`,
-                                        background: isSel ? 'rgba(56, 189, 248, 0.2)' : 'rgba(15, 23, 42, 0.45)',
-                                        color: isSel ? '#38bdf8' : 'var(--text-secondary)',
+                                        border: isSel ? '1px solid var(--cm-data)' : `1px solid ${borderColor}`,
+                                        background: isSel ? 'color-mix(in srgb, var(--cm-data) 20%, transparent)' : 'var(--cm-overlay)',
+                                        color: isSel ? 'var(--cm-data)' : 'var(--text-secondary)',
                                         cursor: 'pointer',
                                         whiteSpace: 'nowrap',
                                     }}
@@ -252,7 +253,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                         fontSize: '12px',
                         fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                         lineHeight: '1.6',
-                        color: theme === 'light' ? '#1e293b' : '#e2e8f0',
+                        color: theme === 'light' ? 'var(--text-primary)' : 'var(--text-primary)',
                     }}
                 />
             </div>
@@ -261,20 +262,20 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
             <div style={{
                 padding: '12px 18px',
                 borderTop: `1px solid ${borderColor}`,
-                background: 'rgba(0,0,0,0.06)',
+                background: 'var(--cm-surface-0)',
                 fontSize: '11px',
-                color: parseError ? '#ef4444' : syncSuccess ? '#10b981' : 'var(--text-secondary)',
+                color: parseError ? 'var(--cm-status-failed)' : syncSuccess ? 'var(--cm-status-success)' : 'var(--text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: '8px'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: parseError ? '#ef4444' : '#10b981' }}>●</span>
+                    <span style={{ color: parseError ? 'var(--cm-status-failed)' : 'var(--cm-status-success)' }}>●</span>
                     {parseError
                         ? `语法错误: ${parseError}`
                         : syncSuccess
-                        ? '✓ 已同步更新至画布拓扑'
+                        ? '已同步更新至画布拓扑'
                         : isDirty
                         ? '有未应用的 JSON 修改 (按 Cmd+S 或点击右侧按钮同步)'
                         : '双向实时同步就绪'}
@@ -287,8 +288,8 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                             padding: '5px 12px',
                             borderRadius: '6px',
                             border: 'none',
-                            background: '#38bdf8',
-                            color: '#0f172a',
+                            background: 'var(--color-accent)',
+                            color: 'var(--color-on-accent)',
                             fontWeight: 700,
                             fontSize: '11px',
                             cursor: 'pointer',

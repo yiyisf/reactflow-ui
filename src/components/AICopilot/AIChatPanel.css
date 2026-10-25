@@ -12,7 +12,7 @@
     border-radius: 16px;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--cm-shadow-float);
     z-index: 2000;
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -43,7 +43,7 @@
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--border-primary);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-highlight);
 }
 
 .ai-title {
@@ -118,8 +118,8 @@
 
 .message.ai {
     align-self: flex-start;
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.2);
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
     color: var(--text-primary);
     border-bottom-left-radius: 2px;
 }
@@ -139,7 +139,7 @@
 .ai-input-area {
     padding: 16px;
     border-top: 1px solid var(--border-primary);
-    background: rgba(0, 0, 0, 0.1);
+    background: var(--cm-surface-0);
 }
 
 .ai-input-container {
@@ -171,7 +171,7 @@
 
 .ai-send {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     border: none;
     border-radius: 6px;
     padding: 4px 10px;
@@ -245,16 +245,16 @@
 
 /* Error message styling */
 .message.ai.error {
-    border-color: rgba(239, 68, 68, 0.4);
-    background: rgba(239, 68, 68, 0.08);
+    border-color: color-mix(in srgb, var(--cm-status-failed) 40%, transparent);
+    background: color-mix(in srgb, var(--cm-status-failed) 8%, transparent);
 }
 
 .retry-btn {
     margin-top: 8px;
     padding: 4px 12px;
-    background: rgba(239, 68, 68, 0.15);
-    color: #f87171;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: color-mix(in srgb, var(--cm-status-failed) 15%, transparent);
+    color: var(--cm-status-failed);
+    border: 1px solid color-mix(in srgb, var(--cm-status-failed) 30%, transparent);
     border-radius: 6px;
     font-size: 12px;
     cursor: pointer;
@@ -262,7 +262,7 @@
 }
 
 .retry-btn:hover {
-    background: rgba(239, 68, 68, 0.25);
+    background: color-mix(in srgb, var(--cm-status-failed) 25%, transparent);
 }
 
 /* Copy button */
@@ -291,7 +291,7 @@
 
 /* Stop button */
 .ai-send.stop {
-    background: #ef4444;
+    background: var(--cm-status-failed);
 }
 
 /* Inline code in messages */

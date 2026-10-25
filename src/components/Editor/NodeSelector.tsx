@@ -30,7 +30,7 @@ const NodeSelector = ({ onSelect, onCancel }: NodeSelectorProps) => {
             left: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(0,0,0,0.6)',
+            backgroundColor: 'var(--cm-overlay)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -46,7 +46,7 @@ const NodeSelector = ({ onSelect, onCancel }: NodeSelectorProps) => {
                     padding: '0',
                     width: '600px',
                     height: '500px',
-                    boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+                    boxShadow: 'var(--cm-shadow-float)',
                     border: '1px solid var(--glass-border)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -130,7 +130,7 @@ const NodeSelector = ({ onSelect, onCancel }: NodeSelectorProps) => {
                                         e.currentTarget.style.borderColor = 'var(--color-accent)';
                                         e.currentTarget.style.backgroundColor = 'var(--bg-highlight)';
                                         e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                                        e.currentTarget.style.boxShadow = 'var(--cm-shadow-card)';
                                     }}
                                     onMouseLeave={e => {
                                         e.currentTarget.style.borderColor = 'var(--border-primary)';

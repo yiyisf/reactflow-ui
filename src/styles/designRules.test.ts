@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
  * telemetry guard tests, so a regression fails `npm test` before anyone has to spot it on screen.
  */
 const sources = import.meta.glob('../**/*.{ts,tsx,css}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-const files = Object.entries(sources).filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.includes('/styles/cmaster'));
+const files = Object.entries(sources).filter(([path]) => !/\.test\.tsx?$/.test(path) && !/(^|\/)(cmaster-tokens\.css|cmasterTokens\.ts)$/.test(path));
 
 describe('CMASTER rule 6: text on accent fills is never hard-coded white', () => {
     it('no style block pairs an accent background with #fff / white text', () => {
@@ -28,46 +28,28 @@ describe('CMASTER rule 6: text on accent fills is never hard-coded white', () =>
 });
 
 /**
- * UI code already migrated to CMASTER: no emoji (rule 7) and no raw colour literals (rule 1).
- * Add a directory or file here once it is clean, so regressions fail `npm test`.
+ * Every UI source file is migrated to CMASTER: no emoji (rule 7) and no raw colour literals (rule 1).
+ * The exceptions below are deliberate; anything else that regresses fails `npm test`.
  */
-const MIGRATED = [
-    '../components/AiNative/',
-    '../components/business/',
-    '../components/template/',
-    '../components/onboarding/',
-    '../components/import/',
-    '../demo/',
-    '../components/SandboxConfigModal.tsx',
-    '../components/FullscreenEditor.tsx',
-    '../components/PromptDialog.tsx',
-    '../components/ConfirmDialog.tsx',
-    '../components/Toast.tsx',
-    '../components/EmptyStatePanel.tsx',
-    '../components/EmptyStatePanel.css',
-];
-const isUiSource = (p: string) => /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p);
-const migrated = Object.keys(sources).filter((p) => isUiSource(p) && MIGRATED.some((m) => (m.endsWith('/') ? p.startsWith(m) : p === m)));
+const COLOUR_EXCEPTIONS: Record<string, string> = {
+    // import.meta.glob keys files next to this test as './x', everything else as '../dir/x'
+    './tokens.css': 'bridge from legacy variables to --cm-* tokens, including the deprecated blue brand',
+    '../components/BrandLogo.tsx': 'logo artwork',
+    '../components/ThemeControls.tsx': 'brand swatch for the deprecated blue theme',
+};
+const EMOJI_EXCEPTIONS: Record<string, string> = {
+    '../components/icons/iconRegistry.ts': 'maps legacy emoji from host data to icon names',
+    '../services/ai/toolExecutor.ts': 'tool results read by the model, not shown in the UI',
+    '../services/ai/contextEngine.ts': 'context text read by the model, not shown in the UI',
+};
+/** Generated token files hold the raw values by design. */
+const isGenerated = (p: string) => /(^|\/)(cmaster-tokens\.css|cmasterTokens\.ts)$/.test(p);
+const isUiSource = (p: string) => /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p) && !isGenerated(p);
 
-/** Files migrated to Lucide icons before the directory list above existed. */
-const EMOJI_FREE = [
-    '../components/Controls/ActionBar.tsx',
-    '../components/Controls/ControlButton.tsx',
-    '../components/ThemeControls.tsx',
-    '../components/ExecutionStatusBar.tsx',
-    '../components/WorkflowDesigner.tsx',
-    '../WorkflowIDE.tsx',
-    '../AiWorkflowIDE.tsx',
-    '../actions/builtin/common.ts',
-    '../actions/builtin/ecs.ts',
-    '../actions/fromDefinitions.ts',
-    '../template/builtin/templates.ts',
-    '../utils/taskTypeMeta.ts',
-    '../components/icons/CmIcon.tsx',
-    ...migrated.filter((p) => !p.endsWith('.css')),
-];
+const EMOJI_FREE = Object.keys(sources).filter((p) => isUiSource(p) && !p.endsWith('.css') && !(p in EMOJI_EXCEPTIONS));
 
-describe('CMASTER rule 7: no emoji in migrated UI files', () => {
+describe('CMASTER rule 7: no emoji in UI source', () => {
+    it('covers the code base', () => expect(EMOJI_FREE.length).toBeGreaterThan(100));
     it.each(EMOJI_FREE)('%s contains no emoji', (path) => {
         const text = sources[path];
         expect(text, `${path} not found by the glob`).toBeTypeOf('string');
@@ -81,10 +63,10 @@ describe('CMASTER rule 7: no emoji in migrated UI files', () => {
     });
 });
 
-const TOKEN_ONLY = migrated;
+const TOKEN_ONLY = Object.keys(sources).filter((p) => isUiSource(p) && !(p in COLOUR_EXCEPTIONS));
 
-describe('CMASTER rule 1: no raw colour literals in tokenized files', () => {
-    it('the list is not empty', () => expect(TOKEN_ONLY.length).toBeGreaterThan(0));
+describe('CMASTER rule 1: no raw colour literals in UI source', () => {
+    it('covers the code base', () => expect(TOKEN_ONLY.length).toBeGreaterThan(100));
     it.each(TOKEN_ONLY)('%s uses tokens only', (path) => {
         const code = sources[path].replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
         const hits = code

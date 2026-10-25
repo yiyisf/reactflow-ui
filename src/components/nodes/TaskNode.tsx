@@ -107,7 +107,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                     }}>
                         {lodParams.map(p => (
                             <div key={p.key} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                <span style={{ color: '#38bdf8' }}>{p.key}</span>: {p.val}
+                                <span style={{ color: 'var(--cm-data)' }}>{p.key}</span>: {p.val}
                             </div>
                         ))}
                     </div>
@@ -128,14 +128,14 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                             right: '20px',
                             padding: '1px 6px',
                             borderRadius: '999px',
-                            border: '1px solid rgba(99, 102, 241, 0.6)',
-                            background: 'linear-gradient(135deg, #6366f1, #38bdf8)',
-                            color: '#fff',
+                            border: '1px solid color-mix(in srgb, var(--cm-ai) 60%, transparent)',
+                            background: 'linear-gradient(135deg, var(--cm-ai), var(--cm-data))',
+                            color: 'var(--text-primary)',
                             fontSize: '9px',
                             fontWeight: 700,
                             cursor: 'pointer',
                             zIndex: 102,
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                            boxShadow: 'var(--cm-shadow-card)',
                         }}
                     >
                         ⌘K
@@ -148,8 +148,8 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                         position: 'absolute',
                         bottom: '4px',
                         right: '4px',
-                        background: 'var(--status-failed, #ef4444)',
-                        color: '#fff',
+                        background: 'var(--status-failed)',
+                        color: 'var(--cm-on-danger)',
                         borderRadius: '10px',
                         fontSize: '10px',
                         fontWeight: '700',
@@ -169,7 +169,7 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                         top: '4px',
                         right: '4px',
                         background: 'var(--color-accent)',
-                        color: 'var(--color-on-accent, #fff)',
+                        color: 'var(--color-on-accent)',
                         borderRadius: '4px',
                         fontSize: '9px',
                         fontWeight: '700',
@@ -182,8 +182,8 @@ const TaskNode = ({ id, data, selected }: TaskNodeProps) => {
                     </div>
                 )}
 
-                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
-                <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
+                <Handle type="target" position={targetPosition} style={{ background: 'var(--cm-surface-1)' }} />
+                <Handle type="source" position={sourcePosition} style={{ background: 'var(--cm-surface-1)' }} />
             </div>
         </NodeWrapper>
     );

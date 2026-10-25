@@ -10,6 +10,7 @@ import ExecutionStatusBadge from './ExecutionStatusBadge';
 import { truncate, getNodeHeader } from '../../utils/nodeMeta';
 import PromptDialog from '../PromptDialog';
 import ConfirmDialog from '../ConfirmDialog';
+import { Pencil } from 'lucide-react';
 
 type DecisionNodeProps = NodeProps<WorkflowNodeData>;
 
@@ -126,7 +127,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     type="target"
                     position={targetPosition}
                     style={{
-                        background: '#fff',
+                        background: 'var(--cm-surface-1)',
                         [layoutDirection === 'LR' ? 'left' : 'top']: '-3px',
                         zIndex: 15,
                     }}
@@ -159,7 +160,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         boxShadow: selected
-                            ? '0 8px 26px rgba(0,0,0,0.35), 0 0 0 3px var(--node-glow-color)'
+                            ? 'var(--node-shadow-hover), 0 0 0 3px var(--node-glow-color)'
                             : (isRunning && execution?.status ? undefined : 'var(--node-shadow)'),
                         transition: 'all 0.25s ease',
                         cursor: 'pointer',
@@ -170,7 +171,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                     <div
                         style={{
                             transform: 'rotate(-45deg)',
-                            color: '#fff',
+                            color: 'var(--text-primary)',
                             textAlign: 'center',
                             padding: '6px',
                             width: '116px',
@@ -270,7 +271,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                         padding: '8px',
                         zIndex: 1000,
                         minWidth: '200px',
-                        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                        boxShadow: 'var(--cm-shadow-float)',
                         animation: 'popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                         backdropFilter: 'blur(12px)'
                     }}>
@@ -314,7 +315,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                         height: '22px',
                                         borderRadius: '4px',
                                         backgroundColor: 'var(--color-accent)',
-                                        color: 'white',
+                                        color: 'var(--color-on-accent)',
                                         border: 'none',
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -327,7 +328,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                     }}
                                     title={`重命名分支 "${branch}"`}
                                 >
-                                    ✏
+                                    <Pencil size={14} strokeWidth={1.75} aria-hidden="true" />
                                 </button>
                                 {/* 删除按钮 */}
                                 <button
@@ -336,8 +337,8 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                         width: '22px',
                                         height: '22px',
                                         borderRadius: '50%',
-                                        backgroundColor: '#ef4444',
-                                        color: 'white',
+                                        backgroundColor: 'var(--cm-status-failed)',
+                                        color: 'var(--cm-on-danger)',
                                         border: 'none',
                                         cursor: 'pointer',
                                         display: 'flex',
@@ -365,7 +366,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                                 backgroundColor: 'var(--color-accent)',
                                 border: 'none',
                                 borderRadius: '4px',
-                                color: '#fff',
+                                color: 'var(--color-on-accent)',
                                 cursor: 'pointer',
                                 fontSize: '12px',
                                 fontWeight: 'bold'
@@ -406,15 +407,15 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
                 {/* 分支输出 Handles — 精确对齐菱形四角顶点 */}
                 {layoutDirection === 'TB' ? (
                     <>
-                        <Handle type="source" position={Position.Bottom} style={{ background: '#fff', bottom: '-3px', zIndex: 15 }} />
-                        <Handle type="source" position={Position.Left} id="left" style={{ background: '#fff', left: '-3px', zIndex: 15 }} />
-                        <Handle type="source" position={Position.Right} id="right" style={{ background: '#fff', right: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Bottom} style={{ background: 'var(--cm-surface-1)', bottom: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Left} id="left" style={{ background: 'var(--cm-surface-1)', left: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Right} id="right" style={{ background: 'var(--cm-surface-1)', right: '-3px', zIndex: 15 }} />
                     </>
                 ) : (
                     <>
-                        <Handle type="source" position={Position.Right} style={{ background: '#fff', right: '-3px', zIndex: 15 }} />
-                        <Handle type="source" position={Position.Top} id="top" style={{ background: '#fff', top: '-3px', zIndex: 15 }} />
-                        <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#fff', bottom: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Right} style={{ background: 'var(--cm-surface-1)', right: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Top} id="top" style={{ background: 'var(--cm-surface-1)', top: '-3px', zIndex: 15 }} />
+                        <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: 'var(--cm-surface-1)', bottom: '-3px', zIndex: 15 }} />
                     </>
                 )}
             </div>

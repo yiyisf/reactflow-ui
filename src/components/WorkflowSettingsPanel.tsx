@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { WorkflowDef, WorkflowInputParam, parseWorkflowInputParams } from '../types/conductor';
+import { X } from 'lucide-react';
 
 interface WorkflowSettingsPanelProps {
     isOpen: boolean;
@@ -192,7 +193,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                         borderRadius: '50%',
                         background: 'var(--text-inverse)',
                         transition: 'left 0.2s',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        boxShadow: 'var(--cm-shadow-card)',
                     }} />
                 </button>
             </div>
@@ -312,7 +313,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                                             <button onClick={() => removeParam(idx)} style={{
                                                 background: 'none', border: 'none', color: 'var(--status-failed)',
                                                 cursor: 'pointer', fontSize: '16px', padding: '0 4px', opacity: 0.7, lineHeight: 1,
-                                            }}>✕</button>
+                                            }}><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                                         )}
                                     </div>
                                     <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -417,7 +418,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                 top: 0,
                 width: '100vw',
                 height: '100vh',
-                backgroundColor: 'rgba(0,0,0,0.5)',
+                backgroundColor: 'var(--cm-overlay)',
                 zIndex: 1300,
                 display: 'flex',
                 justifyContent: 'center',
@@ -433,7 +434,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                     maxHeight: '85vh',
                     background: 'var(--glass-surface)',
                     borderRadius: '16px',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                    boxShadow: 'var(--cm-shadow-float)',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
@@ -459,7 +460,7 @@ const WorkflowSettingsPanel = ({ isOpen, onClose }: WorkflowSettingsPanelProps) 
                             onClick={onClose}
                             aria-label="关闭"
                             style={{ background: 'none', border: 'none', color: textColor, fontSize: '24px', cursor: 'pointer', opacity: 0.6 }}
-                        >✕</button>
+                        ><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                     </div>
 
                     {/* Tab Bar */}

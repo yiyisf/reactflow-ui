@@ -34,8 +34,8 @@
 }
 
 .diff-badge.mod {
-    background: color-mix(in srgb, #fbbf24 15%, transparent);
-    color: #fbbf24;
+    background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent);
+    color: var(--cm-status-warning);
 }
 
 .diff-badge.del {
@@ -86,8 +86,8 @@
 }
 
 .diff-row.mod .diff-marker {
-    background: color-mix(in srgb, #fbbf24 15%, transparent);
-    color: #fbbf24;
+    background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent);
+    color: var(--cm-status-warning);
 }
 
 .diff-row.del .diff-marker {
@@ -139,7 +139,7 @@
 }
 
 .diff-btn.apply:hover {
-    background: white;
+    background: var(--cm-surface-1);
 }
 
 .diff-btn.applied {

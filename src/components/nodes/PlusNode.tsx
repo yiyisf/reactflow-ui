@@ -17,9 +17,9 @@ const PlusNode = ({ data }: NodeProps) => {
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: '50%',
-      background: 'var(--bg-secondary, #1e293b)',
-      border: '2px dashed var(--color-accent, #3b82f6)',
-      color: 'var(--color-accent, #3b82f6)',
+      background: 'var(--bg-secondary)',
+      border: '2px dashed var(--color-accent)',
+      color: 'var(--color-accent)',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
       padding: data.label && data.label !== '+' ? '0 12px' : '0',
@@ -41,7 +41,7 @@ const PlusNode = ({ data }: NodeProps) => {
         .plus-node-container:hover {
           transform: scale(1.1);
           background: var(--color-accent);
-          color: var(--color-on-accent, #fff);
+          color: var(--color-on-accent);
           border-style: solid;
           box-shadow: 0 0 10px var(--color-accent);
         }

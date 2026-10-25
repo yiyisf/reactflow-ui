@@ -27,11 +27,11 @@ const ControlButton: React.FC<ControlButtonProps> = ({
 
     if (variant === 'primary') {
         bg = 'var(--color-accent)';
-        color = 'var(--color-on-accent, #fff)';
+        color = 'var(--color-on-accent)';
         border = 'none';
     } else if (variant === 'danger') {
         bg = disabled ? 'var(--cm-failed-tint)' : 'var(--status-failed)';
-        color = disabled ? 'var(--text-secondary)' : 'var(--color-on-danger, #fff)';
+        color = disabled ? 'var(--text-secondary)' : 'var(--color-on-danger)';
         border = 'none';
     } else if (active) {
         bg = 'var(--bg-secondary)';
@@ -65,7 +65,7 @@ const ControlButton: React.FC<ControlButtonProps> = ({
                 minWidth: label ? 'auto' : '30px',
                 height: '30px',
                 whiteSpace: 'nowrap',
-                boxShadow: variant === 'default' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                boxShadow: variant === 'default' ? 'var(--cm-shadow-card)' : 'none',
                 ...style
             }}
         >

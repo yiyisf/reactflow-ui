@@ -19,7 +19,8 @@ Design source of truth lives in `design/` (start at `design/README.md`).
 5. **Status = color + icon + Chinese word.** Never color alone (运行中 / 成功 / 失败 / 已超时 / 已跳过 / 等待中).
 6. **Text on orange fills uses `--cm-on-brand` (dark), never white.**
 7. **No emoji in UI, docs, or marketing.** Icons are `lucide-react`, stroke 1.75, 16px in toolbars. Data icons are names from
-   `src/components/icons/iconRegistry.ts` rendered with `<CmIcon>`; add a file to `EMOJI_FREE` in `src/styles/designRules.test.ts` once it is clean.
+   `src/components/icons/iconRegistry.ts` rendered with `<CmIcon>`. `src/styles/designRules.test.ts` checks every UI source file for
+   emoji and raw colours; the few deliberate exceptions are listed there with a reason.
 8. **Copy is Chinese first, verb-first, says what happens** ("运行", "发布到能力库"; never "确定/提交"). Errors say what happened and how to fix it. Space between Chinese and Latin/digits. Technical identifiers in mono.
 9. **Global link styles must not apply to buttons** (`a:not(.cm-btn)`). Two real regressions came from this.
 10. **Marketing only:** one campaign palette per image (`--cm-campaign-*`); the logo stays `#ff6a13` in every palette; outside Ember no other orange appears.

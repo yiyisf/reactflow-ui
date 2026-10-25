@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
+import { CmIcon } from './icons/CmIcon';
 import { analyzeExecution, formatDuration, getCategoryIcon, getCategoryColor, ExecutionSummary } from '../utils/executionAnalyzer';
 import { ExecutionStatus } from '../types/workflow';
 import { TemplateExtractor } from './template/TemplateExtractor';
 import './ExecutionSummaryPanel.css';
+import { Hammer, X } from 'lucide-react';
 
 const STATUS_LABELS: Record<ExecutionStatus, string> = {
     COMPLETED: '完成',
@@ -26,7 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
     IN_PROGRESS: 'var(--status-running)',
     SCHEDULED: 'var(--status-scheduled)',
     TIMED_OUT: 'var(--status-failed)',
-    SKIPPED: 'var(--status-skipped, #6b7280)',
+    SKIPPED: 'var(--status-skipped)',
     CANCELED: 'var(--status-failed)',
 };
 
@@ -91,11 +93,11 @@ const ExecutionSummaryPanel: React.FC = () => {
                         }}
                         title="将本次执行实例脱敏并提炼为公共标准化模板"
                     >
-                        <span>🛠️</span>
+                        <span><Hammer size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                         <span>提取为模板</span>
                     </button>
                 )}
-                <button className="esp-close" onClick={() => setShowAnalysisPanel(false)}>✕</button>
+                <button className="esp-close" onClick={() => setShowAnalysisPanel(false)}><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
             </div>
 
             <div className="esp-content">
@@ -141,7 +143,7 @@ const ExecutionSummaryPanel: React.FC = () => {
                         {step.diagnostics.map((diag, i) => (
                             <div key={i} className="esp-diag-item" style={{ borderLeftColor: getCategoryColor(diag.category) }}>
                                 <div className="esp-diag-title">
-                                    <span>{getCategoryIcon(diag.category)}</span>
+                                    <span style={{ display: 'inline-flex' }}><CmIcon name={getCategoryIcon(diag.category)} size={14} /></span>
                                     {diag.title}
                                 </div>
                                 <p className="esp-diag-explanation">{diag.explanation}</p>

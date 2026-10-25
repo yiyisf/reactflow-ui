@@ -60,9 +60,9 @@ const SubWorkflowNode = ({ id, data, selected }: SubWorkflowNodeProps) => {
                     isRunning={isRunning}
                 />
 
-                <Handle type="target" position={targetPosition} style={{ background: '#fff' }} />
+                <Handle type="target" position={targetPosition} style={{ background: 'var(--cm-surface-1)' }} />
 
-                <Handle type="source" position={sourcePosition} style={{ background: '#fff' }} />
+                <Handle type="source" position={sourcePosition} style={{ background: 'var(--cm-surface-1)' }} />
             </div>
         </NodeWrapper>
     );

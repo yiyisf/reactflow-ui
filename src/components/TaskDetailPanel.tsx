@@ -8,6 +8,7 @@ import { parseWorkflowInputParams } from '../types/conductor';
 import ParameterSuggester, { Suggestion } from './AICopilot/ParameterSuggester';
 import FullscreenEditor from './FullscreenEditor';
 import { getCompletionItems } from '../services/wlsp/workflowLsp';
+import { CircleCheck, Globe, Hourglass, Link, Mail, Maximize2, Package, Play, Repeat, Scale, ScrollText, Search, Send, Sparkles, Square, Target, TriangleAlert, User, Workflow, X, Zap, type LucideIcon } from 'lucide-react';
 
 interface TaskDetailPanelProps {
     task: TaskDef | null;
@@ -261,14 +262,14 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         setShowSnippets(false);
     };
 
-    const renderSpecialSection = (title: string, icon: string, color: string, children: React.ReactNode) => (
+    const renderSpecialSection = (title: string, Icon: LucideIcon, color: string, children: React.ReactNode) => (
         <div style={{
             marginBottom: '24px', padding: '16px', borderRadius: '12px',
-            background: `${color}10`, border: `1px solid ${color}30`,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+            background: `color-mix(in srgb, ${color} 6%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 19%, transparent)`,
+            boxShadow: 'var(--cm-shadow-card)'
         }}>
             <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '16px', color: color, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>{icon}</span> {title}
+                <Icon size={14} strokeWidth={1.75} aria-hidden="true" /> {title}
             </div>
             {children}
         </div>
@@ -286,7 +287,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '11px', color: secondaryTextColor, marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase' }}>
                     {label}
-                    {isRefName && isDuplicate && <span style={{ color: '#ef4444', marginLeft: '8px', textTransform: 'none' }}>⚠️ 已存在相同引用名</span>}
+                    {isRefName && isDuplicate && <span style={{ color: 'var(--cm-status-failed)', marginLeft: '8px', textTransform: 'none' }}><TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已存在相同引用名</span>}
                 </label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input
@@ -334,14 +335,14 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         disabled={!isEditMode}
                         style={{
                             width: '100%', padding: `8px ${isEditMode && !isRefName ? '32px' : '12px'} 8px 12px`,
-                            borderRadius: '6px', border: `1px solid ${isDuplicate ? '#ef4444' : borderColor}`,
+                            borderRadius: '6px', border: `1px solid ${isDuplicate ? 'var(--cm-status-failed)' : borderColor}`,
                             background: inputBg, color: textColor, fontSize: '13px', outline: 'none',
                             opacity: isEditMode ? 1 : 0.8, fontFamily: isRefName ? 'monospace' : 'inherit'
                         }}
                     />
                     {isEditMode && !isRefName && (
                         <button className="ai-hint-trigger" onClick={(e) => handleAiHintClick(e, (val) => handleChange(field, val))} title="AI 智能提示"
-                            style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✨</button>
+                            style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '4px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Sparkles size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                     )}
                 </div>
             </div>
@@ -387,7 +388,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 lineHeight: 1,
                             }}
                         >
-                            ⛶
+                            <Maximize2 size={14} strokeWidth={1.75} aria-hidden="true" />
                         </button>
                     )}
                 </div>
@@ -463,7 +464,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             <span style={{ fontSize: '11px', color: secondaryTextColor }}>{label}</span>
             <button onClick={() => onChange(!value)} disabled={!isEditMode}
                 style={{ width: '36px', height: '20px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: value ? 'var(--color-accent)' : borderColor, position: 'relative', transition: 'background 0.2s' }}>
-                <span style={{ position: 'absolute', top: '2px', left: value ? '18px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+                <span style={{ position: 'absolute', top: '2px', left: value ? '18px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--cm-surface-1)', transition: 'left 0.2s' }} />
             </button>
         </div>
     );
@@ -472,7 +473,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
             {modes.map(m => (
                 <button key={m.key} onClick={() => onChange(m.key)} disabled={!isEditMode}
-                    style={{ flex: 1, padding: '6px', borderRadius: '6px', border: `1px solid ${borderColor}`, cursor: 'pointer', fontSize: '11px', fontWeight: current === m.key ? 'bold' : 'normal', background: current === m.key ? 'var(--color-accent)' : inputBg, color: current === m.key ? 'var(--color-on-accent, #fff)' : textColor }}>
+                    style={{ flex: 1, padding: '6px', borderRadius: '6px', border: `1px solid ${borderColor}`, cursor: 'pointer', fontSize: '11px', fontWeight: current === m.key ? 'bold' : 'normal', background: current === m.key ? 'var(--color-accent)' : inputBg, color: current === m.key ? 'var(--color-on-accent)' : textColor }}>
                     {m.label}
                 </button>
             ))}
@@ -486,15 +487,15 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
         <div className={`detail-panel-container ${panelClass}`} style={{
             position: 'absolute', right: 0, top: 0, bottom: 0, width: '450px', zIndex: 1200,
             display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)',
-            borderLeft: `1px solid ${borderColor}`, boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.2)', overflowY: 'hidden',
+            borderLeft: `1px solid ${borderColor}`, boxShadow: 'var(--cm-shadow-float)', overflowY: 'hidden',
         }}>
             {/* Header */}
             <div style={{ padding: '24px', borderBottom: `1px solid ${borderColor}`, background: 'var(--bg-secondary)', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <div style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' }}>
+                    <div style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' }}>
                         {displayTask.type || 'TASK'}
                     </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', fontSize: '20px' }}>✕</button>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', fontSize: '20px' }}><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                 </div>
                 {isEditMode ? (
                     <input value={displayTask.name || ''} onChange={(e) => handleChange('name', e.target.value)} placeholder="任务名称"
@@ -511,7 +512,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: 'var(--bg-primary)' }}>
 
                 {/* ── HTTP ── */}
-                {displayTask.type === 'HTTP' && renderSpecialSection('HTTP 请求配置', '🌐', 'var(--color-accent)', (
+                {displayTask.type === 'HTTP' && renderSpecialSection('HTTP 请求配置', Globe, 'var(--color-accent)', (
                     <>
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                             <select value={httpRequest.method || 'GET'} onChange={(e) => handleHttpChange('method', e.target.value)} disabled={!isEditMode}
@@ -567,7 +568,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── INLINE / LAMBDA ── */}
-                {(displayTask.type === 'INLINE' || displayTask.type === 'LAMBDA') && renderSpecialSection('内联脚本配置 (Inline)', '📜', 'var(--color-accent)', (
+                {(displayTask.type === 'INLINE' || displayTask.type === 'LAMBDA') && renderSpecialSection('内联脚本配置 (Inline)', ScrollText, 'var(--color-accent)', (
                     <>
                         {renderSelect('脚本引擎', ['graaljs', 'javascript', 'value-param', 'python'],
                             (displayTask as any).evaluatorType || 'graaljs',
@@ -580,7 +581,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                 const key = displayTask.inputParameters?.scriptExpression !== undefined ? 'scriptExpression' : 'expression';
                                 handleInputParamChange(key, v);
                             },
-                            { rows: 10, language: (displayTask as any).evaluatorType || 'javascript', style: { background: '#000', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' } }
+                            { rows: 10, language: (displayTask as any).evaluatorType || 'javascript', style: { background: 'var(--cm-overlay)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' } }
                         )}
                         <div style={{ marginTop: '8px', fontSize: '10px', color: secondaryTextColor, fontStyle: 'italic' }}>
                             提示: 使用 $.input.key 访问输入参数，返回值作为任务输出。
@@ -589,7 +590,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── JSON_JQ_TRANSFORM ── */}
-                {displayTask.type === 'JSON_JQ_TRANSFORM' && renderSpecialSection('JQ 数据转换', '🔍', 'var(--color-accent)', (
+                {displayTask.type === 'JSON_JQ_TRANSFORM' && renderSpecialSection('JQ 数据转换', Search, 'var(--color-accent)', (
                     <>
                         {renderCodeArea('JQ QUERY EXPRESSION', displayTask.inputParameters?.queryExpression || '',
                             (v) => handleInputParamChange('queryExpression', v),
@@ -601,7 +602,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── SUB_WORKFLOW ── */}
-                {displayTask.type === 'SUB_WORKFLOW' && renderSpecialSection('子工作流配置', '🏗️', 'var(--color-accent)', (
+                {displayTask.type === 'SUB_WORKFLOW' && renderSpecialSection('子工作流配置', Workflow, 'var(--color-accent)', (
                     <>
                         {renderSmallInput('WORKFLOW NAME *', displayTask.subWorkflowParam?.name || '', (v) => handleNestedChange('subWorkflowParam', 'name', v), 'text', 'e.g. my_workflow')}
                         {renderSmallInput('VERSION', displayTask.subWorkflowParam?.version ?? '', (v) => handleNestedChange('subWorkflowParam', 'version', v ? parseInt(v) : undefined), 'number', '1')}
@@ -616,10 +617,10 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── START_WORKFLOW ── */}
-                {displayTask.type === 'START_WORKFLOW' && renderSpecialSection('启动工作流配置', '▶️', 'var(--color-accent)', (
+                {displayTask.type === 'START_WORKFLOW' && renderSpecialSection('启动工作流配置', Play, 'var(--color-accent)', (
                     <>
-                        <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px', padding: '8px', borderRadius: '6px', background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)' }}>
-                            ⚡ 注意：此任务启动目标工作流后立即继续，<b>不等待</b>目标工作流完成。
+                        <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px', padding: '8px', borderRadius: '6px', background: 'var(--cm-warning-tint)', border: '1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent)' }}>
+                            <Zap size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />注意：此任务启动目标工作流后立即继续，<b>不等待</b>目标工作流完成。
                         </div>
                         {renderSmallInput('WORKFLOW NAME *', displayTask.inputParameters?.startWorkflow?.name || '', (v) => {
                             const sw = { ...(displayTask.inputParameters?.startWorkflow || {}), name: v };
@@ -641,13 +642,13 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── TERMINATE ── */}
-                {displayTask.type === 'TERMINATE' && renderSpecialSection('终止状态配置', '⏹️', 'var(--color-accent)', (
+                {displayTask.type === 'TERMINATE' && renderSpecialSection('终止状态配置', Square, 'var(--color-accent)', (
                     <>
                         <label style={{ display: 'block', fontSize: '10px', color: secondaryTextColor, marginBottom: '4px' }}>TERMINATION STATUS</label>
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                             {['COMPLETED', 'FAILED'].map(s => (
                                 <button key={s} onClick={() => handleInputParamChange('terminationStatus', s)} disabled={!isEditMode}
-                                    style={{ flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer', background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg, color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-on-accent, #fff)' : textColor, border: `1px solid ${borderColor}`, fontWeight: 'bold', fontSize: '11px' }}>
+                                    style={{ flex: 1, padding: '8px', borderRadius: '6px', cursor: 'pointer', background: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-accent)' : inputBg, color: (displayTask.inputParameters?.terminationStatus || 'COMPLETED') === s ? 'var(--color-on-accent)' : textColor, border: `1px solid ${borderColor}`, fontWeight: 'bold', fontSize: '11px' }}>
                                     {s}
                                 </button>
                             ))}
@@ -661,7 +662,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── EVENT ── */}
-                {displayTask.type === 'EVENT' && renderSpecialSection('事件发送配置', '✉️', 'var(--color-accent)', (
+                {displayTask.type === 'EVENT' && renderSpecialSection('事件发送配置', Mail, 'var(--color-accent)', (
                     <>
                         {renderSmallInput('EVENT SINK *', displayTask.sink || '', (v) => handleChange('sink', v), 'text', 'e.g. sqs:queue_name 或 conductor')}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px', marginBottom: '8px' }}>
@@ -672,7 +673,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── WAIT ── */}
-                {displayTask.type === 'WAIT' && renderSpecialSection('等待状态配置', '⏳', 'var(--color-accent)', (
+                {displayTask.type === 'WAIT' && renderSpecialSection('等待状态配置', Hourglass, 'var(--color-accent)', (
                     <>
                         {renderModeSwitch([{ key: 'duration', label: '等待时长' }, { key: 'until', label: '等待到指定时间' }], waitMode, (v) => setWaitMode(v as any))}
                         {waitMode === 'duration'
@@ -685,7 +686,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── DECISION / SWITCH ── */}
-                {(displayTask.type === 'DECISION' || displayTask.type === 'SWITCH') && renderSpecialSection('条件分支配置', '⚖️', 'var(--color-accent)', (
+                {(displayTask.type === 'DECISION' || displayTask.type === 'SWITCH') && renderSpecialSection('条件分支配置', Scale, 'var(--color-accent)', (
                     <>
                         {renderSelect('评估模式 (evaluatorType)',
                             ['value-param', 'javascript'],
@@ -707,7 +708,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── DO_WHILE ── */}
-                {displayTask.type === 'DO_WHILE' && renderSpecialSection('循环逻辑配置', '🔄', 'var(--color-accent)', (
+                {displayTask.type === 'DO_WHILE' && renderSpecialSection('循环逻辑配置', Repeat, 'var(--color-accent)', (
                     <>
                         {renderModeSwitch([{ key: 'condition', label: '条件循环' }, { key: 'items', label: '列表迭代' }], doWhileMode, (v) => setDoWhileMode(v as any))}
                         {doWhileMode === 'condition' ? (
@@ -736,7 +737,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── FORK_JOIN_DYNAMIC ── */}
-                {displayTask.type === 'FORK_JOIN_DYNAMIC' && renderSpecialSection('动态并行配置', '⚡', 'var(--color-accent)', (
+                {displayTask.type === 'FORK_JOIN_DYNAMIC' && renderSpecialSection('动态并行配置', Zap, 'var(--color-accent)', (
                     <>
                         {renderModeSwitch([
                             { key: 'classic', label: '经典模式' },
@@ -776,7 +777,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── DYNAMIC ── */}
-                {displayTask.type === 'DYNAMIC' && renderSpecialSection('动态任务配置', '🎯', 'var(--color-accent)', (
+                {displayTask.type === 'DYNAMIC' && renderSpecialSection('动态任务配置', Target, 'var(--color-accent)', (
                     <>
                         {renderSmallInput('DYNAMIC TASK NAME PARAM *', (displayTask as any).dynamicTaskNameParam || '', (v) => handleChange('dynamicTaskNameParam', v), 'text', 'e.g. taskToExecute')}
                         <div style={{ fontSize: '10px', color: secondaryTextColor, marginTop: '4px' }}>
@@ -786,7 +787,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── HUMAN ── */}
-                {displayTask.type === 'HUMAN' && renderSpecialSection('人工审批配置', '👤', 'var(--color-accent)', (
+                {displayTask.type === 'HUMAN' && renderSpecialSection('人工审批配置', User, 'var(--color-accent)', (
                     <>
                         {renderSmallInput('表单模板名 (userFormTemplate)', (displayTask as any).humanTaskDef?.userFormTemplate || '', (v) => handleNestedChange('humanTaskDef', 'userFormTemplate', v), 'text', 'e.g. approval_form')}
                         {renderSelect('分配策略 (assignmentCompletionStrategy)',
@@ -799,7 +800,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── KAFKA_PUBLISH ── */}
-                {displayTask.type === 'KAFKA_PUBLISH' && renderSpecialSection('Kafka 推送配置', '📨', 'var(--color-accent)', (
+                {displayTask.type === 'KAFKA_PUBLISH' && renderSpecialSection('Kafka 推送配置', Send, 'var(--color-accent)', (
                     <>
                         {renderSmallInput('BOOTSTRAP SERVERS *', displayTask.inputParameters?.bootStrapServers || '', (v) => handleInputParamChange('bootStrapServers', v), 'text', 'localhost:9092')}
                         {renderSmallInput('TOPIC *', displayTask.inputParameters?.topic || '', (v) => handleInputParamChange('topic', v), 'text', 'my_topic')}
@@ -816,7 +817,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 ))}
 
                 {/* ── SET_VARIABLE ── */}
-                {displayTask.type === 'SET_VARIABLE' && renderSpecialSection('变量配置', '📦', 'var(--color-accent)', (
+                {displayTask.type === 'SET_VARIABLE' && renderSpecialSection('变量配置', Package, 'var(--color-accent)', (
                     <>
                         <div style={{ fontSize: '11px', color: secondaryTextColor, marginBottom: '12px' }}>
                             在 inputParameters 中定义要设置的变量名和值，后续任务通过 {'${workflow.variables.varName}'} 访问。
@@ -836,18 +837,18 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                     {lastRefactorNotice && lastRefactorNotice.newRef === displayTask.taskReferenceName && (
                         <div style={{
                             marginBottom: '16px', padding: '10px 12px', borderRadius: '8px',
-                            background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)',
+                            background: 'color-mix(in srgb, var(--cm-status-success) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--cm-status-success) 35%, transparent)',
                             display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px'
                         }}>
-                            <div style={{ fontSize: '11px', color: '#34d399', lineHeight: 1.5 }}>
-                                <b>🔗 W-LSP 全图级联重构已生效</b><br />
+                            <div style={{ fontSize: '11px', color: 'var(--cm-status-success)', lineHeight: 1.5 }}>
+                                <b><Link size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />W-LSP 全图级联重构已生效</b><br />
                                 引用名 <code>{lastRefactorNotice.oldRef}</code> → <code>{lastRefactorNotice.newRef}</code>，已自动同步 <b>{lastRefactorNotice.replacedCount}</b> 处下游表达式（涉及节点：{lastRefactorNotice.affectedTasks.join(', ')}）
                             </div>
                             <button
                                 onClick={clearRefactorNotice}
-                                style={{ background: 'none', border: 'none', color: '#34d399', cursor: 'pointer', fontSize: '12px', padding: '2px' }}
+                                style={{ background: 'none', border: 'none', color: 'var(--cm-status-success)', cursor: 'pointer', fontSize: '12px', padding: '2px' }}
                             >
-                                ✕
+                                <X size={14} strokeWidth={1.75} aria-hidden="true" />
                             </button>
                         </div>
                     )}
@@ -880,29 +881,29 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                         }}
                                         title="打开 W-LSP 上游变量与 Schema 零延迟补全器"
                                         style={{
-                                            fontSize: '11px', background: 'rgba(56, 189, 248, 0.14)',
-                                            border: '1px solid rgba(56, 189, 248, 0.35)', borderRadius: '4px', padding: '2px 8px',
-                                            cursor: 'pointer', color: '#38bdf8', fontWeight: 600,
+                                            fontSize: '11px', background: 'color-mix(in srgb, var(--cm-data) 14%, transparent)',
+                                            border: '1px solid color-mix(in srgb, var(--cm-data) 35%, transparent)', borderRadius: '4px', padding: '2px 8px',
+                                            cursor: 'pointer', color: 'var(--cm-data)', fontWeight: 600,
                                             display: 'flex', alignItems: 'center', gap: '4px'
                                         }}
                                     >
-                                        ⚡ 变量补全
+                                        <Zap size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />变量补全
                                     </button>
                                     <button
                                         onClick={handleAiFillParams}
                                         disabled={aiFillLoading}
                                         title="AI 根据上下文自动生成 inputParameters"
                                         style={{
-                                            fontSize: '11px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                            fontSize: '11px', background: 'var(--cm-ai)',
                                             border: 'none', borderRadius: '4px', padding: '2px 8px',
                                             cursor: aiFillLoading ? 'not-allowed' : 'pointer',
-                                            color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px',
+                                            color: 'var(--cm-surface-0)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px',
                                             opacity: aiFillLoading ? 0.7 : 1,
                                         }}>
-                                        {aiFillLoading ? '⏳' : '✨'} AI 填充
+                                        {aiFillLoading ? <Hourglass size={12} strokeWidth={1.75} aria-hidden="true" /> : <Sparkles size={12} strokeWidth={1.75} aria-hidden="true" />} AI 填充
                                     </button>
                                     <button onClick={() => setShowSnippets(!showSnippets)} title="快捷表达式"
-                                        style={{ fontSize: '11px', background: showSnippets ? 'var(--color-accent)' : 'none', border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: showSnippets ? 'var(--color-on-accent, #fff)' : secondaryTextColor }}>
+                                        style={{ fontSize: '11px', background: showSnippets ? 'var(--color-accent)' : 'none', border: `1px solid ${borderColor}`, borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', color: showSnippets ? 'var(--color-on-accent)' : secondaryTextColor }}>
                                         {'{}'} 片段
                                     </button>
                                 </div>
@@ -920,16 +921,16 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                         )}
                         {/* AI 填充 Diff 预览 */}
                         {aiFillDiff && (
-                            <div style={{ marginBottom: '8px', borderRadius: '8px', border: '1px solid #6366f130', background: '#6366f108', overflow: 'hidden' }}>
-                                <div style={{ padding: '8px 12px', background: '#6366f118', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#6366f1' }}>✨ AI 建议的 inputParameters</span>
+                            <div style={{ marginBottom: '8px', borderRadius: '8px', border: '1px solid color-mix(in srgb, var(--cm-ai) 19%, transparent)', background: 'color-mix(in srgb, var(--cm-ai) 3%, transparent)', overflow: 'hidden' }}>
+                                <div style={{ padding: '8px 12px', background: 'color-mix(in srgb, var(--cm-ai) 9%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--cm-ai)' }}><Sparkles size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />AI 建议的 inputParameters</span>
                                     <div style={{ display: 'flex', gap: '6px' }}>
                                         <button
                                             onClick={() => {
                                                 handleChange('inputParameters', aiFillDiff.generated);
                                                 setAiFillDiff(null);
                                             }}
-                                            style={{ fontSize: '11px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                                            style={{ fontSize: '11px', background: 'var(--cm-ai)', color: 'var(--cm-surface-0)', border: 'none', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                                             应用
                                         </button>
                                         <button
@@ -983,7 +984,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                 <div style={{ marginTop: '48px', opacity: 0.6 }}>
                     <details>
                         <summary style={{ fontSize: '11px', cursor: 'pointer', marginBottom: '8px' }}>查看完整 JSON (只读)</summary>
-                        <pre style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', fontSize: '10px', overflow: 'auto', border: `1px solid ${borderColor}`, color: secondaryTextColor }}>
+                        <pre style={{ background: 'var(--cm-surface-0)', padding: '16px', borderRadius: '8px', fontSize: '10px', overflow: 'auto', border: `1px solid ${borderColor}`, color: secondaryTextColor }}>
                             {JSON.stringify(displayTask, null, 2)}
                         </pre>
                     </details>
@@ -993,9 +994,9 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
             {/* Footer */}
             {isEditMode && (
                 <div style={{ padding: '24px', borderTop: `1px solid ${borderColor}`, background: 'var(--bg-secondary)', display: 'flex', gap: '12px', flexShrink: 0 }}>
-                    <div style={{ flex: 1, fontSize: '11px', color: secondaryTextColor, display: 'flex', alignItems: 'center' }}>✅ 所有修改已实时同步</div>
+                    <div style={{ flex: 1, fontSize: '11px', color: secondaryTextColor, display: 'flex', alignItems: 'center' }}><CircleCheck size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />所有修改已实时同步</div>
                     <button onClick={onClose}
-                        style={{ padding: '10px 24px', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px var(--color-accent-bg)' }}>
+                        style={{ padding: '10px 24px', background: 'var(--color-accent)', color: 'var(--color-on-accent)', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px var(--color-accent-bg)' }}>
                         完成退出
                     </button>
                 </div>

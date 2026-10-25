@@ -53,14 +53,14 @@ const ExecutionStatusBar = () => {
                         onClick={loadSampleExecution}
                         style={{
                             background: 'var(--color-accent)',
-                            color: 'var(--color-on-accent, #fff)',
+                            color: 'var(--color-on-accent)',
                             border: 'none',
                             padding: '6px 14px',
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '13px',
                             fontWeight: '600',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                            boxShadow: 'var(--cm-shadow-card)',
                             transition: 'all 0.2s ease'
                         }}
                     >
@@ -70,7 +70,7 @@ const ExecutionStatusBar = () => {
                         onClick={() => document.getElementById('execution-json-upload')?.click()}
                         title="上传 Conductor 运行态 JSON"
                         style={{
-                            background: 'rgba(255,255,255,0.1)',
+                            background: 'var(--bg-highlight)',
                             color: 'var(--text-primary)',
                             border: '1px solid var(--border-primary)',
                             padding: '6px 14px',
@@ -136,7 +136,7 @@ const ExecutionStatusBar = () => {
                     borderRadius: '4px',
                     padding: '2px 6px',
                     transition: 'background 0.2s',
-                    ...(failedCount > 0 ? { background: 'rgba(239, 68, 68, 0.1)' } : {})
+                    ...(failedCount > 0 ? { background: 'color-mix(in srgb, var(--cm-status-failed) 10%, transparent)' } : {})
                 }}
                 title={failedCount > 0 ? '点击聚焦失败节点' : undefined}
             >
@@ -158,7 +158,7 @@ const ExecutionStatusBar = () => {
                         } as any);
                     }}
                     style={{
-                        background: 'rgba(255,255,255,0.05)',
+                        background: 'var(--bg-highlight)',
                         color: 'var(--text-primary)',
                         border: '1px solid var(--border-primary)',
                         padding: '4px 10px',

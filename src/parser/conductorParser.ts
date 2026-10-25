@@ -229,7 +229,7 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
                 label: caseKey,
                 animated: true,
                 data: { branchCase: caseKey }, // 即使不为空也标记，方便在起始连线插入
-                style: { stroke: '#3b82f6' }
+                style: { stroke: 'var(--cm-cat-control)' }
             });
         } else if (!hideEmptyBranches) {
             // 编辑模式：创建占位引导节点
@@ -250,11 +250,11 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
                 targetPosition: direction === 'LR' ? Position.Left : Position.Top,
                 style: {
                     background: 'transparent',
-                    border: '2px dashed var(--border-secondary, #64748b)',
+                    border: '2px dashed var(--border-secondary)',
                     borderRadius: '8px',
                     padding: '6px 12px',
                     fontSize: '11px',
-                    color: 'var(--text-tertiary, #94a3b8)',
+                    color: 'var(--text-muted)',
                     minWidth: '80px',
                     textAlign: 'center',
                 } as React.CSSProperties,
@@ -267,7 +267,7 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
                 label: caseKey,
                 animated: true,
                 data: { branchCase: caseKey },
-                style: { stroke: '#3b82f6', strokeDasharray: '5,5' },
+                style: { stroke: 'var(--cm-cat-control)', strokeDasharray: '5,5' },
             });
         }
     });
@@ -288,7 +288,7 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
             label: 'default',
             animated: true,
             data: { branchCase: 'default' },
-            style: { stroke: '#f59e0b' }
+            style: { stroke: 'var(--cm-text-muted)' }
         });
     } else if (!hideEmptyBranches) {
         // 编辑模式：创建默认分支占位节点
@@ -309,11 +309,11 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
             targetPosition: direction === 'LR' ? Position.Left : Position.Top,
             style: {
                 background: 'transparent',
-                border: '2px dashed var(--border-secondary, #64748b)',
+                border: '2px dashed var(--border-secondary)',
                 borderRadius: '8px',
                 padding: '6px 12px',
                 fontSize: '11px',
-                color: 'var(--text-tertiary, #94a3b8)',
+                color: 'var(--text-muted)',
                 minWidth: '80px',
                 textAlign: 'center',
             } as React.CSSProperties,
@@ -325,7 +325,7 @@ function parseDecisionTask(task: TaskDef, startId: number, taskMap: Record<strin
             label: 'default',
             animated: true,
             data: { branchCase: 'default' },
-            style: { stroke: '#f59e0b', strokeDasharray: '5,5' },
+            style: { stroke: 'var(--cm-text-muted)', strokeDasharray: '5,5' },
         });
     }
 
@@ -387,7 +387,7 @@ function parseForkJoinTask(task: TaskDef, startId: number, taskMap: Record<strin
             source: task.taskReferenceName,
             target: placeholderId,
             animated: true,
-            style: { stroke: '#10b981', strokeDasharray: '5,5', strokeWidth: 2 },
+            style: { stroke: 'var(--cm-cat-control)', strokeDasharray: '5,5', strokeWidth: 2 },
         });
         localTaskMap[placeholderId] = {
             taskReferenceName: placeholderId,
@@ -417,7 +417,7 @@ function parseForkJoinTask(task: TaskDef, startId: number, taskMap: Record<strin
                     label: `分支 ${branchIndex + 1}`,
                     animated: true,
                     data: { forkIndex: branchIndex },
-                    style: { stroke: '#10b981' }
+                    style: { stroke: 'var(--cm-cat-control)' }
                 });
             }
         });
@@ -659,7 +659,7 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
                 target: task.taskReferenceName,
                 animated: true,
                 style: {
-                    stroke: '#10b981',
+                    stroke: 'var(--cm-cat-control)',
                     strokeWidth: 2,
                     strokeDasharray: '5,5',
                     opacity: 0.8
@@ -687,11 +687,11 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
                             targetPosition: direction === 'LR' ? Position.Left : Position.Top,
                             style: {
                                 background: 'transparent',
-                                border: '2px dashed var(--border-secondary, #64748b)',
+                                border: '2px dashed var(--border-secondary)',
                                 borderRadius: '8px',
                                 padding: '6px 12px',
                                 fontSize: '11px',
-                                color: 'var(--text-tertiary, #94a3b8)',
+                                color: 'var(--text-muted)',
                                 minWidth: '80px',
                                 textAlign: 'center',
                             } as React.CSSProperties,
@@ -704,7 +704,7 @@ function parseJoinTask(task: TaskDef, startId: number, taskMap: Record<string, T
                             label: `分支 ${idx + 1}`,
                             animated: true,
                             data: { forkIndex: idx },
-                            style: { stroke: '#10b981', strokeDasharray: '5,5' },
+                            style: { stroke: 'var(--cm-cat-control)', strokeDasharray: '5,5' },
                         });
                         edges.push({
                             id: `e-${placeholderId}-${task.taskReferenceName}`,

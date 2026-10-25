@@ -196,24 +196,26 @@ export function formatDuration(ms?: number): string {
     return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
 }
 
+/** Icon name from the CMASTER icon registry (render with <CmIcon name=…>). */
 export function getCategoryIcon(category: DiagnosticResult['category']): string {
     const icons: Record<DiagnosticResult['category'], string> = {
-        parameter: '⚙️',
-        timeout: '⏱️',
-        auth: '🔐',
-        network: '🌐',
-        logic: '🔧',
+        parameter: 'settings',
+        timeout: 'clock',
+        auth: 'lock',
+        network: 'globe',
+        logic: 'wrench',
     };
-    return icons[category] ?? '⚠️';
+    return icons[category] ?? 'alert';
 }
 
+/** Every diagnostic is a problem, so the colour is a status colour; the icon and label tell the categories apart. */
 export function getCategoryColor(category: DiagnosticResult['category']): string {
     const colors: Record<DiagnosticResult['category'], string> = {
-        parameter: '#f59e0b',
-        timeout: '#8b5cf6',
-        auth: '#ef4444',
-        network: '#3b82f6',
-        logic: '#10b981',
+        parameter: 'var(--cm-status-warning)',
+        timeout: 'var(--cm-status-warning)',
+        auth: 'var(--cm-status-failed)',
+        network: 'var(--cm-status-failed)',
+        logic: 'var(--cm-status-failed)',
     };
-    return colors[category] ?? '#6b7280';
+    return colors[category] ?? 'var(--cm-status-warning)';
 }

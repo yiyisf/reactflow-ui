@@ -56,7 +56,7 @@ const BrandButton = ({ targetColor, currentColor, onClick, colorHex }: { targetC
                 border: isActive ? '2px solid var(--text-primary)' : '2px solid transparent',
                 cursor: 'pointer',
                 padding: 0,
-                boxShadow: isActive ? '0 0 0 2px rgba(255,255,255,0.2)' : 'none',
+                boxShadow: isActive ? '0 0 0 2px var(--border-primary)' : 'none',
                 opacity: isActive ? 1 : 0.6,
                 transition: 'all 0.2s',
                 outline: 'none'

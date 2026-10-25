@@ -10,6 +10,7 @@ import { Library } from 'lucide-react';
 import { useIdeStores } from '../../store/ideStoresContext';
 import useWorkflowStore from '../../store/workflowStore';
 import { applyPatch, computeDiff } from '../../services/ai/toolExecutor';
+import { collectAllTasksInOrder } from '../../services/ai/workflowSynthesizer';
 import type { WorkflowLibraryItem, WorkflowLevel } from '../../types/workflowLibrary';
 import type { WorkflowDef } from '../../types/conductor';
 import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
@@ -36,7 +37,9 @@ const LibraryPanel: React.FC = () => {
     const { aiStore, libraryStore, libraryCatalog } = useIdeStores();
     const { items } = libraryStore();
     const catalogState = useLibraryCatalogSnapshot(libraryCatalog);
-    const { setProposal } = aiStore();
+    const { setProposal, pendingProposal } = aiStore();
+    /** Item waiting for the user's choice because an AI proposal is still pending (A15) */
+    const [pendingInsert, setPendingInsert] = useState<WorkflowLibraryItem | null>(null);
     const workflowDef = useWorkflowStore(s => s.workflowDef);
 
     const [query, setQuery] = useState('');
@@ -72,13 +75,27 @@ const LibraryPanel: React.FC = () => {
         L1: visible.filter(i => i.workflowLevel === 'L1'),
     }), [visible]);
 
+    /**
+     * Inserting while an AI proposal is pending would silently replace it. Ask first:
+     * add to the pending proposal (keeps its changes), or discard it and insert on the canvas.
+     */
     const handleInsert = (item: WorkflowLibraryItem) => {
-        const currentDef: WorkflowDef = workflowDef ?? {
+        if (pendingProposal) {
+            setPendingInsert(item);
+            return;
+        }
+        insertInto(item, 'canvas');
+    };
+
+    const insertInto = (item: WorkflowLibraryItem, base: 'canvas' | 'proposal') => {
+        setPendingInsert(null);
+        const proposalDef = base === 'proposal' ? aiStore.getState().pendingProposal?.proposedDef : undefined;
+        const currentDef: WorkflowDef = proposalDef ?? workflowDef ?? {
             name: 'new_workflow',
             version: 1,
             tasks: [],
         };
-        const existingRefs = new Set((currentDef.tasks ?? []).map(t => t.taskReferenceName));
+        const existingRefs = new Set(collectAllTasksInOrder(currentDef.tasks ?? []).map(t => t.taskReferenceName));
         const ref = makeUniqueRef(item.workflowName, existingRefs);
         // 新建引用固定为目录中的当前最新版本；无目录信息时才从版本串解析主版本号
         const versionNum = libraryCatalog?.latest(item.workflowName)?.version ?? normalizeVersion(item.version).version;
@@ -135,6 +152,34 @@ const LibraryPanel: React.FC = () => {
     return (
         <div className="ai-library-panel">
             {statusBar}
+            {pendingInsert && (
+                <div
+                    role="alertdialog"
+                    aria-label="插入前确认"
+                    style={{
+                        margin: '8px 12px 0', padding: '10px 12px', borderRadius: 8, fontSize: 12, lineHeight: 1.5,
+                        border: '1px solid var(--cm-border-default)', background: 'var(--cm-surface-2)', color: 'var(--cm-text-secondary)',
+                    }}
+                >
+                    <div style={{ marginBottom: 8 }}>
+                        还有一份待确认的 AI 方案。要把 <code style={{ fontFamily: 'var(--cm-font-mono)' }}>{pendingInsert.workflowName}</code> 加到这份方案里，还是放弃方案、直接插入到当前画布？
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <button
+                            onClick={() => insertInto(pendingInsert, 'proposal')}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: 'var(--cm-brand-500)', color: 'var(--cm-on-brand)' }}
+                        >追加到待确认方案</button>
+                        <button
+                            onClick={() => insertInto(pendingInsert, 'canvas')}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--cm-border-default)', cursor: 'pointer', fontSize: 12, background: 'var(--cm-surface-1)', color: 'var(--cm-text-primary)' }}
+                        >放弃方案并插入画布</button>
+                        <button
+                            onClick={() => setPendingInsert(null)}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, background: 'none', color: 'var(--cm-text-muted)' }}
+                        >取消插入</button>
+                    </div>
+                </div>
+            )}
             {/* Search & filter */}
             <div className="ai-library-toolbar">
                 <input

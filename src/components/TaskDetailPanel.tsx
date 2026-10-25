@@ -930,7 +930,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
                                                 handleChange('inputParameters', aiFillDiff.generated);
                                                 setAiFillDiff(null);
                                             }}
-                                            style={{ fontSize: '11px', background: 'var(--cm-ai)', color: 'var(--text-primary)', border: 'none', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                                            style={{ fontSize: '11px', background: 'var(--cm-ai)', color: 'var(--cm-surface-0)', border: 'none', borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                                             应用
                                         </button>
                                         <button

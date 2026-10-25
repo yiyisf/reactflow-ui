@@ -180,7 +180,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
                     </button>
                     <button
                         onClick={handleRun}
-                        style={{ ...BTN_BASE, border: 'none', background: 'var(--color-accent)', color: '#fff', fontWeight: 600 }}
+                        style={{ ...BTN_BASE, border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)', fontWeight: 600 }}
                     >
                         确认执行
                     </button>

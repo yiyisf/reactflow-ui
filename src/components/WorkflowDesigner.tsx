@@ -40,6 +40,7 @@ import { getLayoutedElements } from '../layout/autoLayout';
 import { buildDataFlowGraph } from '../services/wlsp/workflowLsp';
 import ExecutionWaterfallPanel from './ExecutionWaterfallPanel';
 import InlineCanvasCopilot from './AiNative/InlineCanvasCopilot';
+import { Check, Sparkles, X } from 'lucide-react';
 
 // 注册自定义节点，Key 必须与 parser 中生成的 type 一致
 const nodeTypes = {
@@ -610,12 +611,12 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                 target: item.targetRef,
                 type: 'addableEdge',
                 animated: true,
-                label: `🔗 ${item.fieldPath}`,
+                label: item.fieldPath,
                 data: {
                     mode: 'view',
                     isAddable: false,
                     edgeType: 'default',
-                    label: `🔗 ${item.fieldPath}`,
+                    label: item.fieldPath,
                 },
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
@@ -790,22 +791,22 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                 fontSize: '12px',
                             }}
                         >
-                            <span style={{ fontWeight: 700, color: '#a5b4fc' }}>
-                                👻 Shadow Graph 架构变更预览
+                            <span style={{ fontWeight: 700, color: 'var(--cm-ai)' }}>
+                                <Sparkles size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />AI 提案预览（Shadow Graph）
                             </span>
                             <div style={{ display: 'flex', gap: '8px', fontFamily: 'monospace', fontSize: '11px' }}>
                                 {pendingProposal.diff.added.length > 0 && (
-                                    <span style={{ color: '#34d399', fontWeight: 700 }}>
+                                    <span style={{ color: 'var(--cm-diff-added)', fontWeight: 700 }}>
                                         +{pendingProposal.diff.added.length} 新增
                                     </span>
                                 )}
                                 {pendingProposal.diff.modified.length > 0 && (
-                                    <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+                                    <span style={{ color: 'var(--cm-diff-modified)', fontWeight: 700 }}>
                                         ~{pendingProposal.diff.modified.length} 修改
                                     </span>
                                 )}
                                 {pendingProposal.diff.removed.length > 0 && (
-                                    <span style={{ color: '#f87171', fontWeight: 700 }}>
+                                    <span style={{ color: 'var(--cm-diff-removed)', fontWeight: 700 }}>
                                         -{pendingProposal.diff.removed.length} 移除
                                     </span>
                                 )}
@@ -830,7 +831,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    ✓ 采纳上屏
+                                    <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />全部采纳
                                 </button>
                                 <button
                                     type="button"
@@ -849,7 +850,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    ✕ 拒绝
+                                    <X size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />放弃
                                 </button>
                             </div>
                         </div>

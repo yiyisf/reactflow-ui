@@ -27,11 +27,11 @@ const ControlButton: React.FC<ControlButtonProps> = ({
 
     if (variant === 'primary') {
         bg = 'var(--color-accent)';
-        color = '#fff';
+        color = 'var(--color-on-accent, #fff)';
         border = 'none';
     } else if (variant === 'danger') {
-        bg = disabled ? 'rgba(239, 68, 68, 0.1)' : 'var(--status-failed)';
-        color = disabled ? 'var(--text-secondary)' : '#fff';
+        bg = disabled ? 'var(--cm-failed-tint)' : 'var(--status-failed)';
+        color = disabled ? 'var(--text-secondary)' : 'var(--color-on-danger, #fff)';
         border = 'none';
     } else if (active) {
         bg = 'var(--bg-secondary)';

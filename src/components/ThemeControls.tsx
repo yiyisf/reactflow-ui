@@ -1,5 +1,6 @@
 import { useTheme } from '../hooks/useTheme';
 import { ThemeColor } from '../types/workflow';
+import { Moon, Sun } from 'lucide-react';
 
 /**
  * 主题控制组件 - 允许切换明暗模式和品牌色
@@ -8,15 +9,16 @@ export const ThemeControls = () => {
     const { mode, color, toggleMode, setColor } = useTheme();
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-primary)' }}>
             {/* Mode Toggle */}
             <button
                 onClick={toggleMode}
                 title={mode === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+                aria-label={mode === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
                 className="settings-btn"
-                style={{ width: '28px', height: '28px', fontSize: '14px', background: 'transparent', border: 'none' }}
+                style={{ width: '28px', height: '28px', fontSize: '14px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
-                {mode === 'dark' ? '🌙' : '☀️'}
+                {mode === 'dark' ? <Moon size={15} strokeWidth={1.75} aria-hidden="true" /> : <Sun size={15} strokeWidth={1.75} aria-hidden="true" />}
             </button>
 
             <div style={{ width: '1px', height: '16px', background: 'var(--border-primary)' }}></div>
@@ -33,7 +35,7 @@ export const ThemeControls = () => {
                     targetColor="orange"
                     currentColor={color}
                     onClick={() => setColor('orange')}
-                    colorHex="#E75213"
+                    colorHex="var(--cm-brand-500)"
                 />
             </div>
         </div>
@@ -45,7 +47,7 @@ const BrandButton = ({ targetColor, currentColor, onClick, colorHex }: { targetC
     return (
         <button
             onClick={onClick}
-            title={`切换到 ${targetColor === 'blue' ? '科技蓝' : '熔核橙'}`}
+            title={`切换到 ${targetColor === 'blue' ? '科技蓝（已弃用）' : 'CMASTER 橙'}`}
             style={{
                 width: '18px',
                 height: '18px',

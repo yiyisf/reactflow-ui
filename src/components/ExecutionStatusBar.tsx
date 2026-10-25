@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { useReactFlow } from 'reactflow';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
+import { FolderOpen, Play, Search } from 'lucide-react';
 
 /**
  * 运行态状态栏组件
@@ -52,7 +53,7 @@ const ExecutionStatusBar = () => {
                         onClick={loadSampleExecution}
                         style={{
                             background: 'var(--color-accent)',
-                            color: '#fff',
+                            color: 'var(--color-on-accent, #fff)',
                             border: 'none',
                             padding: '6px 14px',
                             borderRadius: '8px',
@@ -63,7 +64,7 @@ const ExecutionStatusBar = () => {
                             transition: 'all 0.2s ease'
                         }}
                     >
-                        🚀 加载示例运行
+                        <Play size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />加载示例运行
                     </button>
                     <button
                         onClick={() => document.getElementById('execution-json-upload')?.click()}
@@ -80,7 +81,7 @@ const ExecutionStatusBar = () => {
                             transition: 'all 0.2s ease'
                         }}
                     >
-                        📁 导入执行 JSON
+                        <FolderOpen size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />导入执行 JSON
                     </button>
                 </div>
             </div>
@@ -167,7 +168,7 @@ const ExecutionStatusBar = () => {
                         fontWeight: '600'
                     }}
                 >
-                    🔍 全局 I/O
+                    <Search size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />全局 I/O
                 </button>
             </div>
         </div>

@@ -41,7 +41,7 @@ const PlusNode = ({ data }: NodeProps) => {
         .plus-node-container:hover {
           transform: scale(1.1);
           background: var(--color-accent);
-          color: #fff;
+          color: var(--color-on-accent, #fff);
           border-style: solid;
           box-shadow: 0 0 10px var(--color-accent);
         }

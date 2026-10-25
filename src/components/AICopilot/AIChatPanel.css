@@ -171,7 +171,7 @@
 
 .ai-send {
     background: var(--color-accent);
-    color: white;
+    color: var(--color-on-accent, #fff);
     border: none;
     border-radius: 6px;
     padding: 4px 10px;

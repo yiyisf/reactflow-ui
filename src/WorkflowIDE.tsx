@@ -34,6 +34,7 @@ import {
 } from './components/onboarding/OnboardingController';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
+import { LayoutList, LayoutTemplate, Network, Plug } from 'lucide-react';
 
 /**
  * WorkflowIDE 的命令式 API（通过 ref 调用）
@@ -487,24 +488,24 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             style={{
                                 height: 24, padding: '0 8px', borderRadius: 4, border: 'none',
                                 background: businessViewLayout === 'card' ? 'var(--color-accent)' : 'transparent',
-                                color: businessViewLayout === 'card' ? '#fff' : 'var(--text-secondary)',
+                                color: businessViewLayout === 'card' ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary)',
                                 cursor: 'pointer', fontSize: 11, fontWeight: 500,
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                             }}
                         >
-                            📋 业务卡片流
+                            <LayoutList size={14} strokeWidth={1.75} aria-hidden="true" />业务卡片流
                         </button>
                         <button
                             onClick={() => setBusinessViewLayout('canvas')}
                             style={{
                                 height: 24, padding: '0 8px', borderRadius: 4, border: 'none',
                                 background: businessViewLayout === 'canvas' ? 'var(--color-accent)' : 'transparent',
-                                color: businessViewLayout === 'canvas' ? '#fff' : 'var(--text-secondary)',
+                                color: businessViewLayout === 'canvas' ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary)',
                                 cursor: 'pointer', fontSize: 11, fontWeight: 500,
                                 display: 'inline-flex', alignItems: 'center', gap: 4,
                             }}
                         >
-                            🕸️ 全景画布
+                            <Network size={14} strokeWidth={1.75} aria-hidden="true" />全景画布
                         </button>
                     </div>
                 )}
@@ -525,7 +526,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         }}
                         title="从 OpenAPI / Swagger / Postman / curl 导入接口，生成 HTTP 步骤"
                     >
-                        <span>🔌</span>
+                        <Plug size={14} strokeWidth={1.75} aria-hidden="true" />
                         <span>导入接口</span>
                     </button>
                 )}
@@ -538,15 +539,15 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         onClick={() => setShowTemplateGallery(true)}
                         style={{
                             height: 28, padding: '0 10px',
-                            background: 'color-mix(in srgb, var(--color-brand-blue) 15%, transparent)',
-                            color: 'var(--color-brand-blue)',
-                            border: '1px solid color-mix(in srgb, var(--color-brand-blue) 40%, transparent)',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-secondary)',
                             borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600,
                             display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit',
                         }}
                         title="打开场景化工作流模板中心"
                     >
-                        <span>📁</span>
+                        <LayoutTemplate size={14} strokeWidth={1.75} aria-hidden="true" />
                         <span>模板中心</span>
                     </button>
                 )}

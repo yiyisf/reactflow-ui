@@ -90,7 +90,7 @@ export const ForkNode = memo(({ id, data, selected }: ForkJoinNodeProps) => {
                         height: 20,
                         background: 'var(--color-accent)',
                         borderRadius: '50%',
-                        color: '#fff',
+                        color: 'var(--color-on-accent, #fff)',
                         fontSize: '14px',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer',

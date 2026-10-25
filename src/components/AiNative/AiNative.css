@@ -72,7 +72,7 @@
 
 .ai-toggle-btn:hover {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     border-color: var(--color-accent);
 }
 
@@ -141,7 +141,7 @@
 .ai-cc-msg.user {
     align-self: flex-end;
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     padding: 10px 14px;
     border-radius: 16px 16px 4px 16px;
 }
@@ -276,7 +276,7 @@
     font-size: 15px;
     flex-shrink: 0;
     transition: transform 0.1s, filter 0.15s;
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 .ai-cc-send-btn:hover { filter: brightness(1.1); }
@@ -449,7 +449,7 @@
 
 .ai-review-btn.accept {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 .ai-review-btn.accept:hover { filter: brightness(1.1); }
@@ -641,7 +641,7 @@
 
 .ai-config-btns .save {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 .ai-config-btns .save:hover { filter: brightness(1.1); }
@@ -806,7 +806,7 @@
     border-radius: 8px;
     border: none;
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
@@ -956,7 +956,7 @@
 
 .ai-guard-btn.primary {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 .ai-guard-btn.primary:hover { filter: brightness(1.1); }
@@ -1147,7 +1147,7 @@
 
 .ai-library-insert-btn:hover {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 /* ─── Library empty state ────────────────────────────────────────────────── */
@@ -1260,7 +1260,7 @@
 
 .ai-welcome-chip.follow-up:hover:not(:disabled) {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 /* ─── D2: Retry row ──────────────────────────────────────────────────────── */
@@ -1366,7 +1366,7 @@
 
 .ai-node-context-type {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     padding: 1px 6px;
     border-radius: 4px;
     font-size: 10px;
@@ -1622,7 +1622,7 @@
     height: 20px;
     border-radius: 50%;
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     font-size: 11px;
     font-weight: 700;
     display: flex;
@@ -1681,7 +1681,7 @@
 
 .ai-plan-btn.execute {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 /* ─── Granular proposal checkboxes ───────────────────────────────────────── */
@@ -2045,7 +2045,7 @@
     z-index: 100;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     transition: transform 0.15s, filter 0.15s;
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     font-family: inherit;
     gap: 1px;
 }
@@ -2316,7 +2316,7 @@
 }
 .ai-rec-btn.primary {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 .ai-rec-btn.primary:hover {
     filter: brightness(1.1);
@@ -2430,7 +2430,7 @@
 .wizard-step.active .wizard-step-circle {
     background: var(--color-accent);
     border-color: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 .wizard-step.done .wizard-step-circle {
     background: #10b981;
@@ -2714,7 +2714,7 @@
 }
 .wizard-btn.primary {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 .wizard-btn.primary:hover { filter: brightness(1.1); }
 .wizard-btn.secondary {
@@ -2749,7 +2749,7 @@
 }
 .biz-view-toggle-btn.active {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 /* ─── Canvas header toolbar ─── */
@@ -2783,7 +2783,7 @@
 
 .ai-canvas-expand-chat-btn:hover {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 .ai-canvas-create-btn {
@@ -2792,7 +2792,7 @@
     gap: 6px;
     padding: 7px 14px;
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     border: none;
     border-radius: 8px;
     font-size: 12px;
@@ -3316,7 +3316,7 @@
 .ai-synthesis-step.active .ai-synthesis-step-dot {
     background: var(--color-accent);
     border-color: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
     box-shadow: 0 0 0 3px var(--color-accent-bg, rgba(59, 130, 246, 0.2));
 }
 
@@ -3433,7 +3433,7 @@
 
 .ai-checkpoint-btn.resume {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-on-accent, #fff);
 }
 
 .ai-checkpoint-btn.resume:hover {

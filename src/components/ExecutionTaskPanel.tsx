@@ -130,7 +130,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                     <div style={{
                         background: 'var(--color-accent)',
-                        color: '#fff',
+                        color: 'var(--color-on-accent, #fff)',
                         padding: '2px 8px',
                         borderRadius: 4,
                         fontSize: 10,
@@ -203,7 +203,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                         cursor: 'pointer',
                                         border: `1px solid ${isActive ? 'var(--color-accent)' : borderColor}`,
                                         background: isActive ? 'var(--color-accent)' : 'var(--bg-tertiary)',
-                                        color: isActive ? '#fff' : 'var(--text-primary)',
+                                        color: isActive ? 'var(--color-on-accent, #fff)' : 'var(--text-primary)',
                                         fontFamily: 'inherit',
                                         transition: 'all 0.15s',
                                     }}

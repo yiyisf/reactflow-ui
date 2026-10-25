@@ -15,6 +15,9 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ### Changed
 - **IDE 换用 CMASTER 视觉**：旧变量（`--bg-*`、`--text-*`、`--border-*`、`--font-*`、`--radius-*`、`--color-success/warning/error/info`、`--status-*`）改为 `--cm-*` 的别名，深色主题由 slate 灰蓝换为 CMASTER 海军蓝，圆角放大一档，运行中状态改用数据青色，`themeColor="orange"` 使用 CMASTER 橙（`#ff6a13`）。`themeColor="blue"` 保留但标记为弃用。演示站加载 Geist / Geist Mono 字体；库本身不加载字体。
+- **橙底文字改为深色**：新增 `--color-on-accent`（橙色品牌为 `--cm-on-brand` 深色，蓝色品牌仍为白色）与 `--color-on-danger`，替换 54 处写死在强调色底上的白字（工具栏主按钮、节点角标、业务卡片、模板中心、AI 面板、演示站顶栏等）。
+- **IDE 外壳的 emoji 换成 Lucide 图标**（线宽 1.75）：工具栏（数据血缘、AI 微调、撤销 / 重做、诊断、配置、沙箱试运行、模拟数据、瀑布流回放、返回编辑）、主题切换、业务视图切换、导入接口、模板中心、执行状态栏、AI IDE 视图切换与对话开关、Shadow Graph 评审条（按钮文案改为"全部采纳 / 放弃"，增删改计数改用 `--cm-diff-*`）。模板中心按钮不再使用蓝色。
+- 新增守卫测试 `src/styles/designRules.test.ts`：禁止在强调色底上写死白字；已迁移的文件不允许再出现 emoji。
 
 ---
 

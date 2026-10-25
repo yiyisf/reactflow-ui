@@ -32,6 +32,8 @@
     --z-popover: 1500;
 
     --glass-blur: blur(16px);
+    /* Text/icon colour on --color-accent fills. White suits the deprecated blue brand; orange overrides it. */
+    --color-on-accent: #ffffff;
     --node-glow-color: rgba(59, 130, 246, 0.45);
     --color-accent-rgb: 59, 130, 246;
 }
@@ -43,6 +45,8 @@
     --color-warning: var(--cm-status-warning);
     --color-error: var(--cm-status-failed);
     --color-info: var(--cm-data);
+    /* Text/icon colour on filled status-failed (danger) surfaces */
+    --color-on-danger: var(--cm-on-danger);
 }
 
 /* ------------------------------------------------------------------
@@ -148,6 +152,8 @@
     --color-accent-hover: var(--cm-brand-400);
     --color-accent-text: var(--cm-brand-text);
     --color-accent-bg: var(--cm-brand-tint);
+    /* CMASTER rule: text on orange fills is dark (--cm-on-brand), never white */
+    --color-on-accent: var(--cm-on-brand);
 }
 
 [data-brand='orange'][data-mode='light'] {

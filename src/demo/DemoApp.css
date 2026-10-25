@@ -482,7 +482,7 @@ body {
 .mode-btn.active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent, #fff);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -568,7 +568,7 @@ body {
 
 .app.light-theme .mode-btn.active {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent, #fff);
 }
 
 .app.light-theme .sample-select {
@@ -873,7 +873,7 @@ body {
 
 .ai-config-btn.save {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent, #fff);
 }
 
 .ai-config-btn.save:hover {

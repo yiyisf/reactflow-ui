@@ -1,121 +1,34 @@
 import React, { useMemo } from 'react';
 import dagre from 'dagre';
+import { parseMermaidFlowchart, type MermaidNodeShape } from './mermaidParser';
 
 interface MermaidBlockProps {
     code: string;
-}
-
-interface ParsedNode {
-    id: string;
-    label: string;
-    shape: 'rect' | 'round' | 'diamond' | 'stadium';
-}
-
-interface ParsedEdge {
-    from: string;
-    to: string;
-    label?: string;
-    dashed?: boolean;
 }
 
 /**
  * Lightweight zero-bloat Mermaid Flowchart/Graph SVG renderer powered by Dagre.
  * Eliminates ~2.5MB of heavy transitive bundles (cytoscape, katex, etc.) while
  * rendering crisp, theme-aware SVG architecture diagrams in AI chat.
+ * Parsing lives in ./mermaidParser.ts (unit-tested against workflowToMermaid output).
  */
-function parseMermaidFlowchart(rawCode: string): {
-    direction: 'TB' | 'LR';
-    nodes: ParsedNode[];
-    edges: ParsedEdge[];
-} | null {
-    const lines = rawCode
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith('%%'));
 
-    if (lines.length === 0) return null;
-
-    const header = lines[0];
-    const headerMatch = header.match(/^(?:graph|flowchart)\s+(TB|TD|BT|RL|LR)?/i);
-    if (!headerMatch) return null;
-
-    const dirRaw = (headerMatch[1] || 'TD').toUpperCase();
-    const direction: 'TB' | 'LR' = dirRaw === 'LR' || dirRaw === 'RL' ? 'LR' : 'TB';
-
-    const nodeMap = new Map<string, ParsedNode>();
-    const edges: ParsedEdge[] = [];
-
-    const parseNodeToken = (token: string): string => {
-        const trimmed = token.trim();
-        // Match ID["Label"] or ID[Label] or ID(Label) or ID{Label} or ID([Label])
-        const m =
-            trimmed.match(/^([A-Za-z0-9_.-]+)\(\[([^\]]+)\]\)$/) ||
-            trimmed.match(/^([A-Za-z0-9_.-]+)\{([^}]+)\}$/) ||
-            trimmed.match(/^([A-Za-z0-9_.-]+)\(([^)]+)\)$/) ||
-            trimmed.match(/^([A-Za-z0-9_.-]+)\[([^\]]+)\]$/) ||
-            trimmed.match(/^([A-Za-z0-9_.-]+)$/);
-
-        if (!m) {
-            const fallbackId = trimmed.replace(/[^A-Za-z0-9_.-]/g, '_') || 'node';
-            if (!nodeMap.has(fallbackId)) {
-                nodeMap.set(fallbackId, { id: fallbackId, label: trimmed, shape: 'rect' });
-            }
-            return fallbackId;
+/** Node outline per Mermaid shape (diamond for SWITCH, circle for TERMINATE / merge, parallelogram for FORK). */
+function renderShape(shape: MermaidNodeShape, w: number, h: number, style: React.CSSProperties): React.ReactNode {
+    switch (shape) {
+        case 'diamond':
+            return <polygon points={`${w / 2},0 ${w},${h / 2} ${w / 2},${h} 0,${h / 2}`} style={style} strokeWidth={1.5} />;
+        case 'circle':
+            return <ellipse cx={w / 2} cy={h / 2} rx={w / 2} ry={h / 2} style={style} strokeWidth={1.5} />;
+        case 'parallelogram': {
+            const skew = Math.min(14, w / 6);
+            return <polygon points={`${skew},0 ${w},0 ${w - skew},${h} 0,${h}`} style={style} strokeWidth={1.5} />;
         }
-
-        const id = m[1];
-        const rawLabel = (m[2] || id).replace(/^["']|["']$/g, '');
-        let shape: ParsedNode['shape'] = 'rect';
-        if (trimmed.includes('{')) shape = 'diamond';
-        else if (trimmed.includes('([')) shape = 'stadium';
-        else if (trimmed.includes('(')) shape = 'round';
-
-        if (!nodeMap.has(id) || m[2]) {
-            nodeMap.set(id, { id, label: rawLabel, shape });
-        }
-        return id;
-    };
-
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (/^(?:subgraph|end|style|classDef|class|click)\b/i.test(line)) continue;
-
-        // Match edge patterns: A -->|label| B, A -- label --> B, A -.-> B, A --> B
-        const edgeMatch =
-            line.match(/^(.+?)\s*(-+>|-\.-+>|=+>)\s*(?:\|([^|]+)\|)?\s*(.+)$/) ||
-            line.match(/^(.+?)\s*--\s*([^-]+?)\s*-->\s*(.+)$/);
-
-        if (edgeMatch) {
-            let leftToken: string;
-            let rightToken: string;
-            let label: string | undefined;
-            let dashed = false;
-
-            if (edgeMatch.length === 5) {
-                leftToken = edgeMatch[1];
-                dashed = edgeMatch[2].includes('.');
-                label = edgeMatch[3]?.trim();
-                rightToken = edgeMatch[4];
-            } else {
-                leftToken = edgeMatch[1];
-                label = edgeMatch[2]?.trim();
-                rightToken = edgeMatch[3];
-            }
-
-            const fromId = parseNodeToken(leftToken);
-            const toId = parseNodeToken(rightToken);
-            edges.push({ from: fromId, to: toId, label, dashed });
-        } else {
-            parseNodeToken(line);
+        default: {
+            const rx = shape === 'stadium' ? h / 2 : shape === 'round' ? 8 : 5;
+            return <rect width={w} height={h} rx={rx} style={style} strokeWidth={1.5} />;
         }
     }
-
-    if (nodeMap.size === 0) return null;
-    return {
-        direction,
-        nodes: Array.from(nodeMap.values()),
-        edges,
-    };
 }
 
 const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
@@ -135,8 +48,13 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
         g.setDefaultEdgeLabel(() => ({}));
 
         parsed.nodes.forEach((n) => {
-            const width = Math.max(Math.min(n.label.length * 9 + 28, 200), 88);
-            const height = n.shape === 'diamond' ? 46 : 36;
+            const textWidth = Math.max(Math.min(n.label.length * 9 + 28, 200), 88);
+            // diamonds / circles / parallelograms need extra room so the label stays inside the outline
+            const width = n.shape === 'diamond' ? textWidth + 36
+                : n.shape === 'circle' ? (n.label ? Math.max(textWidth, 64) : 24)
+                    : n.shape === 'parallelogram' ? textWidth + 20
+                        : textWidth;
+            const height = n.shape === 'diamond' ? 52 : n.shape === 'circle' ? (n.label ? 44 : 24) : 36;
             g.setNode(n.id, { label: n.label, width, height, shape: n.shape });
         });
 
@@ -268,17 +186,10 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
                 })}
 
                 {/* Nodes */}
-                {layout.nodes.map((n) => {
-                    const rx = n.shape === 'stadium' ? 18 : n.shape === 'round' ? 8 : 5;
-                    return (
-                        <g key={n.id} transform={`translate(${n.x - n.width / 2}, ${n.y - n.height / 2})`}>
-                            <rect
-                                width={n.width}
-                                height={n.height}
-                                rx={rx}
-                                style={nodeStyle}
-                                strokeWidth={1.5}
-                            />
+                {layout.nodes.map((n) => (
+                    <g key={n.id} transform={`translate(${n.x - n.width / 2}, ${n.y - n.height / 2})`}>
+                        {renderShape(n.shape, n.width, n.height, nodeStyle)}
+                        {n.label && (
                             <text
                                 x={n.width / 2}
                                 y={n.height / 2 + 4}
@@ -290,9 +201,9 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
                             >
                                 {n.label}
                             </text>
-                        </g>
-                    );
-                })}
+                        )}
+                    </g>
+                ))}
             </svg>
         </div>
     );

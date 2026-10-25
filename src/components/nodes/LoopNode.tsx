@@ -9,6 +9,7 @@ import { TASK_TYPES } from '../../config/taskTypes';
 import { CircleAlert, Repeat, RotateCw, TriangleAlert } from 'lucide-react';
 import { getNodeMeta, getNodeHeader } from '../../utils/nodeMeta';
 import ConfirmDialog from '../ConfirmDialog';
+import { describeTaskRemoval } from '../../utils/taskEditing';
 import ExecutionStatusBadge from './ExecutionStatusBadge';
 
 type LoopNodeProps = NodeProps<WorkflowNodeData>;
@@ -317,7 +318,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             {/* ── Confirm delete dialog ────────────────────── */}
             {showConfirm && (
                 <ConfirmDialog
-                    message="确定要删除此循环任务吗？循环体内的任务也会一并删除。"
+                    message={describeTaskRemoval(useWorkflowStore.getState().workflowDef, id).message}
                     onConfirm={() => { removeNode(id); setShowConfirm(false); }}
                     onCancel={() => setShowConfirm(false)}
                 />

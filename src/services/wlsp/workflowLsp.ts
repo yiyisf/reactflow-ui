@@ -375,8 +375,8 @@ export function inferTaskOutputSchema(
             addContractField('iteration', 'number', '当前循环迭代轮次 (从 1 开始)');
             break;
         case 'SUB_WORKFLOW':
-            addContractField('workflowId', 'string', '子工作流实例 ID');
-            addContractField('result', 'object', '子工作流返回输出');
+            // Conductor SUB_WORKFLOW 输出：subWorkflowId + 子流程 outputParameters 的各字段（平铺在 output 下）
+            addContractField('subWorkflowId', 'string', '子工作流实例 ID');
             break;
         case 'HUMAN':
             addContractField('approved', 'boolean', '人工审批结果');
@@ -409,7 +409,7 @@ export function getCompletionItems(
     const items: WlspCompletionItem[] = [];
 
     // 1. 工作流输入参数 (${workflow.input.*})
-    const parsedInputs = parseWorkflowInputParams(workflowDef.inputParameters);
+    const parsedInputs = parseWorkflowInputParams(workflowDef.inputParameters, workflowDef);
     if (parsedInputs.length > 0) {
         for (const param of parsedInputs) {
             const sample = workflowInputSample?.[param.name] ?? param.defaultValue;
@@ -760,6 +760,9 @@ export function refactorTaskReferenceName(
         }
         if (t.expression) {
             t.expression = rewriteValue(t.expression, currentOwner);
+        }
+        if (t.caseExpression) {
+            t.caseExpression = rewriteValue(t.caseExpression, currentOwner);
         }
         if (Array.isArray(t.joinOn)) {
             t.joinOn = t.joinOn.map(ref => {

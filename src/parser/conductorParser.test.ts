@@ -77,3 +77,48 @@ describe('parseWorkflow (parseConductorWorkflow)', () => {
         expect(taskMap.do_no).toBeDefined();
     });
 });
+
+describe('parseWorkflow · v1.3.1 编辑交互（E6 / E16）', () => {
+    it('renders an empty FORK branch as a clickable plusNode bound to its branch index', () => {
+        const def: WorkflowDef = {
+            name: 'wf',
+            tasks: [
+                task('f', { type: 'FORK_JOIN', forkTasks: [[task('a')], []] } as any),
+                task('j', { type: 'JOIN', joinOn: ['a'] } as any),
+            ],
+        } as any;
+        const { nodes, edges } = parseWorkflow(def, 'TB');
+        const ph = nodes.find(n => n.id === 'f_empty_branch_1')!;
+        expect(ph.type).toBe('plusNode');
+        expect(ph.data.parentRef).toBe('f');
+        expect(ph.data.edgeData).toEqual({ forkIndex: 1 });
+        const toJoin = edges.find(e => e.source === 'f_empty_branch_1' && e.target === 'j')!;
+        expect(toJoin.data).toEqual({ forkIndex: 1, branchParentRef: 'f' });
+    });
+
+    it('draws a dashed "不等待" edge for branches outside a partial joinOn', () => {
+        const def: WorkflowDef = {
+            name: 'wf',
+            tasks: [
+                task('f', { type: 'FORK_JOIN', forkTasks: [[task('a')], [task('b')]] } as any),
+                task('j', { type: 'JOIN', joinOn: ['a'] } as any),
+            ],
+        } as any;
+        const { edges } = parseWorkflow(def, 'TB', { hideEmptyBranches: true });
+        expect(edges.find(e => e.source === 'a' && e.target === 'j')?.data).toBeUndefined();
+        expect(edges.find(e => e.source === 'b' && e.target === 'j')?.data).toEqual({ notJoined: true });
+    });
+
+    it('marks SWITCH exit edges with exitOf so "+" inserts after the SWITCH', () => {
+        const def: WorkflowDef = {
+            name: 'wf',
+            tasks: [
+                task('sw', { type: 'SWITCH', evaluatorType: 'value-param', expression: 'k', decisionCases: { x: [task('in_x')] }, defaultCase: [] } as any),
+                task('next'),
+            ],
+        } as any;
+        const { edges } = parseWorkflow(def, 'TB');
+        expect(edges.find(e => e.source === 'in_x' && e.target === 'next')?.data).toEqual({ exitOf: 'sw' });
+        expect(edges.find(e => e.source === 'sw_empty_default' && e.target === 'next')?.data).toEqual({ exitOf: 'sw' });
+    });
+});

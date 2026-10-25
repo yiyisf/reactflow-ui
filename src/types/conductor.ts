@@ -123,11 +123,22 @@ export interface TaskDef {
         displayName?: string;
     };
 
+    /**
+     * 内嵌任务定义（Conductor WorkflowTask.taskDefinition）。超时 / 重试策略等 TaskDef 字段只在这里或已注册的
+     * 任务定义中生效；设置后 Conductor 用它代替同名的已注册任务定义。
+     */
+    taskDefinition?: Record<string, any>;
+
     // 通用运行属性
+    /** WorkflowTask 自身支持 retryCount（覆盖任务定义里的值） */
     retryCount?: number;
+    /** @deprecated 写在 WorkflowTask 顶层会被 Conductor 忽略，请改用 taskDefinition.retryLogic */
     retryLogic?: 'FIXED' | 'EXPONENTIAL_BACKOFF' | 'LINEAR_BACKOFF';
+    /** @deprecated 请改用 taskDefinition.retryDelaySeconds */
     retryDelaySeconds?: number;
+    /** @deprecated 请改用 taskDefinition.timeoutSeconds */
     timeoutSeconds?: number;
+    /** @deprecated 请改用 taskDefinition.timeoutPolicy */
     timeoutPolicy?: 'RETRY' | 'TIME_OUT_WF' | 'ALERT_ONLY' | 'FAIL_WORKFLOW';
 }
 
@@ -164,12 +175,100 @@ export interface WorkflowInputParam {
 /**
  * 解析工作流入参声明：兼容 string[] 旧格式与 WorkflowInputParam[] 新格式
  */
-export function parseWorkflowInputParams(raw: any[] | undefined): WorkflowInputParam[] {
+export function parseWorkflowInputParams(
+    raw: any[] | undefined,
+    def?: Pick<WorkflowDef, 'inputSchema' | 'inputTemplate'> | null
+): WorkflowInputParam[] {
     if (!raw || raw.length === 0) return [];
-    if (typeof raw[0] === 'string') {
-        return (raw as string[]).map(name => ({ name }));
+    if (typeof raw[0] !== 'string') {
+        // 旧版编辑器写入的对象数组（Conductor 不接受，读取时仍兼容）
+        return raw as WorkflowInputParam[];
     }
-    return raw as WorkflowInputParam[];
+    const props: Record<string, any> =
+        (def?.inputSchema?.data && typeof def.inputSchema.data.properties === 'object' && def.inputSchema.data.properties) || {};
+    const required: string[] = Array.isArray(def?.inputSchema?.data?.required) ? def!.inputSchema!.data!.required : [];
+    const template = def?.inputTemplate || {};
+    return (raw as string[]).map(name => {
+        const param: WorkflowInputParam = { name };
+        const prop = props[name];
+        if (prop && typeof prop === 'object') {
+            const t = Array.isArray(prop.type) ? prop.type.find((x: string) => x !== 'null') : prop.type;
+            if (t === 'integer') param.type = 'number';
+            else if (['string', 'number', 'boolean', 'object', 'array'].includes(t)) param.type = t;
+            if (typeof prop.description === 'string' && prop.description) param.description = prop.description;
+            if (Array.isArray(prop.examples) && prop.examples.length > 0) param.example = prop.examples[0];
+        }
+        if (required.includes(name)) param.required = true;
+        if (template[name] !== undefined) param.defaultValue = template[name];
+        return param;
+    });
+}
+
+const hasStructuredInfo = (p: WorkflowInputParam) =>
+    (p.type !== undefined && p.type !== 'string') ||
+    !!p.description ||
+    !!p.required ||
+    (p.example !== undefined && p.example !== '');
+
+/**
+ * 把结构化入参写回 Conductor 能接受的形态（E22）：
+ * - `inputParameters` 只保留参数名（Conductor WorkflowDef 只接受 List<String>）
+ * - 类型 / 说明 / 必填 / 示例写入 `inputSchema`（JSON Schema，Conductor 标准字段）
+ * - 默认值写入 `inputTemplate`（Conductor 启动时用它补齐缺省入参）
+ * 只改动由入参列表管理的键，用户手写的其他 schema 属性 / 模板键原样保留。
+ */
+export function serializeWorkflowInputParams(
+    params: WorkflowInputParam[],
+    def: Pick<WorkflowDef, 'name' | 'inputParameters' | 'inputSchema' | 'inputTemplate'>
+): Pick<WorkflowDef, 'inputParameters' | 'inputSchema' | 'inputTemplate'> {
+    const prevNames = parseWorkflowInputParams(def.inputParameters as any[] | undefined).map(p => p.name);
+    const nextNames = params.map(p => p.name);
+    const managed = new Set([...prevNames, ...nextNames]);
+    const result: Pick<WorkflowDef, 'inputParameters' | 'inputSchema' | 'inputTemplate'> = {
+        inputParameters: nextNames,
+    };
+
+    // 默认值 → inputTemplate
+    const template: Record<string, any> = {};
+    Object.entries(def.inputTemplate || {}).forEach(([k, v]) => {
+        if (!managed.has(k)) template[k] = v;
+    });
+    params.forEach(p => {
+        if (p.name && p.defaultValue !== undefined && p.defaultValue !== '') template[p.name] = p.defaultValue;
+    });
+    if (def.inputTemplate !== undefined || Object.keys(template).length > 0) result.inputTemplate = template;
+
+    // 类型 / 说明 / 必填 / 示例 → inputSchema
+    const existing = def.inputSchema;
+    if (existing || params.some(hasStructuredInfo)) {
+        const data: Record<string, any> = { type: 'object', ...(existing?.data || {}) };
+        const prevProps: Record<string, any> = (data.properties && typeof data.properties === 'object') ? data.properties : {};
+        const props: Record<string, any> = {};
+        Object.entries(prevProps).forEach(([k, v]) => {
+            if (!managed.has(k)) props[k] = v;
+        });
+        const prevRequired: string[] = Array.isArray(data.required) ? data.required : [];
+        const required = prevRequired.filter(k => !managed.has(k));
+        params.forEach(p => {
+            if (!p.name) return;
+            const prop: Record<string, any> = { ...(prevProps[p.name] || {}) };
+            prop.type = p.type || 'string';
+            if (p.description) prop.description = p.description; else delete prop.description;
+            if (p.example !== undefined && p.example !== '') prop.examples = [p.example]; else delete prop.examples;
+            props[p.name] = prop;
+            if (p.required) required.push(p.name);
+        });
+        data.properties = props;
+        data.required = required;
+        result.inputSchema = {
+            name: existing?.name || `${def.name || 'workflow'}_input`,
+            version: existing?.version ?? 1,
+            type: existing?.type || 'JSON',
+            ...(existing?.externalRef ? { externalRef: existing.externalRef } : {}),
+            data,
+        };
+    }
+    return result;
 }
 
 /**

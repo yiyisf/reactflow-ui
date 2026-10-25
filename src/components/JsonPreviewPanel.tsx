@@ -27,6 +27,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
 
     const [draftJson, setDraftJson] = useState('');
     const [parseError, setParseError] = useState<string | null>(null);
+    const [applyError, setApplyError] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
     const [scopeMode, setScopeMode] = useState<'full' | 'selected'>('full');
     const [syncSuccess, setSyncSuccess] = useState(false);
@@ -52,13 +53,22 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
     const textColor = 'var(--text-primary)';
     const borderColor = 'var(--glass-border)';
     const codeBg = 'var(--bg-tertiary)';
-    const taskRefs = Object.keys(taskMap || {});
+    // 只列真实任务：动态并行的运行时占位（*_dynamic_placeholder）不是定义里的任务
+    const taskRefs = Object.keys(taskMap || {}).filter(ref => !ref.endsWith('_dynamic_placeholder'));
+    // E23：只有编辑态可以改写并应用；查看 / 运行态（含宿主只读）一律只读
+    const isEditable = mode === 'edit';
 
     const handleApplyChanges = () => {
+        if (!isEditable) return;
         try {
             const parsed = JSON.parse(draftJson);
             if (scopeMode === 'selected' && selectedTask) {
-                useWorkflowStore.getState().updateTask(selectedTask.taskReferenceName, parsed);
+                // 整体替换任务对象，JSON 中删掉的键会真正删除
+                const err = useWorkflowStore.getState().replaceTask(selectedTask.taskReferenceName, parsed);
+                if (err) {
+                    setApplyError(err);
+                    return;
+                }
             } else {
                 if (!parsed || !Array.isArray(parsed.tasks)) {
                     setParseError('JSON 必须包含有效的 tasks 数组');
@@ -67,6 +77,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                 setWorkflow(parsed);
             }
             setParseError(null);
+            setApplyError(null);
             setIsDirty(false);
             setSyncSuccess(true);
             setTimeout(() => setSyncSuccess(false), 1600);
@@ -226,6 +237,7 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                     onChange={(e) => {
                         setDraftJson(e.target.value);
                         setIsDirty(true);
+                        setApplyError(null);
                         try {
                             JSON.parse(e.target.value);
                             setParseError(null);
@@ -236,10 +248,12 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                     onKeyDown={(e) => {
                         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
                             e.preventDefault();
+                            // 在 JSON 面板里 ⌘S 表示"应用到画布"，不再触发全局保存
+                            e.stopPropagation();
                             handleApplyChanges();
                         }
                     }}
-                    readOnly={mode === 'run'}
+                    readOnly={!isEditable}
                     spellCheck={false}
                     style={{
                         flex: 1,
@@ -264,23 +278,27 @@ const JsonPreviewPanel = ({ isOpen, onClose, theme = 'dark' }: JsonPreviewPanelP
                 borderTop: `1px solid ${borderColor}`,
                 background: 'var(--cm-surface-0)',
                 fontSize: '11px',
-                color: parseError ? 'var(--cm-status-failed)' : syncSuccess ? 'var(--cm-status-success)' : 'var(--text-secondary)',
+                color: parseError || applyError ? 'var(--cm-status-failed)' : syncSuccess ? 'var(--cm-status-success)' : 'var(--text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: '8px'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: parseError ? 'var(--cm-status-failed)' : 'var(--cm-status-success)' }}>●</span>
+                    <span style={{ color: parseError || applyError ? 'var(--cm-status-failed)' : 'var(--cm-status-success)' }}>●</span>
                     {parseError
                         ? `语法错误: ${parseError}`
+                        : applyError
+                        ? `未应用：${applyError}`
                         : syncSuccess
                         ? '已同步更新至画布拓扑'
+                        : !isEditable
+                        ? '只读：切换到编辑模式后才能修改 JSON'
                         : isDirty
                         ? '有未应用的 JSON 修改 (按 Cmd+S 或点击右侧按钮同步)'
                         : '双向实时同步就绪'}
                 </div>
-                {mode !== 'run' && isDirty && !parseError && (
+                {isEditable && isDirty && !parseError && (
                     <button
                         type="button"
                         onClick={handleApplyChanges}

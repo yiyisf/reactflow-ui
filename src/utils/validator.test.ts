@@ -61,3 +61,70 @@ describe('validateWorkflow', () => {
         expect(result.errors.some(e => e.message.toLowerCase().includes('环') || e.message.toLowerCase().includes('cycle'))).toBe(true);
     });
 });
+
+describe('validateWorkflow · v1.3.1 结构规则（E21）', () => {
+    const wf = (tasks: TaskDef[], extra: Record<string, unknown> = {}) => ({ name: 'wf', version: 1, tasks, ...extra }) as unknown as WorkflowDef;
+    const fork = (ref: string, branches: TaskDef[][]) => task(ref, { type: 'FORK_JOIN', forkTasks: branches } as any);
+    const join = (ref: string, joinOn: string[]) => task(ref, { type: 'JOIN', joinOn } as any);
+
+    it('flags ${x.output} pointing at a task that does not exist', () => {
+        const result = validateWorkflow(wf([task('a', { inputParameters: { v: '${ghost.output.value}' } })]));
+        expect(result.errors.some(e => e.ref === 'a' && e.message.includes('${ghost.output.value}'))).toBe(true);
+    });
+
+    it('does not flag references to existing upstream tasks or workflow input', () => {
+        const result = validateWorkflow(wf([
+            task('a'),
+            task('b', { inputParameters: { v: '${a.output.value}', w: '${workflow.input.x}' } }),
+        ]));
+        expect(result.errors).toEqual([]);
+    });
+
+    it('requires a SWITCH expression', () => {
+        const result = validateWorkflow(wf([
+            task('sw', { type: 'SWITCH', evaluatorType: 'value-param', decisionCases: { a: [task('x')] } } as any),
+        ]));
+        expect(result.errors.some(e => e.ref === 'sw' && e.message.includes('expression'))).toBe(true);
+    });
+
+    it('accepts a SWITCH with evaluatorType + expression, and only warns for legacy caseValueParam', () => {
+        const ok = validateWorkflow(wf([
+            task('sw', { type: 'SWITCH', evaluatorType: 'javascript', expression: '"a"', decisionCases: { a: [task('x')] } } as any),
+        ]));
+        expect(ok.errors).toEqual([]);
+        const legacy = validateWorkflow(wf([
+            task('sw', { type: 'SWITCH', caseValueParam: 'k', inputParameters: { k: '1' }, decisionCases: { a: [task('x')] } } as any),
+        ]));
+        expect(legacy.errors).toEqual([]);
+        expect(legacy.warnings.some(w => w.ref === 'sw' && w.message.includes('caseValueParam'))).toBe(true);
+    });
+
+    it('requires FORK_JOIN to be immediately followed by JOIN', () => {
+        const bad = validateWorkflow(wf([fork('f', [[task('a')], [task('b')]]), task('between'), join('j', ['a', 'b'])]));
+        expect(bad.errors.some(e => e.ref === 'f' && e.message.includes('JOIN'))).toBe(true);
+        const good = validateWorkflow(wf([fork('f', [[task('a')], [task('b')]]), join('j', ['a'])]));
+        expect(good.errors).toEqual([]);
+    });
+
+    it('requires FORK_JOIN_DYNAMIC to be immediately followed by JOIN', () => {
+        const result = validateWorkflow(wf([
+            task('d', { type: 'FORK_JOIN_DYNAMIC', dynamicForkTasksParam: 'dt', dynamicForkTasksInputParamName: 'di', inputParameters: { dt: [], di: {} } } as any),
+        ]));
+        expect(result.errors.some(e => e.ref === 'd' && e.message.includes('JOIN'))).toBe(true);
+    });
+
+    it('flags joinOn entries that reference missing tasks', () => {
+        const result = validateWorkflow(wf([fork('f', [[task('a')]]), join('j', ['a', 'nope'])]));
+        expect(result.errors.some(e => e.ref === 'j' && e.message.includes('"nope"'))).toBe(true);
+    });
+
+    it('treats TERMINATED as a valid termination status', () => {
+        const result = validateWorkflow(wf([task('t', { type: 'TERMINATE', inputParameters: { terminationStatus: 'TERMINATED' } } as any)]));
+        expect(result.errors).toEqual([]);
+    });
+
+    it('does not require version (Conductor defaults it to 1)', () => {
+        const result = validateWorkflow({ name: 'wf', tasks: [task('a')] } as any);
+        expect(result.errors).toEqual([]);
+    });
+});

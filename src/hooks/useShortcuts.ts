@@ -3,6 +3,7 @@ import { useStore } from 'zustand';
 import useWorkflowStore from '../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getLayoutedElements } from '../layout/autoLayout';
+import { describeTaskRemoval } from '../utils/taskEditing';
 
 interface ShortcutCallbacks {
     confirm?: (message: string) => Promise<boolean>;
@@ -68,14 +69,17 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
         relayoutAfterUndoRedo();
     }, [mode, redo]);
 
-    // 绑定删除键: delete, backspace
+    // 绑定删除键: delete, backspace（画布的 ReactFlow 内置删除已关闭，这是唯一的键盘删除入口，E10）
+    // 画布只有一个"当前选中任务"（selectedTask），删除即删它；FORK / JOIN / 容器任务的连带删除在确认文案中写明（E13）
     useHotkeys('delete, backspace', (e) => {
         if (mode !== 'edit' || !selectedTask) return;
         if (isTyping(e as any)) return;
 
         e.preventDefault();
-        confirmFn('确定要删除此任务吗？').then(ok => {
-            if (ok) removeNode(selectedTask.taskReferenceName);
+        const ref = selectedTask.taskReferenceName;
+        const { message } = describeTaskRemoval(useWorkflowStore.getState().workflowDef, ref);
+        confirmFn(message).then(ok => {
+            if (ok) removeNode(ref);
         });
     }, [mode, selectedTask, removeNode, confirmFn]);
 
@@ -116,14 +120,25 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
         }
     }, [mode, pasteTask, toastFn]);
 
-    // 绑定保存: mod+s
+    // 绑定保存: mod+s（输入框里也生效，并且总是给出反馈）
     useHotkeys('mod+s', (e) => {
         e.preventDefault();
         const def = useWorkflowStore.getState().workflowDef;
-        if (def && callbacks?.onSave) {
-            callbacks.onSave(def);
+        if (!def) {
+            toastFn?.('没有可保存的工作流：请先打开或新建一个工作流', 'info');
+            return;
         }
-    }, [callbacks?.onSave]);
+        if (!callbacks?.onSave) {
+            toastFn?.('当前页面没有接入保存（未提供 onSave）：修改只保留在画布中，请导出 JSON 保存', 'info');
+            return;
+        }
+        try {
+            callbacks.onSave(def);
+            toastFn?.('已交给宿主保存', 'success');
+        } catch (err: any) {
+            toastFn?.(`保存失败：${err?.message || '宿主保存回调出错'}，请稍后重试`, 'error');
+        }
+    }, { enableOnFormTags: true, enableOnContentEditable: true }, [callbacks?.onSave, toastFn]);
 
     return {};
 };

@@ -89,6 +89,21 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ---
 
+### Fixed（v1.3.1 · 专业模式编辑器结构正确性）
+- **E1–E4 新建任务的字段位置按 Conductor 要求写**：SWITCH 写 `evaluatorType + expression`（评估模式新增 graaljs，导入的 `expression` 在面板正常显示），DECISION 仍用 `caseValueParam`；INLINE 的 `evaluatorType` 写入 `inputParameters`（导入时迁移旧版顶层值）；HTTP 默认值写入 `inputParameters.http_request`，新节点不再报"缺少 uri"；KAFKA_PUBLISH 统一读写 `inputParameters.kafka_request`。新建默认值集中到 `src/utils/taskEditing.ts` 的 `createDefaultTask`。
+- **E5 / E6 并行分支**：不再在每次操作时把 JOIN 的 `joinOn` 覆盖成全部分支末尾，只在分支末尾因结构编辑变化时更新对应项，只等待部分分支的设计会保留，画布用"不等待"虚线标出未被等待的分支；新建 FORK_JOIN 的空分支占位改为可点击的 "+"，点击或在占位与 JOIN 之间的连线上点 "+" 都会插入到该分支。
+- **E7 / E14 名称校验**：引用名改成重复、含非法字符或保留字（`workflow`、`__` 开头）时，面板显示原因并保留草稿，store 也拒绝提交；分支重命名拒绝已存在的名称与保留字 `default`，添加 / 重命名分支对话框即时提示。`renameDecisionBranch` 现在返回 `boolean`。
+- **E8 / E15 粘贴**：选中 FORK 时粘贴到配对 JOIN 之后；粘贴容器任务时子树内的引用（`loopCondition` 中的 `$.ref`、`${兄弟.output}`、`joinOn`）随引用名一起改名，指向外部的引用不变；粘贴 FORK_JOIN / FORK_JOIN_DYNAMIC 自动补上配对 JOIN。
+- **E9 撤销**：撤销历史只记录流程数据，⌘Z 不再撤回主题、模式、连线样式、布局方向与锁定状态；同一字段的连续输入合并为一条撤销记录。
+- **E10–E13 画布操作**：关闭 ReactFlow 内置的 Backspace 删除（以前只删画布不删定义），键盘删除统一走 `removeNode` 并先确认；关闭手动连线（不会写入定义）；删除或撤销后若选中的任务已不存在则关闭详情面板；删除 JOIN / FORK / 容器任务时确认文案写明会连带删除哪些任务。
+- **E16 / E17**：SWITCH 出口连线上的 "+" 插到 SWITCH 之后（同层）而不是分支内部；WAIT 在"等待时长 / 等待到指定时间"之间切换时删除另一个字段。
+- **E18 JSON 输入框可以逐字输入**：Headers、Body、子流程入参、启动工作流入参、终止输出、Kafka 消息、变量与通用 inputParameters 改为本地草稿，失焦时解析，格式有误时保留草稿并说明原因。
+- **E19 / E20**：超时、重试策略、重试延迟、超时策略写入 `taskDefinition`（读取时兼容旧版顶层值，面板注明会代替已注册的同名任务定义）；`retryCount` 仍写在任务上。FORK_JOIN_DYNAMIC 简化模式字段写入 `inputParameters`（导入时迁移）。
+- **E21 校验**：新增"表达式引用了不存在的任务"、"SWITCH 缺少 expression / evaluatorType"、"FORK 后未紧跟 JOIN"、"joinOn 引用不存在的任务"；只写了 `caseValueParam` 的旧 SWITCH 给出警告。修复误报：`TERMINATED` 是合法终止状态，缺省 `version` 不再报错。
+- **E22 工作流入参**：设置面板编辑入参后 `inputParameters` 保持为参数名数组；类型、说明、必填、示例写入 `inputSchema`（JSON Schema），默认值写入 `inputTemplate`。`parseWorkflowInputParams(raw, def?)` 新增可选的第二个参数用于读回这些信息，新增 `serializeWorkflowInputParams`。
+- **E23 JSON 面板**：非编辑态一律只读；"当前选中节点"应用时整体替换任务对象（新增 store 动作 `replaceTask`），删掉的键会真正删除；节点标签不再列出 `*_dynamic_placeholder`。在 JSON 面板中按 ⌘S 只应用到画布。
+- ⌘S 在输入框中也生效；宿主没有提供 `onSave` 时给出提示，而不是没有反应。W-LSP 对 SUB_WORKFLOW 的输出补全改为 `subWorkflowId`，引用名重构同时覆盖 `caseExpression`。
+
 ## [1.3.0] - 2026-10-24
 
 > 主题：自助接入 —— 新团队在测试环境里自己完成「登记产品 → 规范命名建流程 → 接上已有接口 → 试跑 → 申请上线」。设计见 `docs/design/v1.3.0-自助接入设计.md`。

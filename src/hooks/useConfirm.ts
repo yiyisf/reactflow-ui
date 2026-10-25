@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 
 interface ConfirmState {
     message: string;
+    /** 确认按钮文案（动词开头，如"删除"）；缺省为"确定" */
+    confirmLabel?: string;
     resolve: (value: boolean) => void;
 }
 
@@ -11,9 +13,9 @@ interface ConfirmState {
 export const useConfirm = () => {
     const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
-    const confirm = useCallback((message: string): Promise<boolean> => {
+    const confirm = useCallback((message: string, confirmLabel?: string): Promise<boolean> => {
         return new Promise<boolean>((resolve) => {
-            setConfirmState({ message, resolve });
+            setConfirmState({ message, confirmLabel, resolve });
         });
     }, []);
 

@@ -8,6 +8,7 @@ import { applyTemplateVariables } from '../../template/applyTemplate';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
 import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
+import { statusLabel } from '../../utils/statusMeta';
 
 export interface TemplateSetupWizardProps {
   template: WorkflowTemplate;
@@ -67,7 +68,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
           `全部 ${instance.tasks.length} 个步骤在浏览器本地顺利模拟通过，各上游数据与通知已正确串联。`
         );
       } else {
-        setSimSummary(`模拟运行结束，状态为: ${instance.status}`);
+        setSimSummary(`沙箱试运行结束，状态：${statusLabel(instance.status)}`);
       }
     } catch (err: any) {
       onSandboxRun?.('error');

@@ -894,7 +894,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                     let idx = 0;
                     const tick = () => {
                         if (idx >= waves.length || !get().isSimRunning) {
-                            set({ isSimRunning: false });
+                            // 流转预览结束：清除高亮，画布回到编辑态外观
+                            set({ isSimRunning: false, simState: {} });
                             return;
                         }
                         const wave = waves[idx];

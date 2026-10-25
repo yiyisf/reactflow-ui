@@ -6,6 +6,7 @@ import {
   promotionTargetName,
   isPromotableName,
   validateNameParts,
+  saveNameHint,
 } from './naming';
 import {
   nextPollDelay,
@@ -263,5 +264,25 @@ describe('wizardState', () => {
     expect(prevStep('product')).toBe('product');
     expect(availableSources({ hasTemplate: false, hasImport: false })).toEqual(['blank']);
     expect(availableSources({ hasTemplate: true, hasImport: true })).toEqual(['blank', 'template', 'import']);
+  });
+});
+
+describe('saveNameHint（R15 保存前命名提示）', () => {
+  it('合规名称不提示', () => {
+    expect(saveNameHint('tmp-L2-云资源-ecs-create_vm')).toBeNull();
+    expect(saveNameHint('tmp-L2-云资源-ecs-create_vm', ['云资源'])).toBeNull();
+  });
+
+  it('不合规时说明问题，并说明已保存', () => {
+    const hint = saveNameHint('my_flow');
+    expect(hint).not.toBeNull();
+    expect(hint!).toContain('已保存');
+    expect(hint!).toContain('my_flow');
+    expect(hint!).toContain('5 段');
+  });
+
+  it('业务域不在白名单时提示；空白名单不校验业务域', () => {
+    expect(saveNameHint('tmp-L2-网络-ecs-x', ['云资源'])).toContain('业务域');
+    expect(saveNameHint('tmp-L2-网络-ecs-x', [])).toBeNull();
   });
 });

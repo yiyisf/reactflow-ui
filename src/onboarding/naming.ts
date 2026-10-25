@@ -92,3 +92,14 @@ export function buildSkeletonWorkflow(input: SkeletonInput): WorkflowDef {
   if (input.ownerEmail) def.ownerEmail = input.ownerEmail;
   return def;
 }
+
+/**
+ * 保存前的命名提示（设计 3.3，R15）：名称不符合五段规范时返回一句提示，符合时返回 null。
+ * 只提示、不阻断保存；服务端做权威校验。
+ */
+export function saveNameHint(name: string | undefined | null, allowedDomains?: string[]): string | null {
+  const errors = validateWorkflowName(name ?? '', allowedDomains && allowedDomains.length > 0 ? allowedDomains : undefined);
+  if (errors.length === 0) return null;
+  const shown = name && name.trim() ? `流程名称「${name}」` : '流程名称';
+  return `已保存。${shown}不符合命名规范：${errors.join('；')}。申请上线前请在流程设置里改名。`;
+}

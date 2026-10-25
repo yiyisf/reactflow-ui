@@ -6,9 +6,13 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ## [Unreleased]
 
-> 主题：CMASTER 设计系统落地的第一步 —— 设计规范进仓库，并让人和 AI 都按同一套规则产出、被同一套检查把关。规范入口见 `design/README.md`。
+---
 
-### Fixed（v1.3.1 · 沙箱）
+## [1.3.1] - 2026-10-25
+
+> 主题：功能补全与体验修复 —— 浏览器沙箱真实执行 INLINE / JQ / SWITCH / DO_WHILE 等无外部依赖的任务；专业编辑器、业务模式与 AI 生成的 JSON 符合 Conductor 规范；运行视图如实反映执行状态。另含 CMASTER 设计系统落地（见下方「设计系统」部分）。审计结果与修复范围见 `docs/v1.3.1-release-plan.md`。
+
+### Fixed · 沙箱
 - **沙箱真实执行无外部依赖的任务**（S1–S8）：新增 `executeLocalSandboxDryRunAsync(def, options)`，IDE 的沙箱试运行、业务模式试跑、模板中心与模板向导都改用它。按 Conductor 语义真实执行：`INLINE` / `LAMBDA`（JavaScript，`$` 为解析后的入参，输出 `{ result }`，抛错则任务失败）；`JSON_JQ_TRANSFORM`（内置 jq 子集：路径、迭代、管道、构造、算术比较、`//`、`if`、`as $x`、`reduce`、字符串插值与常用函数，输出 `{ result, resultList }`；不支持的语法直接报错说明，不再只认 `.path`）；`SWITCH`（`value-param` 取 `expression` 指向的入参，`javascript` / `graaljs` 执行表达式，没有匹配的分支走 `defaultCase`，原来会走第一个分支）；`DECISION`（`caseValueParam` / `caseExpression`）；`DO_WHILE`（每轮后执行 `loopCondition`，`$` 含 `<循环ref>.iteration` 与各子任务输出，"最大轮次"改为安全上限，默认 20，到上限条件仍为真则停止并标为部分完成）；`FORK_JOIN_DYNAMIC`（按 `dynamicForkTasksParam` / `dynamicForkTasksInputParamName` 或 `forkTaskName` + `forkTaskInputs` 生成并行任务，`JOIN` 汇总其输出）；`TERMINATE`、`SET_VARIABLE`、`WAIT`、`NOOP`。HTTP、SIMPLE、HUMAN、EVENT、SUB_WORKFLOW、DYNAMIC 等调用外部系统的任务仍返回模拟数据（可在配置台覆盖）。
 - **脚本隔离**：脚本在专用 Web Worker 中运行，移除了 `fetch`、`XMLHttpRequest`、`WebSocket`、`importScripts`、`indexedDB` 等网络与存储接口；单个脚本默认 2 秒超时（`scriptTimeoutMs`），死循环会被终止并使任务失败，不会卡住页面。页面 CSP 不允许 blob: Worker 时，脚本标为未执行并说明原因。宿主可通过 `scriptEvaluator` 注入自己的执行器。
 - **引用解析**：`${...}` 支持数组下标（`${a.output.items[0].id}`）与 `${<ref>.input.x}`；取不到值的引用记入任务的 `sandboxWarnings`。默认模拟入参只包含声明的入参与流程实际引用的字段（S9）。
@@ -16,75 +20,7 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - 沙箱结果经 `setMode('run')` 进入运行态，画布重新解析，不再残留"+"占位节点（R11）。空流程点击试运行提示"先添加步骤"，不再上报埋点；执行出错时弹出提示（R13）。`store.runLocalSandboxDryRun` 改为返回 `Promise<void>`，运行中按钮显示"试运行中"并禁用。
 - 兼容：同步接口 `executeLocalSandboxDryRun` 保留，但不再伪造脚本结果——`INLINE` 标为已跳过（`not_executed`），`javascript` 条件走默认分支并给出提示，`DO_WHILE` 按 `maxLoopIterations`（默认 2）运行。新增导出 `executeLocalSandboxDryRunAsync`、`SandboxAsyncOptions`、`runJq`、`JqError`、`createWorkerScriptEvaluator` 及相关类型。`TERMINATE` 的 `terminationStatus: COMPLETED` 现在让工作流以 `COMPLETED` 结束（与 Conductor 一致）。
 
-### Added
-- **CMASTER 设计 tokens 编译**：`design/tokens.json` 为唯一来源，`npm run tokens:build` 生成 `src/styles/cmaster-tokens.css`（`--cm-*` 变量，`data-mode="dark" | "light"` 双主题）与 `src/styles/cmasterTokens.ts`（含 5 套活动主题色）；`npm run tokens:check` 进 CI，生成物过期即失败。新增单测 `cmasterTokens.test.ts`：两个主题下文字与地色对比度 ≥ 4.5:1、状态色与焦点环 ≥ 3:1、橙底文字与活动主题按钮文字 ≥ 4.5:1、标志橙在所有主题不变。
-- **AI 协作约定**：根目录 `CLAUDE.md`（硬规则与完成前检查）、`AGENTS.md`、项目 skill `.claude/skills/cmaster-design`（按任务类型指向规范与黄金示例，含交付前检查清单）；`design/` 收录品牌手册、IDE 布局、文档站、宣传页、海报与社媒规范，24 个组件规范、参考样式 `reference/components.css`、9 个黄金示例与 Logo。
-- **截图回归**：Playwright 视觉测试覆盖演示 IDE（深 / 浅 × 业务卡片流 / 全景画布 / 专业模式，视图通过点击界面切换，并校验三个视图截图确实不同）与全部黄金示例，并检查橙色按钮悬停时文字不与底色相同；`Visual regression` 工作流在官方 Playwright 容器中比对，`Visual baselines` 工作流（PR 加 `update-visual-baselines` 标签或手动触发）生成并提交基线。
-
-### Changed
-- **IDE 换用 CMASTER 视觉**：旧变量（`--bg-*`、`--text-*`、`--border-*`、`--font-*`、`--radius-*`、`--color-success/warning/error/info`、`--status-*`）改为 `--cm-*` 的别名，深色主题由 slate 灰蓝换为 CMASTER 海军蓝，圆角放大一档，运行中状态改用数据青色，`themeColor="orange"` 使用 CMASTER 橙（`#ff6a13`）。`themeColor="blue"` 保留但标记为弃用。演示站加载 Geist / Geist Mono 字体；库本身不加载字体。
-- **橙底文字改为深色**：新增 `--color-on-accent`（橙色品牌为 `--cm-on-brand` 深色，蓝色品牌仍为白色）与 `--color-on-danger`，替换 54 处写死在强调色底上的白字（工具栏主按钮、节点角标、业务卡片、模板中心、AI 面板、演示站顶栏等）。
-- **IDE 外壳的 emoji 换成 Lucide 图标**（线宽 1.75）：工具栏（数据血缘、AI 微调、撤销 / 重做、诊断、配置、沙箱试运行、模拟数据、瀑布流回放、返回编辑）、主题切换、业务视图切换、导入接口、模板中心、执行状态栏、AI IDE 视图切换与对话开关、Shadow Graph 评审条（按钮文案改为"全部采纳 / 放弃"，增删改计数改用 `--cm-diff-*`）。模板中心按钮不再使用蓝色。
-- 新增守卫测试 `src/styles/designRules.test.ts`：禁止在强调色底上写死白字；已迁移的文件不允许再出现 emoji。
-- **数据图标改为图标名**：新增 `CmIcon` 组件与 `iconRegistry`（66 个 Lucide 图标名 + 77 个常见 emoji 别名）。内置动作、模板、任务类型元数据、演示流程库数据的 `icon` 由 emoji 改为图标名（如 `'server'`、`'rocket'`）；`ActionDefinition.icon` / `WorkflowTemplate.icon` 仍为 `string`，宿主或治理服务传入的 emoji 会映射为对应图标显示，未知值显示默认图标。业务卡片、动作选择器、运行故事线、模板中心与向导、AI 指令中心、表单向导、提案卡片中的 emoji 一并换成图标；按钮与状态文案去掉了前缀 emoji。`getTaskTypeMeta` 的默认图标由 `'⚙️'` 改为 `'settings'`。
-- **AI 面板全面换用 tokens 与图标**：`AiNative.css` 的 223 处写死颜色、`components/AiNative` 各组件内联颜色全部改为 `--cm-*` / 旧别名，透明度用 `color-mix(in srgb, var(--cm-x) N%, transparent)`；状态色走 `--cm-status-*`，AI 元素走 `--cm-ai`，阴影走 `--cm-shadow-*`，状态色填充上的文字用 `--cm-on-danger`。内联指令浮层（⌘K）不再固定深色，随主题切换；Mermaid 图改用主题变量。AI 面板全部 emoji 与 ✓ ✕ ↺ ▶ 等符号换成 Lucide 图标，执行结果、连接测试与内联指令提示均为"颜色 + 图标 + 文字"。文案："确认执行"改为"运行"、"✓ 确认"改为"立即执行"、"执行中…"改为"运行中"，错误提示说明如何处理。
-- 演示站顶栏、示例选择器、文件与演示设置菜单、AI 配置弹窗去掉 emoji；运行态示例用"运行中 / 失败 / 成功"标注状态。`HeaderPopover` 的 `icon` 接受 React 节点。
-- 守卫测试加强：emoji 检查也拦截 ✓ ✕ ✗ ↺ ▶ ⚠ 等文字符号；`components/AiNative` 下所有文件自动纳入"无 emoji"与新增的"无写死颜色"检查。截图回归新增 AI 设计器视图（深 / 浅），浅色图标检查也覆盖 AI 视图。
-
-- **演示站改用 CMASTER 主题**：`DemoApp.css` / `DemoHeader.css` 全部换用 tokens，删除 `.app.light-theme` 平行主题（它用 slate 色重新声明了 `--bg-*` / `--text-*`，优先级高于 CMASTER 浅色主题，导致演示站浅色模式并非 CMASTER 浅色）以及 19 组已无引用的旧样式；AI 已配置状态改为成功色浅底 + 文字，开关、弹出层、搜索框、错误提示随主题切换。`demo/` 纳入"无写死颜色"检查。
-
-- **业务模式、模板中心与对话框换用 tokens 与图标**：`components/business`、`components/template`、`components/onboarding`、`components/import` 及沙箱试运行、全屏编辑、确认 / 输入对话框、Toast、空状态面板中约 400 处写死颜色改为 tokens（中性色按用途映射到 `--bg-*` / `--text-*` / `--border-*`，深浅自动切换；沙箱试运行弹窗不再在组件内判断深浅），约 85 处 emoji 换成 Lucide 图标或去掉（下拉选项与标签文字中的 emoji 直接删除）。上游数据选择器的步骤图标改用 `CmIcon`。守卫测试改为按目录登记已迁移代码，同时检查 emoji 与写死颜色。
-
-- **IDE 其余组件完成迁移**：任务详情面板、节点（循环 / 分支 / 并行 / 任务 / 子流程）、执行瀑布图 / 摘要 / 任务面板、健康检查、JSON 预览与结构化查看器、参数建议浮层、旧版 AI 对话面板、设置面板、画布控件与 `executionStyles.css` 的写死颜色与 emoji 全部替换。运行态节点角标改为 Lucide 图标 + 中文状态词（提示与无障碍名称）；任务详情的专项配置区图标改为 Lucide，并修复了把十六进制透明度拼到 `var()` 上导致背景与边框失效的问题；小地图运行中节点改用运行青色（原为橙色）。
-- `getTaskTypeMeta().color` 改为分类色 token（`--cm-cat-task / control / data / human`，终止为失败色）；`getCategoryIcon()` 返回图标名（配合 `CmIcon` 使用），`getCategoryColor()` 返回状态色 token；解析器生成的分支连线颜色改用 token。模板脱敏与接口导入生成的默认图标改为图标名。Mermaid 中 WAIT / HUMAN 节点改用圆角形状代替 emoji 前缀。
-- **守卫覆盖全部 UI 源码**：`designRules.test.ts` 对 `src/` 下所有 `.ts/.tsx/.css` 检查 emoji 与写死颜色，仅保留 6 个有理由的例外（tokens 桥接文件、Logo 图形、蓝色品牌色样、emoji 别名表、两个只给模型看的 AI 上下文文件）。
-
-- **统一使用 CMASTER 标志**：`BrandLogo` 换为 CMASTER 标志（C 形圆弧 + 三个系统节点 + 中心枢纽，标志橙 `#ff6a13`，节点内芯随主题取表面色），演示站顶栏字标改为 CMASTER（首字母 C 为品牌橙）；`public/logo.svg`（favicon）换为 CMASTER 应用图标；首页与 v1.0 / v1.1 / v1.2 历史发布页顶栏的标志与字标同步替换。`BrandLogo` 的 props 不变。
-
-- **宣传页换用 CMASTER 视觉，每个版本一个主题色**：新增 `src/marketing/campaign.css`，页面在 `<html>` 上声明 `data-campaign`，强调色统一走 `--a / --a-hi / --on`，其余颜色走 tokens。首页 v1.3.0 用 Glacier，v1.2.0 / v1.1.0 / v1.0.0 历史页分别用 Signal / Nebula / Ember；页面结构、文案与交互演示保持不变，去掉全部 emoji（对照表里的 ✓ / ✗ 改为"支持 / 不支持"标记）。首页产品名改为 CMASTER。`public/product-launch.html` 与 `docs/product-launch-v1.0.0.html` 两份旧副本改为跳转到 `v1-0.html`。新增 `releasePages.test.ts`：每页一个主题色、相邻版本不重复、无 emoji、颜色只来自 tokens。轮换规则见 `design/guidelines/marketing.md`「主题色轮换」。
-
-### Fixed（v1.3.1 · 业务模式）
-- **B1 / B19 条件分支判断依据**：新建分支的"判断取值"可绑定数据胶囊（编译为 `inputParameters[caseParam]`，参数名默认 `caseValue`），并可切换"按数据取值 / 按表达式"；支持 SWITCH（`value-param` 的参数名、`javascript` 的脚本）往返；DECISION 的 `caseValueParam` 与 `caseExpression` 互斥写入；清空输入如实写空，不再回退到旧值。
-- **B2 / B3 默认分支**：反编译始终生成默认分支（为空也保留）；没有默认分支时编译为 `[]`，已删除的默认分支步骤不再复活。卡片上默认分支不再提供删除。
-- **B4 动态并行**：`FORK_JOIN_DYNAMIC` 作为专业步骤保留并与其 JOIN 配对，往返不再出现重复 JOIN、不再补出 `forkTasks: []`；配对 JOIN 的原始字段（name、description 等）往返保留。
-- **B5 原始 WAIT**：只认领带 `_actionId` 或仅有 `duration` 的 WAIT；`until` / 等待信号的 WAIT 保留为专业步骤，不再被改成"等待 10 秒"。
-- **B6 任务级配置**：已识别动作编译时以原任务定义为底，`optional / retryCount / timeoutSeconds / startDelay / description` 与 `http_request.headers` 等额外配置往返不丢；原任务名保留；SUB_WORKFLOW 的其它 `subWorkflowParam` 字段保留。
-- **B7 名称与描述**：控制流步骤的 name 与 description 分开保存，不再生成合成描述，多次往返不改名；已有工作流的空描述保持为空。普通动作步骤可重命名（写入 `description`），用于区分两个同类步骤。
-- **B8 / B9 / 数字字段**：数字字段中的数据胶囊原样保留（不再变成 `null`）；清空数字字段编译为默认值而不是 0（如快照保留天数 0 表示永久保留）；对象 / 数组入参以 JSON 编辑并按对象保存，不再显示和保存成 `[object Object]`。新增 `actions/builtin/coerce.ts`。
-- **B10 / 选择器**：取消动作选择器后不再把下一次插入落到上次的分支；嵌套插入的标题显示真实位置（如"分支 VIP · 第 2 步"），选择器与数据胶囊面板支持 Esc 关闭。
-- **B14 / B15 数据胶囊**：选择器显示工作流全局入参；控制流之后的步骤可引用其内部（任意层级）步骤的输出，并行组引用 JOIN 的汇聚输出，循环提供已执行轮次，并注明"仅在某分支执行时有值"等取值条件。胶囊改用数据青色。
-- **B16 校验与试跑徽标**：字段与卡片显示必填 / 数字 / 判断依据 / 循环条件 / 空泳道问题，并合并工作流校验器按任务给出的问题；试跑徽标按真实状态显示（成功 / 失败 / 已超时 / 已跳过 / 运行中 / 等待中），不再一律"试跑成功"。
-- **B17 撤销与删除确认**：卡片视图支持 Ctrl/Cmd+Z 撤销、Ctrl/Cmd+Shift+Z 与 Ctrl/Cmd+Y 重做、Ctrl/Cmd+S 保存（WorkflowIDE 中与画布共用撤销历史；单独使用 `StepFlowEditor` 时用内置历史）；删除步骤、嵌套控制流、分支、泳道统一确认，并说明连带删除的步骤数。`StepFlowEditor` 新增可选属性 `onSave / onUndo / onRedo / validationResults`；`ConfirmDialog` 新增可选 `confirmLabel`，`useConfirm().confirm(message, confirmLabel?)`。
-- **B18 嵌套步骤**：分支 / 泳道 / 循环体内的步骤可上移下移、在中间插入、重命名，并显示流程库版本徽标、敏感标记、校验与试跑状态。
-- **B19 循环**：新建循环的默认条件改为按自身已执行轮次判断（最多 3 轮），不再引用不存在的变量；去掉无依据的"引擎内置循环熔断保护"说明。
-- **B20 人工审批超时**：超时选项编译为任务级 `timeoutSeconds` + `timeoutPolicy: TIME_OUT_WF`，选项文案改为"N 分钟后超时结束流程"。
-- **可用性**：步骤头部、分支标签、分支 / 泳道删除、数据胶囊选项改为可键盘操作的按钮；表单 label 与控件关联，错误信息通过 `aria-describedby` 关联；下拉框当前值不在选项中时显示"当前值"而不是假装选中第一项；数字选项按原类型写回；`@` 只用于唤起数据面板，不再写进值里；"定位步骤"可定位到嵌套步骤；按钮文案改为动词开头（"添加分支""删除分支""升级到 vN"）。
-- **模板中心**：去掉内置模板与界面中编造的使用次数（含 1000 / 1200 兜底值），仅在模板数据提供时显示。
-
-### Fixed
-- 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
-- AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。
-
-### Fixed（v1.3.1 · AI）
-- **A1 方案叠加**：有待确认方案时继续提需求，AI 以该方案为起点修改（差异仍相对画布计算），旧方案里的改动不再丢失。
-- **A2 HTTP 错误按失败处理**：401 / 429 / 5xx 等流式错误不再把半成品草稿自动提交为方案；有进展时保存"失败"断点可续跑，否则提供"重试上一条消息"。
-- **A3 ⌘K 内联指令**：走与对话面板相同的 AI 配置、权限与方案流程（规范化、校验、子流程版本固定，叠加在待确认方案上）；未配置 AI 时提示如何配置，不再把提示文字当节点名插入画布；不再读取演示用的 localStorage 键。快捷动作仍是可撤销的普通编辑，运行视图下不可用。
-- **A4 配置持久化**：localStorage 只保存 provider / baseUrl / model，`transport` 与 endpoint 请求头不再落盘，旧版本存下的 transport 恢复时丢弃；`aiConfig.transport` 变化时整体替换。新增 `aiConfigStorageKey` prop，同页多实例可各用一个键（缺省仍为 `ai-workflow-config`）。AI 设置里清空 Base URL / 模型会回到默认值；提示文案改为"API Key 只保存在当前页面内存中"。
-- **A5 子流程引用**：`workflowName` 写法在 replace / patch / 四阶段编排各路径都规范化为 `subWorkflowParam.name`，并固定为流程库当前版本（不再一律 v1）；提示词改为让模型填写 `subWorkflowParam.name`。
-- **A6 对话流程图**：Mermaid 解析器（移到 `mermaidParser.ts`）支持带标签的边、圆形 / 平行四边形 / 菱形节点、链式写法、`&` 分组、行尾分号与中文 id；菱形、圆形、平行四边形按形状绘制。`workflowToMermaid` 不再把不同的中文引用名合并成同一个节点。
-- **A7 上下文**："执行方案"会把计划步骤一起发给模型；澄清选项连同原问题一起发送。
-- **A8 意图分类**：内置快捷指令分类正确（"改成并行"为重构、"生成修复方案"为诊断、"生成摘要报告"为解释）。
-- **A9 / A10 智能体循环**：有澄清 / 计划 / 推荐 / 修复卡片等待用户时不再兜底自动提交；自愈只针对方案新引入的校验错误，画布原有错误不再消耗轮次。达到单轮步数上限时说明已暂停并保存可续跑断点（不再显示"收到，已处理。"）；每次发送 / 续跑都有完整步数预算。
-- **A11 `patch_workflow`**：找不到目标任务（或父任务类型不支持）的操作返回失败结果并列出原因，不再静默成功或把任务追加到末尾；`add_switch_branch` / `add_fork_branch` 支持嵌套任务。差异计算与层级推断递归进入分支、并行与循环；本地流程库检索按空格拆分关键词、按命中数排序。
-- **A12 推荐流程"直接使用"**：新增工具 `load_library_workflow`（打开流程库完整定义，或以子流程步骤引用），推荐卡片的"直接使用"直接生成待确认方案。
-- **A13 修复动作**：每个修复动作只看自己的执行回调；不可执行时按钮禁用并说明原因，不再上报 `repair:executed` 或轮询；`modify_def` 切到编辑模式并让 AI 生成修改方案。
-- **A14 任务详情的 AI 辅助**：在 AiWorkflowIDE 中使用对话面板的 AI 配置（支持 endpoint / custom 传输）；只把真正的上游任务交给 AI；未接入 AI 时的建议标注为"示例"；错误在面板内提示，不再弹 `alert()`。
-- **A15 流程库插入**：有待确认方案时先询问"追加到待确认方案"还是"放弃方案并插入画布"。
-- **A16 旧版 AI 对话（WorkflowIDE）**：`aiService` 改走 protocolAdapter，支持 Anthropic、endpoint 与 custom 传输；错误给出可操作的中文说明；演示模式的示例只在空白画布上可应用，不会替换已有流程。
-- **错误提示**：保留 HTTP 状态码并识别 Anthropic `invalid x-api-key`、DeepSeek `Authentication Fails`、模型不存在、余额 / 额度不足、模型不支持 temperature、Base URL 404 与浏览器跨域（CORS）失败；直连模式的 401 提示检查自己的 API Key，代理模式才提示联系管理员。o 系列 / gpt-5 模型不再发送 temperature。
-- **其他**：停止生成时保留已输出的文字；"清空对话"不再让暂停的断点卡片回来；刷新后恢复的"运行中"断点显示恢复卡片；`ask_clarification` 不再要求 emoji 图标；编辑模式不再提供 `propose_repair`；运行卡片按声明类型发送数字 / 布尔 / JSON 输入并逐项提示格式错误。
-
-### Fixed（v1.3.1 · 运行视图与 1.3.0 收尾）
+### Fixed · 运行视图与 1.3.0 收尾
 - **R1** 真实运行或加载示例后执行状态栏不再崩溃（hook 移到提前 return 之前）。
 - **R2** 执行轮询可取消：卸载、再次发起、回到编辑态时停止；请求出错或返回空连续 5 次后停止，并在状态栏说明原因与处理方式；不再把正在编辑的用户拉回运行态。新增 `src/utils/executionPoller.ts`。
 - **R3 / R5** 循环轮次只作用于节点所在的循环，同一轮内取最后一次尝试；`ref__N` 只登记到所属任务一次，迭代与重试分开计算（`StepInfo` 新增 `iterationCount`，`retryCount` 只表示重试）。新增 `src/utils/executionImport.ts`。
@@ -108,7 +44,25 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ---
 
-### Fixed（v1.3.1 · 专业模式编辑器结构正确性）
+### Fixed · 业务模式
+- **B1 / B19 条件分支判断依据**：新建分支的"判断取值"可绑定数据胶囊（编译为 `inputParameters[caseParam]`，参数名默认 `caseValue`），并可切换"按数据取值 / 按表达式"；支持 SWITCH（`value-param` 的参数名、`javascript` 的脚本）往返；DECISION 的 `caseValueParam` 与 `caseExpression` 互斥写入；清空输入如实写空，不再回退到旧值。
+- **B2 / B3 默认分支**：反编译始终生成默认分支（为空也保留）；没有默认分支时编译为 `[]`，已删除的默认分支步骤不再复活。卡片上默认分支不再提供删除。
+- **B4 动态并行**：`FORK_JOIN_DYNAMIC` 作为专业步骤保留并与其 JOIN 配对，往返不再出现重复 JOIN、不再补出 `forkTasks: []`；配对 JOIN 的原始字段（name、description 等）往返保留。
+- **B5 原始 WAIT**：只认领带 `_actionId` 或仅有 `duration` 的 WAIT；`until` / 等待信号的 WAIT 保留为专业步骤，不再被改成"等待 10 秒"。
+- **B6 任务级配置**：已识别动作编译时以原任务定义为底，`optional / retryCount / timeoutSeconds / startDelay / description` 与 `http_request.headers` 等额外配置往返不丢；原任务名保留；SUB_WORKFLOW 的其它 `subWorkflowParam` 字段保留。
+- **B7 名称与描述**：控制流步骤的 name 与 description 分开保存，不再生成合成描述，多次往返不改名；已有工作流的空描述保持为空。普通动作步骤可重命名（写入 `description`），用于区分两个同类步骤。
+- **B8 / B9 / 数字字段**：数字字段中的数据胶囊原样保留（不再变成 `null`）；清空数字字段编译为默认值而不是 0（如快照保留天数 0 表示永久保留）；对象 / 数组入参以 JSON 编辑并按对象保存，不再显示和保存成 `[object Object]`。新增 `actions/builtin/coerce.ts`。
+- **B10 / 选择器**：取消动作选择器后不再把下一次插入落到上次的分支；嵌套插入的标题显示真实位置（如"分支 VIP · 第 2 步"），选择器与数据胶囊面板支持 Esc 关闭。
+- **B14 / B15 数据胶囊**：选择器显示工作流全局入参；控制流之后的步骤可引用其内部（任意层级）步骤的输出，并行组引用 JOIN 的汇聚输出，循环提供已执行轮次，并注明"仅在某分支执行时有值"等取值条件。胶囊改用数据青色。
+- **B16 校验与试跑徽标**：字段与卡片显示必填 / 数字 / 判断依据 / 循环条件 / 空泳道问题，并合并工作流校验器按任务给出的问题；试跑徽标按真实状态显示（成功 / 失败 / 已超时 / 已跳过 / 运行中 / 等待中），不再一律"试跑成功"。
+- **B17 撤销与删除确认**：卡片视图支持 Ctrl/Cmd+Z 撤销、Ctrl/Cmd+Shift+Z 与 Ctrl/Cmd+Y 重做、Ctrl/Cmd+S 保存（WorkflowIDE 中与画布共用撤销历史；单独使用 `StepFlowEditor` 时用内置历史）；删除步骤、嵌套控制流、分支、泳道统一确认，并说明连带删除的步骤数。`StepFlowEditor` 新增可选属性 `onSave / onUndo / onRedo / validationResults`；`ConfirmDialog` 新增可选 `confirmLabel`，`useConfirm().confirm(message, confirmLabel?)`。
+- **B18 嵌套步骤**：分支 / 泳道 / 循环体内的步骤可上移下移、在中间插入、重命名，并显示流程库版本徽标、敏感标记、校验与试跑状态。
+- **B19 循环**：新建循环的默认条件改为按自身已执行轮次判断（最多 3 轮），不再引用不存在的变量；去掉无依据的"引擎内置循环熔断保护"说明。
+- **B20 人工审批超时**：超时选项编译为任务级 `timeoutSeconds` + `timeoutPolicy: TIME_OUT_WF`，选项文案改为"N 分钟后超时结束流程"。
+- **可用性**：步骤头部、分支标签、分支 / 泳道删除、数据胶囊选项改为可键盘操作的按钮；表单 label 与控件关联，错误信息通过 `aria-describedby` 关联；下拉框当前值不在选项中时显示"当前值"而不是假装选中第一项；数字选项按原类型写回；`@` 只用于唤起数据面板，不再写进值里；"定位步骤"可定位到嵌套步骤；按钮文案改为动词开头（"添加分支""删除分支""升级到 vN"）。
+- **模板中心**：去掉内置模板与界面中编造的使用次数（含 1000 / 1200 兜底值），仅在模板数据提供时显示。
+
+### Fixed · 专业模式编辑器结构正确性
 - **E1–E4 新建任务的字段位置按 Conductor 要求写**：SWITCH 写 `evaluatorType + expression`（评估模式新增 graaljs，导入的 `expression` 在面板正常显示），DECISION 仍用 `caseValueParam`；INLINE 的 `evaluatorType` 写入 `inputParameters`（导入时迁移旧版顶层值）；HTTP 默认值写入 `inputParameters.http_request`，新节点不再报"缺少 uri"；KAFKA_PUBLISH 统一读写 `inputParameters.kafka_request`。新建默认值集中到 `src/utils/taskEditing.ts` 的 `createDefaultTask`。
 - **E5 / E6 并行分支**：不再在每次操作时把 JOIN 的 `joinOn` 覆盖成全部分支末尾，只在分支末尾因结构编辑变化时更新对应项，只等待部分分支的设计会保留，画布用"不等待"虚线标出未被等待的分支；新建 FORK_JOIN 的空分支占位改为可点击的 "+"，点击或在占位与 JOIN 之间的连线上点 "+" 都会插入到该分支。
 - **E7 / E14 名称校验**：引用名改成重复、含非法字符或保留字（`workflow`、`__` 开头）时，面板显示原因并保留草稿，store 也拒绝提交；分支重命名拒绝已存在的名称与保留字 `default`，添加 / 重命名分支对话框即时提示。`renameDecisionBranch` 现在返回 `boolean`。
@@ -122,6 +76,62 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **E22 工作流入参**：设置面板编辑入参后 `inputParameters` 保持为参数名数组；类型、说明、必填、示例写入 `inputSchema`（JSON Schema），默认值写入 `inputTemplate`。`parseWorkflowInputParams(raw, def?)` 新增可选的第二个参数用于读回这些信息，新增 `serializeWorkflowInputParams`。
 - **E23 JSON 面板**：非编辑态一律只读；"当前选中节点"应用时整体替换任务对象（新增 store 动作 `replaceTask`），删掉的键会真正删除；节点标签不再列出 `*_dynamic_placeholder`。在 JSON 面板中按 ⌘S 只应用到画布。
 - ⌘S 在输入框中也生效；宿主没有提供 `onSave` 时给出提示，而不是没有反应。W-LSP 对 SUB_WORKFLOW 的输出补全改为 `subWorkflowId`，引用名重构同时覆盖 `caseExpression`。
+
+### Fixed · AI
+- **A1 方案叠加**：有待确认方案时继续提需求，AI 以该方案为起点修改（差异仍相对画布计算），旧方案里的改动不再丢失。
+- **A2 HTTP 错误按失败处理**：401 / 429 / 5xx 等流式错误不再把半成品草稿自动提交为方案；有进展时保存"失败"断点可续跑，否则提供"重试上一条消息"。
+- **A3 ⌘K 内联指令**：走与对话面板相同的 AI 配置、权限与方案流程（规范化、校验、子流程版本固定，叠加在待确认方案上）；未配置 AI 时提示如何配置，不再把提示文字当节点名插入画布；不再读取演示用的 localStorage 键。快捷动作仍是可撤销的普通编辑，运行视图下不可用。
+- **A4 配置持久化**：localStorage 只保存 provider / baseUrl / model，`transport` 与 endpoint 请求头不再落盘，旧版本存下的 transport 恢复时丢弃；`aiConfig.transport` 变化时整体替换。新增 `aiConfigStorageKey` prop，同页多实例可各用一个键（缺省仍为 `ai-workflow-config`）。AI 设置里清空 Base URL / 模型会回到默认值；提示文案改为"API Key 只保存在当前页面内存中"。
+- **A5 子流程引用**：`workflowName` 写法在 replace / patch / 四阶段编排各路径都规范化为 `subWorkflowParam.name`，并固定为流程库当前版本（不再一律 v1）；提示词改为让模型填写 `subWorkflowParam.name`。
+- **A6 对话流程图**：Mermaid 解析器（移到 `mermaidParser.ts`）支持带标签的边、圆形 / 平行四边形 / 菱形节点、链式写法、`&` 分组、行尾分号与中文 id；菱形、圆形、平行四边形按形状绘制。`workflowToMermaid` 不再把不同的中文引用名合并成同一个节点。
+- **A7 上下文**："执行方案"会把计划步骤一起发给模型；澄清选项连同原问题一起发送。
+- **A8 意图分类**：内置快捷指令分类正确（"改成并行"为重构、"生成修复方案"为诊断、"生成摘要报告"为解释）。
+- **A9 / A10 智能体循环**：有澄清 / 计划 / 推荐 / 修复卡片等待用户时不再兜底自动提交；自愈只针对方案新引入的校验错误，画布原有错误不再消耗轮次。达到单轮步数上限时说明已暂停并保存可续跑断点（不再显示"收到，已处理。"）；每次发送 / 续跑都有完整步数预算。
+- **A11 `patch_workflow`**：找不到目标任务（或父任务类型不支持）的操作返回失败结果并列出原因，不再静默成功或把任务追加到末尾；`add_switch_branch` / `add_fork_branch` 支持嵌套任务。差异计算与层级推断递归进入分支、并行与循环；本地流程库检索按空格拆分关键词、按命中数排序。
+- **A12 推荐流程"直接使用"**：新增工具 `load_library_workflow`（打开流程库完整定义，或以子流程步骤引用），推荐卡片的"直接使用"直接生成待确认方案。
+- **A13 修复动作**：每个修复动作只看自己的执行回调；不可执行时按钮禁用并说明原因，不再上报 `repair:executed` 或轮询；`modify_def` 切到编辑模式并让 AI 生成修改方案。
+- **A14 任务详情的 AI 辅助**：在 AiWorkflowIDE 中使用对话面板的 AI 配置（支持 endpoint / custom 传输）；只把真正的上游任务交给 AI；未接入 AI 时的建议标注为"示例"；错误在面板内提示，不再弹 `alert()`。
+- **A15 流程库插入**：有待确认方案时先询问"追加到待确认方案"还是"放弃方案并插入画布"。
+- **A16 旧版 AI 对话（WorkflowIDE）**：`aiService` 改走 protocolAdapter，支持 Anthropic、endpoint 与 custom 传输；错误给出可操作的中文说明；演示模式的示例只在空白画布上可应用，不会替换已有流程。
+- **错误提示**：保留 HTTP 状态码并识别 Anthropic `invalid x-api-key`、DeepSeek `Authentication Fails`、模型不存在、余额 / 额度不足、模型不支持 temperature、Base URL 404 与浏览器跨域（CORS）失败；直连模式的 401 提示检查自己的 API Key，代理模式才提示联系管理员。o 系列 / gpt-5 模型不再发送 temperature。
+- **其他**：停止生成时保留已输出的文字；"清空对话"不再让暂停的断点卡片回来；刷新后恢复的"运行中"断点显示恢复卡片；`ask_clarification` 不再要求 emoji 图标；编辑模式不再提供 `propose_repair`；运行卡片按声明类型发送数字 / 布尔 / JSON 输入并逐项提示格式错误。
+
+### 设计系统
+
+> 主题：CMASTER 设计系统落地的第一步 —— 设计规范进仓库，并让人和 AI 都按同一套规则产出、被同一套检查把关。规范入口见 `design/README.md`。
+
+#### Added
+- **CMASTER 设计 tokens 编译**：`design/tokens.json` 为唯一来源，`npm run tokens:build` 生成 `src/styles/cmaster-tokens.css`（`--cm-*` 变量，`data-mode="dark" | "light"` 双主题）与 `src/styles/cmasterTokens.ts`（含 5 套活动主题色）；`npm run tokens:check` 进 CI，生成物过期即失败。新增单测 `cmasterTokens.test.ts`：两个主题下文字与地色对比度 ≥ 4.5:1、状态色与焦点环 ≥ 3:1、橙底文字与活动主题按钮文字 ≥ 4.5:1、标志橙在所有主题不变。
+- **AI 协作约定**：根目录 `CLAUDE.md`（硬规则与完成前检查）、`AGENTS.md`、项目 skill `.claude/skills/cmaster-design`（按任务类型指向规范与黄金示例，含交付前检查清单）；`design/` 收录品牌手册、IDE 布局、文档站、宣传页、海报与社媒规范，24 个组件规范、参考样式 `reference/components.css`、9 个黄金示例与 Logo。
+- **截图回归**：Playwright 视觉测试覆盖演示 IDE（深 / 浅 × 业务卡片流 / 全景画布 / 专业模式，视图通过点击界面切换，并校验三个视图截图确实不同）与全部黄金示例，并检查橙色按钮悬停时文字不与底色相同；`Visual regression` 工作流在官方 Playwright 容器中比对，`Visual baselines` 工作流（PR 加 `update-visual-baselines` 标签或手动触发）生成并提交基线。
+
+#### Changed
+- **IDE 换用 CMASTER 视觉**：旧变量（`--bg-*`、`--text-*`、`--border-*`、`--font-*`、`--radius-*`、`--color-success/warning/error/info`、`--status-*`）改为 `--cm-*` 的别名，深色主题由 slate 灰蓝换为 CMASTER 海军蓝，圆角放大一档，运行中状态改用数据青色，`themeColor="orange"` 使用 CMASTER 橙（`#ff6a13`）。`themeColor="blue"` 保留但标记为弃用。演示站加载 Geist / Geist Mono 字体；库本身不加载字体。
+- **橙底文字改为深色**：新增 `--color-on-accent`（橙色品牌为 `--cm-on-brand` 深色，蓝色品牌仍为白色）与 `--color-on-danger`，替换 54 处写死在强调色底上的白字（工具栏主按钮、节点角标、业务卡片、模板中心、AI 面板、演示站顶栏等）。
+- **IDE 外壳的 emoji 换成 Lucide 图标**（线宽 1.75）：工具栏（数据血缘、AI 微调、撤销 / 重做、诊断、配置、沙箱试运行、模拟数据、瀑布流回放、返回编辑）、主题切换、业务视图切换、导入接口、模板中心、执行状态栏、AI IDE 视图切换与对话开关、Shadow Graph 评审条（按钮文案改为"全部采纳 / 放弃"，增删改计数改用 `--cm-diff-*`）。模板中心按钮不再使用蓝色。
+- 新增守卫测试 `src/styles/designRules.test.ts`：禁止在强调色底上写死白字；已迁移的文件不允许再出现 emoji。
+- **数据图标改为图标名**：新增 `CmIcon` 组件与 `iconRegistry`（66 个 Lucide 图标名 + 77 个常见 emoji 别名）。内置动作、模板、任务类型元数据、演示流程库数据的 `icon` 由 emoji 改为图标名（如 `'server'`、`'rocket'`）；`ActionDefinition.icon` / `WorkflowTemplate.icon` 仍为 `string`，宿主或治理服务传入的 emoji 会映射为对应图标显示，未知值显示默认图标。业务卡片、动作选择器、运行故事线、模板中心与向导、AI 指令中心、表单向导、提案卡片中的 emoji 一并换成图标；按钮与状态文案去掉了前缀 emoji。`getTaskTypeMeta` 的默认图标由 `'⚙️'` 改为 `'settings'`。
+- **AI 面板全面换用 tokens 与图标**：`AiNative.css` 的 223 处写死颜色、`components/AiNative` 各组件内联颜色全部改为 `--cm-*` / 旧别名，透明度用 `color-mix(in srgb, var(--cm-x) N%, transparent)`；状态色走 `--cm-status-*`，AI 元素走 `--cm-ai`，阴影走 `--cm-shadow-*`，状态色填充上的文字用 `--cm-on-danger`。内联指令浮层（⌘K）不再固定深色，随主题切换；Mermaid 图改用主题变量。AI 面板全部 emoji 与 ✓ ✕ ↺ ▶ 等符号换成 Lucide 图标，执行结果、连接测试与内联指令提示均为"颜色 + 图标 + 文字"。文案："确认执行"改为"运行"、"✓ 确认"改为"立即执行"、"执行中…"改为"运行中"，错误提示说明如何处理。
+- 演示站顶栏、示例选择器、文件与演示设置菜单、AI 配置弹窗去掉 emoji；运行态示例用"运行中 / 失败 / 成功"标注状态。`HeaderPopover` 的 `icon` 接受 React 节点。
+- 守卫测试加强：emoji 检查也拦截 ✓ ✕ ✗ ↺ ▶ ⚠ 等文字符号；`components/AiNative` 下所有文件自动纳入"无 emoji"与新增的"无写死颜色"检查。截图回归新增 AI 设计器视图（深 / 浅），浅色图标检查也覆盖 AI 视图。
+
+- **演示站改用 CMASTER 主题**：`DemoApp.css` / `DemoHeader.css` 全部换用 tokens，删除 `.app.light-theme` 平行主题（它用 slate 色重新声明了 `--bg-*` / `--text-*`，优先级高于 CMASTER 浅色主题，导致演示站浅色模式并非 CMASTER 浅色）以及 19 组已无引用的旧样式；AI 已配置状态改为成功色浅底 + 文字，开关、弹出层、搜索框、错误提示随主题切换。`demo/` 纳入"无写死颜色"检查。
+
+- **业务模式、模板中心与对话框换用 tokens 与图标**：`components/business`、`components/template`、`components/onboarding`、`components/import` 及沙箱试运行、全屏编辑、确认 / 输入对话框、Toast、空状态面板中约 400 处写死颜色改为 tokens（中性色按用途映射到 `--bg-*` / `--text-*` / `--border-*`，深浅自动切换；沙箱试运行弹窗不再在组件内判断深浅），约 85 处 emoji 换成 Lucide 图标或去掉（下拉选项与标签文字中的 emoji 直接删除）。上游数据选择器的步骤图标改用 `CmIcon`。守卫测试改为按目录登记已迁移代码，同时检查 emoji 与写死颜色。
+
+- **IDE 其余组件完成迁移**：任务详情面板、节点（循环 / 分支 / 并行 / 任务 / 子流程）、执行瀑布图 / 摘要 / 任务面板、健康检查、JSON 预览与结构化查看器、参数建议浮层、旧版 AI 对话面板、设置面板、画布控件与 `executionStyles.css` 的写死颜色与 emoji 全部替换。运行态节点角标改为 Lucide 图标 + 中文状态词（提示与无障碍名称）；任务详情的专项配置区图标改为 Lucide，并修复了把十六进制透明度拼到 `var()` 上导致背景与边框失效的问题；小地图运行中节点改用运行青色（原为橙色）。
+- `getTaskTypeMeta().color` 改为分类色 token（`--cm-cat-task / control / data / human`，终止为失败色）；`getCategoryIcon()` 返回图标名（配合 `CmIcon` 使用），`getCategoryColor()` 返回状态色 token；解析器生成的分支连线颜色改用 token。模板脱敏与接口导入生成的默认图标改为图标名。Mermaid 中 WAIT / HUMAN 节点改用圆角形状代替 emoji 前缀。
+- **守卫覆盖全部 UI 源码**：`designRules.test.ts` 对 `src/` 下所有 `.ts/.tsx/.css` 检查 emoji 与写死颜色，仅保留 6 个有理由的例外（tokens 桥接文件、Logo 图形、蓝色品牌色样、emoji 别名表、两个只给模型看的 AI 上下文文件）。
+
+- **统一使用 CMASTER 标志**：`BrandLogo` 换为 CMASTER 标志（C 形圆弧 + 三个系统节点 + 中心枢纽，标志橙 `#ff6a13`，节点内芯随主题取表面色），演示站顶栏字标改为 CMASTER（首字母 C 为品牌橙）；`public/logo.svg`（favicon）换为 CMASTER 应用图标；首页与 v1.0 / v1.1 / v1.2 历史发布页顶栏的标志与字标同步替换。`BrandLogo` 的 props 不变。
+
+- **宣传页换用 CMASTER 视觉，每个版本一个主题色**：新增 `src/marketing/campaign.css`，页面在 `<html>` 上声明 `data-campaign`，强调色统一走 `--a / --a-hi / --on`，其余颜色走 tokens。首页 v1.3.0 用 Glacier，v1.2.0 / v1.1.0 / v1.0.0 历史页分别用 Signal / Nebula / Ember；页面结构、文案与交互演示保持不变，去掉全部 emoji（对照表里的 ✓ / ✗ 改为"支持 / 不支持"标记）。首页产品名改为 CMASTER。`public/product-launch.html` 与 `docs/product-launch-v1.0.0.html` 两份旧副本改为跳转到 `v1-0.html`。新增 `releasePages.test.ts`：每页一个主题色、相邻版本不重复、无 emoji、颜色只来自 tokens。轮换规则见 `design/guidelines/marketing.md`「主题色轮换」。
+
+#### Fixed
+- 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
+- AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。
+
+---
 
 ## [1.3.0] - 2026-10-24
 

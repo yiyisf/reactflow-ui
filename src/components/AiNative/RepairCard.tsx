@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import type { RepairProposal, RepairAction } from '../../store/aiStore';
+import { isRepairActionExecutable, repairActionUnavailableReason, type RepairCapabilities } from './repairActions';
 import { Check, Lightbulb, Pencil, Play, RotateCcw, SkipForward, Wrench, X, type LucideIcon } from 'lucide-react';
 
 const RISK_META = {
@@ -19,7 +20,15 @@ const ACTION_TYPE_LABEL: Record<RepairAction['type'], string> = {
     rerun_from:      '从此任务重新运行',
     skip:            '跳过此任务',
     retry_workflow:  '重试整个工作流',
-    modify_def:      '修改工作流定义',
+    modify_def:      '让 AI 生成修改方案',
+};
+
+/** 按钮文字：动词开头，说清楚点了会发生什么 */
+const ACTION_BUTTON_LABEL: Record<RepairAction['type'], string> = {
+    rerun_from:      '重新运行',
+    skip:            '跳过',
+    retry_workflow:  '重试',
+    modify_def:      '生成修改方案',
 };
 
 const ACTION_TYPE_ICON: Record<RepairAction['type'], LucideIcon> = {
@@ -31,18 +40,23 @@ const ACTION_TYPE_ICON: Record<RepairAction['type'], LucideIcon> = {
 
 interface RepairCardProps {
     repair: RepairProposal;
-    /** True when the corresponding execution actions are available */
-    canExecute: boolean;
+    /** 哪些动作可执行：每个动作只看它自己的回调（见 isRepairActionExecutable） */
+    capabilities: RepairCapabilities;
     onExecuteAction: (action: RepairAction) => void;
     onDismiss: () => void;
 }
 
-const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAction, onDismiss }) => {
+const RepairCard: React.FC<RepairCardProps> = ({ repair, capabilities, onExecuteAction, onDismiss }) => {
     // Runtime-mutating actions (rerun/skip/retry) require an inline second click before
     // firing — a single accidental click must never trigger a real rerun/skip/retry.
     const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
     const handleExecClick = (action: RepairAction) => {
+        // modify_def only drafts a proposal for review — nothing runs, so no second click needed
+        if (action.type === 'modify_def') {
+            onExecuteAction(action);
+            return;
+        }
         if (confirmingId !== action.id) {
             setConfirmingId(action.id);
             return;
@@ -66,7 +80,7 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
             <div className="ai-repair-action-list">
                 {repair.actions.map((action, idx) => {
                     const riskMeta = action.risk ? RISK_META[action.risk] : null;
-                    const isModifyDef = action.type === 'modify_def';
+                    const executable = isRepairActionExecutable(action, capabilities);
                     return (
                         <div key={action.id} className="ai-repair-action-item">
                             <div className="ai-repair-action-main">
@@ -86,7 +100,7 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
                                             {riskMeta.label}
                                         </span>
                                     )}
-                                    {!isModifyDef && (
+                                    {(
                                         confirmingId === action.id ? (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                 <span style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
@@ -109,11 +123,11 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
                                         ) : (
                                             <button
                                                 className="ai-repair-exec-btn"
-                                                disabled={!canExecute}
+                                                disabled={!executable}
                                                 onClick={() => handleExecClick(action)}
-                                                title={canExecute ? ACTION_TYPE_LABEL[action.type] : '当前环境不支持此操作'}
+                                                title={executable ? ACTION_TYPE_LABEL[action.type] : repairActionUnavailableReason(action, capabilities)}
                                             >
-                                                {React.createElement(ACTION_TYPE_ICON[action.type], { size: 14, strokeWidth: 1.75, 'aria-hidden': true, style: { verticalAlign: -2, marginRight: 4 } })}执行
+                                                {React.createElement(ACTION_TYPE_ICON[action.type], { size: 14, strokeWidth: 1.75, 'aria-hidden': true, style: { verticalAlign: -2, marginRight: 4 } })}{ACTION_BUTTON_LABEL[action.type]}
                                             </button>
                                         )
                                     )}
@@ -124,9 +138,9 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
                 })}
             </div>
 
-            {!canExecute && (
+            {repair.actions.some(a => !isRepairActionExecutable(a, capabilities)) && (
                 <div className="ai-repair-no-exec-hint">
-                    <Lightbulb size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />集成方未提供 executionActions，操作按钮已禁用。可参考诊断内容手动修复。
+                    <Lightbulb size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />部分操作在当前环境不可执行（集成方未提供对应的 executionActions 或 AI 没有修改权限），按钮已禁用。可参考诊断内容手动处理。
                 </div>
             )}
         </div>

@@ -1,11 +1,12 @@
 import React from 'react';
-import type { PendingClarification } from '../../store/aiStore';
+import type { PendingClarification, ClarificationOption } from '../../store/aiStore';
 import { CmIcon } from '../icons/CmIcon';
 import { resolveIconName } from '../icons/iconRegistry';
 
 interface ClarificationCardProps {
     clarification: PendingClarification;
-    onSelect: (optionLabel: string) => void;
+    /** 用户选中的选项（含说明），由调用方连同问题一起发给模型 */
+    onSelect: (option: ClarificationOption) => void;
     onCustom: () => void;
 }
 
@@ -21,7 +22,7 @@ const ClarificationCard: React.FC<ClarificationCardProps> = ({ clarification, on
                     <button
                         key={opt.id}
                         className="ai-clarification-option"
-                        onClick={() => onSelect(opt.label)}
+                        onClick={() => onSelect(opt)}
                     >
                         {resolveIconName(opt.icon) && <span className="ai-clarification-option-icon"><CmIcon name={opt.icon} size={14} /></span>}
                         <span className="ai-clarification-option-label">{opt.label}</span>

@@ -16,7 +16,7 @@ export const ThemeControls = () => {
                 title={mode === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
                 aria-label={mode === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
                 className="settings-btn"
-                style={{ width: '28px', height: '28px', fontSize: '14px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ width: '28px', height: '28px', padding: 0, fontSize: '14px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
                 {mode === 'dark' ? <Moon size={15} strokeWidth={1.75} aria-hidden="true" /> : <Sun size={15} strokeWidth={1.75} aria-hidden="true" />}
             </button>

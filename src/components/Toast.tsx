@@ -12,9 +12,9 @@ interface ToastProps {
 }
 
 const TOAST_COLORS = {
-    success: { bg: '#10b981', text: '#fff' },
-    error: { bg: '#ef4444', text: '#fff' },
-    info: { bg: 'var(--color-accent)', text: '#fff' }
+    success: { bg: 'var(--cm-status-success)', text: 'var(--text-primary)' },
+    error: { bg: 'var(--cm-status-failed)', text: 'var(--text-primary)' },
+    info: { bg: 'var(--color-accent)', text: 'var(--text-primary)' }
 };
 
 const Toast = ({ messages, onDismiss }: ToastProps) => {
@@ -58,7 +58,7 @@ const ToastItem = ({ message, onDismiss }: { message: ToastMessage; onDismiss: (
                 borderRadius: '8px',
                 fontSize: '13px',
                 fontWeight: 500,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                boxShadow: 'var(--cm-shadow-float)',
                 animation: 'toastSlideUp 0.3s ease-out',
                 pointerEvents: 'auto',
                 cursor: 'pointer',

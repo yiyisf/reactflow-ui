@@ -178,7 +178,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
         flexDirection: 'column',
         height: '100%',
         width: '100%',
-        background: 'var(--bg-primary, #0f172a)',
+        background: 'var(--bg-primary)',
         overflowY: 'auto',
         fontFamily: 'inherit',
       }}
@@ -187,21 +187,21 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
       <div
         style={{
           padding: '12px 20px',
-          borderBottom: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+          borderBottom: '1px solid var(--border-primary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'var(--bg-secondary, #1e293b)',
+          background: 'var(--bg-secondary)',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18 }}><CmIcon name="clipboard" size={16} /></span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary, #f8fafc)' }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
               {model.name || '云平台业务流程'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               共 {steps.length} 个业务执行步骤 · 普通用户零代码模式
             </div>
           </div>
@@ -212,10 +212,10 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
           <div
             style={{
               display: 'inline-flex',
-              background: 'rgba(255, 255, 255, 0.06)',
+              background: 'var(--bg-highlight)',
               borderRadius: 6,
               padding: 2,
-              border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.15))',
+              border: '1px solid var(--border-secondary)',
             }}
           >
             <button
@@ -224,8 +224,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 padding: '4px 10px',
                 borderRadius: 4,
                 border: 'none',
-                background: activeTab === 'steps' ? 'var(--color-accent, #3b82f6)' : 'transparent',
-                color: activeTab === 'steps' ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary, #b0bec5)',
+                background: activeTab === 'steps' ? 'var(--color-accent)' : 'transparent',
+                color: activeTab === 'steps' ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                 fontSize: 11,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -239,8 +239,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 padding: '4px 10px',
                 borderRadius: 4,
                 border: 'none',
-                background: activeTab === 'story' ? 'var(--color-accent, #3b82f6)' : 'transparent',
-                color: activeTab === 'story' ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary, #b0bec5)',
+                background: activeTab === 'story' ? 'var(--color-accent)' : 'transparent',
+                color: activeTab === 'story' ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                 fontSize: 11,
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -259,8 +259,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 padding: '5px 10px',
                 borderRadius: 6,
                 background: 'transparent',
-                border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                color: 'var(--text-muted, #94a3b8)',
+                border: '1px solid var(--border-secondary)',
+                color: 'var(--text-muted)',
                 fontSize: 12,
                 cursor: 'pointer',
               }}
@@ -275,9 +275,9 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             style={{
               padding: '6px 14px',
               borderRadius: 6,
-              background: 'color-mix(in srgb, var(--color-success, #10b981) 20%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--color-success, #10b981) 45%, transparent)',
-              color: 'var(--color-success, #10b981)',
+              background: 'color-mix(in srgb, var(--color-success) 20%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-success) 45%, transparent)',
+              color: 'var(--color-success)',
               fontSize: 12,
               fontWeight: 600,
               cursor: isSimulating || steps.length === 0 ? 'not-allowed' : 'pointer',
@@ -326,9 +326,9 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             style={{
               textAlign: 'center',
               padding: '60px 20px',
-              background: 'var(--bg-secondary, #1e293b)',
+              background: 'var(--bg-secondary)',
               borderRadius: 12,
-              border: '1px dashed var(--border-secondary, rgba(255,255,255,0.2))',
+              border: '1px dashed var(--border-secondary)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -336,10 +336,10 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             }}
           >
             <span style={{ display: 'inline-flex', color: 'var(--color-accent)' }}><CmIcon name="zap" size={36} /></span>
-            <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-primary, #f8fafc)' }}>
+            <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-primary)' }}>
               尚未添加任何业务动作
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary, #b0bec5)', maxWidth: 420, margin: 0 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', maxWidth: 420, margin: 0 }}>
               无需编写代码或配置复杂的 JSON，点击下方按钮选择第一个云主机业务动作，即可开始自动化编排。
             </p>
             <button
@@ -349,8 +349,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                 marginTop: 8,
                 padding: '8px 18px',
                 borderRadius: 8,
-                background: 'var(--color-accent, #3b82f6)',
-                color: 'var(--color-on-accent, #fff)',
+                background: 'var(--color-accent)',
+                color: 'var(--color-on-accent)',
                 border: 'none',
                 fontWeight: 600,
                 fontSize: 13,
@@ -374,9 +374,9 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               style={{
                 padding: '4px 12px',
                 borderRadius: 20,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px dashed var(--border-secondary, rgba(255,255,255,0.2))',
-                color: 'var(--text-muted, #94a3b8)',
+                background: 'var(--bg-highlight)',
+                border: '1px dashed var(--border-secondary)',
+                color: 'var(--text-muted)',
                 fontSize: 11,
                 cursor: 'pointer',
                 display: 'inline-flex',
@@ -403,7 +403,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               <React.Fragment key={step.id}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'color-mix(in srgb, #8b5cf6 75%, var(--text-primary))' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'color-mix(in srgb, var(--cm-ai) 75%, var(--text-primary))' }}>
                       #{idx + 1} 控制流分支
                     </span>
                     {!readOnly && (
@@ -444,7 +444,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#ef4444',
+                            color: 'var(--cm-status-failed)',
                             cursor: 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -485,8 +485,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                         transition: 'all 0.15s ease',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
-                        e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
+                        e.currentTarget.style.borderColor = 'var(--color-accent)';
+                        e.currentTarget.style.color = 'var(--color-accent)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = 'var(--border-secondary)';
@@ -508,7 +508,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               <React.Fragment key={step.id}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent, #3b82f6)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent)' }}>
                       #{idx + 1} 并发泳道组
                     </span>
                     {!readOnly && (
@@ -549,7 +549,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#ef4444',
+                            color: 'var(--cm-status-failed)',
                             cursor: 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -590,8 +590,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                         transition: 'all 0.15s ease',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
-                        e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
+                        e.currentTarget.style.borderColor = 'var(--color-accent)';
+                        e.currentTarget.style.color = 'var(--color-accent)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = 'var(--border-secondary)';
@@ -613,7 +613,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
               <React.Fragment key={step.id}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent, #3b82f6)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-accent)' }}>
                       #{idx + 1} 循环迭代体
                     </span>
                     {!readOnly && (
@@ -654,7 +654,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#ef4444',
+                            color: 'var(--cm-status-failed)',
                             cursor: 'pointer',
                             fontSize: 13,
                             padding: '2px 4px',
@@ -695,8 +695,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                         transition: 'all 0.15s ease',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
-                        e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
+                        e.currentTarget.style.borderColor = 'var(--color-accent)';
+                        e.currentTarget.style.color = 'var(--color-accent)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = 'var(--border-secondary)';
@@ -717,14 +717,14 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
             <React.Fragment key={step.id}>
               <div
                 style={{
-                  background: 'var(--bg-secondary, #1e293b)',
+                  background: 'var(--bg-secondary)',
                   borderRadius: 10,
                   border: isExpanded
-                    ? '1px solid var(--color-accent, #3b82f6)'
-                    : '1px solid var(--border-primary, rgba(255,255,255,0.12))',
+                    ? '1px solid var(--color-accent)'
+                    : '1px solid var(--border-primary)',
                   boxShadow: isExpanded
-                    ? '0 8px 24px rgba(59, 130, 246, 0.15)'
-                    : '0 4px 12px rgba(0,0,0,0.15)',
+                    ? '0 8px 24px color-mix(in srgb, var(--color-accent) 15%, transparent)'
+                    : 'var(--cm-shadow-card)',
                   overflow: 'hidden',
                   transition: 'all 0.2s ease',
                 }}
@@ -739,7 +739,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                     justifyContent: 'space-between',
                     cursor: 'pointer',
                     userSelect: 'none',
-                    background: isExpanded ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+                    background: isExpanded ? 'color-mix(in srgb, var(--color-accent) 5%, transparent)' : 'transparent',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, overflow: 'hidden' }}>
@@ -748,14 +748,14 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                         width: 28,
                         height: 28,
                         borderRadius: 6,
-                        background: 'var(--bg-primary, #0f172a)',
+                        background: 'var(--bg-primary)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: 12,
                         fontWeight: 700,
-                        color: 'var(--color-accent, #3b82f6)',
-                        border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+                        color: 'var(--color-accent)',
+                        border: '1px solid var(--border-primary)',
                       }}
                     >
                       #{idx + 1}
@@ -765,7 +765,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
 
                     <div style={{ overflow: 'hidden' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary, #f8fafc)' }}>
+                        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
                           {step.name || action?.name || step.taskReferenceName}
                         </span>
                         {action?.riskLevel === 'sensitive' && (
@@ -774,8 +774,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                               fontSize: 10,
                               padding: '1px 5px',
                               borderRadius: 4,
-                              background: 'rgba(239, 68, 68, 0.15)',
-                              color: '#f87171',
+                              background: 'color-mix(in srgb, var(--cm-status-failed) 15%, transparent)',
+                              color: 'var(--cm-status-failed)',
                               fontWeight: 600,
                             }}
                           >
@@ -808,8 +808,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                               fontSize: 11,
                               padding: '1px 6px',
                               borderRadius: 4,
-                              background: 'rgba(16, 185, 129, 0.2)',
-                              color: '#34d399',
+                              background: 'color-mix(in srgb, var(--cm-status-success) 20%, transparent)',
+                              color: 'var(--cm-status-success)',
                               fontWeight: 600,
                             }}
                           >
@@ -820,7 +820,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                       <div
                         style={{
                           fontSize: 11,
-                          color: 'var(--text-muted, #94a3b8)',
+                          color: 'var(--text-muted)',
                           marginTop: 2,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -859,7 +859,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === 0 ? 'var(--cm-text-disabled)' : 'var(--text-secondary, #b0bec5)',
+                            color: idx === 0 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
                             cursor: idx === 0 ? 'default' : 'pointer',
                             fontSize: 14,
                             padding: '4px',
@@ -874,7 +874,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: idx === steps.length - 1 ? 'var(--cm-text-disabled)' : 'var(--text-secondary, #b0bec5)',
+                            color: idx === steps.length - 1 ? 'var(--cm-text-disabled)' : 'var(--text-secondary)',
                             cursor: idx === steps.length - 1 ? 'default' : 'pointer',
                             fontSize: 14,
                             padding: '4px',
@@ -888,7 +888,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#ef4444',
+                            color: 'var(--cm-status-failed)',
                             cursor: 'pointer',
                             fontSize: 14,
                             padding: '4px',
@@ -902,7 +902,7 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                     <span
                       style={{
                         fontSize: 12,
-                        color: 'var(--text-muted, #94a3b8)',
+                        color: 'var(--text-muted)',
                         transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                         transition: 'transform 0.2s ease',
                       }}
@@ -951,8 +951,8 @@ export const StepFlowEditor: React.FC<StepFlowEditorProps> = ({
                       transition: 'all 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
-                      e.currentTarget.style.color = 'var(--color-accent, #3b82f6)';
+                      e.currentTarget.style.borderColor = 'var(--color-accent)';
+                      e.currentTarget.style.color = 'var(--color-accent)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.borderColor = 'var(--border-secondary)';

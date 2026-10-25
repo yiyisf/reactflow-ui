@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import type { BusinessStep, PillToken } from '../../stepmodel/types';
 import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
+import { Tag, X } from 'lucide-react';
+import { CmIcon } from '../icons/CmIcon';
 
 export interface PillPickerProps {
   upstreamSteps: BusinessStep[];
@@ -38,7 +40,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
     if (workflowInputParams && workflowInputParams.length > 0) {
       list.push({
         stepTitle: '工作流全局入参',
-        stepIcon: '🌐',
+        stepIcon: 'globe',
         stepRef: 'workflow.input',
         items: workflowInputParams.map((param) => {
           const name = typeof param === 'string' ? param : param.name;
@@ -58,7 +60,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
       const step = upstreamSteps[i];
       const action = registry.getAction(step.actionId);
       const stepTitle = `#${i + 1} ${step.name || action?.name || step.taskReferenceName}`;
-      const stepIcon = action?.icon || '⚙️';
+      const stepIcon = action?.icon || 'settings';
       const items: {
         rawRef: string;
         label: string;
@@ -127,7 +129,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border-secondary)',
         borderRadius: 8,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
+        boxShadow: 'var(--cm-shadow-float)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -146,7 +148,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
           background: 'var(--bg-tertiary)',
         }}
       >
-        <span style={{ fontSize: 13 }}>🏷️</span>
+        <span style={{ fontSize: 13 }}><Tag size={13} strokeWidth={1.75} aria-hidden="true" /></span>
         <input
           autoFocus
           type="text"
@@ -174,7 +176,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
           }}
           title="关闭"
         >
-          ✕
+          <X size={14} strokeWidth={1.75} aria-hidden="true" />
         </button>
       </div>
 
@@ -191,7 +193,7 @@ export const PillPicker: React.FC<PillPickerProps> = ({
             style={{
               padding: '24px 12px',
               textAlign: 'center',
-              color: 'var(--text-muted, #94a3b8)',
+              color: 'var(--text-muted)',
               fontSize: 12,
             }}
           >
@@ -206,14 +208,14 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                 style={{
                   fontSize: 11,
                   fontWeight: 600,
-                  color: 'var(--text-muted, #94a3b8)',
+                  color: 'var(--text-muted)',
                   padding: '4px 8px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
                 }}
               >
-                <span>{group.stepIcon}</span>
+                <span style={{ display: 'inline-flex' }}><CmIcon name={group.stepIcon} size={13} /></span>
                 <span>{group.stepTitle}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -276,8 +278,8 @@ export const PillPicker: React.FC<PillPickerProps> = ({
                             fontSize: 10,
                             padding: '1px 5px',
                             borderRadius: 4,
-                            background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-                            color: 'var(--color-accent-text, #1e40af)',
+                            background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
+                            color: 'var(--color-accent-text)',
                             fontFamily: 'monospace',
                             maxWidth: 90,
                             overflow: 'hidden',

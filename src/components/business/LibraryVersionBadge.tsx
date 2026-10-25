@@ -7,6 +7,7 @@ import type { LibraryCatalog } from '../../library/catalog';
 import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
 import { buildUpgradeConfirmMessage, diffWorkflowVersions, type WorkflowVersionDiff } from '../../library/diff';
 import { describeUnavailable, resolveLibraryBadgeState } from '../../library/versionStatus';
+import { Library, TriangleAlert } from 'lucide-react';
 
 export interface LibraryVersionBadgeProps {
   step: BusinessStep;
@@ -15,7 +16,7 @@ export interface LibraryVersionBadgeProps {
   /**
    * 流程库目录。提供后：
    * - 升级前取旧、新两个版本的定义，展示入参 / 出参差异再确认
-   * - 固定版本在库中不存在 / 已下线时显示「⚠ 版本不可用」
+   * - 固定版本在库中不存在 / 已下线时显示「版本不可用」警示
    * 未提供时沿用旧行为（只按动作上记录的最新版本提示升级）。
    */
   catalog?: LibraryCatalog;
@@ -133,12 +134,12 @@ export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({
           fontSize: 10,
           padding: '1px 5px',
           borderRadius: 4,
-          background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-          color: 'var(--color-accent-text, #1e40af)',
+          background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
+          color: 'var(--color-accent-text)',
           fontWeight: 600,
         }}
       >
-        📚 流程库{pinned !== undefined ? ` v${pinned}` : ''}
+        <Library size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />流程库{pinned !== undefined ? ` v${pinned}` : ''}
       </span>
       {state.kind === 'upgradable' && !disabled && (
         <button
@@ -149,14 +150,14 @@ export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({
             fontSize: 10,
             padding: '1px 6px',
             borderRadius: 4,
-            border: '1px solid #f59e0b',
-            background: 'rgba(245, 158, 11, 0.12)',
-            color: '#f59e0b',
+            border: '1px solid var(--cm-status-warning)',
+            background: 'color-mix(in srgb, var(--cm-status-warning) 12%, transparent)',
+            color: 'var(--cm-status-warning)',
             fontWeight: 600,
             cursor: busy ? 'wait' : 'pointer',
           }}
         >
-          {busy ? '正在比较版本…' : `⬆ 有新版本 v${state.latest}`}
+          {busy ? '正在比较版本…' : `有新版本 v${state.latest}`}
         </button>
       )}
       {state.kind === 'unavailable' && (
@@ -166,13 +167,13 @@ export const LibraryVersionBadge: React.FC<LibraryVersionBadgeProps> = ({
             fontSize: 10,
             padding: '1px 6px',
             borderRadius: 4,
-            border: '1px solid #ef4444',
-            background: 'rgba(239, 68, 68, 0.12)',
-            color: '#ef4444',
+            border: '1px solid var(--cm-status-failed)',
+            background: 'color-mix(in srgb, var(--cm-status-failed) 12%, transparent)',
+            color: 'var(--cm-status-failed)',
             fontWeight: 600,
           }}
         >
-          ⚠ 版本不可用
+          <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />版本不可用
         </span>
       )}
       {/* 弹窗经 Portal 渲染，但 React 事件仍会冒泡到步骤头部（会误触发展开/收起），这里拦截 */}

@@ -127,8 +127,8 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
         style={{
           padding: '12px 18px',
           borderRadius: 10,
-          background: isFailed ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-          border: `1px solid ${isFailed ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
+          background: isFailed ? 'color-mix(in srgb, var(--cm-status-failed) 10%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 10%, transparent)',
+          border: `1px solid ${isFailed ? 'color-mix(in srgb, var(--cm-status-failed) 30%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 30%, transparent)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -141,7 +141,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               style={{
                 fontWeight: 700,
                 fontSize: 14,
-                color: isFailed ? 'var(--status-failed, #ef4444)' : 'var(--status-completed, #10b981)',
+                color: isFailed ? 'var(--status-failed)' : 'var(--status-completed)',
               }}
             >
               {isFailed ? '工作流执行中断' : '工作流全部步骤顺利执行完毕'}
@@ -158,8 +158,8 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
             padding: '2px 8px',
             borderRadius: 4,
             fontWeight: 600,
-            background: isFailed ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-            color: isFailed ? 'var(--status-failed, #ef4444)' : 'var(--status-completed, #10b981)',
+            background: isFailed ? 'color-mix(in srgb, var(--cm-status-failed) 15%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 15%, transparent)',
+            color: isFailed ? 'var(--status-failed)' : 'var(--status-completed)',
           }}
         >
           {instance.status}
@@ -201,9 +201,9 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                 borderRadius: 10,
                 background: 'var(--bg-secondary)',
                 border: isTaskFailed
-                  ? '1px solid var(--status-failed, #ef4444)'
+                  ? '1px solid var(--status-failed)'
                   : '1px solid var(--border-primary)',
-                boxShadow: isTaskFailed ? '0 4px 16px rgba(239, 68, 68, 0.12)' : 'none',
+                boxShadow: isTaskFailed ? '0 4px 16px color-mix(in srgb, var(--cm-status-failed) 12%, transparent)' : 'none',
                 padding: '12px 16px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -224,8 +224,8 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                           fontSize: 10,
                           padding: '1px 5px',
                           borderRadius: 3,
-                          background: isTaskFailed ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                          color: isTaskFailed ? 'var(--status-failed, #ef4444)' : 'var(--status-completed, #10b981)',
+                          background: isTaskFailed ? 'color-mix(in srgb, var(--cm-status-failed) 15%, transparent)' : 'color-mix(in srgb, var(--cm-status-success) 15%, transparent)',
+                          color: isTaskFailed ? 'var(--status-failed)' : 'var(--status-completed)',
                           fontWeight: 600,
                         }}
                       >
@@ -276,7 +276,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
               <div
                 style={{
                   fontSize: 12,
-                  color: isTaskFailed ? 'var(--status-failed, #ef4444)' : 'var(--text-secondary)',
+                  color: isTaskFailed ? 'var(--status-failed)' : 'var(--text-secondary)',
                   lineHeight: 1.5,
                   padding: '4px 0',
                 }}
@@ -317,8 +317,8 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                           fontSize: 11,
                           padding: '3px 8px',
                           borderRadius: 6,
-                          background: 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))',
-                          border: '1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 30%, transparent)',
+                          background: 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))',
+                          border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
@@ -326,7 +326,7 @@ export const RunStoryTimeline: React.FC<RunStoryTimelineProps> = ({
                         }}
                       >
                         <span style={{ color: 'var(--text-muted)' }}>{k}:</span>
-                        <span style={{ color: 'var(--color-accent-text, #1e40af)', fontWeight: 600 }}>{String(v)}</span>
+                        <span style={{ color: 'var(--color-accent-text)', fontWeight: 600 }}>{String(v)}</span>
                       </span>
                     );
                   })}

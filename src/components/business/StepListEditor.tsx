@@ -89,7 +89,7 @@ export const StepListEditor: React.FC<StepListEditorProps> = ({
             style={{
               borderRadius: compact ? 6 : 8,
               background: rowBg,
-              border: isExpanded ? '1px solid var(--color-accent, #3b82f6)' : '1px solid var(--border-primary)',
+              border: isExpanded ? '1px solid var(--color-accent)' : '1px solid var(--border-primary)',
               overflow: 'hidden',
               transition: compact ? undefined : 'all 0.15s ease',
             }}
@@ -113,9 +113,9 @@ export const StepListEditor: React.FC<StepListEditorProps> = ({
                       padding: '1px 5px',
                       borderRadius: 4,
                       background: accentIndexBadge
-                        ? 'var(--color-accent-bg, rgba(59, 130, 246, 0.12))'
+                        ? 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent))'
                         : 'var(--bg-tertiary)',
-                      color: 'var(--color-accent-text, #1e40af)',
+                      color: 'var(--color-accent-text)',
                     }}
                   >
                     {indexPrefix}#{cIdx + 1}
@@ -158,7 +158,7 @@ export const StepListEditor: React.FC<StepListEditorProps> = ({
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#ef4444',
+                      color: 'var(--cm-status-failed)',
                       cursor: 'pointer',
                       fontSize: compact ? 11 : 12,
                       padding: compact ? '1px 3px' : '2px 4px',

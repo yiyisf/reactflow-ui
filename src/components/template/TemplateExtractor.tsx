@@ -6,6 +6,7 @@ import type { WorkflowInstance } from '../../types/conductor';
 import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { extractTemplateFromInstance } from '../../template/sanitizer/anonymize';
 import { defaultTemplateStore } from '../../template/templateStore';
+import { Check, Hammer, Rocket, X } from 'lucide-react';
 
 export interface TemplateExtractorProps {
   isOpen: boolean;
@@ -106,7 +107,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.72)',
+        background: 'var(--cm-overlay)',
         backdropFilter: 'blur(6px)',
         zIndex: 2000,
         display: 'flex',
@@ -127,7 +128,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
           background: 'var(--bg-secondary)',
           border: '1px solid var(--border-secondary)',
           borderRadius: 14,
-          boxShadow: '0 28px 72px rgba(0, 0, 0, 0.5)',
+          boxShadow: 'var(--cm-shadow-float)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -137,20 +138,20 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
         <div
           style={{
             padding: '14px 20px',
-            borderBottom: '1px solid var(--border-primary, rgba(255, 255, 255, 0.1))',
+            borderBottom: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--bg-primary, #0f172a)',
+            background: 'var(--bg-primary)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>🛠️</span>
+            <span style={{ fontSize: 22 }}><Hammer size={22} strokeWidth={1.75} aria-hidden="true" /></span>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>
                 生产工作流一键提炼与脱敏工作台 (管理员)
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                 基于执行实例 #{instance.workflowId} 自动识别敏感信息并生成高保真模板
               </div>
             </div>
@@ -161,12 +162,12 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-muted, #94a3b8)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               fontSize: 16,
             }}
           >
-            ✕
+            <X size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
 
@@ -184,19 +185,19 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
           {/* 列 1: 拓扑骨架与智能剪枝 */}
           <div
             style={{
-              background: 'var(--bg-primary, #0f172a)',
+              background: 'var(--bg-primary)',
               borderRadius: 10,
-              border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+              border: '1px solid var(--border-primary)',
               padding: 14,
               display: 'flex',
               flexDirection: 'column',
               gap: 10,
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary, #f8fafc)' }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
               1. 骨架拓扑剪枝建议
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
               自动识别并建议剔除特定的临时调试、重试与低频孤立分支：
             </div>
 
@@ -209,8 +210,8 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                     style={{
                       padding: '8px 10px',
                       borderRadius: 6,
-                      background: isPruned ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${isPruned ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255,255,255,0.08)'}`,
+                      background: isPruned ? 'color-mix(in srgb, var(--cm-status-failed) 8%, transparent)' : 'var(--bg-highlight)',
+                      border: `1px solid ${isPruned ? 'color-mix(in srgb, var(--cm-status-failed) 25%, transparent)' : 'var(--cm-border-subtle)'}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -220,12 +221,12 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: 'var(--color-accent, #3b82f6)', fontWeight: 600 }}>#{idx + 1}</span>
-                        <span style={{ color: isPruned ? '#fca5a5' : 'var(--text-primary, #f8fafc)' }}>
+                        <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>#{idx + 1}</span>
+                        <span style={{ color: isPruned ? 'var(--cm-status-failed)' : 'var(--text-primary)' }}>
                           {t.description || t.name}
                         </span>
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted, #94a3b8)', fontFamily: 'monospace' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                         {t.taskReferenceName}
                       </div>
                     </div>
@@ -235,9 +236,9 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                       style={{
                         padding: '2px 6px',
                         borderRadius: 4,
-                        background: isPruned ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.08)',
+                        background: isPruned ? 'color-mix(in srgb, var(--cm-status-failed) 20%, transparent)' : 'var(--bg-highlight)',
                         border: 'none',
-                        color: isPruned ? '#f87171' : 'var(--text-muted, #94a3b8)',
+                        color: isPruned ? 'var(--cm-status-failed)' : 'var(--text-muted)',
                         fontSize: 11,
                         cursor: 'pointer',
                       }}
@@ -253,9 +254,9 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
           {/* 列 2: 敏感扫描与变量化 */}
           <div
             style={{
-              background: 'var(--bg-primary, #0f172a)',
+              background: 'var(--bg-primary)',
               borderRadius: 10,
-              border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+              border: '1px solid var(--border-primary)',
               padding: 14,
               display: 'flex',
               flexDirection: 'column',
@@ -263,7 +264,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary, #f8fafc)' }}>
+              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
                 2. 敏感项扫描与变量提取
               </div>
               <span
@@ -271,8 +272,8 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                   fontSize: 10,
                   padding: '1px 6px',
                   borderRadius: 4,
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: '#34d399',
+                  background: 'color-mix(in srgb, var(--cm-status-success) 15%, transparent)',
+                  color: 'var(--cm-status-success)',
                   fontWeight: 600,
                 }}
               >
@@ -280,14 +281,14 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
               </span>
             </div>
 
-            <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
               命中规则的生产密钥已强制置空，真实 IP/ID 推荐转为填空变量：
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
               {findings.length === 0 ? (
-                <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted, #94a3b8)', fontSize: 12 }}>
-                  ✓ 未发现任何硬编码的高危凭据或敏感信息
+                <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                  <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />未发现任何硬编码的高危凭据或敏感信息
                 </div>
               ) : (
                 findings.map((f) => (
@@ -296,8 +297,8 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                     style={{
                       padding: '8px 10px',
                       borderRadius: 6,
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid var(--border-primary, rgba(255,255,255,0.08))',
+                      background: 'var(--bg-highlight)',
+                      border: '1px solid var(--border-primary)',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 4,
@@ -313,42 +314,42 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                           fontWeight: 600,
                           background:
                             f.kind === 'credential'
-                              ? 'rgba(239, 68, 68, 0.2)'
+                              ? 'color-mix(in srgb, var(--cm-status-failed) 20%, transparent)'
                               : f.kind === 'network'
-                              ? 'rgba(59, 130, 246, 0.2)'
-                              : 'rgba(245, 158, 11, 0.2)',
+                              ? 'color-mix(in srgb, var(--color-accent) 20%, transparent)'
+                              : 'color-mix(in srgb, var(--cm-status-warning) 20%, transparent)',
                           color:
                             f.kind === 'credential'
-                              ? '#f87171'
+                              ? 'var(--cm-status-failed)'
                               : f.kind === 'network'
-                              ? '#60a5fa'
-                              : '#fbbf24',
+                              ? 'var(--color-accent)'
+                              : 'var(--cm-status-warning)',
                         }}
                       >
                         {f.kind === 'credential'
-                          ? '🔑 密钥凭据'
+                          ? '密钥凭据'
                           : f.kind === 'network'
-                          ? '🌐 内网地址'
+                          ? '内网地址'
                           : f.kind === 'pii'
-                          ? '📱 个人隐私'
-                          : '🖥️ 云资源ID'}
+                          ? '个人隐私'
+                          : '云资源ID'}
                       </span>
 
-                      <span style={{ color: 'var(--text-muted, #94a3b8)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>
                         建议处理: {f.action === 'variable' ? '提取为向导变量' : '自动掩码脱敏'}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                      <span style={{ color: 'var(--text-secondary, #b0bec5)' }}>字段:</span>
-                      <span style={{ color: 'var(--text-primary, #f8fafc)', fontFamily: 'monospace' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>字段:</span>
+                      <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                         {f.keyName}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ color: 'var(--text-secondary, #b0bec5)' }}>脱敏后:</span>
-                      <span style={{ color: '#34d399', fontFamily: 'monospace' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>脱敏后:</span>
+                      <span style={{ color: 'var(--cm-status-success)', fontFamily: 'monospace' }}>
                         {f.maskedValue ? String(f.maskedValue) : '(强制置空并由用户填入)'}
                       </span>
                     </div>
@@ -361,21 +362,21 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
           {/* 列 3: 模板货架信息与发布 */}
           <div
             style={{
-              background: 'var(--bg-primary, #0f172a)',
+              background: 'var(--bg-primary)',
               borderRadius: 10,
-              border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+              border: '1px solid var(--border-primary)',
               padding: 14,
               display: 'flex',
               flexDirection: 'column',
               gap: 12,
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary, #f8fafc)' }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>
               3. 模板货架信息配置
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary, #b0bec5)' }}>模板中文标题</label>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>模板中文标题</label>
               <input
                 type="text"
                 value={title}
@@ -383,9 +384,9 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 style={{
                   padding: '6px 10px',
                   borderRadius: 6,
-                  background: 'var(--bg-secondary, #1e293b)',
-                  border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                  color: 'var(--text-primary, #f8fafc)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-secondary)',
+                  color: 'var(--text-primary)',
                   fontSize: 12,
                   outline: 'none',
                 }}
@@ -393,29 +394,29 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary, #b0bec5)' }}>业务分类</label>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>业务分类</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as any)}
                 style={{
                   padding: '6px 10px',
                   borderRadius: 6,
-                  background: 'var(--bg-secondary, #1e293b)',
-                  border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                  color: 'var(--text-primary, #f8fafc)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-secondary)',
+                  color: 'var(--text-primary)',
                   fontSize: 12,
                   outline: 'none',
                 }}
               >
-                <option value="compute">🖥️ 交付与计算</option>
-                <option value="security">💾 安全与容灾</option>
-                <option value="ops">⚡ 运维与自愈</option>
-                <option value="cost">🌙 节能与降本</option>
+                <option value="compute">交付与计算</option>
+                <option value="security">安全与容灾</option>
+                <option value="ops">运维与自愈</option>
+                <option value="cost">节能与降本</option>
               </select>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary, #b0bec5)' }}>一句话业务价值</label>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>一句话业务价值</label>
               <textarea
                 rows={2}
                 value={valProp}
@@ -423,9 +424,9 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 style={{
                   padding: '6px 10px',
                   borderRadius: 6,
-                  background: 'var(--bg-secondary, #1e293b)',
-                  border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                  color: 'var(--text-primary, #f8fafc)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-secondary)',
+                  color: 'var(--text-primary)',
                   fontSize: 12,
                   outline: 'none',
                   resize: 'none',
@@ -434,7 +435,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, color: 'var(--text-secondary, #b0bec5)' }}>单次预估节省 (分钟)</label>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>单次预估节省 (分钟)</label>
               <input
                 type="number"
                 value={savedMinutes}
@@ -442,9 +443,9 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 style={{
                   padding: '6px 10px',
                   borderRadius: 6,
-                  background: 'var(--bg-secondary, #1e293b)',
-                  border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                  color: 'var(--text-primary, #f8fafc)',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-secondary)',
+                  color: 'var(--text-primary)',
                   fontSize: 12,
                   outline: 'none',
                 }}
@@ -456,13 +457,13 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 marginTop: 6,
                 padding: '8px 10px',
                 borderRadius: 6,
-                background: 'rgba(16, 185, 129, 0.08)',
-                border: '1px solid rgba(16, 185, 129, 0.2)',
+                background: 'color-mix(in srgb, var(--cm-status-success) 8%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--cm-status-success) 20%, transparent)',
                 fontSize: 11,
-                color: '#34d399',
+                color: 'var(--cm-status-success)',
               }}
             >
-              ✓ 已自动从该运行实例生成无害化保真沙盒数据集，上架后支持其他用户零授权一键试跑。
+              <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已自动从该运行实例生成无害化保真沙盒数据集，上架后支持其他用户零授权一键试跑。
             </div>
           </div>
         </div>
@@ -471,14 +472,14 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
         <div
           style={{
             padding: '12px 20px',
-            borderTop: '1px solid var(--border-primary, rgba(255, 255, 255, 0.1))',
-            background: 'var(--bg-primary, #0f172a)',
+            borderTop: '1px solid var(--border-primary)',
+            background: 'var(--bg-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             审计报告: 扫描 {initialResult.report.totalTasksScanned} 个任务 · 脱敏凭证{' '}
             {initialResult.report.credentialsRedactedCount} 项 · 生成模板变量{' '}
             {initialResult.report.variablesCreatedCount} 项
@@ -486,8 +487,8 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {publishedSuccess && (
-              <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>
-                ✓ 已成功上架到模板中心！
+              <span style={{ fontSize: 12, color: 'var(--cm-status-success)', fontWeight: 600 }}>
+                <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />已成功上架到模板中心！
               </span>
             )}
 
@@ -497,8 +498,8 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 padding: '6px 14px',
                 borderRadius: 6,
                 background: 'transparent',
-                border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                color: 'var(--text-secondary, #b0bec5)',
+                border: '1px solid var(--border-secondary)',
+                color: 'var(--text-secondary)',
                 fontSize: 12,
                 cursor: 'pointer',
               }}
@@ -512,8 +513,8 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
               style={{
                 padding: '6px 18px',
                 borderRadius: 6,
-                background: 'var(--color-accent, #3b82f6)',
-                color: 'var(--color-on-accent, #fff)',
+                background: 'var(--color-accent)',
+                color: 'var(--color-on-accent)',
                 border: 'none',
                 fontSize: 12,
                 fontWeight: 600,
@@ -523,7 +524,7 @@ export const TemplateExtractor: React.FC<TemplateExtractorProps> = ({
                 gap: 6,
               }}
             >
-              <span>🚀</span>
+              <span><Rocket size={14} strokeWidth={1.75} aria-hidden="true" /></span>
               <span>{isPublishing ? '发布中...' : '注册并发布到模板中心'}</span>
             </button>
           </div>

@@ -96,7 +96,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.72)',
+        background: 'var(--cm-overlay)',
         backdropFilter: 'blur(5px)',
         zIndex: 1300,
         display: 'flex',
@@ -112,10 +112,10 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
         style={{
           width: 680,
           maxHeight: '85vh',
-          background: 'var(--bg-secondary, #1e293b)',
-          border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.2))',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-secondary)',
           borderRadius: 14,
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6)',
+          boxShadow: 'var(--cm-shadow-float)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -125,20 +125,20 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
         <div
           style={{
             padding: '14px 20px',
-            borderBottom: '1px solid var(--border-primary, rgba(255, 255, 255, 0.1))',
+            borderBottom: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--bg-primary, #0f172a)',
+            background: 'var(--bg-primary)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <CmIcon name={template.icon} size={20} />
             <div>
-              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>
                 {template.title}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                 3 步填空式模板快速启用向导
               </div>
             </div>
@@ -150,7 +150,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-muted, #94a3b8)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               fontSize: 16,
             }}
@@ -163,8 +163,8 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
         <div
           style={{
             padding: '10px 20px',
-            background: 'rgba(0,0,0,0.15)',
-            borderBottom: '1px solid var(--border-primary, rgba(255, 255, 255, 0.08))',
+            background: 'var(--cm-surface-0)',
+            borderBottom: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -197,11 +197,11 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     height: 22,
                     borderRadius: 11,
                     background: isDone
-                      ? 'var(--color-success, #10b981)'
+                      ? 'var(--color-success)'
                       : isActive
-                      ? 'var(--color-accent, #3b82f6)'
-                      : 'rgba(255,255,255,0.1)',
-                    color: '#fff',
+                      ? 'var(--color-accent)'
+                      : 'var(--bg-tertiary)',
+                    color: isDone ? 'var(--cm-on-danger)' : isActive ? 'var(--color-on-accent)' : 'var(--text-muted)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -215,7 +215,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   style={{
                     fontSize: 12,
                     fontWeight: isActive ? 600 : 400,
-                    color: isActive ? 'var(--text-primary, #f8fafc)' : 'var(--text-secondary, #b0bec5)',
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                   }}
                 >
                   {item.label}
@@ -242,12 +242,12 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   style={{
                     padding: '12px 14px',
                     borderRadius: 8,
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    background: 'color-mix(in srgb, var(--cm-status-success) 10%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--cm-status-success) 25%, transparent)',
                   }}
                 >
-                  <div style={{ fontSize: 11, color: '#34d399' }}><CmIcon name="zap" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />预期单次节省人工</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: 'var(--cm-status-success)' }}><CmIcon name="zap" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />预期单次节省人工</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cm-status-success)', marginTop: 4 }}>
                     约 {template.roi.minutesSavedPerRun} 分钟
                   </div>
                 </div>
@@ -256,12 +256,12 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   style={{
                     padding: '12px 14px',
                     borderRadius: 8,
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
                   }}
                 >
-                  <div style={{ fontSize: 11, color: '#60a5fa' }}><CmIcon name="refresh" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />典型每周频次</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#3b82f6', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-accent)' }}><CmIcon name="refresh" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />典型每周频次</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-accent)', marginTop: 4 }}>
                     约 {template.roi.typicalRunsPerWeek} 次 / 周
                   </div>
                 </div>
@@ -270,12 +270,12 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   style={{
                     padding: '12px 14px',
                     borderRadius: 8,
-                    background: 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    background: 'color-mix(in srgb, var(--cm-status-warning) 10%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--cm-status-warning) 25%, transparent)',
                   }}
                 >
-                  <div style={{ fontSize: 11, color: '#fbbf24' }}><CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />累计被采用</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: 'var(--cm-status-warning)' }}><CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />累计被采用</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cm-status-warning)', marginTop: 4 }}>
                     {template.roi.popularityCount ?? 1200} 次
                   </div>
                 </div>
@@ -286,25 +286,25 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 style={{
                   padding: '12px 16px',
                   borderRadius: 8,
-                  background: 'var(--bg-primary, #0f172a)',
-                  border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-primary)',
                   lineHeight: 1.6,
                 }}
               >
-                <div style={{ fontWeight: 600, color: 'var(--text-primary, #f8fafc)', fontSize: 13, marginBottom: 4 }}>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13, marginBottom: 4 }}>
                   <CmIcon name="lightbulb" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />解决的痛点
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary, #b0bec5)' }}>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   {template.valueProposition}
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)', margin: '8px 0 0 0' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0 0' }}>
                   {template.description}
                 </p>
               </div>
 
               {/* 包含的标准步骤预览 */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
                   包含的标准步骤流程 ({template.definition.tasks?.length ?? 0} 个步骤):
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -314,8 +314,8 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                       style={{
                         padding: '8px 12px',
                         borderRadius: 6,
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid var(--border-primary, rgba(255,255,255,0.08))',
+                        background: 'var(--bg-highlight)',
+                        border: '1px solid var(--border-primary)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -323,10 +323,10 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ color: 'var(--color-accent, #3b82f6)', fontWeight: 600 }}>#{idx + 1}</span>
-                        <span style={{ color: 'var(--text-primary, #f8fafc)' }}>{task.description || task.name}</span>
+                        <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>#{idx + 1}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{task.description || task.name}</span>
                       </div>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted, #94a3b8)', fontFamily: 'monospace' }}>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                         {task.taskReferenceName}
                       </span>
                     </div>
@@ -343,10 +343,10 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 style={{
                   padding: '8px 12px',
                   borderRadius: 6,
-                  background: 'rgba(59, 130, 246, 0.08)',
-                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
                   fontSize: 12,
-                  color: '#93c5fd',
+                  color: 'var(--color-accent)',
                 }}
               >
                 <CmIcon name="pencil" size={14} style={{ verticalAlign: -2, marginRight: 4 }} /><strong>开箱即用填空</strong>：无需修改复杂的流程连线与 JSON，仅需确认以下几个业务变量即可：
@@ -361,14 +361,14 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                       style={{
                         fontSize: 13,
                         fontWeight: 600,
-                        color: 'var(--text-primary, #f8fafc)',
+                        color: 'var(--text-primary)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 4,
                       }}
                     >
                       {v.label}
-                      {v.required && <span style={{ color: '#ef4444' }}>*</span>}
+                      {v.required && <span style={{ color: 'var(--cm-status-failed)' }}>*</span>}
                     </label>
 
                     {v.type === 'select' ? (
@@ -378,9 +378,9 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                         style={{
                           padding: '8px 10px',
                           borderRadius: 6,
-                          background: 'var(--bg-primary, #0f172a)',
-                          border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                          color: 'var(--text-primary, #f8fafc)',
+                          background: 'var(--bg-primary)',
+                          border: '1px solid var(--border-secondary)',
+                          color: 'var(--text-primary)',
                           fontSize: 13,
                           outline: 'none',
                         }}
@@ -392,7 +392,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                         ))}
                       </select>
                     ) : v.type === 'boolean' ? (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary, #b0bec5)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
                         <input
                           type="checkbox"
                           checked={Boolean(currentVal)}
@@ -412,9 +412,9 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                         style={{
                           padding: '8px 10px',
                           borderRadius: 6,
-                          background: 'var(--bg-primary, #0f172a)',
-                          border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                          color: 'var(--text-primary, #f8fafc)',
+                          background: 'var(--bg-primary)',
+                          border: '1px solid var(--border-secondary)',
+                          color: 'var(--text-primary)',
                           fontSize: 13,
                           outline: 'none',
                         }}
@@ -422,7 +422,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     )}
 
                     {v.help && (
-                      <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)' }}>{v.help}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{v.help}</div>
                     )}
                   </div>
                 );
@@ -437,18 +437,18 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 style={{
                   padding: '12px 14px',
                   borderRadius: 8,
-                  background: 'var(--bg-primary, #0f172a)',
-                  border: '1px solid var(--border-primary, rgba(255,255,255,0.1))',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary, #f8fafc)', fontSize: 13 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: 13 }}>
                     零风险浏览器沙盒试跑
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted, #94a3b8)', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                     使用内置的保真云主机 Mock 数据，无需真实生产权限即可预览完整数据流转
                   </div>
                 </div>
@@ -459,8 +459,8 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   style={{
                     padding: '6px 14px',
                     borderRadius: 6,
-                    background: 'var(--color-accent, #3b82f6)',
-                    color: 'var(--color-on-accent, #fff)',
+                    background: 'var(--color-accent)',
+                    color: 'var(--color-on-accent)',
                     border: 'none',
                     fontWeight: 600,
                     fontSize: 12,
@@ -476,9 +476,9 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   style={{
                     padding: '12px 14px',
                     borderRadius: 8,
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                    color: '#34d399',
+                    background: 'color-mix(in srgb, var(--cm-status-success) 10%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--cm-status-success) 30%, transparent)',
+                    color: 'var(--cm-status-success)',
                     fontSize: 12,
                     lineHeight: 1.5,
                   }}
@@ -492,11 +492,11 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 style={{
                   padding: '12px 14px',
                   borderRadius: 8,
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid var(--border-primary, rgba(255,255,255,0.08))',
+                  background: 'var(--bg-highlight)',
+                  border: '1px solid var(--border-primary)',
                 }}
               >
-                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted, #94a3b8)', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
                   已配置的业务变量参数清单:
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -508,11 +508,11 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                         justifyContent: 'space-between',
                         fontSize: 12,
                         padding: '4px 0',
-                        borderBottom: '1px dashed rgba(255,255,255,0.06)',
+                        borderBottom: '1px dashed var(--cm-border-subtle)',
                       }}
                     >
-                      <span style={{ color: 'var(--text-secondary, #b0bec5)' }}>{v.label}:</span>
-                      <span style={{ color: 'var(--color-accent, #3b82f6)', fontWeight: 600 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{v.label}:</span>
+                      <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
                         {String(variableValues[v.key] ?? v.defaultValue)}
                       </span>
                     </div>
@@ -527,8 +527,8 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
         <div
           style={{
             padding: '12px 20px',
-            borderTop: '1px solid var(--border-primary, rgba(255, 255, 255, 0.1))',
-            background: 'var(--bg-primary, #0f172a)',
+            borderTop: '1px solid var(--border-primary)',
+            background: 'var(--bg-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -541,8 +541,8 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 padding: '6px 14px',
                 borderRadius: 6,
                 background: 'transparent',
-                border: '1px solid var(--border-secondary, rgba(255,255,255,0.2))',
-                color: 'var(--text-secondary, #b0bec5)',
+                border: '1px solid var(--border-secondary)',
+                color: 'var(--text-secondary)',
                 fontSize: 12,
                 cursor: 'pointer',
               }}
@@ -560,8 +560,8 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 style={{
                   padding: '6px 16px',
                   borderRadius: 6,
-                  background: 'var(--color-accent, #3b82f6)',
-                  color: 'var(--color-on-accent, #fff)',
+                  background: 'var(--color-accent)',
+                  color: 'var(--color-on-accent)',
                   border: 'none',
                   fontSize: 12,
                   fontWeight: 600,
@@ -576,8 +576,8 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 style={{
                   padding: '6px 18px',
                   borderRadius: 6,
-                  background: 'var(--color-success, #10b981)',
-                  color: '#fff',
+                  background: 'var(--color-success)',
+                  color: 'var(--cm-on-danger)',
                   border: 'none',
                   fontSize: 12,
                   fontWeight: 600,

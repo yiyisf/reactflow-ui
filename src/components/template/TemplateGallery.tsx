@@ -70,7 +70,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0, 0, 0, 0.72)',
+        background: 'var(--cm-overlay)',
         backdropFilter: 'blur(5px)',
         zIndex: 1250,
         display: 'flex',
@@ -87,10 +87,10 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           width: 980,
           maxWidth: '92vw',
           height: '84vh',
-          background: 'var(--bg-secondary, #1e293b)',
-          border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.2))',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-secondary)',
           borderRadius: 16,
-          boxShadow: '0 28px 72px rgba(0, 0, 0, 0.65)',
+          boxShadow: 'var(--cm-shadow-float)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -100,20 +100,20 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         <div
           style={{
             padding: '16px 24px',
-            borderBottom: '1px solid var(--border-primary, rgba(255, 255, 255, 0.1))',
+            borderBottom: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--bg-primary, #0f172a)',
+            background: 'var(--bg-primary)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ display: 'inline-flex' }}><CmIcon name="folder" size={22} /></span>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary, #f8fafc)' }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
                 场景化工作流模板中心
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted, #94a3b8)' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                 源于真实云平台高价值运维实战萃取 · 拒绝空白画布 · 开箱即用
               </div>
             </div>
@@ -125,7 +125,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-muted, #94a3b8)',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               fontSize: 18,
               padding: '4px',
@@ -139,12 +139,12 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         <div
           style={{
             padding: '10px 24px',
-            borderBottom: '1px solid var(--border-primary, rgba(255, 255, 255, 0.08))',
+            borderBottom: '1px solid var(--border-primary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 16,
-            background: 'rgba(0, 0, 0, 0.15)',
+            background: 'var(--cm-surface-0)',
           }}
         >
           {/* 分类 Tabs */}
@@ -162,8 +162,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                 style={{
                   padding: '5px 12px',
                   borderRadius: 6,
-                  background: selectedCategory === tab.id ? 'var(--color-accent, #3b82f6)' : 'transparent',
-                  color: selectedCategory === tab.id ? 'var(--color-on-accent, #fff)' : 'var(--text-secondary, #b0bec5)',
+                  background: selectedCategory === tab.id ? 'var(--color-accent)' : 'transparent',
+                  color: selectedCategory === tab.id ? 'var(--color-on-accent)' : 'var(--text-secondary)',
                   border: 'none',
                   fontSize: 12,
                   cursor: 'pointer',
@@ -186,9 +186,9 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               width: 220,
               padding: '6px 12px',
               borderRadius: 6,
-              background: 'var(--bg-primary, #0f172a)',
-              border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.2))',
-              color: 'var(--text-primary, #f8fafc)',
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-secondary)',
+              color: 'var(--text-primary)',
               fontSize: 12,
               outline: 'none',
             }}
@@ -202,9 +202,9 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               margin: '12px 24px 0 24px',
               padding: '10px 14px',
               borderRadius: 8,
-              background: 'rgba(16, 185, 129, 0.12)',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
-              color: '#34d399',
+              background: 'color-mix(in srgb, var(--cm-status-success) 12%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--cm-status-success) 35%, transparent)',
+              color: 'var(--cm-status-success)',
               fontSize: 12,
               display: 'flex',
               alignItems: 'center',
@@ -217,7 +217,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#34d399',
+                color: 'var(--cm-status-success)',
                 cursor: 'pointer',
                 fontSize: 12,
               }}
@@ -243,8 +243,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               key={tpl.id}
               style={{
                 borderRadius: 12,
-                background: 'var(--bg-primary, #0f172a)',
-                border: '1px solid var(--border-primary, rgba(255, 255, 255, 0.12))',
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-primary)',
                 padding: '16px 18px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -253,12 +253,12 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--color-accent, #3b82f6)';
+                e.currentTarget.style.borderColor = 'var(--color-accent)';
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)';
+                e.currentTarget.style.boxShadow = 'var(--cm-shadow-float)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                e.currentTarget.style.borderColor = 'var(--border-primary)';
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
               }}
@@ -268,7 +268,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <CmIcon name={tpl.icon} size={24} />
-                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary, #f8fafc)' }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
                       {tpl.title}
                     </span>
                   </div>
@@ -278,8 +278,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       fontSize: 10,
                       padding: '2px 6px',
                       borderRadius: 4,
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      color: 'var(--text-muted, #94a3b8)',
+                      background: 'var(--bg-highlight)',
+                      color: 'var(--text-muted)',
                       fontWeight: 500,
                     }}
                   >
@@ -291,7 +291,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                 <div
                   style={{
                     fontSize: 12,
-                    color: 'var(--text-secondary, #b0bec5)',
+                    color: 'var(--text-secondary)',
                     lineHeight: 1.5,
                   }}
                 >
@@ -308,8 +308,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       fontSize: 11,
                       padding: '2px 7px',
                       borderRadius: 4,
-                      background: 'rgba(16, 185, 129, 0.15)',
-                      color: '#34d399',
+                      background: 'color-mix(in srgb, var(--cm-status-success) 15%, transparent)',
+                      color: 'var(--cm-status-success)',
                       fontWeight: 600,
                     }}
                   >
@@ -320,8 +320,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       fontSize: 11,
                       padding: '2px 7px',
                       borderRadius: 4,
-                      background: 'rgba(59, 130, 246, 0.15)',
-                      color: '#60a5fa',
+                      background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                      color: 'var(--color-accent)',
                     }}
                   >
                     <CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />已使用 {tpl.roi.popularityCount ?? 1000} 次
@@ -336,9 +336,9 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       flex: 1,
                       padding: '6px 10px',
                       borderRadius: 6,
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid var(--border-secondary, rgba(255, 255, 255, 0.15))',
-                      color: 'var(--text-secondary, #b0bec5)',
+                      background: 'var(--bg-highlight)',
+                      border: '1px solid var(--border-secondary)',
+                      color: 'var(--text-secondary)',
                       fontSize: 12,
                       cursor: 'pointer',
                       display: 'inline-flex',
@@ -357,8 +357,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                       flex: 1.2,
                       padding: '6px 12px',
                       borderRadius: 6,
-                      background: 'var(--color-accent, #3b82f6)',
-                      color: 'var(--color-on-accent, #fff)',
+                      background: 'var(--color-accent)',
+                      color: 'var(--color-on-accent)',
                       border: 'none',
                       fontSize: 12,
                       fontWeight: 600,

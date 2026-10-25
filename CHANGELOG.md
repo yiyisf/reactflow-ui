@@ -25,6 +25,8 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 - **演示站改用 CMASTER 主题**：`DemoApp.css` / `DemoHeader.css` 全部换用 tokens，删除 `.app.light-theme` 平行主题（它用 slate 色重新声明了 `--bg-*` / `--text-*`，优先级高于 CMASTER 浅色主题，导致演示站浅色模式并非 CMASTER 浅色）以及 19 组已无引用的旧样式；AI 已配置状态改为成功色浅底 + 文字，开关、弹出层、搜索框、错误提示随主题切换。`demo/` 纳入"无写死颜色"检查。
 
+- **业务模式、模板中心与对话框换用 tokens 与图标**：`components/business`、`components/template`、`components/onboarding`、`components/import` 及沙箱试运行、全屏编辑、确认 / 输入对话框、Toast、空状态面板中约 400 处写死颜色改为 tokens（中性色按用途映射到 `--bg-*` / `--text-*` / `--border-*`，深浅自动切换；沙箱试运行弹窗不再在组件内判断深浅），约 85 处 emoji 换成 Lucide 图标或去掉（下拉选项与标签文字中的 emoji 直接删除）。上游数据选择器的步骤图标改用 `CmIcon`。守卫测试改为按目录登记已迁移代码，同时检查 emoji 与写死颜色。
+
 ### Fixed
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。

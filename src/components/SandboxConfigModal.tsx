@@ -9,6 +9,7 @@ import {
     TaskMockOverride,
 } from '../utils/localSandboxEngine';
 import type { TaskDef } from '../types/conductor';
+import { ClipboardList, Compass, Eraser, FlaskConical, RefreshCw, RotateCcw, Shuffle, TriangleAlert, X, Zap } from 'lucide-react';
 
 interface SandboxConfigModalProps {
     isOpen: boolean;
@@ -40,7 +41,6 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
             themeColor: s.themeColor,
             runLocalSandboxDryRun: s.runLocalSandboxDryRun,
         })));
-    const isLight = theme === 'light';
 
     const [activeTab, setActiveTab] = useState<'input' | 'tasks' | 'engine'>('input');
     const [inputJsonText, setInputJsonText] = useState('');
@@ -230,12 +230,13 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
         onClose();
     };
 
-    const bgModal = isLight ? '#ffffff' : '#0f172a';
-    const bgSurface = isLight ? '#f8fafc' : '#1e293b';
-    const bgCode = isLight ? '#f1f5f9' : '#020617';
-    const textPrimary = isLight ? '#0f172a' : '#f8fafc';
-    const textSecondary = isLight ? '#64748b' : '#94a3b8';
-    const borderCol = isLight ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.18)';
+    // The dialog root carries data-mode, so these resolve to the active theme.
+    const bgModal = 'var(--cm-surface-1)';
+    const bgSurface = 'var(--cm-surface-3)';
+    const bgCode = 'var(--cm-surface-0)';
+    const textPrimary = 'var(--text-primary)';
+    const textSecondary = 'var(--text-muted)';
+    const borderCol = 'var(--border-primary)';
 
     return createPortal(
         <div
@@ -245,7 +246,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                 position: 'fixed',
                 inset: 0,
                 zIndex: 9500,
-                background: 'rgba(2, 6, 23, 0.65)',
+                background: 'var(--cm-overlay)',
                 backdropFilter: 'blur(6px)',
                 display: 'flex',
                 alignItems: 'center',
@@ -262,7 +263,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                     color: textPrimary,
                     borderRadius: 14,
                     border: `1px solid ${borderCol}`,
-                    boxShadow: '0 24px 64px rgba(0, 0, 0, 0.5)',
+                    boxShadow: 'var(--cm-shadow-float)',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
@@ -282,14 +283,14 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                 >
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, fontWeight: 700 }}>
-                            <span>🧪 本地沙箱试运行 · 人工模拟数据控制台</span>
+                            <span><FlaskConical size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />本地沙箱试运行 · 人工模拟数据控制台</span>
                             <span
                                 style={{
                                     fontSize: 11,
                                     padding: '2px 8px',
                                     borderRadius: 999,
-                                    background: 'rgba(16, 185, 129, 0.14)',
-                                    color: '#10b981',
+                                    background: 'color-mix(in srgb, var(--cm-status-success) 14%, transparent)',
+                                    color: 'var(--cm-status-success)',
                                     fontWeight: 600,
                                 }}
                             >
@@ -312,7 +313,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                             padding: '4px 8px',
                         }}
                     >
-                        ✕
+                        <X size={14} strokeWidth={1.75} aria-hidden="true" />
                     </button>
                 </div>
 
@@ -327,12 +328,12 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                     }}
                 >
                     {[
-                        { id: 'input', label: '📥 1. 工作流启动入参 (workflow.input)' },
+                        { id: 'input', label: '1. 工作流启动入参 (workflow.input)' },
                         {
                             id: 'tasks',
-                            label: `🎯 2. 节点级人工 Mock & 故障注入 ${enabledMockCount > 0 ? `(${enabledMockCount} 个已启用)` : ''}`,
+                            label: `2. 节点级人工 Mock & 故障注入 ${enabledMockCount > 0 ? `(${enabledMockCount} 个已启用)` : ''}`,
                         },
-                        { id: 'engine', label: `⚙️ 3. 循环轮次与引擎参数 (${maxLoopIterations} 轮)` },
+                        { id: 'engine', label: `3. 循环轮次与引擎参数 (${maxLoopIterations} 轮)` },
                     ].map((tab) => {
                         const active = activeTab === tab.id;
                         return (
@@ -343,9 +344,9 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                 style={{
                                     padding: '7px 14px',
                                     borderRadius: 8,
-                                    border: active ? '1px solid #3b82f6' : `1px solid ${borderCol}`,
-                                    background: active ? 'rgba(59, 130, 246, 0.14)' : 'transparent',
-                                    color: active ? '#3b82f6' : textSecondary,
+                                    border: active ? '1px solid var(--color-accent)' : `1px solid ${borderCol}`,
+                                    background: active ? 'color-mix(in srgb, var(--color-accent) 14%, transparent)' : 'transparent',
+                                    color: active ? 'var(--color-accent)' : textSecondary,
                                     fontSize: 12,
                                     fontWeight: active ? 700 : 500,
                                     cursor: 'pointer',
@@ -376,15 +377,15 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                     style={{
                                         padding: '10px 14px',
                                         borderRadius: 10,
-                                        background: 'rgba(59, 130, 246, 0.08)',
-                                        border: '1px solid rgba(59, 130, 246, 0.25)',
+                                        background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
+                                        border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         gap: 8,
                                     }}
                                 >
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8' }}>
-                                        🧭 条件分支 (SWITCH) 快速路由切换器
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--cm-data)' }}>
+                                        <Compass size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />条件分支 (SWITCH) 快速路由切换器
                                     </div>
                                     {switchInputHints.map((hint) => (
                                         <div
@@ -418,9 +419,9 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                     style={{
                                                         padding: '2px 9px',
                                                         borderRadius: 999,
-                                                        border: '1px solid rgba(56, 189, 248, 0.45)',
-                                                        background: 'rgba(56, 189, 248, 0.14)',
-                                                        color: '#38bdf8',
+                                                        border: '1px solid color-mix(in srgb, var(--cm-data) 45%, transparent)',
+                                                        background: 'color-mix(in srgb, var(--cm-data) 14%, transparent)',
+                                                        color: 'var(--cm-data)',
                                                         fontSize: 11,
                                                         fontFamily: 'monospace',
                                                         fontWeight: 600,
@@ -456,7 +457,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    ↺ 重置为默认推导值
+                                    <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />重置为默认推导值
                                 </button>
                             </div>
 
@@ -465,13 +466,13 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                     style={{
                                         padding: '8px 12px',
                                         borderRadius: 8,
-                                        background: 'rgba(239, 68, 68, 0.14)',
-                                        border: '1px solid rgba(239, 68, 68, 0.4)',
-                                        color: '#f87171',
+                                        background: 'color-mix(in srgb, var(--cm-status-failed) 14%, transparent)',
+                                        border: '1px solid color-mix(in srgb, var(--cm-status-failed) 40%, transparent)',
+                                        color: 'var(--cm-status-failed)',
                                         fontSize: 12,
                                     }}
                                 >
-                                    ⚠️ {inputJsonError}
+                                    <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />{inputJsonError}
                                 </div>
                             )}
 
@@ -489,7 +490,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                     boxSizing: 'border-box',
                                     padding: 14,
                                     borderRadius: 10,
-                                    border: `1px solid ${inputJsonError ? '#ef4444' : borderCol}`,
+                                    border: `1px solid ${inputJsonError ? 'var(--cm-status-failed)' : borderCol}`,
                                     background: bgCode,
                                     color: textPrimary,
                                     fontFamily: 'monospace',
@@ -544,10 +545,10 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                 borderRadius: 8,
                                                 cursor: 'pointer',
                                                 background: isSelected
-                                                    ? 'rgba(59, 130, 246, 0.16)'
+                                                    ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)'
                                                     : 'transparent',
                                                 border: isSelected
-                                                    ? '1px solid rgba(59, 130, 246, 0.45)'
+                                                    ? '1px solid color-mix(in srgb, var(--color-accent) 45%, transparent)'
                                                     : '1px solid transparent',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -588,12 +589,12 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                         borderRadius: 999,
                                                         background:
                                                             draft.status === 'FAILED' || draft.status === 'TIMED_OUT'
-                                                                ? 'rgba(239, 68, 68, 0.2)'
-                                                                : 'rgba(16, 185, 129, 0.2)',
+                                                                ? 'color-mix(in srgb, var(--cm-status-failed) 20%, transparent)'
+                                                                : 'color-mix(in srgb, var(--cm-status-success) 20%, transparent)',
                                                         color:
                                                             draft.status === 'FAILED' || draft.status === 'TIMED_OUT'
-                                                                ? '#f87171'
-                                                                : '#34d399',
+                                                                ? 'var(--cm-status-failed)'
+                                                                : 'var(--cm-status-success)',
                                                         fontWeight: 700,
                                                         flexShrink: 0,
                                                     }}
@@ -632,7 +633,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                 <code
                                                     style={{
                                                         fontSize: 12,
-                                                        color: '#38bdf8',
+                                                        color: 'var(--cm-data)',
                                                         fontWeight: 500,
                                                     }}
                                                 >
@@ -655,12 +656,12 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                 padding: '6px 12px',
                                                 borderRadius: 8,
                                                 background: currentDraft.enabled
-                                                    ? 'rgba(16, 185, 129, 0.14)'
+                                                    ? 'color-mix(in srgb, var(--cm-status-success) 14%, transparent)'
                                                     : bgSurface,
                                                 border: `1px solid ${
-                                                    currentDraft.enabled ? '#10b981' : borderCol
+                                                    currentDraft.enabled ? 'var(--cm-status-success)' : borderCol
                                                 }`,
-                                                color: currentDraft.enabled ? '#10b981' : textSecondary,
+                                                color: currentDraft.enabled ? 'var(--cm-status-success)' : textSecondary,
                                             }}
                                         >
                                             <input
@@ -691,10 +692,10 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                                 {(
                                                     [
-                                                        { id: 'COMPLETED', label: '✅ 正常成功' },
-                                                        { id: 'FAILED', label: '❌ 失败中断 (FAILED)' },
-                                                        { id: 'TIMED_OUT', label: '⏱️ 超时中断 (TIMED_OUT)' },
-                                                        { id: 'COMPLETED_WITH_ERRORS', label: '⚠️ 带错完成' },
+                                                        { id: 'COMPLETED', label: '正常成功' },
+                                                        { id: 'FAILED', label: '失败中断 (FAILED)' },
+                                                        { id: 'TIMED_OUT', label: '超时中断 (TIMED_OUT)' },
+                                                        { id: 'COMPLETED_WITH_ERRORS', label: '带错完成' },
                                                     ] as const
                                                 ).map((st) => {
                                                     const active = currentDraft.status === st.id;
@@ -710,12 +711,12 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                                 fontWeight: active ? 700 : 500,
                                                                 cursor: 'pointer',
                                                                 border: active
-                                                                    ? '1px solid #38bdf8'
+                                                                    ? '1px solid var(--cm-data)'
                                                                     : `1px solid ${borderCol}`,
                                                                 background: active
-                                                                    ? 'rgba(56, 189, 248, 0.16)'
+                                                                    ? 'color-mix(in srgb, var(--cm-data) 16%, transparent)'
                                                                     : bgSurface,
-                                                                color: active ? '#38bdf8' : textPrimary,
+                                                                color: active ? 'var(--cm-data)' : textPrimary,
                                                             }}
                                                         >
                                                             {st.label}
@@ -767,7 +768,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                     display: 'block',
                                                     fontSize: 11,
                                                     fontWeight: 600,
-                                                    color: '#f87171',
+                                                    color: 'var(--cm-status-failed)',
                                                     marginBottom: 6,
                                                 }}
                                             >
@@ -787,7 +788,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                     boxSizing: 'border-box',
                                                     padding: '7px 10px',
                                                     borderRadius: 6,
-                                                    border: '1px solid rgba(239, 68, 68, 0.45)',
+                                                    border: '1px solid color-mix(in srgb, var(--cm-status-failed) 45%, transparent)',
                                                     background: bgCode,
                                                     color: textPrimary,
                                                     fontSize: 12,
@@ -802,8 +803,8 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                             style={{
                                                 padding: '10px 12px',
                                                 borderRadius: 8,
-                                                background: 'rgba(245, 158, 11, 0.1)',
-                                                border: '1px solid rgba(245, 158, 11, 0.35)',
+                                                background: 'color-mix(in srgb, var(--cm-status-warning) 10%, transparent)',
+                                                border: '1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent)',
                                             }}
                                         >
                                             <label
@@ -811,11 +812,11 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                     display: 'block',
                                                     fontSize: 11,
                                                     fontWeight: 700,
-                                                    color: '#fbbf24',
+                                                    color: 'var(--cm-status-warning)',
                                                     marginBottom: 6,
                                                 }}
                                             >
-                                                🔀 强制指定 SWITCH 路由分支 (无视入参表达式直接走指定分支)
+                                                <Shuffle size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />强制指定 SWITCH 路由分支 (无视入参表达式直接走指定分支)
                                             </label>
                                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                                 <button
@@ -827,16 +828,16 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                         fontSize: 11,
                                                         cursor: 'pointer',
                                                         border: !currentDraft.forceCase
-                                                            ? '1px solid #fbbf24'
+                                                            ? '1px solid var(--cm-status-warning)'
                                                             : `1px solid ${borderCol}`,
                                                         background: !currentDraft.forceCase
-                                                            ? 'rgba(245, 158, 11, 0.2)'
+                                                            ? 'color-mix(in srgb, var(--cm-status-warning) 20%, transparent)'
                                                             : bgSurface,
-                                                        color: !currentDraft.forceCase ? '#fbbf24' : textSecondary,
+                                                        color: !currentDraft.forceCase ? 'var(--cm-status-warning)' : textSecondary,
                                                         fontWeight: !currentDraft.forceCase ? 700 : 500,
                                                     }}
                                                 >
-                                                    🔄 根据入参自动求值
+                                                    <RefreshCw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />根据入参自动求值
                                                 </button>
                                                 {Object.keys(currentTask.decisionCases || {}).map((caseKey) => {
                                                     const active = currentDraft.forceCase === caseKey;
@@ -854,12 +855,12 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                                 fontFamily: 'monospace',
                                                                 cursor: 'pointer',
                                                                 border: active
-                                                                    ? '1px solid #fbbf24'
+                                                                    ? '1px solid var(--cm-status-warning)'
                                                                     : `1px solid ${borderCol}`,
                                                                 background: active
-                                                                    ? 'rgba(245, 158, 11, 0.22)'
+                                                                    ? 'color-mix(in srgb, var(--cm-status-warning) 22%, transparent)'
                                                                     : bgSurface,
-                                                                color: active ? '#fbbf24' : textPrimary,
+                                                                color: active ? 'var(--cm-status-warning)' : textPrimary,
                                                                 fontWeight: active ? 700 : 500,
                                                             }}
                                                         >
@@ -881,15 +882,15 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                             cursor: 'pointer',
                                                             border:
                                                                 currentDraft.forceCase === '__default__'
-                                                                    ? '1px solid #fbbf24'
+                                                                    ? '1px solid var(--cm-status-warning)'
                                                                     : `1px solid ${borderCol}`,
                                                             background:
                                                                 currentDraft.forceCase === '__default__'
-                                                                    ? 'rgba(245, 158, 11, 0.22)'
+                                                                    ? 'color-mix(in srgb, var(--cm-status-warning) 22%, transparent)'
                                                                     : bgSurface,
                                                             color:
                                                                 currentDraft.forceCase === '__default__'
-                                                                    ? '#fbbf24'
+                                                                    ? 'var(--cm-status-warning)'
                                                                     : textPrimary,
                                                         }}
                                                     >
@@ -926,12 +927,12 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                     borderRadius: 6,
                                                     border: `1px solid ${borderCol}`,
                                                     background: bgSurface,
-                                                    color: '#38bdf8',
+                                                    color: 'var(--cm-data)',
                                                     cursor: 'pointer',
                                                     fontWeight: 600,
                                                 }}
                                             >
-                                                📋 填入默认合成输出模板
+                                                <ClipboardList size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />填入默认合成输出模板
                                             </button>
                                         </div>
 
@@ -940,13 +941,13 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                 style={{
                                                     padding: '6px 10px',
                                                     borderRadius: 6,
-                                                    background: 'rgba(239, 68, 68, 0.14)',
-                                                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                                                    color: '#f87171',
+                                                    background: 'color-mix(in srgb, var(--cm-status-failed) 14%, transparent)',
+                                                    border: '1px solid color-mix(in srgb, var(--cm-status-failed) 40%, transparent)',
+                                                    color: 'var(--cm-status-failed)',
                                                     fontSize: 11,
                                                 }}
                                             >
-                                                ⚠️ {taskJsonError}
+                                                <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />{taskJsonError}
                                             </div>
                                         )}
 
@@ -964,7 +965,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                 boxSizing: 'border-box',
                                                 padding: 12,
                                                 borderRadius: 8,
-                                                border: `1px solid ${taskJsonError ? '#ef4444' : borderCol}`,
+                                                border: `1px solid ${taskJsonError ? 'var(--cm-status-failed)' : borderCol}`,
                                                 background: bgCode,
                                                 color: textPrimary,
                                                 fontFamily: 'monospace',
@@ -998,7 +999,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div>
                                         <div style={{ fontSize: 13, fontWeight: 700 }}>
-                                            🔄 DO_WHILE 循环容器最大模拟迭代轮次
+                                            <RefreshCw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />DO_WHILE 循环容器最大模拟迭代轮次
                                         </div>
                                         <div style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>
                                             控制沙箱遇到 <code>DO_WHILE</code> 节点时自动展开执行的循环轮次数（可在画布循环容器头部切换查看每一轮的子任务状态）
@@ -1008,7 +1009,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                         style={{
                                             fontSize: 16,
                                             fontWeight: 800,
-                                            color: '#38bdf8',
+                                            color: 'var(--cm-data)',
                                             fontFamily: 'monospace',
                                         }}
                                     >
@@ -1021,7 +1022,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                     max={8}
                                     value={maxLoopIterations}
                                     onChange={(e) => setMaxLoopIterations(Number(e.target.value))}
-                                    style={{ width: '100%', accentColor: '#38bdf8', cursor: 'pointer' }}
+                                    style={{ width: '100%', accentColor: 'var(--cm-data)', cursor: 'pointer' }}
                                 />
                                 <div
                                     style={{
@@ -1071,7 +1072,7 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                             cursor: 'pointer',
                         }}
                     >
-                        🧹 清空全部人工 Mock 配置
+                        <Eraser size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />清空全部人工 Mock 配置
                     </button>
 
                     <div style={{ display: 'flex', gap: 10 }}>
@@ -1098,15 +1099,15 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                 padding: '8px 20px',
                                 borderRadius: 8,
                                 border: 'none',
-                                background: 'linear-gradient(135deg, #2563eb, #0284c7)',
-                                color: '#ffffff',
+                                background: 'linear-gradient(135deg, var(--color-accent), var(--cm-data))',
+                                color: 'var(--text-primary)',
                                 fontSize: 12,
                                 fontWeight: 700,
                                 cursor: 'pointer',
-                                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                                boxShadow: '0 4px 14px color-mix(in srgb, var(--color-accent) 35%, transparent)',
                             }}
                         >
-                            ⚡ 应用模拟数据并启动沙箱试运行
+                            <Zap size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />应用模拟数据并启动沙箱试运行
                         </button>
                     </div>
                 </div>

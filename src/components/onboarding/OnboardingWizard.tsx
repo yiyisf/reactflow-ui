@@ -27,6 +27,7 @@ import {
   noticeStyle,
   primaryButton,
 } from './styles';
+import { Check } from 'lucide-react';
 
 export interface OnboardingCreateResult {
   /** 向导生成的骨架定义（名称已按规范拼好） */
@@ -206,7 +207,7 @@ export function OnboardingWizard({
                 border: '1px solid var(--border-primary)',
               }}
             >
-              {i + 1}. {WIZARD_STEP_LABEL[s]}{done ? ' ✓' : ''}
+              {i + 1}. {WIZARD_STEP_LABEL[s]}{done ? <Check size={12} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginLeft: 4 }} /> : null}
             </li>
           );
         })}

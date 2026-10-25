@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useShallow } from 'zustand/react/shallow';
 import useWorkflowStore from '../../store/workflowStore';
+import { X } from 'lucide-react';
 
 export interface ModalShellProps {
   /** 用于 aria-labelledby 的标题元素 id */
@@ -72,7 +73,7 @@ export function ModalShell({ titleId, title, onClose, children, footer, width = 
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
+        background: 'var(--cm-overlay)',
         backdropFilter: 'blur(2px)',
         zIndex: 2000,
         display: 'flex',
@@ -100,7 +101,7 @@ export function ModalShell({ titleId, title, onClose, children, footer, width = 
           color: 'var(--text-primary)',
           border: '1px solid var(--border-primary)',
           borderRadius: 10,
-          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.28)',
+          boxShadow: 'var(--cm-shadow-float)',
           outline: 'none',
         }}
       >
@@ -113,7 +114,7 @@ export function ModalShell({ titleId, title, onClose, children, footer, width = 
             title="关闭 (Esc)"
             style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 4 }}
           >
-            ✕
+            <X size={14} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
         <div style={{ padding: 18, overflowY: 'auto', flex: 1 }}>{children}</div>

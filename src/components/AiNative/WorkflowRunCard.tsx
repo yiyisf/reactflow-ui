@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CircleCheck, CircleX, Play, X } from 'lucide-react';
 import { parseWorkflowInputParams } from '../../types/conductor';
 import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
+import { coerceRunInputs } from './runInputs';
 
 interface WorkflowRunCardProps {
     workflowDef: WorkflowDef;
@@ -53,6 +54,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     const [execStatus, setExecStatus] = useState<string>('');
     const [execOutput, setExecOutput] = useState<Record<string, any> | null>(null);
     const [errorMsg, setErrorMsg] = useState<string>('');
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelledRef = useRef(false);
 
@@ -97,10 +99,14 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     }, [onPollExecution]);
 
     const handleRun = useCallback(async () => {
+        // Send numbers / booleans / JSON as their declared types, not as strings
+        const { input, errors } = coerceRunInputs(inputParams, paramValues);
+        setFieldErrors(errors);
+        if (Object.keys(errors).length > 0) return;
         setPhase('running');
         setExecStatus('');
         try {
-            const { workflowId } = await onTriggerExecution(workflowDef.name, workflowDef.version ?? 1, paramValues);
+            const { workflowId } = await onTriggerExecution(workflowDef.name, workflowDef.version ?? 1, input);
             if (cancelledRef.current) return;
             setExecutionId(workflowId);
             await startPolling(workflowId);
@@ -110,7 +116,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
                 setPhase('error');
             }
         }
-    }, [workflowDef.name, workflowDef.version, paramValues, onTriggerExecution, startPolling]);
+    }, [workflowDef.name, workflowDef.version, paramValues, inputParams, onTriggerExecution, startPolling]);
 
     const CloseBtn = () => (
         <button
@@ -153,20 +159,32 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
                                 <input
                                     type="text"
                                     value={paramValues[p.name] ?? ''}
-                                    onChange={e => setParamValues(v => ({ ...v, [p.name]: e.target.value }))}
-                                    placeholder={p.defaultValue != null ? String(p.defaultValue) : `输入 ${p.name}…`}
+                                    onChange={e => {
+                                        setParamValues(v => ({ ...v, [p.name]: e.target.value }));
+                                        if (fieldErrors[p.name]) setFieldErrors(fe => { const next = { ...fe }; delete next[p.name]; return next; });
+                                    }}
+                                    aria-invalid={!!fieldErrors[p.name]}
+                                    placeholder={p.defaultValue != null
+                                        ? (typeof p.defaultValue === 'object' ? JSON.stringify(p.defaultValue) : String(p.defaultValue))
+                                        : p.type === 'object' ? '{"key": "value"}' : p.type === 'array' ? '["a", "b"]' : p.type === 'boolean' ? 'true / false' : `输入 ${p.name}…`}
                                     style={{
                                         width: '100%',
                                         boxSizing: 'border-box',
                                         padding: '6px 10px',
                                         borderRadius: 6,
-                                        border: '1px solid var(--border-primary)',
+                                        border: `1px solid ${fieldErrors[p.name] ? 'var(--cm-status-failed)' : 'var(--border-primary)'}`,
                                         background: 'var(--bg-primary)',
                                         color: 'var(--text-primary)',
                                         fontSize: 12,
                                         outline: 'none',
+                                        fontFamily: p.type === 'object' || p.type === 'array' ? 'var(--cm-font-mono)' : undefined,
                                     }}
                                 />
+                                {fieldErrors[p.name] && (
+                                    <div role="alert" style={{ marginTop: 4, fontSize: 11, color: 'var(--cm-status-failed)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <CircleX size={12} strokeWidth={1.75} aria-hidden="true" />{fieldErrors[p.name]}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

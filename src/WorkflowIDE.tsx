@@ -752,7 +752,12 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                     const identity = onboarding.takePendingIdentity();
                     setWorkflow(
                         identity
-                            ? { ...configuredDef, name: identity.name, description: identity.description || configuredDef.description }
+                            ? {
+                                ...configuredDef,
+                                name: identity.name,
+                                description: identity.description || configuredDef.description,
+                                ...(identity.ownerEmail ? { ownerEmail: identity.ownerEmail } : {}),
+                            }
                             : configuredDef,
                         layoutDirection,
                     );

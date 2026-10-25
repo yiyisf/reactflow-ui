@@ -116,7 +116,7 @@ describe('promotion 状态与时间线', () => {
   it('终态判断', () => {
     expect(isTerminalPromotionState('SUBMITTED')).toBe(false);
     expect(isTerminalPromotionState('REVIEWING')).toBe(false);
-    expect(isTerminalPromotionState('APPROVED')).toBe(true);
+    expect(isTerminalPromotionState('APPROVED')).toBe(false);
     expect(isTerminalPromotionState('REJECTED')).toBe(true);
     expect(isTerminalPromotionState('SYNCED')).toBe(true);
   });
@@ -130,6 +130,10 @@ describe('promotion 状态与时间线', () => {
     const t = buildPromotionTimeline('REJECTED');
     expect(t.map((x) => x.status)).toEqual(['done', 'done', 'failed']);
     expect(t.map((x) => x.state)).toEqual(['SUBMITTED', 'REVIEWING', 'REJECTED']);
+  });
+
+  it('审批通过：等待同步（第三项完成、第四项进行中）', () => {
+    expect(buildPromotionTimeline('APPROVED').map((t) => t.status)).toEqual(['done', 'done', 'done', 'current']);
   });
 
   it('已同步：全部完成', () => {
@@ -151,8 +155,8 @@ describe('pollPromotion', () => {
     };
   }
 
-  it('按退避间隔轮询到终态，并回调每次状态', async () => {
-    const provider = seqProvider(['SUBMITTED', 'REVIEWING', 'APPROVED']);
+  it('按退避间隔轮询到终态，并回调每次状态（APPROVED 之后继续到 SYNCED）', async () => {
+    const provider = seqProvider(['SUBMITTED', 'REVIEWING', 'APPROVED', 'SYNCED']);
     const delays: number[] = [];
     const seen: string[] = [];
     const final = await pollPromotion({
@@ -161,10 +165,17 @@ describe('pollPromotion', () => {
       onUpdate: (s) => seen.push(s.state),
       sleep: async (ms) => { delays.push(ms); },
     });
-    expect(final.state).toBe('APPROVED');
-    expect(seen).toEqual(['SUBMITTED', 'REVIEWING', 'APPROVED']);
-    expect(delays).toEqual([2000, 4000]);
-    expect(provider.calls).toBe(3);
+    expect(final.state).toBe('SYNCED');
+    expect(seen).toEqual(['SUBMITTED', 'REVIEWING', 'APPROVED', 'SYNCED']);
+    expect(delays).toEqual([2000, 4000, 8000]);
+    expect(provider.calls).toBe(4);
+  });
+
+  it('REJECTED 是终态', async () => {
+    const provider = seqProvider(['SUBMITTED', 'REJECTED', 'SYNCED']);
+    const final = await pollPromotion({ provider, requestId: 'r', sleep: async () => {} });
+    expect(final.state).toBe('REJECTED');
+    expect(provider.calls).toBe(2);
   });
 
   it('请求失败时抛出', async () => {

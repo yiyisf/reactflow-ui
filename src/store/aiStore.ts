@@ -428,19 +428,43 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             hydrateFromDraft: (messages, pendingProposal, durableCheckpoint) => set({
                 messages: messages.length > 0 ? messages : [WELCOME_MESSAGE],
                 pendingProposal,
-                durableCheckpoint: durableCheckpoint ?? null,
+                // A checkpoint saved mid-run ("running") was interrupted by the reload — nothing is
+                // running any more, so restore it as paused and the recovery card offers to continue.
+                durableCheckpoint: durableCheckpoint
+                    ? (durableCheckpoint.status === 'running' ? { ...durableCheckpoint, status: 'paused' } : durableCheckpoint)
+                    : null,
                 synthesisPhase: durableCheckpoint?.phase ?? 'idle',
                 workingDraft: durableCheckpoint?.workingDraft ?? null,
             }),
         });
 
+/** 允许写入 localStorage 的配置字段：只有 provider / baseUrl / model（apiKey、transport、endpoint 请求头一律不落盘） */
+export function pickPersistedAiConfig(config: Partial<AiConfig> | undefined | null): Partial<AiConfig> {
+    const out: Partial<AiConfig> = {};
+    if (!config || typeof config !== 'object') return out;
+    if (config.provider === 'openai' || config.provider === 'anthropic' || config.provider === 'auto') out.provider = config.provider;
+    if (typeof config.baseUrl === 'string' && config.baseUrl) out.baseUrl = config.baseUrl;
+    if (typeof config.model === 'string' && config.model) out.model = config.model;
+    return out;
+}
+
+/** 从 localStorage 恢复时只取安全字段（旧版本落盘的 transport / endpoint 请求头被丢弃） */
+export function mergePersistedAiState<T extends { config: AiConfig; metrics: AiMetrics }>(persisted: unknown, current: T): T {
+    const p = (persisted ?? {}) as { config?: Partial<AiConfig>; metrics?: Partial<AiMetrics> };
+    return {
+        ...current,
+        config: { ...current.config, ...pickPersistedAiConfig(p.config) },
+        metrics: p.metrics ? { ...current.metrics, ...p.metrics } : current.metrics,
+    };
+}
+
 /**
  * Creates an independent AiStore instance.
  *
  * @param persistKey  localStorage key for provider/baseUrl/model + metrics (never
- *                    the apiKey or conversation itself). Pass `false` to keep this
- *                    instance fully in-memory — no localStorage writes at all.
- *                    Defaults to a stable shared key so existing single-instance
+ *                    the apiKey, transport / endpoint headers, or the conversation itself).
+ *                    Pass `false` to keep this instance fully in-memory — no localStorage
+ *                    writes at all. Defaults to a stable shared key so existing single-instance
  *                    integrations keep their persisted config across reloads;
  *                    pass a unique key per instance when embedding multiple
  *                    `<AiWorkflowIDE>` on the same page to avoid them clobbering
@@ -456,10 +480,15 @@ export function createAiStore(persistKey: string | false = 'ai-workflow-config')
             name: persistKey,
             storage: createJSONStorage(() => localStorage),
             partialize: (state) => ({
-                // Persist provider/baseUrl/model but NOT apiKey (kept only in memory)
-                config: { ...state.config, apiKey: '' },
+                // Persist provider/baseUrl/model only — apiKey stays in memory, and transport
+                // (endpoint URL + headers, custom stream) always comes from the host's props.
+                config: pickPersistedAiConfig(state.config),
                 metrics: state.metrics,
             }),
+            // Older versions persisted the whole config (incl. transport and endpoint headers).
+            // Only take the safe fields back, so a stale endpoint / header-less transport can't
+            // override what the host passes in.
+            merge: (persisted, current) => mergePersistedAiState(persisted, current),
         })
     );
 }

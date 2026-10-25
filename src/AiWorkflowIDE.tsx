@@ -135,6 +135,12 @@ export interface AiWorkflowIDEProps {
      * 由集成方完全掌控 AI 配置。
      */
     aiConfig?: Partial<AiConfig>;
+    /**
+     * 用户在内置 AI 设置里填写的 provider / baseUrl / model 保存在哪个 localStorage 键下
+     * （apiKey 与 transport 从不落盘）。缺省 `'ai-workflow-config'`（与旧版本兼容）；
+     * 同一页面挂载多个配置不同的实例时请各传一个唯一键，传 `false` 则完全不写 localStorage。
+     */
+    aiConfigStorageKey?: string | false;
 
     // ── System prompt customization ────────────────────────────────────────
     /**
@@ -309,6 +315,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         workflowDef: propDef,
         workflowExecution,
         aiConfig: propAiConfig,
+        aiConfigStorageKey,
         workflowLibrary: propLibrary,
         libraryProvider: libraryProviderProp,
         providers: providersProp,
@@ -382,7 +389,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     // mounting a second instance no longer stomps the first's state. workflowStore
     // (canvas/task-graph) remains a shared singleton — see ideStoresContext.tsx.
     const [stores] = useState(() => ({
-        aiStore: createAiStore(),
+        aiStore: createAiStore(aiConfigStorageKey ?? 'ai-workflow-config'),
         libraryStore: createLibraryStore(),
         toolRegistry: new ToolRegistry(),
         // 每个实例独立的流程库目录：静态 prop 与 Provider 规范化后的唯一数据源
@@ -425,7 +432,9 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         const serializedRest = JSON.stringify(rest);
         if (serializedRest === prevAiConfigRef.current.rest && transport === prevAiConfigRef.current.transport) return;
         prevAiConfigRef.current = { rest: serializedRest, transport };
-        aiStore.setConfig(propAiConfig);
+        // transport is replaced, never merged: removing it from props (or swapping endpoint for
+        // custom) must not leave the previous transport behind in the store.
+        aiStore.setConfig({ ...propAiConfig, transport });
     }, [propAiConfig]);
 
     // ── Workflow library: 静态 prop 与 Provider 合并为同一份目录 ──────────────

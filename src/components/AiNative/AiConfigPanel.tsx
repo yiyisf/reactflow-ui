@@ -73,12 +73,15 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
     };
 
     const handleSave = () => {
+        if (!draft.apiKey.trim()) return;
+        // Cleared fields are written as undefined (not omitted): setConfig merges, so omitting
+        // them would silently keep the previous Base URL / model instead of the default.
         const cleaned: AiConfig = {
             provider: draft.provider,
             apiKey: draft.apiKey.trim(),
+            baseUrl: draft.baseUrl?.trim() || undefined,
+            model: draft.model?.trim() || undefined,
         };
-        if (draft.baseUrl?.trim()) cleaned.baseUrl = draft.baseUrl.trim();
-        if (draft.model?.trim()) cleaned.model = draft.model.trim();
         setConfig(cleaned);
         onClose();
     };
@@ -103,7 +106,7 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                     border: '1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent)', fontSize: 11.5,
                     color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5,
                 }}>
-                    <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4, color: 'var(--cm-status-warning)' }} />此处填写的 API Key 会直接留存于浏览器并直连模型服务商，<strong>仅建议用于开发调试</strong>。
+                    <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4, color: 'var(--cm-status-warning)' }} />此处填写的 API Key 只保存在当前页面内存中（刷新页面后需重新填写），请求从浏览器直连模型服务商，<strong>仅建议用于开发调试</strong>。
                     生产环境请由集成方通过 <code>aiConfig.transport</code>（endpoint 代理模式）接管 AI 请求。
                 </div>
 

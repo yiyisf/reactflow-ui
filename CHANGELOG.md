@@ -33,6 +33,8 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 - **统一使用 CMASTER 标志**：`BrandLogo` 换为 CMASTER 标志（C 形圆弧 + 三个系统节点 + 中心枢纽，标志橙 `#ff6a13`，节点内芯随主题取表面色），演示站顶栏字标改为 CMASTER（首字母 C 为品牌橙）；`public/logo.svg`（favicon）换为 CMASTER 应用图标；首页与 v1.0 / v1.1 / v1.2 历史发布页顶栏的标志与字标同步替换。`BrandLogo` 的 props 不变。
 
+- **宣传页换用 CMASTER 视觉，每个版本一个主题色**：新增 `src/marketing/campaign.css`，页面在 `<html>` 上声明 `data-campaign`，强调色统一走 `--a / --a-hi / --on`，其余颜色走 tokens。首页 v1.3.0 用 Glacier，v1.2.0 / v1.1.0 / v1.0.0 历史页分别用 Signal / Nebula / Ember；页面结构、文案与交互演示保持不变，去掉全部 emoji（对照表里的 ✓ / ✗ 改为"支持 / 不支持"标记）。首页产品名改为 CMASTER。`public/product-launch.html` 与 `docs/product-launch-v1.0.0.html` 两份旧副本改为跳转到 `v1-0.html`。新增 `releasePages.test.ts`：每页一个主题色、相邻版本不重复、无 emoji、颜色只来自 tokens。轮换规则见 `design/guidelines/marketing.md`「主题色轮换」。
+
 ### Fixed
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。

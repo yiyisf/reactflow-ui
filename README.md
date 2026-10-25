@@ -208,7 +208,7 @@ src/
 
 ## 📚 文档导航
 
-- **[🚀 v1.0.0 产品发布宣传首页 (Product Launch Showcase)](./docs/product-launch-v1.0.0.html)** — 100% 单文件零依赖 HTML，含首屏 Before/After 耗时对比、一行命令极速体验、可拖动双滑块团队 ROI 收益计算器与交互式沙箱演练
+- **[v1.0.0 产品发布宣传页](./v1-0.html)** — 首屏 Before/After 耗时对比、一行命令极速体验、团队 ROI 收益计算器与交互式沙箱演练。最新版本见首页 `index.html`。
 - **[集成指南 (INTEGRATION.md)](./INTEGRATION.md)** — Props 详解、运行态接入、AI 代理配置、W-LSP 与沙箱 API
 - **[版本更新日志 (CHANGELOG.md)](./CHANGELOG.md)** — `v1.0.0` 及历次版本完整变更记录
 - **[发展路线图 (ROADMAP.md)](./ROADMAP.md)** — 演进里程碑与未来规划

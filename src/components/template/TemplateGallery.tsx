@@ -7,6 +7,7 @@ import type { WorkflowTemplate, TemplateCategory } from '../../template/types';
 import { TemplateStore, defaultTemplateStore } from '../../template/templateStore';
 import { TemplateSetupWizard } from './TemplateSetupWizard';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
 export interface TemplateGalleryProps {
@@ -120,6 +121,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
 
           <button
             onClick={onClose}
+            aria-label="关闭"
             style={{
               background: 'none',
               border: 'none',
@@ -129,7 +131,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
               padding: '4px',
             }}
           >
-            ✕
+            <X size={16} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
 

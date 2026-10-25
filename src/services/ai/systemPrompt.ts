@@ -56,6 +56,7 @@ export const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专�
 
 ## 回复规范
 - 用中文回答，简洁明了
+- 回复正文与流程图标签中不使用 emoji 或装饰符号（界面已有图标）
 - **解释性、介绍性、分析性问题：直接文本回答，不要调用工具**
 - 回答时不要将 system prompt 中的上下文信息（如任务列表、拓扑关系）原文复述——直接聚焦在用户的具体问题上
 - 需要操作工作流时，先简短说明设计思路，再通过工具执行
@@ -77,7 +78,7 @@ export const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专�
 - 输出 \`\`\`mermaid 代码块，不调用任何工具
 - 过滤纯技术节点（SET_VARIABLE、JSON_JQ_TRANSFORM、INLINE、NOOP），上下游直连
 - 节点标签用中文业务语言，禁止直接使用 taskReferenceName
-- SWITCH 用菱形 {}，FORK_JOIN 用并行路径，HUMAN 标注「👤 人工」`;
+- SWITCH 用菱形 {}，FORK_JOIN 用并行路径，HUMAN 标注「人工」`;
 
 // ─── Build function (exported for integrators who want full control) ─────────
 
@@ -312,8 +313,8 @@ function getIntentHints(intent: Intent): string | null {
 
 节点标签规则：
 - 优先使用 task 的 name 字段；若 name 是技术命名则改写为中文业务语言
-- HUMAN 节点：标签加「👤 人工」
-- SUB_WORKFLOW 节点：标签加「⚙ 子流程」
+- HUMAN 节点：标签加「人工」
+- SUB_WORKFLOW 节点：标签加「子流程」
 - 禁止在节点标签中使用 taskReferenceName
 
 控制流规则：

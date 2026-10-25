@@ -3,10 +3,11 @@
  *
  * Replaces the single toolStatus line with:
  * 1. A 4-Phase Synthesis Progress Bar ("① 蓝图定义 → ② 拓扑编排 → ③ 参数与数据流 → ④ 整体校验") when progressive synthesis is active
- * 2. A growing list of completed steps ("✓ 已搜索工作流库", "✓ 阶段 2/4：已编排 5 个任务拓扑骨架")
+ * 2. A growing list of completed steps (a check mark with "已搜索工作流库", "阶段 2/4：已编排 5 个任务拓扑骨架")
  * 3. The current in-flight step as a spinner row
  */
 
+import { Check } from 'lucide-react';
 import React from 'react';
 import type { TimelineEntry } from '../../store/aiStore';
 import type { SynthesisPhase } from '../../services/ai/workflowSynthesizer';
@@ -71,7 +72,7 @@ const AgentTimeline: React.FC<AgentTimelineProps> = ({
                                 <React.Fragment key={p.key}>
                                     <div className={`ai-synthesis-step ${status}`}>
                                         <span className="ai-synthesis-step-dot">
-                                            {status === 'done' ? '✓' : p.stepNum}
+                                            {status === 'done' ? <Check size={12} strokeWidth={2.25} aria-hidden="true" /> : p.stepNum}
                                         </span>
                                         <span className="ai-synthesis-step-text">{p.label}</span>
                                     </div>

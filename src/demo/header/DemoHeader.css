@@ -82,8 +82,8 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
+/* Active mode is brand orange like every other segment (CMASTER rule 3); no separate business colour. */
 .dh .dh-segmented button.is-on.is-business {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(59, 130, 246, 0.9));
   font-weight: 600;
 }
 
@@ -379,8 +379,9 @@
   color: #475569;
 }
 
+/* outranks the rule above, which would otherwise grey out the label on the orange fill */
 .app.light-theme .dh .dh-segmented button.is-on {
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .app.light-theme .dh .dh-search-field {

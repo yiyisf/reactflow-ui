@@ -4,6 +4,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import type { WorkflowDef, TaskDef } from '../../types/conductor';
+import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
 interface WizardStepType {
@@ -206,7 +207,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                 {/* Header */}
                 <div className="wizard-header">
                     <div className="wizard-title"><CmIcon name="sparkles" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />创建新工作流</div>
-                    <button className="wizard-close-btn" onClick={onCancel}>✕</button>
+                    <button className="wizard-close-btn" onClick={onCancel} aria-label="关闭向导"><X size={16} strokeWidth={1.75} aria-hidden="true" /></button>
                 </div>
 
                 {/* Progress stepper */}
@@ -360,7 +361,7 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                                     />
                                                 )}
                                             </div>
-                                            <button className="wizard-step-remove" onClick={() => removeStep(step.id)}>✕</button>
+                                            <button className="wizard-step-remove" onClick={() => removeStep(step.id)} aria-label="删除此步骤"><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                                         </div>
                                     ))}
                                     {/* Flow end indicator */}
@@ -391,7 +392,12 @@ const WorkflowFormWizard: React.FC<WorkflowFormWizardProps> = ({ onComplete, onC
                                 <div className="wizard-review-steps">
                                     {formData.steps.map((step, i) => (
                                         <div key={step.id} className="wizard-review-step">
-                                            <div className="wizard-review-step-num" style={{ background: step.stepType.type === 'HUMAN' ? '#ec4899' : '#3b82f6' }}>
+                                            <div
+                                                className="wizard-review-step-num"
+                                                style={step.stepType.type === 'HUMAN'
+                                                    ? { background: 'color-mix(in srgb, var(--cm-cat-human) 18%, transparent)', color: 'var(--cm-cat-human)' }
+                                                    : { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
+                                            >
                                                 {i + 1}
                                             </div>
                                             <div className="wizard-review-step-icon"><CmIcon name={step.stepType.icon} size={16} /></div>

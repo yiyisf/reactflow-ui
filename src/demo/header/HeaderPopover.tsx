@@ -3,7 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 
 interface HeaderPopoverProps {
   /** 触发按钮图标（emoji） */
-  icon: string;
+  icon: ReactNode;
   /** 触发按钮文字（窄屏下隐藏，仅保留图标） */
   label: string;
   /** 悬浮提示，同时作为无障碍名称 */

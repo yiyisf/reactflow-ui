@@ -7,13 +7,14 @@
 
 import React from 'react';
 import type { PendingPlan } from '../../store/aiStore';
+import { CircleCheck, ClipboardList, Library, Pencil, Play, RefreshCw, Search, Wrench, X, type LucideIcon } from 'lucide-react';
 
-const TOOL_ICON: Record<string, string> = {
-    replace_workflow: '🔄',
-    patch_workflow: '✏️',
-    get_workflow_state: '🔍',
-    validate_workflow: '✅',
-    search_workflow_library: '📚',
+const TOOL_ICON: Record<string, LucideIcon> = {
+    replace_workflow: RefreshCw,
+    patch_workflow: Pencil,
+    get_workflow_state: Search,
+    validate_workflow: CircleCheck,
+    search_workflow_library: Library,
 };
 
 interface PlanCardProps {
@@ -26,7 +27,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, onExecute, onCancel }) => {
     return (
         <div className="ai-plan-card">
             <div className="ai-plan-card-header">
-                <span className="ai-plan-card-icon">📋</span>
+                <span className="ai-plan-card-icon" style={{ display: 'inline-flex', color: 'var(--cm-ai)' }}><ClipboardList size={18} strokeWidth={1.75} aria-hidden="true" /></span>
                 <div className="ai-plan-card-title">{plan.title}</div>
             </div>
 
@@ -37,7 +38,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, onExecute, onCancel }) => {
                         <span className="ai-plan-step-action">{s.action}</span>
                         {s.tool && (
                             <span className="ai-plan-step-tool" title={s.tool}>
-                                {TOOL_ICON[s.tool] ?? '🔧'}
+                                {React.createElement(TOOL_ICON[s.tool] ?? Wrench, { size: 14, strokeWidth: 1.75, 'aria-hidden': true })}
                             </span>
                         )}
                     </li>
@@ -50,10 +51,10 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, onExecute, onCancel }) => {
 
             <div className="ai-plan-card-actions">
                 <button className="ai-plan-btn cancel" onClick={onCancel}>
-                    ✕ 取消
+                    <X size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />取消
                 </button>
                 <button className="ai-plan-btn execute" onClick={onExecute}>
-                    ▶ 执行方案
+                    <Play size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />执行方案
                 </button>
             </div>
         </div>

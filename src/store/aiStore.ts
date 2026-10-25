@@ -242,7 +242,7 @@ export type AiStore = AiState & AiActions;
 const WELCOME_MESSAGE: AiChatMessage = {
     id: 'welcome',
     role: 'assistant',
-    content: '你好！我是 AI 工作流助手。\n\n我可以帮你：\n- 🆕 **从零创建**工作流（描述业务场景即可）\n- ➕ **添加/修改/删除**任务节点\n- 🔀 **重构拓扑**（如串行改并行）\n- 🔍 **诊断问题**和优化建议\n\n直接告诉我你想做什么吧！',
+    content: '你好！我是 AI 工作流助手。\n\n我可以帮你：\n- **从零创建**工作流（描述业务场景即可）\n- **添加 / 修改 / 删除**任务节点\n- **重构拓扑**（如串行改并行）\n- **诊断问题**和优化建议\n\n直接告诉我你想做什么吧！',
     timestamp: Date.now(),
 };
 

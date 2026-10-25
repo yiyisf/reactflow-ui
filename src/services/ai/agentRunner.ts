@@ -268,7 +268,7 @@ export class AgentRunner {
 
         // apiKey is only required in direct mode — endpoint/custom transports don't need one.
         if (!config.apiKey && !config.transport) {
-            store.addMessage({ role: 'assistant', content: '⚠️ 未配置 API Key。请点击上方 ⚙️ 按钮配置 AI 服务后重试。' });
+            store.addMessage({ role: 'assistant', content: '未配置 API Key。请点击对话面板右上角的设置按钮配置 AI 服务后重试。' });
             store.setStreaming(false);
             return;
         }
@@ -375,7 +375,7 @@ export class AgentRunner {
 
                 ai.getState().setStreamingText('');
                 if (step > 0 && currentPhase === 'idle') {
-                    ai.getState().setToolStatus(`🔄 步骤 ${step + 1}…`);
+                    ai.getState().setToolStatus(`步骤 ${step + 1}…`);
                 }
 
                 const stepToolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
@@ -393,7 +393,7 @@ export class AgentRunner {
                             break;
                         case 'error': {
                             const humanized = humanizeAiError(event.message);
-                            stepText += `\n\n❌ ${humanized.display}`;
+                            stepText += `\n\n**出错了**：${humanized.display}`;
                             onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
                             break;
                         }
@@ -533,7 +533,7 @@ export class AgentRunner {
                                 verification,
                             };
                             const desc = describeDiff(result.diff);
-                            const warnNote = verification.errors.length > 0 ? ` ⚠️ 含 ${verification.errors.length} 个校验错误` : '';
+                            const warnNote = verification.errors.length > 0 ? `（含 ${verification.errors.length} 个校验错误）` : '';
                             resultContent = `变更方案已生成${warnNote}：${desc}。等待用户确认。`;
                             const stepCount = verification.totalTasks || (result.proposed.tasks?.length ?? 0);
                             ai.getState().addTimelineEntry(
@@ -564,7 +564,7 @@ export class AgentRunner {
                 persistCheckpoint('running');
 
                 if (ai.getState().pendingRepair?.messageId === assistantMsgId) {
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + '🔧 我已诊断出故障原因并准备了修复方案，请查看下方修复卡片。';
+                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + '我已诊断出故障原因并准备了修复方案，请查看下方修复卡片。';
                     break;
                 }
                 if (ai.getState().pendingClarification?.messageId === assistantMsgId) break;
@@ -578,7 +578,7 @@ export class AgentRunner {
                         messageId: assistantMsgId,
                     });
                     onAiEvent?.({ type: 'plan:created', timestamp: Date.now() });
-                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + '📋 我已为你准备了一个执行计划，请查看下方方案并确认是否执行。';
+                    fullAssistantText += (fullAssistantText ? '\n\n' : '') + '我已为你准备了一个执行计划，请查看下方方案并决定是否执行。';
                     break;
                 }
 
@@ -597,7 +597,7 @@ export class AgentRunner {
                     });
                     const desc = describeDiff(pendingProposalResult.diff);
                     const levelNote = pendingProposalResult.inferredLevel ? ` · ${pendingProposalResult.inferredLevel}` : '';
-                    fullAssistantText += `\n\n---\n✅ **已生成变更方案${levelNote}**：${desc}\n请在下方确认或拒绝此变更。`;
+                    fullAssistantText += `\n\n---\n**已生成变更方案${levelNote}**：${desc}\n请在下方应用或拒绝此变更。`;
                     break;
                 }
 
@@ -640,7 +640,7 @@ export class AgentRunner {
                     });
                     const desc = describeDiff(autoCommit.diff);
                     const levelNote = autoCommit.inferredLevel ? ` · ${autoCommit.inferredLevel}` : '';
-                    fullAssistantText += `\n\n---\n✅ **已生成变更方案${levelNote}**：${desc}\n请在下方确认或拒绝此变更。`;
+                    fullAssistantText += `\n\n---\n**已生成变更方案${levelNote}**：${desc}\n请在下方应用或拒绝此变更。`;
                 }
             }
 
@@ -663,7 +663,7 @@ export class AgentRunner {
             ai.getState().setToolStatus('');
             if (err.name !== 'AbortError') {
                 const humanized = humanizeAiError(err?.message);
-                ai.getState().updateMessage(assistantMsgId, `❌ ${humanized.display}`);
+                ai.getState().updateMessage(assistantMsgId, `**出错了**：${humanized.display}`);
                 onAiEvent?.({ type: 'ai:error', timestamp: Date.now(), rawMessage: humanized.raw });
                 if (workingDraft || currentStep > 0) {
                     persistCheckpoint('failed', humanized.display);

@@ -52,7 +52,7 @@
     font-size: 13px;
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
     padding: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--cm-shadow-card);
 }
 
 .ai-toggle-btn.expanded {
@@ -67,12 +67,12 @@
     width: 26px;
     background: var(--bg-tertiary);
     color: var(--color-accent);
-    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--cm-shadow-card);
 }
 
 .ai-toggle-btn:hover {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     border-color: var(--color-accent);
 }
 
@@ -141,7 +141,7 @@
 .ai-cc-msg.user {
     align-self: flex-end;
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     padding: 10px 14px;
     border-radius: 16px 16px 4px 16px;
 }
@@ -239,7 +239,7 @@
 
 .ai-cc-input-container:focus-within {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent-bg, rgba(59,130,246,0.12));
+    box-shadow: 0 0 0 2px var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent));
 }
 
 .ai-cc-input-container textarea {
@@ -276,12 +276,12 @@
     font-size: 15px;
     flex-shrink: 0;
     transition: transform 0.1s, filter 0.15s;
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 .ai-cc-send-btn:hover { filter: brightness(1.1); }
 .ai-cc-send-btn:active { transform: scale(0.93); }
-.ai-cc-send-btn.stop { background: #ef4444; }
+.ai-cc-send-btn.stop { background: var(--cm-status-failed); }
 
 /* ─── Right canvas side ──────────────────────────────────────────────────── */
 
@@ -334,7 +334,7 @@
     min-width: 0;
 }
 
-.ai-review-icon { font-size: 18px; flex-shrink: 0; }
+.ai-review-icon { display: inline-flex; flex-shrink: 0; color: var(--cm-ai); }
 
 .ai-review-info {
     display: flex;
@@ -364,49 +364,49 @@
 }
 
 .ai-diff-chip.added {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: color-mix(in srgb, var(--cm-status-success) 15%, transparent);
+    color: var(--cm-status-success);
+    border: 1px solid color-mix(in srgb, var(--cm-status-success) 30%, transparent);
 }
 
 .ai-diff-chip.modified {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent);
+    color: var(--cm-status-warning);
+    border: 1px solid color-mix(in srgb, var(--cm-status-warning) 30%, transparent);
 }
 
 .ai-diff-chip.removed {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: color-mix(in srgb, var(--cm-status-failed) 15%, transparent);
+    color: var(--cm-status-failed);
+    border: 1px solid color-mix(in srgb, var(--cm-status-failed) 30%, transparent);
 }
 
 .ai-diff-chip.props {
-    background: var(--color-accent-bg, rgba(59,130,246,0.1));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 10%, transparent));
     color: var(--color-accent);
     border: 1px solid var(--color-accent);
     opacity: 0.7;
 }
 
 .ai-diff-chip.reordered {
-    background: rgba(139, 92, 246, 0.12);
-    color: #8b5cf6;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: color-mix(in srgb, var(--cm-ai) 12%, transparent);
+    color: var(--cm-ai);
+    border: 1px solid color-mix(in srgb, var(--cm-ai) 30%, transparent);
 }
 
 .ai-diff-chip.stale {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent);
+    color: var(--cm-status-warning);
+    border: 1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent);
 }
 
 /* Stale proposal warning banner */
 .ai-review-stale-banner {
     width: 100%;
     font-size: 12px;
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: var(--cm-status-warning);
+    background: color-mix(in srgb, var(--cm-status-warning) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cm-status-warning) 25%, transparent);
     border-radius: 6px;
     padding: 6px 10px;
     margin-bottom: 4px;
@@ -415,13 +415,13 @@
 
 /* Ghost preview: added nodes — semi-transparent green glow */
 .node-proposal-added {
-    box-shadow: 0 0 0 2px #22c55e, 0 0 16px rgba(34, 197, 94, 0.4) !important;
+    box-shadow: 0 0 0 2px var(--cm-status-success), 0 0 16px color-mix(in srgb, var(--cm-status-success) 40%, transparent) !important;
     opacity: 0.88;
 }
 
 /* Ghost preview: removed nodes — faded red, dashed border feel */
 .node-proposal-removed {
-    box-shadow: 0 0 0 2px #ef4444, 0 0 12px rgba(239, 68, 68, 0.3) !important;
+    box-shadow: 0 0 0 2px var(--cm-status-failed), 0 0 12px color-mix(in srgb, var(--cm-status-failed) 30%, transparent) !important;
     opacity: 0.45;
     filter: grayscale(0.3);
 }
@@ -449,14 +449,14 @@
 
 .ai-review-btn.accept {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 .ai-review-btn.accept:hover { filter: brightness(1.1); }
 
 .ai-review-btn.accept.stale {
-    background: #f59e0b;
-    color: #fff;
+    background: var(--cm-status-warning);
+    color: var(--cm-on-danger);
 }
 
 .ai-review-btn.accept.stale:hover { filter: brightness(1.05); }
@@ -468,9 +468,9 @@
 }
 
 .ai-review-btn.reject:hover {
-    border-color: #ef4444;
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.08);
+    border-color: var(--cm-status-failed);
+    color: var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 8%, transparent);
 }
 
 /* ─── ReviewBar: expand/detail toggle ───────────────────────────────────── */
@@ -524,10 +524,10 @@
     border: 1px solid transparent;
 }
 
-.ai-review-detail-item.added   { border-color: rgba(16,185,129,0.2); }
-.ai-review-detail-item.modified { border-color: rgba(245,158,11,0.2); }
-.ai-review-detail-item.removed { border-color: rgba(239,68,68,0.2); }
-.ai-review-detail-item.props   { border-color: rgba(59,130,246,0.2); }
+.ai-review-detail-item.added   { border-color: color-mix(in srgb, var(--cm-status-success) 20%, transparent); }
+.ai-review-detail-item.modified { border-color: color-mix(in srgb, var(--cm-status-warning) 20%, transparent); }
+.ai-review-detail-item.removed { border-color: color-mix(in srgb, var(--cm-status-failed) 20%, transparent); }
+.ai-review-detail-item.props   { border-color: color-mix(in srgb, var(--color-accent) 20%, transparent); }
 
 .ai-review-detail-symbol {
     font-size: 12px;
@@ -556,7 +556,7 @@
 .ai-config-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: var(--cm-overlay);
     z-index: 100;
     display: flex;
     align-items: center;
@@ -575,7 +575,7 @@
     border-radius: 16px;
     padding: 24px;
     width: 380px;
-    box-shadow: var(--node-shadow, 0 20px 60px rgba(0,0,0,0.3));
+    box-shadow: var(--cm-shadow-dialog);
 }
 
 .ai-config-dialog h3 {
@@ -618,7 +618,7 @@
 .ai-config-field input:focus,
 .ai-config-field select:focus {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent-bg, rgba(59,130,246,0.12));
+    box-shadow: 0 0 0 2px var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent));
 }
 
 .ai-config-btns {
@@ -641,7 +641,7 @@
 
 .ai-config-btns .save {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 .ai-config-btns .save:hover { filter: brightness(1.1); }
@@ -675,7 +675,7 @@
 .ai-test-btn:hover:not(:disabled) {
     border-color: var(--color-accent);
     color: var(--color-accent);
-    background: var(--color-accent-bg, rgba(59,130,246,0.08));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 8%, transparent));
 }
 
 .ai-test-btn:disabled {
@@ -733,7 +733,7 @@
     height: 16px;
     padding: 0 5px;
     border-radius: 8px;
-    background: var(--color-accent-bg, rgba(59,130,246,0.12));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent));
     color: var(--color-accent);
     font-size: 10px;
     font-weight: 700;
@@ -766,7 +766,7 @@
 .ai-welcome-chip:hover {
     border-color: var(--color-accent);
     color: var(--color-accent);
-    background: var(--color-accent-bg, rgba(59,130,246,0.06));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 6%, transparent));
     transform: translateY(-1px);
 }
 
@@ -777,7 +777,7 @@
     padding: 16px;
     border-radius: 12px;
     border: 1px dashed var(--color-accent);
-    background: var(--color-accent-bg, rgba(59,130,246,0.05));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 5%, transparent));
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -806,7 +806,7 @@
     border-radius: 8px;
     border: none;
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
@@ -876,7 +876,7 @@
 
 .ai-agent-timeline-item.warning .ai-agent-timeline-icon,
 .ai-agent-timeline-item.warning .ai-agent-timeline-label {
-    color: #f59e0b;
+    color: var(--cm-status-warning);
 }
 
 .ai-agent-timeline-item.active .ai-agent-timeline-label {
@@ -898,7 +898,7 @@
 .ai-guard-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: var(--cm-overlay);
     z-index: 200;
     display: flex;
     align-items: center;
@@ -912,7 +912,7 @@
     border-radius: 16px;
     padding: 24px 22px;
     width: 310px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    box-shadow: var(--cm-shadow-float);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -956,7 +956,7 @@
 
 .ai-guard-btn.primary {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 .ai-guard-btn.primary:hover { filter: brightness(1.1); }
@@ -968,9 +968,9 @@
 }
 
 .ai-guard-btn.secondary:hover {
-    border-color: #ef4444;
-    color: #ef4444;
-    background: rgba(239,68,68,0.06);
+    border-color: var(--cm-status-failed);
+    color: var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 6%, transparent);
 }
 
 /* ─── Library panel ──────────────────────────────────────────────────────── */
@@ -1008,7 +1008,7 @@
 
 .ai-library-search:focus {
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent-bg, rgba(59,130,246,0.12));
+    box-shadow: 0 0 0 2px var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent));
 }
 
 .ai-library-search::placeholder { color: var(--text-muted); }
@@ -1147,7 +1147,7 @@
 
 .ai-library-insert-btn:hover {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 /* ─── Library empty state ────────────────────────────────────────────────── */
@@ -1202,7 +1202,7 @@
 
 .ai-template-card:hover:not(:disabled) {
     border-color: var(--color-accent);
-    background: var(--color-accent-bg, rgba(59,130,246,0.07));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 7%, transparent));
     transform: translateY(-1px);
 }
 
@@ -1252,7 +1252,7 @@
 }
 
 .ai-welcome-chip.follow-up {
-    background: var(--color-accent-bg, rgba(59,130,246,0.08));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 8%, transparent));
     border-color: var(--color-accent);
     color: var(--color-accent);
     font-weight: 500;
@@ -1260,7 +1260,7 @@
 
 .ai-welcome-chip.follow-up:hover:not(:disabled) {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 /* ─── D2: Retry row ──────────────────────────────────────────────────────── */
@@ -1290,7 +1290,7 @@
 .ai-retry-btn:hover {
     border-color: var(--color-accent);
     color: var(--color-accent);
-    background: var(--color-accent-bg, rgba(59,130,246,0.07));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 7%, transparent));
 }
 
 /* ─── E1: Proposal diff badge on canvas nodes ────────────────────────────── */
@@ -1311,33 +1311,33 @@
     font-weight: 700;
     line-height: 1;
     z-index: 102;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--cm-shadow-card);
     animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .node-proposal-badge-added {
-    background-color: #22c55e;
+    background-color: var(--cm-status-success);
 }
 
 .node-proposal-badge-modified {
-    background-color: #f59e0b;
+    background-color: var(--cm-status-warning);
 }
 
 .node-proposal-badge-removed {
-    background-color: #ef4444;
+    background-color: var(--cm-status-failed);
 }
 
 /* Border glow on nodes by proposal status */
 .node-proposal-added {
-    box-shadow: 0 0 0 2px #22c55e, 0 0 12px rgba(34, 197, 94, 0.35) !important;
+    box-shadow: 0 0 0 2px var(--cm-status-success), 0 0 12px color-mix(in srgb, var(--cm-status-success) 35%, transparent) !important;
 }
 
 .node-proposal-modified {
-    box-shadow: 0 0 0 2px #f59e0b, 0 0 12px rgba(245, 158, 11, 0.35) !important;
+    box-shadow: 0 0 0 2px var(--cm-status-warning), 0 0 12px color-mix(in srgb, var(--cm-status-warning) 35%, transparent) !important;
 }
 
 .node-proposal-removed {
-    box-shadow: 0 0 0 2px #ef4444, 0 0 12px rgba(239, 68, 68, 0.35) !important;
+    box-shadow: 0 0 0 2px var(--cm-status-failed), 0 0 12px color-mix(in srgb, var(--cm-status-failed) 35%, transparent) !important;
     opacity: 0.65;
 }
 
@@ -1366,7 +1366,7 @@
 
 .ai-node-context-type {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     padding: 1px 6px;
     border-radius: 4px;
     font-size: 10px;
@@ -1425,7 +1425,7 @@
 .ai-node-context-chip:hover {
     border-color: var(--color-accent);
     color: var(--color-accent);
-    background: var(--color-accent-bg, rgba(59, 130, 246, 0.07));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 7%, transparent));
 }
 
 /* ─── F2: Runtime status banner ─────────────────────────────────────────── */
@@ -1442,19 +1442,19 @@
 }
 
 .ai-runtime-banner-failed {
-    background: rgba(239, 68, 68, 0.08);
-    color: #ef4444;
-    border-left: 3px solid #ef4444;
+    background: color-mix(in srgb, var(--cm-status-failed) 8%, transparent);
+    color: var(--cm-status-failed);
+    border-left: 3px solid var(--cm-status-failed);
 }
 
 .ai-runtime-banner-completed {
-    background: rgba(34, 197, 94, 0.08);
-    color: #22c55e;
-    border-left: 3px solid #22c55e;
+    background: color-mix(in srgb, var(--cm-status-success) 8%, transparent);
+    color: var(--cm-status-success);
+    border-left: 3px solid var(--cm-status-success);
 }
 
 .ai-runtime-banner-running {
-    background: rgba(59, 130, 246, 0.08);
+    background: color-mix(in srgb, var(--color-accent) 8%, transparent);
     color: var(--color-accent);
     border-left: 3px solid var(--color-accent);
 }
@@ -1471,8 +1471,8 @@
 
 /* F2: Runtime chip color variants */
 .ai-welcome-chip.follow-up.runtime-failed {
-    border-color: rgba(239, 68, 68, 0.3);
-    color: #ef4444;
+    border-color: color-mix(in srgb, var(--cm-status-failed) 30%, transparent);
+    color: var(--cm-status-failed);
 }
 
 /* ─── FailureSummaryCard (M4.1) ───────────────────────────────────────────── */
@@ -1481,9 +1481,9 @@
     margin: 8px 0;
     padding: 12px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-left: 3px solid #ef4444;
-    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid color-mix(in srgb, var(--cm-status-failed) 30%, transparent);
+    border-left: 3px solid var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 5%, transparent);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1540,8 +1540,8 @@
     padding: 6px 14px;
     border-radius: 8px;
     border: none;
-    background: #ef4444;
-    color: #fff;
+    background: var(--cm-status-failed);
+    color: var(--cm-on-danger);
     font-size: 12px;
     font-weight: 600;
     font-family: inherit;
@@ -1554,18 +1554,18 @@
 }
 
 .ai-welcome-chip.follow-up.runtime-failed:hover {
-    border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.07);
+    border-color: var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 7%, transparent);
 }
 
 .ai-welcome-chip.follow-up.runtime-completed {
-    border-color: rgba(34, 197, 94, 0.3);
-    color: #22c55e;
+    border-color: color-mix(in srgb, var(--cm-status-success) 30%, transparent);
+    color: var(--cm-status-success);
 }
 
 .ai-welcome-chip.follow-up.runtime-completed:hover {
-    border-color: #22c55e;
-    background: rgba(34, 197, 94, 0.07);
+    border-color: var(--cm-status-success);
+    background: color-mix(in srgb, var(--cm-status-success) 7%, transparent);
 }
 
 /* ─── PlanCard ────────────────────────────────────────────────────────────── */
@@ -1622,7 +1622,7 @@
     height: 20px;
     border-radius: 50%;
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     font-size: 11px;
     font-weight: 700;
     display: flex;
@@ -1681,7 +1681,7 @@
 
 .ai-plan-btn.execute {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 /* ─── Granular proposal checkboxes ───────────────────────────────────────── */
@@ -1714,18 +1714,18 @@
 
 /* Partial-selected count chip */
 .ai-diff-chip.partial-selected {
-    background: rgba(99, 102, 241, 0.12);
-    color: #818cf8;
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    background: color-mix(in srgb, var(--cm-ai) 12%, transparent);
+    color: var(--cm-ai);
+    border: 1px solid color-mix(in srgb, var(--cm-ai) 30%, transparent);
 }
 
 /* Partial accept button variant */
 .ai-review-btn.accept.partial {
-    background: #6366f1;
+    background: var(--cm-ai);
 }
 
 .ai-review-btn.accept.partial:hover {
-    background: #4f46e5;
+    background: var(--cm-ai);
 }
 
 /* ─── RepairCard ──────────────────────────────────────────────────────────── */
@@ -1734,7 +1734,7 @@
     margin: 8px 0;
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
-    border-left: 3px solid #ef4444;
+    border-left: 3px solid var(--cm-status-failed);
     border-radius: 8px;
     padding: 12px 14px;
     font-size: 13px;
@@ -1818,8 +1818,8 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--cm-status-failed) 15%, transparent);
+    color: var(--cm-status-failed);
     font-size: 11px;
     font-weight: 700;
     display: flex;
@@ -1869,8 +1869,8 @@
     padding: 4px 10px;
     font-size: 11px;
     font-weight: 600;
-    background: #ef4444;
-    color: #fff;
+    background: var(--cm-status-failed);
+    color: var(--cm-on-danger);
     cursor: pointer;
     transition: opacity 0.15s;
     white-space: nowrap;
@@ -1903,11 +1903,11 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    background: color-mix(in srgb, var(--cm-status-warning) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cm-status-warning) 25%, transparent);
     border-radius: 6px;
     font-size: 12px;
-    color: #f59e0b;
+    color: var(--cm-status-warning);
     margin-bottom: 8px;
 }
 
@@ -1941,7 +1941,7 @@
 .ai-undo-btn:hover {
     border-color: var(--color-accent);
     color: var(--color-accent);
-    background: rgba(var(--accent-rgb, 59, 130, 246), 0.06);
+    background: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 
 .ai-undo-depth {
@@ -1960,15 +1960,15 @@
 /* ─── Stage 3: Error-fix chip ────────────────────────────────────────────── */
 
 .ai-node-context-chip.error-fix {
-    border-color: rgba(239, 68, 68, 0.4);
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.06);
+    border-color: color-mix(in srgb, var(--cm-status-failed) 40%, transparent);
+    color: var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 6%, transparent);
     font-weight: 600;
 }
 
 .ai-node-context-chip.error-fix:hover {
-    border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.12);
+    border-color: var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 12%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2043,9 +2043,9 @@
     align-items: center;
     justify-content: center;
     z-index: 100;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--cm-shadow-float);
     transition: transform 0.15s, filter 0.15s;
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     font-family: inherit;
     gap: 1px;
 }
@@ -2085,7 +2085,7 @@
 
 .ai-resize-divider:hover,
 .ai-resize-divider.dragging {
-    background: rgba(var(--accent-rgb, 59, 130, 246), 0.3);
+    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 /* ─── Improved message bubbles ───────────────────────────────────────────── */
@@ -2098,7 +2098,7 @@
 }
 
 .ai-cc-msg.user {
-    background: linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 80%, #000));
+    background: linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 80%, var(--cm-overlay)));
     border-radius: 18px 18px 4px 18px;
 }
 
@@ -2145,8 +2145,8 @@
 }
 
 .ai-cc-header-status.online {
-    background: #10b981;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    background: var(--cm-status-success);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--cm-status-success) 20%, transparent);
 }
 
 .ai-cc-header-workflow {
@@ -2233,7 +2233,7 @@
 .ai-recommendation-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border-primary);
-    border-left: 3px solid #10b981;
+    border-left: 3px solid var(--cm-status-success);
     border-radius: 10px;
     padding: 14px;
     margin: 4px 0;
@@ -2293,9 +2293,9 @@
     border-radius: 10px;
     flex-shrink: 0;
 }
-.ai-rec-badge--exact   { color: #10b981; background: rgba(16, 185, 129, 0.12); }
-.ai-rec-badge--partial { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
-.ai-rec-badge--similar { color: #6366f1; background: rgba(99, 102, 241, 0.12); }
+.ai-rec-badge--exact   { color: var(--cm-status-success); background: color-mix(in srgb, var(--cm-status-success) 12%, transparent); }
+.ai-rec-badge--partial { color: var(--cm-status-warning); background: color-mix(in srgb, var(--cm-status-warning) 12%, transparent); }
+.ai-rec-badge--similar { color: var(--cm-ai); background: color-mix(in srgb, var(--cm-ai) 12%, transparent); }
 .ai-recommendation-item-reason {
     font-size: 11px;
     color: var(--text-secondary);
@@ -2316,7 +2316,7 @@
 }
 .ai-rec-btn.primary {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 .ai-rec-btn.primary:hover {
     filter: brightness(1.1);
@@ -2352,8 +2352,8 @@
 /* Step cards */
 
 @keyframes pulse-border {
-    0%, 100% { border-left-color: #3b82f6; }
-    50% { border-left-color: #93c5fd; }
+    0%, 100% { border-left-color: var(--color-accent); }
+    50% { border-left-color: var(--color-accent); }
 }
 
 /* ═══════════════════════════════════════════════════
@@ -2363,7 +2363,7 @@
 .wizard-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: var(--cm-overlay);
     z-index: 300;
     display: flex;
     align-items: center;
@@ -2380,7 +2380,7 @@
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    box-shadow: var(--cm-shadow-float);
     overflow: hidden;
 }
 
@@ -2430,12 +2430,12 @@
 .wizard-step.active .wizard-step-circle {
     background: var(--color-accent);
     border-color: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 .wizard-step.done .wizard-step-circle {
-    background: #10b981;
-    border-color: #10b981;
-    color: #fff;
+    background: var(--cm-status-success);
+    border-color: var(--cm-status-success);
+    color: var(--cm-on-danger);
     font-size: 12px;
 }
 .wizard-step-label {
@@ -2444,7 +2444,7 @@
     white-space: nowrap;
 }
 .wizard-step.active .wizard-step-label { color: var(--color-accent); font-weight: 600; }
-.wizard-step.done .wizard-step-label { color: #10b981; }
+.wizard-step.done .wizard-step-label { color: var(--cm-status-success); }
 
 .wizard-step-connector {
     flex: 1;
@@ -2454,7 +2454,7 @@
     margin-bottom: 16px;
     transition: background 0.2s;
 }
-.wizard-step-connector.done { background: #10b981; }
+.wizard-step-connector.done { background: var(--cm-status-success); }
 
 .wizard-body {
     flex: 1;
@@ -2483,8 +2483,8 @@
     outline: none;
     border-color: var(--color-accent);
 }
-.wizard-input.error { border-color: #ef4444; }
-.wizard-error { font-size: 11px; color: #ef4444; }
+.wizard-input.error { border-color: var(--cm-status-failed); }
+.wizard-error { font-size: 11px; color: var(--cm-status-failed); }
 
 .wizard-trigger-options {
     display: grid;
@@ -2524,7 +2524,7 @@
     transition: background 0.15s;
     font-family: inherit;
 }
-.wizard-ai-hint:hover { background: rgba(59,130,246,0.15); }
+.wizard-ai-hint:hover { background: color-mix(in srgb, var(--color-accent) 15%, transparent); }
 
 /* Step builder */
 .wizard-steps-area {
@@ -2640,7 +2640,7 @@
     padding: 4px;
     border-radius: 4px;
 }
-.wizard-step-remove:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+.wizard-step-remove:hover { color: var(--cm-status-failed); background: color-mix(in srgb, var(--cm-status-failed) 10%, transparent); }
 .wizard-step-end {
     text-align: center;
     font-size: 11px;
@@ -2673,7 +2673,7 @@
     width: 22px; height: 22px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    color: #fff;
+    /* background and color set inline from the step category */
     font-size: 11px;
     font-weight: 700;
     flex-shrink: 0;
@@ -2700,7 +2700,7 @@
     transition: all 0.2s;
 }
 .wizard-progress-dot.active { background: var(--color-accent); width: 16px; border-radius: 3px; }
-.wizard-progress-dot.done { background: #10b981; }
+.wizard-progress-dot.done { background: var(--cm-status-success); }
 
 .wizard-btn {
     padding: 9px 20px;
@@ -2714,7 +2714,7 @@
 }
 .wizard-btn.primary {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 .wizard-btn.primary:hover { filter: brightness(1.1); }
 .wizard-btn.secondary {
@@ -2749,7 +2749,7 @@
 }
 .biz-view-toggle-btn.active {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 /* ─── Canvas header toolbar ─── */
@@ -2771,7 +2771,7 @@
     padding: 5px 12px;
     border-radius: 6px;
     border: 1px solid var(--color-accent);
-    background: var(--color-accent-bg, rgba(59, 130, 246, 0.1));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 10%, transparent));
     color: var(--color-accent);
     font-size: 12px;
     font-weight: 500;
@@ -2783,7 +2783,7 @@
 
 .ai-canvas-expand-chat-btn:hover {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 .ai-canvas-create-btn {
@@ -2792,7 +2792,7 @@
     gap: 6px;
     padding: 7px 14px;
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
     border: none;
     border-radius: 8px;
     font-size: 12px;
@@ -2825,7 +2825,7 @@
 
 .ai-canvas-toggle-btn.active {
     color: var(--color-accent);
-    background: var(--color-accent-bg, rgba(59,130,246,0.1));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 10%, transparent));
 }
 
 /* ─── Execute workflow quick action ──────────────────────────────────────── */
@@ -2843,9 +2843,9 @@
     gap: 5px;
     padding: 5px 12px;
     border-radius: 16px;
-    border: 1px solid rgba(34,197,94,0.4);
-    background: rgba(34,197,94,0.07);
-    color: #4ade80;
+    border: 1px solid color-mix(in srgb, var(--cm-status-success) 40%, transparent);
+    background: color-mix(in srgb, var(--cm-status-success) 7%, transparent);
+    color: var(--cm-status-success);
     font-size: 12px;
     font-weight: 500;
     font-family: inherit;
@@ -2854,8 +2854,8 @@
 }
 
 .ai-run-action-chip:hover:not(:disabled) {
-    background: rgba(34,197,94,0.15);
-    border-color: #4ade80;
+    background: color-mix(in srgb, var(--cm-status-success) 15%, transparent);
+    border-color: var(--cm-status-success);
 }
 
 .ai-run-action-chip:disabled {
@@ -2950,9 +2950,9 @@
     margin: 8px 0;
     padding: 14px 16px;
     border-radius: 12px;
-    border: 1px solid rgba(34, 197, 94, 0.35);
-    border-left: 3px solid #22c55e;
-    background: rgba(34, 197, 94, 0.05);
+    border: 1px solid color-mix(in srgb, var(--cm-status-success) 35%, transparent);
+    border-left: 3px solid var(--cm-status-success);
+    background: color-mix(in srgb, var(--cm-status-success) 5%, transparent);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -2990,18 +2990,18 @@
 }
 
 .ai-proposal-diff-chip.added {
-    background: rgba(34, 197, 94, 0.12);
-    color: #22c55e;
+    background: color-mix(in srgb, var(--cm-status-success) 12%, transparent);
+    color: var(--cm-status-success);
 }
 
 .ai-proposal-diff-chip.modified {
-    background: rgba(245, 158, 11, 0.12);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--cm-status-warning) 12%, transparent);
+    color: var(--cm-status-warning);
 }
 
 .ai-proposal-diff-chip.removed {
-    background: rgba(239, 68, 68, 0.12);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--cm-status-failed) 12%, transparent);
+    color: var(--cm-status-failed);
 }
 
 .ai-proposal-diff-chip.level {
@@ -3028,8 +3028,8 @@
 }
 
 .ai-proposal-btn.accept {
-    background: #22c55e;
-    color: #fff;
+    background: var(--cm-status-success);
+    color: var(--cm-on-danger);
 }
 
 .ai-proposal-btn.accept:hover {
@@ -3044,9 +3044,9 @@
 }
 
 .ai-proposal-btn.reject:hover {
-    border-color: #ef4444;
-    color: #ef4444;
-    background: rgba(239, 68, 68, 0.06);
+    border-color: var(--cm-status-failed);
+    color: var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 6%, transparent);
 }
 
 /* ─── Run workflow button in chat header ─────────────────────────────────── */
@@ -3057,9 +3057,9 @@
     gap: 4px;
     padding: 4px 10px;
     border-radius: 6px;
-    border: 1px solid rgba(34, 197, 94, 0.5);
-    background: rgba(34, 197, 94, 0.08);
-    color: #4ade80;
+    border: 1px solid color-mix(in srgb, var(--cm-status-success) 50%, transparent);
+    background: color-mix(in srgb, var(--cm-status-success) 8%, transparent);
+    color: var(--cm-status-success);
     font-size: 11px;
     font-weight: 600;
     font-family: inherit;
@@ -3069,8 +3069,8 @@
 }
 
 .ai-run-header-btn:hover:not(:disabled) {
-    background: rgba(34, 197, 94, 0.18);
-    border-color: #4ade80;
+    background: color-mix(in srgb, var(--cm-status-success) 18%, transparent);
+    border-color: var(--cm-status-success);
 }
 
 .ai-run-header-btn:disabled {
@@ -3081,23 +3081,23 @@
 /* ─── Proposal card staleness ────────────────────────────────────────────── */
 
 .ai-proposal-card.stale {
-    border-color: rgba(245, 158, 11, 0.4);
-    border-left-color: #f59e0b;
-    background: rgba(245, 158, 11, 0.04);
+    border-color: color-mix(in srgb, var(--cm-status-warning) 40%, transparent);
+    border-left-color: var(--cm-status-warning);
+    background: color-mix(in srgb, var(--cm-status-warning) 4%, transparent);
 }
 
 .ai-proposal-stale-warning {
     font-size: 11px;
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: var(--cm-status-warning);
+    background: color-mix(in srgb, var(--cm-status-warning) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cm-status-warning) 25%, transparent);
     border-radius: 6px;
     padding: 6px 10px;
     line-height: 1.5;
 }
 
 .ai-proposal-btn.accept.stale {
-    background: #f59e0b;
+    background: var(--cm-status-warning);
 }
 
 .ai-proposal-btn.accept.stale:hover {
@@ -3161,18 +3161,18 @@
 }
 
 .ai-proposal-step-badge.added {
-    background: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
+    background: color-mix(in srgb, var(--cm-status-success) 15%, transparent);
+    color: var(--cm-status-success);
 }
 
 .ai-proposal-step-badge.modified {
-    background: rgba(245, 158, 11, 0.15);
-    color: #f59e0b;
+    background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent);
+    color: var(--cm-status-warning);
 }
 
 .ai-proposal-step-badge.removed {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    background: color-mix(in srgb, var(--cm-status-failed) 15%, transparent);
+    color: var(--cm-status-failed);
 }
 
 .ai-proposal-step-changes {
@@ -3183,18 +3183,18 @@
 }
 
 .ai-proposal-step.added {
-    border-left-color: #22c55e;
-    background: rgba(34, 197, 94, 0.06);
+    border-left-color: var(--cm-status-success);
+    background: color-mix(in srgb, var(--cm-status-success) 6%, transparent);
 }
 
 .ai-proposal-step.modified {
-    border-left-color: #f59e0b;
-    background: rgba(245, 158, 11, 0.06);
+    border-left-color: var(--cm-status-warning);
+    background: color-mix(in srgb, var(--cm-status-warning) 6%, transparent);
 }
 
 .ai-proposal-step.removed {
-    border-left-color: #ef4444;
-    background: rgba(239, 68, 68, 0.05);
+    border-left-color: var(--cm-status-failed);
+    background: color-mix(in srgb, var(--cm-status-failed) 5%, transparent);
     opacity: 0.7;
 }
 
@@ -3253,7 +3253,7 @@
     font-weight: 700;
     letter-spacing: 0.3px;
     color: var(--color-accent);
-    background: var(--color-accent-bg, rgba(59, 130, 246, 0.12));
+    background: var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 12%, transparent));
     padding: 2px 7px;
     border-radius: 6px;
 }
@@ -3299,13 +3299,13 @@
 }
 
 .ai-synthesis-step.done {
-    color: #10b981;
+    color: var(--cm-status-success);
 }
 
 .ai-synthesis-step.done .ai-synthesis-step-dot {
-    background: rgba(16, 185, 129, 0.16);
-    border-color: rgba(16, 185, 129, 0.45);
-    color: #10b981;
+    background: color-mix(in srgb, var(--cm-status-success) 16%, transparent);
+    border-color: color-mix(in srgb, var(--cm-status-success) 45%, transparent);
+    color: var(--cm-status-success);
 }
 
 .ai-synthesis-step.active {
@@ -3316,8 +3316,8 @@
 .ai-synthesis-step.active .ai-synthesis-step-dot {
     background: var(--color-accent);
     border-color: var(--color-accent);
-    color: var(--color-on-accent, #fff);
-    box-shadow: 0 0 0 3px var(--color-accent-bg, rgba(59, 130, 246, 0.2));
+    color: var(--color-on-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 20%, transparent));
 }
 
 .ai-synthesis-step-line {
@@ -3329,7 +3329,7 @@
 }
 
 .ai-synthesis-step-line.done {
-    background: rgba(16, 185, 129, 0.5);
+    background: color-mix(in srgb, var(--cm-status-success) 50%, transparent);
 }
 
 /* ─── Proposal Verification Badge & Alerts ───────────────────────────────── */
@@ -3344,29 +3344,29 @@
 }
 
 .ai-proposal-verify-badge.passed {
-    background: rgba(16, 185, 129, 0.14);
-    color: #10b981;
-    border: 1px solid rgba(16, 185, 129, 0.32);
+    background: color-mix(in srgb, var(--cm-status-success) 14%, transparent);
+    color: var(--cm-status-success);
+    border: 1px solid color-mix(in srgb, var(--cm-status-success) 32%, transparent);
 }
 
 .ai-proposal-verify-badge.warn {
-    background: rgba(245, 158, 11, 0.14);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.32);
+    background: color-mix(in srgb, var(--cm-status-warning) 14%, transparent);
+    color: var(--cm-status-warning);
+    border: 1px solid color-mix(in srgb, var(--cm-status-warning) 32%, transparent);
 }
 
 .ai-proposal-verify-alert {
     font-size: 11px;
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    color: var(--cm-status-warning);
+    background: color-mix(in srgb, var(--cm-status-warning) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cm-status-warning) 25%, transparent);
     border-radius: 6px;
     padding: 6px 10px;
     line-height: 1.5;
 }
 
 .ai-proposal-autofix-hint {
-    color: #10b981;
+    color: var(--cm-status-success);
     cursor: help;
 }
 
@@ -3376,7 +3376,7 @@
     margin: 6px 0;
     padding: 12px 14px;
     border-radius: 12px;
-    border: 1px solid rgba(59, 130, 246, 0.35);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
     border-left: 3px solid var(--color-accent);
     background: var(--bg-tertiary);
     display: flex;
@@ -3385,8 +3385,8 @@
 }
 
 .ai-checkpoint-card.failed {
-    border-color: rgba(245, 158, 11, 0.4);
-    border-left-color: #f59e0b;
+    border-color: color-mix(in srgb, var(--cm-status-warning) 40%, transparent);
+    border-left-color: var(--cm-status-warning);
 }
 
 .ai-checkpoint-header {
@@ -3433,7 +3433,7 @@
 
 .ai-checkpoint-btn.resume {
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-on-accent);
 }
 
 .ai-checkpoint-btn.resume:hover {
@@ -3441,13 +3441,13 @@
 }
 
 .ai-checkpoint-btn.commit {
-    background: rgba(16, 185, 129, 0.15);
-    color: #10b981;
-    border-color: rgba(16, 185, 129, 0.35);
+    background: color-mix(in srgb, var(--cm-status-success) 15%, transparent);
+    color: var(--cm-status-success);
+    border-color: color-mix(in srgb, var(--cm-status-success) 35%, transparent);
 }
 
 .ai-checkpoint-btn.commit:hover {
-    background: rgba(16, 185, 129, 0.25);
+    background: color-mix(in srgb, var(--cm-status-success) 25%, transparent);
 }
 
 .ai-checkpoint-btn.discard {
@@ -3457,8 +3457,8 @@
 }
 
 .ai-checkpoint-btn.discard:hover {
-    color: #ef4444;
-    border-color: #ef4444;
+    color: var(--cm-status-failed);
+    border-color: var(--cm-status-failed);
 }
 
 

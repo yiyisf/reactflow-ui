@@ -12,6 +12,7 @@
  */
 
 import React from 'react';
+import { ArrowUpDown, Check, Sparkles, TriangleAlert, X } from 'lucide-react';
 import type { ProposedChange } from '../../store/aiStore';
 import useWorkflowStore from '../../store/workflowStore';
 
@@ -22,9 +23,9 @@ interface ReviewBarProps {
 }
 
 const LEVEL_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-    L1: { label: 'L1 原子', color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
-    L2: { label: 'L2 业务', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
-    L3: { label: 'L3 端到端', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+    L1: { label: 'L1 原子', color: 'var(--cm-text-muted)', bg: 'color-mix(in srgb, var(--cm-text-muted) 12%, transparent)' },
+    L2: { label: 'L2 业务', color: 'var(--cm-data)', bg: 'color-mix(in srgb, var(--cm-data) 12%, transparent)' },
+    L3: { label: 'L3 端到端', color: 'var(--cm-ai)', bg: 'color-mix(in srgb, var(--cm-ai) 12%, transparent)' },
 };
 
 const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) => {
@@ -42,12 +43,12 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
         <div className="ai-review-bar">
             {isStale && (
                 <div className="ai-review-stale-banner">
-                    ⚠️ 画布已在审阅期间被手动修改，此方案基于旧版本。建议拒绝后重新提问。
+                    <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />画布已在审阅期间被手动修改，此方案基于旧版本。建议拒绝后重新提问。
                 </div>
             )}
             <div className="ai-review-main-row">
                 <div className="ai-review-content">
-                    <div className="ai-review-icon">✦</div>
+                    <div className="ai-review-icon"><Sparkles size={16} strokeWidth={1.75} aria-hidden="true" /></div>
                     <div className="ai-review-info">
                         <div className="ai-review-title">
                             AI 变更方案 · {totalChanges} 处变更
@@ -56,7 +57,7 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                                     marginLeft: 8, fontSize: 11, fontWeight: 600,
                                     padding: '1px 7px', borderRadius: 8,
                                     color: levelMeta.color, background: levelMeta.bg,
-                                    border: `1px solid ${levelMeta.color}40`,
+                                    border: `1px solid color-mix(in srgb, ${levelMeta.color} 25%, transparent)`,
                                 }}>
                                     {levelMeta.label}
                                 </span>
@@ -67,22 +68,22 @@ const ReviewBar: React.FC<ReviewBarProps> = ({ proposal, onAccept, onReject }) =
                             {diff.modified.length > 0 && <span className="ai-diff-chip modified">~{diff.modified.length} 修改</span>}
                             {diff.removed.length > 0 && <span className="ai-diff-chip removed">-{diff.removed.length} 删除</span>}
                             {diff.propsChanged && <span className="ai-diff-chip props">属性变更</span>}
-                            {diff.reordered && <span className="ai-diff-chip reordered">↕ 顺序调整</span>}
-                            {isStale && <span className="ai-diff-chip stale">⚠ 已过期</span>}
+                            {diff.reordered && <span className="ai-diff-chip reordered"><ArrowUpDown size={12} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 3 }} />顺序调整</span>}
+                            {isStale && <span className="ai-diff-chip stale"><TriangleAlert size={12} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 3 }} />已过期</span>}
                             <span className="ai-review-detail-hint">详情与调整请在左侧对话中进行</span>
                         </div>
                     </div>
                 </div>
                 <div className="ai-review-actions">
                     <button className="ai-review-btn reject" onClick={onReject} title="拒绝此方案，保持当前工作流不变">
-                        ✕ 拒绝
+                        <X size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />拒绝
                     </button>
                     <button
                         className={`ai-review-btn accept${isStale ? ' stale' : ''}`}
                         onClick={onAccept}
-                        title={isStale ? '⚠️ 画布已被修改，应用此方案可能覆盖手动编辑' : '应用全部变更到画布'}
+                        title={isStale ? '画布已被修改，应用此方案可能覆盖手动编辑' : '应用全部变更到画布'}
                     >
-                        {isStale ? '✓ 仍然应用 ⚠️' : '✓ 应用变更'}
+                        {isStale ? <><TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />仍然应用</> : <><Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />应用变更</>}
                     </button>
                 </div>
             </div>

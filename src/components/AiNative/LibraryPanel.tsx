@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { Library } from 'lucide-react';
 import { useIdeStores } from '../../store/ideStoresContext';
 import useWorkflowStore from '../../store/workflowStore';
 import { applyPatch, computeDiff } from '../../services/ai/toolExecutor';
@@ -18,9 +19,9 @@ import { normalizeVersion } from '../../library/version';
 const RENDER_LIMIT = 200;
 
 const LEVEL_META: Record<WorkflowLevel, { label: string; color: string; bg: string; desc: string }> = {
-    L1: { label: 'L1', color: '#64748b', bg: 'rgba(100,116,139,0.1)', desc: '原子操作' },
-    L2: { label: 'L2', color: '#0ea5e9', bg: 'rgba(14,165,233,0.1)', desc: '业务场景' },
-    L3: { label: 'L3', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)', desc: '端到端' },
+    L1: { label: 'L1', color: 'var(--cm-text-muted)', bg: 'color-mix(in srgb, var(--cm-text-muted) 10%, transparent)', desc: '原子操作' },
+    L2: { label: 'L2', color: 'var(--cm-data)', bg: 'color-mix(in srgb, var(--cm-data) 10%, transparent)', desc: '业务场景' },
+    L3: { label: 'L3', color: 'var(--cm-ai)', bg: 'color-mix(in srgb, var(--cm-ai) 10%, transparent)', desc: '端到端' },
 };
 
 function makeUniqueRef(base: string, existingRefs: Set<string>): string {
@@ -106,7 +107,7 @@ const LibraryPanel: React.FC = () => {
     const statusBar = catalogState.status === 'loading' ? (
         <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--text-muted)' }}>正在加载流程库…</div>
     ) : catalogState.status === 'error' ? (
-        <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--status-failed, #ef4444)', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ padding: '8px 16px', fontSize: 12, color: 'var(--status-failed, var(--cm-status-failed))', display: 'flex', gap: 8, alignItems: 'center' }}>
             <span title={catalogState.error?.message}>流程库加载失败</span>
             <button
                 onClick={() => { void libraryCatalog?.reload(); }}
@@ -122,7 +123,7 @@ const LibraryPanel: React.FC = () => {
         if (statusBar) return <div className="ai-library-empty-state">{statusBar}</div>;
         return (
             <div className="ai-library-empty-state">
-                <div style={{ fontSize: 32, marginBottom: 12 }}>📚</div>
+                <div style={{ marginBottom: 12, color: 'var(--text-muted)' }}><Library size={32} strokeWidth={1.5} aria-hidden="true" /></div>
                 <div style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>未配置工作流库</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     在集成组件时传入 <code style={{ background: 'var(--bg-tertiary)', padding: '1px 5px', borderRadius: 4 }}>workflowLibrary</code> 或 <code style={{ background: 'var(--bg-tertiary)', padding: '1px 5px', borderRadius: 4 }}>libraryProvider</code> prop 即可启用库浏览功能
@@ -188,7 +189,7 @@ const LibraryPanel: React.FC = () => {
                                 <div className="ai-library-group-header">
                                     <span style={{
                                         padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                                        color: meta.color, background: meta.bg, border: `1px solid ${meta.color}40`,
+                                        color: meta.color, background: meta.bg, border: `1px solid color-mix(in srgb, ${meta.color} 25%, transparent)`,
                                     }}>{meta.label}</span>
                                     <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{meta.desc} · {group.length} 个</span>
                                 </div>

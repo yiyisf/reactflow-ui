@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { CircleCheck, CircleX, Play, X } from 'lucide-react';
 import { parseWorkflowInputParams } from '../../types/conductor';
 import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
 
@@ -115,9 +116,9 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
         <button
             onClick={onClose}
             aria-label="关闭执行卡片"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, padding: 0 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1, padding: 0, display: 'inline-flex' }}
         >
-            ×
+            <X size={16} strokeWidth={1.75} aria-hidden="true" />
         </button>
     );
 
@@ -125,7 +126,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
         return (
             <div style={CARD}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>▶ 执行工作流</div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}><Play size={16} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />运行工作流</div>
                     <CloseBtn />
                 </div>
                 <div style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: 12 }}>
@@ -134,7 +135,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
 
                 {inputParams.length === 0 ? (
                     <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: '6px 0', marginBottom: 12 }}>
-                        📝 无需填写输入参数
+                        无需填写输入参数
                     </div>
                 ) : (
                     <div style={{ marginBottom: 12 }}>
@@ -142,7 +143,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
                             <div key={p.name} style={{ marginBottom: 10 }}>
                                 <label style={{ display: 'block', fontWeight: 500, fontSize: 12, marginBottom: 4, color: 'var(--text-secondary)' }}>
                                     {p.name}
-                                    {p.required !== false && <span style={{ color: '#f87171', marginLeft: 2 }}>*</span>}
+                                    {p.required !== false && <span style={{ color: 'var(--cm-status-failed)', marginLeft: 2 }}>*</span>}
                                     {p.description && (
                                         <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
                                             {p.description}
@@ -180,9 +181,9 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
                     </button>
                     <button
                         onClick={handleRun}
-                        style={{ ...BTN_BASE, border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent, #fff)', fontWeight: 600 }}
+                        style={{ ...BTN_BASE, border: 'none', background: 'var(--color-accent)', color: 'var(--color-on-accent)', fontWeight: 600 }}
                     >
-                        确认执行
+                        运行
                     </button>
                 </div>
             </div>
@@ -192,7 +193,7 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     if (phase === 'running') {
         return (
             <div style={CARD}>
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>▶ 执行中…</div>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, color: 'var(--cm-status-running)' }}><Play size={16} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />运行中</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginBottom: 8 }}>
                     工作流：<strong>{workflowDef.name}</strong>
                 </div>
@@ -211,9 +212,9 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
 
     if (phase === 'done') {
         return (
-            <div style={{ ...CARD, borderColor: 'rgba(34,197,94,0.4)' }}>
+            <div style={{ ...CARD, borderColor: 'color-mix(in srgb, var(--cm-status-success) 40%, transparent)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#4ade80' }}>✅ 执行完成</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--cm-status-success)' }}><CircleCheck size={16} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />执行完成</div>
                     <CloseBtn />
                 </div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginBottom: execOutput ? 10 : 0 }}>
@@ -243,9 +244,9 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     }
 
     return (
-        <div style={{ ...CARD, borderColor: 'rgba(239,68,68,0.4)' }}>
+        <div style={{ ...CARD, borderColor: 'color-mix(in srgb, var(--cm-status-failed) 40%, transparent)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#f87171' }}>❌ 执行失败</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--cm-status-failed)' }}><CircleX size={16} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />执行失败</div>
                 <CloseBtn />
             </div>
             <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{errorMsg}</div>

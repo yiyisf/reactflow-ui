@@ -4,6 +4,7 @@ import type { WorkflowLevel } from '../../types/workflowLibrary';
 import { ThemeControls } from '../../components/ThemeControls';
 import { BrandLogo } from '../../components/BrandLogo';
 import { HeaderPopover } from './HeaderPopover';
+import { Bot, Briefcase, Code2, Download, FilePlus, FlaskConical, FolderOpen, RefreshCw, RotateCcw, Search, Sparkles, TriangleAlert, Upload, Workflow, X, Zap } from 'lucide-react';
 import './DemoHeader.css';
 
 export interface DemoHeaderProps {
@@ -75,7 +76,7 @@ export function DemoHeader(p: DemoHeaderProps) {
               onClick={() => p.onAiModeChange(false)}
               title="切换回经典设计器"
             >
-              <span aria-hidden="true">💻</span><span className="dh-seg-text"> 经典</span>
+              <Workflow size={15} strokeWidth={1.75} aria-hidden="true" /><span className="dh-seg-text"> 经典</span>
             </button>
             <button
               type="button"
@@ -84,7 +85,7 @@ export function DemoHeader(p: DemoHeaderProps) {
               onClick={() => p.onAiModeChange(true)}
               title="体验全新 AI 工作流设计器"
             >
-              <span aria-hidden="true">✨</span><span className="dh-seg-text"> AI</span>
+              <Sparkles size={15} strokeWidth={1.75} aria-hidden="true" /><span className="dh-seg-text"> AI</span>
             </button>
           </div>
 
@@ -96,7 +97,7 @@ export function DemoHeader(p: DemoHeaderProps) {
               onClick={() => p.onUiModeChange('business')}
               title="切换为普通使用者模式 (卡片流/数据胶囊/云平台动作)"
             >
-              <span aria-hidden="true">👔</span><span className="dh-seg-text"> 业务</span>
+              <Briefcase size={15} strokeWidth={1.75} aria-hidden="true" /><span className="dh-seg-text"> 业务</span>
             </button>
             <button
               type="button"
@@ -105,7 +106,7 @@ export function DemoHeader(p: DemoHeaderProps) {
               onClick={() => p.onUiModeChange('pro')}
               title="切换为专业开发者模式 (查看完整 DAG/JSON)"
             >
-              <span aria-hidden="true">💻</span><span className="dh-seg-text"> 专业</span>
+              <Code2 size={15} strokeWidth={1.75} aria-hidden="true" /><span className="dh-seg-text"> 专业</span>
             </button>
           </div>
         </div>
@@ -122,10 +123,10 @@ export function DemoHeader(p: DemoHeaderProps) {
                 title="搜索任务"
                 onClick={() => setSearchOpen((v) => !v)}
               >
-                <span aria-hidden="true">🔍</span>
+                <Search size={15} strokeWidth={1.75} aria-hidden="true" />
               </button>
               <div className="dh-search-field">
-                <span className="search-icon" aria-hidden="true">🔍</span>
+                <span className="search-icon" aria-hidden="true"><Search size={14} strokeWidth={1.75} aria-hidden="true" /></span>
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -137,7 +138,7 @@ export function DemoHeader(p: DemoHeaderProps) {
                   className="search-input"
                 />
                 {p.searchQuery && (
-                  <button type="button" className="search-clear" aria-label="清除搜索" onClick={() => p.onSearchChange('')}>✕</button>
+                  <button type="button" className="search-clear" aria-label="清除搜索" onClick={() => p.onSearchChange('')}><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
                 )}
               </div>
             </div>
@@ -156,12 +157,12 @@ export function DemoHeader(p: DemoHeaderProps) {
             defaultValue=""
             title="载入官方示例工作流（包含编辑态与运行态案例）"
           >
-            <option value="" disabled>📁 示例工作流...</option>
-            <optgroup label="── 📚 流程库 ──">
-              <option value="def:library-capabilities-demo">📚 引用库能力（有新版本 / 版本不可用）</option>
+            <option value="" disabled>示例工作流…</option>
+            <optgroup label="── 流程库 ──">
+              <option value="def:library-capabilities-demo">引用库能力（有新版本 / 版本不可用）</option>
             </optgroup>
-            <optgroup label="── ☁️ 云平台业务流程 ──">
-              <option value="def:ecs-lifecycle-automation">☁️ 云主机全生命周期自动化 (业务模式)</option>
+            <optgroup label="── 云平台业务流程 ──">
+              <option value="def:ecs-lifecycle-automation">云主机全生命周期自动化（业务模式）</option>
             </optgroup>
             <optgroup label="── 编辑态流程 ──">
               <option value="def:simple-workflow">简单流程 (Simple)</option>
@@ -170,12 +171,12 @@ export function DemoHeader(p: DemoHeaderProps) {
               <option value="def:complex-workflow">复杂综合流程</option>
             </optgroup>
             <optgroup label="── 运行态实例 ──">
-              <option value="exec:human-approval">▶ HUMAN 审批 (RUNNING)</option>
-              <option value="exec:mixed-status">✗ CI/CD 流水线 (FAILED)</option>
-              <option value="exec:loop-iterations">✓ DO_WHILE 循环 (3次)</option>
-              <option value="exec:retry-tasks">✓ 任务重试机制</option>
-              <option value="exec:fork-dynamic">✓ 动态并行 FORK</option>
-              <option value="exec:switch-branches">✓ SWITCH 分支执行</option>
+              <option value="exec:human-approval">HUMAN 审批 · 运行中</option>
+              <option value="exec:mixed-status">CI/CD 流水线 · 失败</option>
+              <option value="exec:loop-iterations">DO_WHILE 循环 3 次 · 成功</option>
+              <option value="exec:retry-tasks">任务重试机制 · 成功</option>
+              <option value="exec:fork-dynamic">动态并行 FORK · 成功</option>
+              <option value="exec:switch-branches">SWITCH 分支执行 · 成功</option>
             </optgroup>
           </select>
 
@@ -191,7 +192,7 @@ export function DemoHeader(p: DemoHeaderProps) {
             }}
           />
 
-          <HeaderPopover icon="📂" label="文件" title="文件：新建 / 导入 / 导出" kind="menu">
+          <HeaderPopover icon={<FolderOpen size={15} strokeWidth={1.75} aria-hidden="true" />} label="文件" title="文件：新建 / 导入 / 导出" kind="menu">
             {({ close }) => (
               <>
                 <button
@@ -201,7 +202,7 @@ export function DemoHeader(p: DemoHeaderProps) {
                   title="新建空白工作流"
                   onClick={() => { close(); p.onNewBlank(); }}
                 >
-                  <span aria-hidden="true">📄</span> 新建空白
+                  <FilePlus size={14} strokeWidth={1.75} aria-hidden="true" /> 新建空白
                 </button>
                 <button
                   type="button"
@@ -210,7 +211,7 @@ export function DemoHeader(p: DemoHeaderProps) {
                   title="导入 JSON 文件"
                   onClick={() => { close(); fileInputRef.current?.click(); }}
                 >
-                  <span aria-hidden="true">📤</span> 导入 JSON
+                  <Upload size={14} strokeWidth={1.75} aria-hidden="true" /> 导入 JSON
                 </button>
                 <button
                   type="button"
@@ -220,14 +221,14 @@ export function DemoHeader(p: DemoHeaderProps) {
                   title={p.hasWorkflow ? '导出当前工作流 JSON' : '没有可导出的工作流'}
                   onClick={() => { close(); p.onExport(); }}
                 >
-                  <span aria-hidden="true">📥</span> 导出 JSON
+                  <Download size={14} strokeWidth={1.75} aria-hidden="true" /> 导出 JSON
                 </button>
               </>
             )}
           </HeaderPopover>
 
           <HeaderPopover
-            icon="🧪"
+            icon={<FlaskConical size={15} strokeWidth={1.75} aria-hidden="true" />}
             label="演示设置"
             title="演示设置"
             kind="dialog"
@@ -266,7 +267,7 @@ export function DemoHeader(p: DemoHeaderProps) {
                       title="流程库由演示用的模拟治理服务提供（约 0.4 秒延迟）"
                       onClick={() => p.onLibraryAction('reload')}
                     >
-                      🔄 重新加载
+                      <RefreshCw size={14} strokeWidth={1.75} aria-hidden="true" /> 重新加载
                     </button>
                     <button
                       type="button"
@@ -274,7 +275,7 @@ export function DemoHeader(p: DemoHeaderProps) {
                       title="模拟目录加载失败，查看错误提示与重试（点击重试可恢复）"
                       onClick={() => p.onLibraryAction('fail')}
                     >
-                      ⚠️ 模拟加载失败
+                      <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" /> 模拟加载失败
                     </button>
                   </div>
                 </section>
@@ -289,8 +290,8 @@ export function DemoHeader(p: DemoHeaderProps) {
                       onChange={(e) => p.onEnvChange(e.target.value as 'TEST' | 'PROD')}
                       title="TEST 开放自助试用（命名类型固定 tmp）；PROD 不开放试用，新建流程可选 custom / std"
                     >
-                      <option value="TEST">🧪 TEST</option>
-                      <option value="PROD">🏭 PROD</option>
+                      <option value="TEST">TEST</option>
+                      <option value="PROD">PROD</option>
                     </select>
                   </label>
                   <div className="dh-row-buttons">
@@ -300,7 +301,7 @@ export function DemoHeader(p: DemoHeaderProps) {
                       title="清空演示用户的产品并清空画布，在 TEST 环境下可看到空画布的「开始试用」引导"
                       onClick={() => { p.onResetProducts(); close(); }}
                     >
-                      🔄 重置产品
+                      <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" /> 重置产品
                     </button>
                   </div>
                 </section>
@@ -335,8 +336,8 @@ export function DemoHeader(p: DemoHeaderProps) {
             title="配置 AI 服务（API Key / Base URL / 模型）"
             aria-label={p.aiConfigured ? 'AI 配置（已配置）' : 'AI 配置'}
           >
-            <span className="dh-icon" aria-hidden="true">🤖</span>
-            <span className="dh-label">AI {p.aiConfigured ? '✓' : '配置'}</span>
+            <span className="dh-icon" aria-hidden="true"><Bot size={15} strokeWidth={1.75} aria-hidden="true" /></span>
+            <span className="dh-label">AI {p.aiConfigured ? '已配置' : '配置'}</span>
           </button>
 
           <ThemeControls />
@@ -347,7 +348,7 @@ export function DemoHeader(p: DemoHeaderProps) {
             title="查看 Conductor Workflow IDE v1.3.0「自助接入」发布宣传页"
             aria-label="v1.3 宣传页"
           >
-            <span aria-hidden="true">⚡</span>
+            <Zap size={15} strokeWidth={1.75} aria-hidden="true" />
           </a>
         </div>
       </div>

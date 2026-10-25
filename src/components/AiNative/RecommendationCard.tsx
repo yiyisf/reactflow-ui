@@ -1,4 +1,5 @@
 import React from 'react';
+import { Library } from 'lucide-react';
 import type { PendingRecommendation } from '../../store/aiStore';
 
 const MATCH_SCORE_LABEL: Record<string, string> = {
@@ -20,7 +21,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     return (
         <div className="ai-recommendation-card">
             <div className="ai-recommendation-header">
-                <span className="ai-recommendation-icon">📋</span>
+                <span className="ai-recommendation-icon" style={{ display: 'inline-flex', color: 'var(--cm-ai)' }}><Library size={18} strokeWidth={1.75} aria-hidden="true" /></span>
                 <div>
                     <div className="ai-recommendation-title">发现相似工作流</div>
                     <div className="ai-recommendation-intent">{recommendation.userIntent}</div>

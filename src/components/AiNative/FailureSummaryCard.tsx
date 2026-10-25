@@ -10,6 +10,7 @@
  */
 
 import React from 'react';
+import { CircleX, Wrench, X } from 'lucide-react';
 
 interface FailureSummaryCardProps {
     taskRef: string;
@@ -29,9 +30,9 @@ const FailureSummaryCard: React.FC<FailureSummaryCardProps> = ({ taskRef, taskTy
     return (
         <div className="ai-failure-card" role="alert">
             <div className="ai-failure-card-header">
-                <span className="ai-failure-card-icon">🔴</span>
+                <span className="ai-failure-card-icon" style={{ color: 'var(--cm-status-failed)', display: 'inline-flex' }}><CircleX size={16} strokeWidth={1.75} aria-hidden="true" /></span>
                 <span className="ai-failure-card-title">执行失败</span>
-                <button className="ai-failure-card-dismiss" onClick={onDismiss} title="关闭" aria-label="关闭失败摘要">×</button>
+                <button className="ai-failure-card-dismiss" onClick={onDismiss} title="关闭" aria-label="关闭失败摘要"><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
             </div>
             <div className="ai-failure-card-task">
                 失败任务：<strong>{taskRef}</strong>
@@ -41,7 +42,7 @@ const FailureSummaryCard: React.FC<FailureSummaryCardProps> = ({ taskRef, taskTy
                 <div className="ai-failure-card-reason">{truncatedReason}</div>
             )}
             <button className="ai-failure-card-diagnose-btn" onClick={onDiagnose}>
-                🔧 诊断并生成修复方案
+                <Wrench size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />诊断并生成修复方案
             </button>
         </div>
     );

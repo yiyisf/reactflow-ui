@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { CircleCheck, CircleX, Hourglass, Plug, Settings, TriangleAlert } from 'lucide-react';
 import { useIdeStores } from '../../store/ideStoresContext';
 import { PROVIDER_DEFAULTS, testConnection } from '../../services/ai/protocolAdapter';
 import type { AiConfig } from '../../services/ai/protocolAdapter';
@@ -90,19 +91,19 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
         ? PROVIDER_DEFAULTS.anthropic.model
         : PROVIDER_DEFAULTS.openai.model;
 
-    const testColor = testState === 'ok' ? '#10b981' : testState === 'error' ? '#ef4444' : 'var(--text-muted)';
+    const testColor = testState === 'ok' ? 'var(--cm-status-success)' : testState === 'error' ? 'var(--cm-status-failed)' : 'var(--text-muted)';
 
     return (
         <div className="ai-config-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
             <div className="ai-config-dialog" style={{ width: 440 }} role="dialog" aria-modal="true" aria-labelledby="ai-config-title">
-                <h3 id="ai-config-title">⚙️ AI 服务配置</h3>
+                <h3 id="ai-config-title"><Settings size={16} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 6 }} />AI 服务配置</h3>
 
                 <div style={{
-                    padding: '8px 10px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid rgba(245, 158, 11, 0.35)', fontSize: 11.5,
+                    padding: '8px 10px', borderRadius: 6, background: 'color-mix(in srgb, var(--cm-status-warning) 10%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent)', fontSize: 11.5,
                     color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5,
                 }}>
-                    ⚠️ 此处填写的 API Key 会直接留存于浏览器并直连模型服务商，<strong>仅建议用于开发调试</strong>。
+                    <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4, color: 'var(--cm-status-warning)' }} />此处填写的 API Key 会直接留存于浏览器并直连模型服务商，<strong>仅建议用于开发调试</strong>。
                     生产环境请由集成方通过 <code>aiConfig.transport</code>（endpoint 代理模式）接管 AI 请求。
                 </div>
 
@@ -116,7 +117,7 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                                 style={{
                                     padding: '4px 10px', borderRadius: 6, border: '1px solid',
                                     borderColor: activePreset === p.label ? 'var(--color-accent)' : 'var(--border-primary)',
-                                    background: activePreset === p.label ? 'var(--color-accent-bg, rgba(59,130,246,0.1))' : 'var(--bg-tertiary)',
+                                    background: activePreset === p.label ? 'var(--color-accent-bg, color-mix(in srgb, var(--color-accent) 10%, transparent))' : 'var(--bg-tertiary)',
                                     color: activePreset === p.label ? 'var(--color-accent)' : 'var(--text-secondary)',
                                     cursor: 'pointer', fontSize: 12,
                                     fontWeight: activePreset === p.label ? 600 : 400,
@@ -138,7 +139,7 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                 </div>
 
                 <div className="ai-config-field">
-                    <label htmlFor="ai-config-api-key">API Key <span style={{ color: '#ef4444' }}>*</span></label>
+                    <label htmlFor="ai-config-api-key">API Key <span style={{ color: 'var(--cm-status-failed)' }}>*</span></label>
                     <input
                         id="ai-config-api-key"
                         type="password"
@@ -185,11 +186,11 @@ const AiConfigPanel: React.FC<AiConfigPanelProps> = ({ onClose }) => {
                         disabled={!draft.apiKey.trim() || testState === 'testing'}
                         className="ai-test-btn"
                     >
-                        {testState === 'testing' ? '⏳ 测试中…' : '🔌 测试连接'}
+                        {testState === 'testing' ? <><Hourglass size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />测试中…</> : <><Plug size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />测试连接</>}
                     </button>
                     {testMessage && (
                         <span style={{ fontSize: 12, color: testColor, fontWeight: 500 }}>
-                            {testState === 'ok' ? '✓ ' : '✕ '}{testMessage}
+                            {testState === 'ok' ? <CircleCheck size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} /> : <CircleX size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />}{testMessage}
                         </span>
                     )}
                 </div>

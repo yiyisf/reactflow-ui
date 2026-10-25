@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { Bot, TriangleAlert, X } from 'lucide-react';
 import { WorkflowIDE } from '../WorkflowIDE';
 import { AiWorkflowIDE } from '../AiWorkflowIDE';
 
@@ -236,7 +237,7 @@ function DemoApp() {
       />
 
       <div className="app-content" style={{ flex: 1, position: 'relative' }}>
-        {error && <div className="error-message">⚠️ {error}</div>}
+        {error && <div className="error-message"><TriangleAlert size={16} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -3, marginRight: 6 }} />{error}</div>}
 
         <WorkflowIdeProvider providers={providers}>
         {useNewAiMode ? (
@@ -302,15 +303,16 @@ function DemoApp() {
           <div className="ai-config-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ai-config-modal-header">
               <div className="ai-config-title">
-                <span style={{ fontSize: 20 }}>🤖</span>
+                <Bot size={20} strokeWidth={1.75} aria-hidden="true" />
                 <span>AI 服务与模型配置</span>
               </div>
               <button
                 className="ai-config-close"
                 onClick={() => setShowAiConfig(false)}
                 title="关闭 (Esc)"
+                aria-label="关闭"
               >
-                ✕
+                <X size={16} strokeWidth={1.75} aria-hidden="true" />
               </button>
             </div>
 

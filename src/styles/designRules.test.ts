@@ -68,8 +68,9 @@ describe('CMASTER rule 7: no emoji in migrated UI files', () => {
 });
 
 /** Files whose colours are fully tokenized. Add a file here once it has no raw hex / rgb(a) literals left. */
+const TOKEN_ONLY_DIRS = ['../components/AiNative/', '../demo/'];
 const TOKEN_ONLY = Object.keys(sources).filter(
-    (p) => p.startsWith('../components/AiNative/') && /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p),
+    (p) => TOKEN_ONLY_DIRS.some((d) => p.startsWith(d)) && /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p),
 );
 
 describe('CMASTER rule 1: no raw colour literals in tokenized files', () => {

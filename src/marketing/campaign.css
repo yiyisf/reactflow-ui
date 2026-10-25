@@ -1,0 +1,116 @@
+/*
+ * CMASTER campaign palettes for release pages (index.html, v1-*.html).
+ *
+ * Put data-mode="dark" and data-campaign="<ember|glacier|nebula|signal|solar>" on <html>. Pages use:
+ *   --a     campaign accent (headline keyword, eyebrow, pills, primary CTA fill, highlight borders)
+ *   --a-hi  lighter accent for gradients and hover
+ *   --on    text on an --a fill
+ * Status colours stay semantic (--cm-status-*). The logo keeps its own orange in every palette, and outside
+ * Ember it is the only orange on the page (CLAUDE.md rule 10). See design/guidelines/marketing.md.
+ */
+
+[data-campaign] {
+  --a: var(--cm-campaign-ember);
+  --a-hi: var(--cm-campaign-ember-hi);
+  --on: var(--cm-on-campaign-ember);
+}
+
+[data-campaign='glacier'] {
+  --a: var(--cm-campaign-glacier);
+  --a-hi: var(--cm-campaign-glacier-hi);
+  --on: var(--cm-on-campaign-glacier);
+}
+
+[data-campaign='nebula'] {
+  --a: var(--cm-campaign-nebula);
+  --a-hi: var(--cm-campaign-nebula-hi);
+  --on: var(--cm-on-campaign-nebula);
+}
+
+[data-campaign='signal'] {
+  --a: var(--cm-campaign-signal);
+  --a-hi: var(--cm-campaign-signal-hi);
+  --on: var(--cm-on-campaign-signal);
+}
+
+[data-campaign='solar'] {
+  --a: var(--cm-campaign-solar);
+  --a-hi: var(--cm-campaign-solar-hi);
+  --on: var(--cm-on-campaign-solar);
+}
+
+/* Variables the release pages were written against, now pointing at tokens and the campaign accent. */
+[data-campaign] {
+  --a-tint: color-mix(in srgb, var(--a) 14%, transparent);
+  --a-line: color-mix(in srgb, var(--a) 45%, transparent);
+
+  --bg-dark: var(--cm-canvas);
+  --bg-card: var(--cm-surface-2);
+  --bg-card-hover: var(--cm-surface-3);
+  --bg-panel: var(--cm-surface-1);
+  --bg-glass: color-mix(in srgb, var(--cm-surface-1) 85%, transparent);
+
+  --border-dim: var(--cm-border-default);
+  --border-glow: var(--a);
+  --border-accent: var(--a);
+
+  --text-white: var(--cm-text-primary);
+  --text-body: var(--cm-text-secondary);
+  --text-muted: var(--cm-text-muted);
+
+  /* one accent per page: the former indigo / cyan / blue brand colours all become the campaign accent */
+  --brand-primary: var(--a);
+  --brand-cyan: var(--a-hi);
+  --brand-blue: var(--a);
+  --brand-emerald: var(--a); /* was the pages' decorative green; real outcomes use --cm-status-success */
+  --brand-amber: var(--cm-status-warning);
+  --brand-rose: var(--cm-status-failed);
+
+  --font-sans: var(--cm-font-sans);
+  --font-mono: var(--cm-font-mono);
+  --radius-md: var(--cm-radius-lg);
+  --radius-lg: var(--cm-radius-xl);
+
+  background: var(--cm-canvas);
+  color: var(--cm-text-primary);
+}
+
+/* Aurora: one campaign light from the top, a faint brand-neutral glow to the side. */
+[data-campaign] body {
+  background:
+    radial-gradient(ellipse 85% 55% at 50% -10%, color-mix(in srgb, var(--a) 20%, transparent), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 85% 25%, color-mix(in srgb, var(--a-hi) 10%, transparent), transparent 65%),
+    var(--cm-canvas);
+}
+
+[data-campaign] :focus-visible {
+  outline: 2px solid var(--a);
+  outline-offset: 2px;
+}
+
+/* Status marks used in the comparison tables (replacing ✓ / ✗). */
+.cm-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cm-mark svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cm-mark--yes {
+  color: var(--cm-status-success);
+}
+
+.cm-mark--no {
+  color: var(--cm-status-failed);
+}

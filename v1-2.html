@@ -1,49 +1,27 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-mode="dark" data-campaign="signal">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Conductor Workflow IDE v1.2.0：流程库就绪。标准能力一次沉淀，处处安全复用——LibraryProvider、版本固定与升级差异、业务域与分层、一个数据源两个 IDE。" />
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
   <title>Conductor Workflow IDE v1.2.0 · 流程库就绪 · 标准能力一次沉淀，处处安全复用</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="/src/styles/cmaster-tokens.css" />
+  <link rel="stylesheet" href="/src/marketing/campaign.css" />
   <style>
     /* STYLE: Bento Launchpad（沿用 v1.1.0 视觉语言与令牌，v1.2.0 叙事：流程库就绪） */
-    :root {
-      --bg-dark: #06080F;
-      --bg-card: #0E1322;
-      --bg-card-hover: #141C32;
-      --bg-panel: #090D18;
-      --bg-glass: rgba(14, 19, 34, 0.85);
-
-      --border-dim: #1E2942;
-      --border-glow: #6366F1;
-      --border-accent: #10B981;
-
-      --text-white: #F8FAFC;
-      --text-body: #94A3B8;
-      --text-muted: #64748B;
-
-      --brand-primary: #6366F1;
-      --brand-cyan: #06B6D4;
-      --brand-emerald: #10B981;
-      --brand-amber: #F59E0B;
-      --brand-rose: #F43F5E;
-      --brand-blue: #3B82F6;
-
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-
-      --radius-md: 12px;
-      --radius-lg: 18px;
-    }
+    /* colours, fonts and radii come from src/marketing/campaign.css */
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background:
-        radial-gradient(ellipse 85% 55% at 50% -10%, rgba(16, 185, 129, 0.22), transparent 70%),
-        radial-gradient(ellipse 60% 40% at 85% 25%, rgba(6, 182, 212, 0.16), transparent 65%),
-        radial-gradient(ellipse 50% 35% at 15% 45%, rgba(99, 102, 241, 0.14), transparent 60%),
+        radial-gradient(ellipse 85% 55% at 50% -10%, color-mix(in srgb, var(--a) 22%, transparent), transparent 70%),
+        radial-gradient(ellipse 60% 40% at 85% 25%, color-mix(in srgb, var(--a) 16%, transparent), transparent 65%),
+        radial-gradient(ellipse 50% 35% at 15% 45%, color-mix(in srgb, var(--a) 14%, transparent), transparent 60%),
         var(--bg-dark);
       color: var(--text-white);
       font-family: var(--font-sans);
@@ -56,7 +34,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(6, 8, 15, 0.88);
+      background: var(--cm-overlay);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border-dim);
       padding: 0.75rem 2rem;
@@ -88,9 +66,9 @@
       font-family: var(--font-mono);
       font-size: 0.74rem;
       font-weight: 700;
-      color: #6EE7B7;
-      background: rgba(16, 185, 129, 0.16);
-      border: 1px solid rgba(16, 185, 129, 0.42);
+      color: var(--a);
+      background: color-mix(in srgb, var(--a) 16%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 42%, transparent);
       padding: 0.2rem 0.7rem;
       border-radius: 999px;
       display: inline-flex;
@@ -102,7 +80,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      background: rgba(30, 41, 59, 0.6);
+      background: var(--cm-overlay);
       border: 1px solid var(--border-dim);
       padding: 0.15rem 0.4rem;
       border-radius: 8px;
@@ -119,8 +97,8 @@
     }
 
     .version-switch a.active {
-      background: rgba(16, 185, 129, 0.25);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 25%, transparent);
+      color: var(--a);
       font-weight: 700;
     }
 
@@ -140,9 +118,9 @@
       font-size: 0.72rem;
       font-family: var(--font-mono);
       font-weight: 700;
-      color: #A7F3D0;
-      background: rgba(16, 185, 129, 0.2);
-      border: 1px solid rgba(16, 185, 129, 0.42);
+      color: var(--a);
+      background: color-mix(in srgb, var(--a) 20%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 42%, transparent);
       padding: 0.25rem 0.7rem;
       border-radius: 8px;
       display: inline-flex;
@@ -172,11 +150,11 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      background: rgba(15, 23, 42, 0.98);
+      background: color-mix(in srgb, var(--cm-surface-1) 98%, transparent);
       border: 1px solid var(--border-dim);
       border-radius: 8px;
       padding: 0.3rem;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--cm-shadow-float);
       z-index: 300;
     }
 
@@ -190,14 +168,14 @@
     }
 
     .vd-menu a.active {
-      background: rgba(16, 185, 129, 0.25);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 25%, transparent);
+      color: var(--a);
       font-weight: 700;
     }
 
     .vd-menu a:hover:not(.active) {
       color: var(--text-white);
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--bg-highlight);
     }
 
     .nav-right {
@@ -207,7 +185,7 @@
     }
 
     .ghost-btn {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-highlight);
       color: var(--text-body);
       border: 1px solid var(--border-dim);
       padding: 0.44rem 0.9rem;
@@ -226,7 +204,7 @@
 
     .cta-btn {
       background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan));
-      color: #061816;
+      color: var(--on);
       border: none;
       padding: 0.46rem 1.15rem;
       border-radius: 8px;
@@ -261,8 +239,8 @@
       font-family: var(--font-mono);
       font-size: 0.78rem;
       color: var(--brand-emerald);
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.35);
+      background: color-mix(in srgb, var(--a) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 35%, transparent);
       padding: 0.32rem 1rem;
       border-radius: 999px;
       margin-bottom: 1.1rem;
@@ -275,7 +253,7 @@
       font-weight: 800;
       letter-spacing: -0.025em;
       margin-bottom: 1.1rem;
-      background: linear-gradient(180deg, #FFFFFF 0%, #A7F3D0 100%);
+      background: linear-gradient(180deg, var(--cm-text-primary) 0%, var(--a) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -291,7 +269,7 @@
     }
 
     .hero-subtitle strong {
-      color: #F8FAFC;
+      color: var(--text-primary);
     }
 
     /* Quick Install Command Box */
@@ -306,7 +284,7 @@
     .pm-tabs {
       display: inline-flex;
       gap: 0.35rem;
-      background: rgba(14, 19, 34, 0.9);
+      background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent);
       padding: 0.22rem;
       border-radius: 8px;
       border: 1px solid var(--border-dim);
@@ -326,8 +304,8 @@
     }
 
     .pm-tab.active {
-      background: rgba(16, 185, 129, 0.25);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 25%, transparent);
+      color: var(--a);
     }
 
     .install-shell {
@@ -335,13 +313,13 @@
       align-items: center;
       gap: 0.9rem;
       background: var(--bg-panel);
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      box-shadow: 0 0 32px rgba(16, 185, 129, 0.2);
+      border: 1px solid color-mix(in srgb, var(--a) 50%, transparent);
+      box-shadow: 0 0 32px color-mix(in srgb, var(--a) 20%, transparent);
       padding: 0.62rem 0.8rem 0.62rem 1.2rem;
       border-radius: 10px;
       font-family: var(--font-mono);
       font-size: 0.88rem;
-      color: #E2E8F0;
+      color: var(--text-primary);
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -349,9 +327,9 @@
     .install-shell .prompt-char { color: var(--brand-emerald); user-select: none; font-weight: 700; }
 
     .copy-cli-btn {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(6, 182, 212, 0.3));
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      color: #FFF;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--a) 30%, transparent), color-mix(in srgb, var(--a) 30%, transparent));
+      border: 1px solid color-mix(in srgb, var(--a) 50%, transparent);
+      color: var(--text-primary);
       padding: 0.36rem 0.85rem;
       border-radius: 6px;
       font-size: 0.76rem;
@@ -361,7 +339,7 @@
       transition: all 0.15s;
     }
 
-    .copy-cli-btn:hover { background: rgba(16, 185, 129, 0.5); }
+    .copy-cli-btn:hover { background: color-mix(in srgb, var(--a) 50%, transparent); }
 
     /* L1 Dual Grid: Before/After vs Interactive Dual-Mode Showcase */
     .first-screen-grid {
@@ -406,8 +384,8 @@
       border-radius: 4px;
     }
 
-    .badge-diff.before { background: rgba(244, 63, 94, 0.15); color: #FB7185; border: 1px solid rgba(244, 63, 94, 0.3); }
-    .badge-diff.after { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .badge-diff.before { background: color-mix(in srgb, var(--cm-status-failed) 15%, transparent); color: var(--cm-status-failed); border: 1px solid color-mix(in srgb, var(--cm-status-failed) 30%, transparent); }
+    .badge-diff.after { background: color-mix(in srgb, var(--cm-status-success) 15%, transparent); color: var(--cm-status-success); border: 1px solid color-mix(in srgb, var(--cm-status-success) 40%, transparent); }
 
     /* Interactive Dual Mode Live Preview in Hero */
     .interactive-mode-box {
@@ -443,14 +421,14 @@
     }
 
     .mode-tab-btn.active {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25));
-      color: #A7F3D0;
-      border: 1px solid rgba(16, 185, 129, 0.4);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--a) 25%, transparent), color-mix(in srgb, var(--a) 25%, transparent));
+      color: var(--a);
+      border: 1px solid color-mix(in srgb, var(--a) 40%, transparent);
       font-weight: 700;
     }
 
     .preview-card-viewport {
-      background: #090D18;
+      background: var(--bg-primary);
       border: 1px solid var(--border-dim);
       border-radius: 10px;
       padding: 1.1rem;
@@ -461,8 +439,8 @@
 
     /* Business Step Card Mock */
     .mock-step-card {
-      background: #131A2B;
-      border: 1px solid #1E293B;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
       border-radius: 8px;
       padding: 0.75rem 0.9rem;
       margin-bottom: 0.75rem;
@@ -473,7 +451,7 @@
     }
 
     .mock-step-card:hover {
-      border-color: rgba(16, 185, 129, 0.5);
+      border-color: color-mix(in srgb, var(--a) 50%, transparent);
       transform: translateX(2px);
     }
 
@@ -485,9 +463,9 @@
       border-radius: 4px;
       font-size: 0.72rem;
       font-family: var(--font-mono);
-      background: rgba(59, 130, 246, 0.15);
-      color: #93C5FD;
-      border: 1px solid rgba(59, 130, 246, 0.3);
+      background: color-mix(in srgb, var(--a) 15%, transparent);
+      color: var(--a);
+      border: 1px solid color-mix(in srgb, var(--a) 30%, transparent);
     }
 
     /* ROI Calculator */
@@ -581,7 +559,7 @@
       font-size: 2.3rem;
       font-weight: 800;
       font-family: var(--font-mono);
-      background: linear-gradient(180deg, #FFFFFF, #A7F3D0);
+      background: linear-gradient(180deg, var(--cm-text-primary), var(--a));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 0.3rem;
@@ -650,9 +628,9 @@
     }
 
     .bento-card:hover {
-      border-color: rgba(16, 185, 129, 0.4);
+      border-color: color-mix(in srgb, var(--a) 40%, transparent);
       transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--cm-shadow-float);
     }
 
     .bento-card.span-2 {
@@ -672,10 +650,10 @@
       width: fit-content;
     }
 
-    .bento-badge.green { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.35); }
-    .bento-badge.cyan { background: rgba(6, 182, 212, 0.15); color: #22D3EE; border: 1px solid rgba(6, 182, 212, 0.35); }
-    .bento-badge.purple { background: rgba(139, 92, 246, 0.15); color: #A78BFA; border: 1px solid rgba(139, 92, 246, 0.35); }
-    .bento-badge.orange { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.35); }
+    .bento-badge.green { background: color-mix(in srgb, var(--cm-status-success) 15%, transparent); color: var(--cm-status-success); border: 1px solid color-mix(in srgb, var(--cm-status-success) 35%, transparent); }
+    .bento-badge.cyan { background: color-mix(in srgb, var(--a) 15%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 35%, transparent); }
+    .bento-badge.purple { background: color-mix(in srgb, var(--a) 15%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 35%, transparent); }
+    .bento-badge.orange { background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent); color: var(--cm-status-warning); border: 1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent); }
 
     .bento-card h3 {
       font-size: 1.25rem;
@@ -732,7 +710,7 @@
     }
 
     .compare-table tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--bg-highlight);
     }
 
     .compare-table strong { color: var(--text-white); }
@@ -765,9 +743,9 @@
     }
 
     .qs-tab.active {
-      background: rgba(16, 185, 129, 0.2);
-      border-color: rgba(16, 185, 129, 0.5);
-      color: #A7F3D0;
+      background: color-mix(in srgb, var(--a) 20%, transparent);
+      border-color: color-mix(in srgb, var(--a) 50%, transparent);
+      color: var(--a);
     }
 
     .code-container {
@@ -781,7 +759,7 @@
       padding: 1.2rem;
       font-family: var(--font-mono);
       font-size: 0.82rem;
-      color: #E2E8F0;
+      color: var(--text-primary);
       line-height: 1.6;
       white-space: pre;
       overflow-x: auto;
@@ -791,7 +769,7 @@
       position: absolute;
       top: 0.75rem;
       right: 0.75rem;
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--bg-highlight);
       border: 1px solid var(--border-dim);
       color: var(--text-body);
       padding: 0.3rem 0.65rem;
@@ -801,11 +779,11 @@
       font-weight: 600;
     }
 
-    .copy-code-btn:hover { color: #FFF; border-color: var(--brand-emerald); }
+    .copy-code-btn:hover { color: var(--text-primary); border-color: var(--brand-emerald); }
 
     /* Historical Banner Link */
     .history-card-box {
-      background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
+      background: linear-gradient(135deg, var(--cm-overlay), var(--cm-overlay));
       border: 1px solid var(--border-dim);
       border-radius: var(--radius-lg);
       padding: 1.8rem;
@@ -845,7 +823,7 @@
     /* ==========================================================================
        v1.2.0 新增：无障碍与新组件（沿用 1.1 的 Bento Launchpad 令牌与组件）
        ========================================================================== */
-    :root { --text-muted: #8493AA; } /* 提亮次要文字，保证小字号对比度 >= 4.5:1 */
+    :root { --text-muted: var(--text-muted); } /* 提亮次要文字，保证小字号对比度 >= 4.5:1 */
 
     html { scroll-behavior: smooth; }
     img, svg { max-width: 100%; }
@@ -853,12 +831,12 @@
 
     .skip-link {
       position: absolute; left: 1rem; top: -4rem; z-index: 400;
-      background: var(--brand-emerald); color: #04130F; font-weight: 800;
+      background: var(--brand-emerald); color: var(--on); font-weight: 800;
       padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none;
     }
     .skip-link:focus { top: 0.75rem; }
 
-    :focus-visible { outline: 2px solid #34D399; outline-offset: 2px; border-radius: 4px; }
+    :focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 4px; }
 
     .nav-tagline { color: var(--text-muted); font-size: 0.8rem; }
     .section { margin-bottom: 4.5rem; scroll-margin-top: 5rem; }
@@ -870,10 +848,10 @@
       display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; list-style: none; margin: 0 auto 1.6rem; max-width: 900px;
     }
     .hero-adds li {
-      font-size: 0.8rem; color: #CBD5E1; background: rgba(14, 19, 34, 0.9); border: 1px solid var(--border-dim);
+      font-size: 0.8rem; color: var(--text-secondary); background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent); border: 1px solid var(--border-dim);
       padding: 0.3rem 0.8rem; border-radius: 999px;
     }
-    .hero-adds li b { color: #6EE7B7; font-weight: 700; margin-right: 0.25rem; }
+    .hero-adds li b { color: var(--a); font-weight: 700; margin-right: 0.25rem; }
     .hero-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.9rem; }
     .install-shell #cli-cmd { word-break: break-all; text-align: left; }
 
@@ -884,20 +862,20 @@
     .bento-card p:last-child { margin-bottom: 0; }
     .bento-card ul.tick { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-body); }
     .bento-card ul.tick li { padding-left: 1.3rem; position: relative; line-height: 1.6; }
-    .bento-card ul.tick li::before { content: '✓'; position: absolute; left: 0; color: var(--brand-emerald); font-weight: 800; }
+    .bento-card ul.tick li::before { content: ''; width: 0.95em; height: 0.95em; margin-top: 0.3em; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; position: absolute; left: 0; color: var(--brand-emerald); font-weight: 800; }
     code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
     p code, li code, td code, dd code {
-      background: rgba(99, 102, 241, 0.14); color: #C7D2FE; padding: 0.05rem 0.38rem; border-radius: 4px; word-break: break-all;
+      background: color-mix(in srgb, var(--a) 14%, transparent); color: var(--a); padding: 0.05rem 0.38rem; border-radius: 4px; word-break: break-all;
     }
 
     /* 流水线：定义 → 动作 → SUB_WORKFLOW */
     .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 0.6rem; align-items: stretch; }
-    .pipe-box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.85rem; font-size: 0.78rem; color: var(--text-body); }
+    .pipe-box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.85rem; font-size: 0.78rem; color: var(--text-body); }
     .pipe-box h4 { font-size: 0.82rem; color: var(--text-white); margin-bottom: 0.4rem; }
-    .pipe-box pre { font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
+    .pipe-box pre { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
     .pipe-arrow { align-self: center; color: var(--brand-emerald); font-size: 1.3rem; font-weight: 800; }
-    .form-line { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px dashed #1E293B; padding: 0.22rem 0; }
-    .form-line span:last-child { color: #A7F3D0; font-family: var(--font-mono); font-size: 0.72rem; }
+    .form-line { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px dashed var(--border-primary); padding: 0.22rem 0; }
+    .form-line span:last-child { color: var(--a); font-family: var(--font-mono); font-size: 0.72rem; }
 
     /* 版本固定演示 */
     .pin-demo { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 1.5rem; align-items: start; }
@@ -908,66 +886,66 @@
       padding: 0.75rem 0.9rem; border-radius: 10px; cursor: pointer; font-size: 0.84rem; font-family: inherit;
     }
     .state-btn strong { display: block; color: var(--text-white); margin-bottom: 0.15rem; }
-    .state-btn[aria-pressed="true"] { border-color: rgba(16, 185, 129, 0.7); background: rgba(16, 185, 129, 0.1); }
-    .state-btn:hover { border-color: rgba(16, 185, 129, 0.45); }
+    .state-btn[aria-pressed="true"] { border-color: color-mix(in srgb, var(--a) 70%, transparent); background: color-mix(in srgb, var(--a) 10%, transparent); }
+    .state-btn:hover { border-color: color-mix(in srgb, var(--a) 45%, transparent); }
 
-    .mock-app { background: #090D18; border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.1rem; position: relative; min-height: 22rem; }
+    .mock-app { background: var(--bg-primary); border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.1rem; position: relative; min-height: 22rem; }
     .mock-app-bar { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.9rem; font-size: 0.72rem; color: var(--text-muted); }
-    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: #1E293B; display: inline-block; }
-    .mock-step { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.9rem; }
+    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bg-secondary); display: inline-block; }
+    .mock-step { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.9rem; }
     .mock-step-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
     .mock-step-title { font-weight: 700; color: var(--text-white); font-size: 0.95rem; }
     .mock-step-name { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); width: 100%; word-break: break-all; }
     .badge-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0; align-items: center; }
-    .lib-badge { font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; background: rgba(59, 130, 246, 0.14); color: #93C5FD; border: 1px solid rgba(59, 130, 246, 0.3); font-family: inherit; }
-    .lib-badge.up { border: 1px solid #F59E0B; background: rgba(245, 158, 11, 0.12); color: #FBBF24; cursor: pointer; }
-    .lib-badge.up:hover { background: rgba(245, 158, 11, 0.25); }
-    .lib-badge.bad { border: 1px solid #F43F5E; background: rgba(244, 63, 94, 0.12); color: #FB7185; }
-    .lib-badge.ok { border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.12); color: #6EE7B7; }
+    .lib-badge { font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; background: color-mix(in srgb, var(--a) 14%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 30%, transparent); font-family: inherit; }
+    .lib-badge.up { border: 1px solid var(--cm-status-warning); background: color-mix(in srgb, var(--cm-status-warning) 12%, transparent); color: var(--cm-status-warning); cursor: pointer; }
+    .lib-badge.up:hover { background: color-mix(in srgb, var(--cm-status-warning) 25%, transparent); }
+    .lib-badge.bad { border: 1px solid var(--cm-status-failed); background: color-mix(in srgb, var(--cm-status-failed) 12%, transparent); color: var(--cm-status-failed); }
+    .lib-badge.ok { border: 1px solid color-mix(in srgb, var(--cm-status-success) 45%, transparent); background: color-mix(in srgb, var(--cm-status-success) 12%, transparent); color: var(--cm-status-success); }
     .mock-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.75rem; margin-bottom: 0.7rem; }
-    .mock-field { background: #0B1020; border: 1px solid #1E293B; border-radius: 6px; padding: 0.35rem 0.55rem; color: var(--text-body); }
+    .mock-field { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 6px; padding: 0.35rem 0.55rem; color: var(--text-body); }
     .mock-field small { display: block; color: var(--text-muted); font-size: 0.66rem; }
-    .compile-box { background: #05070D; border: 1px solid #1E293B; border-radius: 8px; padding: 0.65rem 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; color: #E2E8F0; white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
-    .compile-box .hl { color: #FBBF24; font-weight: 700; }
+    .compile-box { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.65rem 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
+    .compile-box .hl { color: var(--cm-status-warning); font-weight: 700; }
     .pin-note { font-size: 0.78rem; color: var(--text-body); margin-top: 0.7rem; min-height: 2.6em; }
 
     .mock-dialog {
-      position: absolute; inset: 1rem; z-index: 5; background: #0F172A; border: 1px solid #334155; border-radius: 12px;
-      padding: 1rem; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6); overflow: auto; display: none;
+      position: absolute; inset: 1rem; z-index: 5; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 12px;
+      padding: 1rem; box-shadow: var(--cm-shadow-float); overflow: auto; display: none;
     }
     .mock-dialog.open { display: block; }
     .mock-dialog h4 { font-size: 0.92rem; color: var(--text-white); margin-bottom: 0.5rem; line-height: 1.5; }
     .diff-group { font-size: 0.78rem; font-weight: 700; margin: 0.7rem 0 0.3rem; }
-    .diff-group.impact { color: #FBBF24; }
-    .diff-group.plain { color: #93C5FD; }
-    .mock-dialog ul { list-style: none; font-size: 0.78rem; color: #CBD5E1; display: flex; flex-direction: column; gap: 0.3rem; }
+    .diff-group.impact { color: var(--cm-status-warning); }
+    .diff-group.plain { color: var(--a); }
+    .mock-dialog ul { list-style: none; font-size: 0.78rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.3rem; }
     .mock-dialog li { padding-left: 0.9rem; position: relative; line-height: 1.55; }
     .mock-dialog li::before { content: '·'; position: absolute; left: 0.2rem; }
-    .tag-demo { font-size: 0.64rem; border: 1px solid #475569; color: #94A3B8; padding: 0 4px; border-radius: 3px; margin-left: 4px; white-space: nowrap; }
+    .tag-demo { font-size: 0.64rem; border: 1px solid var(--border-primary); color: var(--text-muted); padding: 0 4px; border-radius: 3px; margin-left: 4px; white-space: nowrap; }
     .dialog-foot { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.8rem; line-height: 1.55; }
     .dialog-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.9rem; }
-    .mini-btn { font-family: inherit; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-dim); background: rgba(255, 255, 255, 0.06); color: var(--text-white); }
-    .mini-btn.primary { background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan)); color: #061816; border: none; }
+    .mini-btn { font-family: inherit; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-dim); background: var(--bg-highlight); color: var(--text-white); }
+    .mini-btn.primary { background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan)); color: var(--on); border: none; }
 
     /* 命名规范 + 分层选择器 */
     .name-parse { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: stretch; list-style: none; margin: 0.6rem 0 1rem; }
     .name-seg { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 8px; padding: 0.4rem 0.7rem; text-align: center; min-width: 4.2rem; }
-    .name-seg b { display: block; font-family: var(--font-mono); font-size: 0.9rem; color: #E2E8F0; font-weight: 700; }
+    .name-seg b { display: block; font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-primary); font-weight: 700; }
     .name-seg span { font-size: 0.68rem; color: var(--text-muted); }
-    .name-seg.c1 b { color: #A5B4FC; } .name-seg.c2 b { color: #FBBF24; } .name-seg.c3 b { color: #6EE7B7; } .name-seg.c4 b { color: #22D3EE; } .name-seg.c5 b { color: #F9A8D4; }
+    .name-seg.c1 b { color: var(--a); } .name-seg.c2 b { color: var(--cm-status-warning); } .name-seg.c3 b { color: var(--a); } .name-seg.c4 b { color: var(--a); } .name-seg.c5 b { color: var(--a); }
     .name-sep { align-self: center; color: var(--text-muted); font-family: var(--font-mono); }
     .domain-demo { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1.5rem; }
     .level-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.6rem 0 0.9rem; font-size: 0.8rem; color: var(--text-body); }
     .seg-btn { font-family: var(--font-mono); font-size: 0.76rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 7px; border: 1px solid var(--border-dim); background: var(--bg-panel); color: var(--text-body); cursor: pointer; }
-    .seg-btn[aria-pressed="true"] { background: rgba(16, 185, 129, 0.22); border-color: rgba(16, 185, 129, 0.6); color: #A7F3D0; }
+    .seg-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--a) 22%, transparent); border-color: color-mix(in srgb, var(--a) 60%, transparent); color: var(--a); }
     .picker-groups { display: flex; flex-direction: column; gap: 0.7rem; }
     .picker-group h4 { font-size: 0.74rem; color: var(--brand-cyan); letter-spacing: 0.04em; margin-bottom: 0.3rem; }
     .picker-items { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; }
-    .picker-item { display: inline-flex; align-items: center; gap: 0.4rem; background: #131A2B; border: 1px solid #1E293B; border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--text-white); }
+    .picker-item { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--text-white); }
     .lv { font-family: var(--font-mono); font-size: 0.65rem; padding: 0 5px; border-radius: 3px; font-weight: 700; }
-    .lv.L1 { background: rgba(16, 185, 129, 0.18); color: #6EE7B7; }
-    .lv.L2 { background: rgba(245, 158, 11, 0.18); color: #FBBF24; }
-    .lv.L3 { background: rgba(244, 63, 94, 0.18); color: #FB7185; }
+    .lv.L1 { background: color-mix(in srgb, var(--a) 18%, transparent); color: var(--a); }
+    .lv.L2 { background: color-mix(in srgb, var(--cm-status-warning) 18%, transparent); color: var(--cm-status-warning); }
+    .lv.L3 { background: color-mix(in srgb, var(--cm-status-failed) 18%, transparent); color: var(--cm-status-failed); }
     .picker-status { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.8rem; min-height: 1.5em; }
     .rule-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
     .rule-table th, .rule-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); }
@@ -975,18 +953,18 @@
 
     /* 一个数据源，两个 IDE */
     .fanout { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; }
-    .fan-center { background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(6, 182, 212, 0.16)); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 14px; padding: 1.1rem; text-align: center; }
-    .fan-center code { background: none; color: #A7F3D0; font-size: 1rem; font-weight: 700; padding: 0; }
+    .fan-center { background: linear-gradient(135deg, color-mix(in srgb, var(--a) 16%, transparent), color-mix(in srgb, var(--a) 16%, transparent)); border: 1px solid color-mix(in srgb, var(--a) 50%, transparent); border-radius: 14px; padding: 1.1rem; text-align: center; }
+    .fan-center code { background: none; color: var(--a); font-size: 1rem; font-weight: 700; padding: 0; }
     .fan-center p { margin: 0.4rem 0 0; font-size: 0.78rem; }
     .fan-col { display: flex; flex-direction: column; gap: 0.7rem; }
-    .fan-box { background: #131A2B; border: 1px solid #1E293B; border-radius: 10px; padding: 0.8rem; font-size: 0.8rem; color: var(--text-body); }
+    .fan-box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.8rem; font-size: 0.8rem; color: var(--text-body); }
     .fan-box h4 { color: var(--text-white); font-size: 0.88rem; margin-bottom: 0.25rem; }
     .fan-arrow { color: var(--brand-emerald); font-size: 1.4rem; font-weight: 800; text-align: center; }
 
     /* 接入 */
     .qs-tab { color: var(--text-body); }
     .qs-note { font-size: 0.82rem; color: var(--text-body); margin-top: 1rem; line-height: 1.7; }
-    .qs-note a, .link-inline { color: #6EE7B7; }
+    .qs-note a, .link-inline { color: var(--a); }
     .code-body { max-height: 30rem; overflow: auto; }
     .two-col { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 1.5rem; }
 
@@ -1000,19 +978,19 @@
     /* 接下来 */
     .roadmap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; list-style: none; }
     .rm-card { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: var(--radius-md); padding: 1.1rem; }
-    .rm-card .ver { font-family: var(--font-mono); font-weight: 800; color: #6EE7B7; font-size: 1rem; }
+    .rm-card .ver { font-family: var(--font-mono); font-weight: 800; color: var(--a); font-size: 1rem; }
     .rm-card h3 { font-size: 1.05rem; color: var(--text-white); margin: 0.2rem 0; }
     .rm-card .when { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 0.5rem; }
     .rm-card p { font-size: 0.8rem; color: var(--text-body); line-height: 1.6; }
-    .rm-card.labs { border-style: dashed; border-color: rgba(139, 92, 246, 0.5); }
-    .rm-card.labs .ver { color: #C4B5FD; }
+    .rm-card.labs { border-style: dashed; border-color: color-mix(in srgb, var(--a) 50%, transparent); }
+    .rm-card.labs .ver { color: var(--a); }
 
     /* 上手 */
     .try-steps { counter-reset: s; list-style: none; display: flex; flex-direction: column; gap: 0.8rem; }
     .try-steps li { counter-increment: s; position: relative; padding-left: 2.6rem; font-size: 0.88rem; color: var(--text-body); line-height: 1.7; }
     .try-steps li::before {
       content: counter(s); position: absolute; left: 0; top: 0.1rem; width: 1.8rem; height: 1.8rem; border-radius: 50%;
-      background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.5); color: #A7F3D0; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
+      background: color-mix(in srgb, var(--a) 20%, transparent); border: 1px solid color-mix(in srgb, var(--a) 50%, transparent); color: var(--a); font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
     }
     .try-steps strong { color: var(--text-white); }
     .link-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
@@ -1022,7 +1000,7 @@
 
     footer { padding: 2.5rem 1.5rem; }
     footer a { display: inline-block; margin: 0.25rem 0.6rem; }
-    footer a { color: #A9B6CA; }
+    footer a { color: var(--text-secondary); }
 
     @media (prefers-reduced-motion: no-preference) {
       .bento-card, .state-btn, .lib-badge { transition: border-color 0.2s, transform 0.2s, background 0.2s; }
@@ -1076,12 +1054,12 @@
       </a>
 
       <details class="version-dropdown" id="version-dropdown">
-        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.2.0">📜 v1.2.0 历史回顾 <span class="vd-caret" aria-hidden="true">▾</span></summary>
+        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.2.0">v1.2.0 历史回顾 <span class="vd-caret" aria-hidden="true">▾</span></summary>
         <div class="vd-menu">
-          <a href="./" title="查看 v1.3.0 自助接入最新宣传页">⚡ v1.3.0 最新发布</a>
-          <a href="./v1-2.html" class="active" aria-current="page" title="当前页面：v1.2.0 流程库就绪">📜 v1.2.0 历史回顾</a>
-          <a href="./v1-1.html" title="查阅 v1.1.0 业务全融合宣传页">📜 v1.1.0 历史回顾</a>
-          <a href="./v1-0.html" title="查阅 v1.0.0 确定性 IDE 历史首发页">📜 v1.0.0 历史回顾</a>
+          <a href="./" title="查看 v1.3.0 自助接入最新宣传页">v1.3.0 最新发布</a>
+          <a href="./v1-2.html" class="active" aria-current="page" title="当前页面：v1.2.0 流程库就绪">v1.2.0 历史回顾</a>
+          <a href="./v1-1.html" title="查阅 v1.1.0 业务全融合宣传页">v1.1.0 历史回顾</a>
+          <a href="./v1-0.html" title="查阅 v1.0.0 确定性 IDE 历史首发页">v1.0.0 历史回顾</a>
         </div>
       </details>
 
@@ -1089,7 +1067,7 @@
     </div>
 
     <div class="nav-right">
-      <a href="./app" class="cta-btn">🎮 进入工作台 (/app)</a>
+      <a href="./app" class="cta-btn">进入工作台 (/app)</a>
     </div>
   </header>
 
@@ -1098,7 +1076,7 @@
     <!-- ===================== Hero ===================== -->
     <section class="hero-section" aria-labelledby="hero-title">
       <div class="hero-eyebrow">
-        <span>⚡ Conductor Workflow IDE v1.2.0</span>
+        <span>Conductor Workflow IDE v1.2.0</span>
         <span style="opacity: 0.4;" aria-hidden="true">|</span>
         <span>流程库就绪</span>
       </div>
@@ -1133,8 +1111,8 @@
       </div>
 
       <div class="hero-actions">
-        <a href="./app" class="cta-btn lg">🎮 在工作台里体验流程库</a>
-        <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" class="ghost-btn lg" target="_blank" rel="noreferrer">📘 宿主接入指南</a>
+        <a href="./app" class="cta-btn lg">在工作台里体验流程库</a>
+        <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" class="ghost-btn lg" target="_blank" rel="noreferrer">宿主接入指南</a>
       </div>
       <p class="hero-note">演示站运行在<strong>模拟治理服务</strong>上，没有接真实后端；内部项目引入后通过 <code>libraryProvider</code> 对接各自的治理服务。</p>
     </section>
@@ -1172,13 +1150,13 @@
 
       <div class="bento-grid">
         <div class="bento-card span-2">
-          <span class="bento-badge green">📚 从定义到积木</span>
+          <span class="bento-badge green">从定义到积木</span>
           <h3>一份标准定义，自动长成业务动作</h3>
           <p>入参取自 <code>inputSchema</code>，出参取自 <code>outputSchema</code> / <code>outputParameters</code>；中文字段名与表单由 schema 的标题、描述、枚举、默认值自动生成，业务同学看到的是“配置项类型”而不是 <code>ciType</code>。</p>
           <div class="bento-inner-box">
             <div class="pipeline" role="group" aria-label="流程库能力的生成与编译过程">
               <div class="pipe-box">
-                <h4>① Conductor 标准定义</h4>
+                <h4>1.Conductor 标准定义</h4>
                 <pre>WorkflowDef {
   name: "std-L1-配置管理-cmdb-query_ci"
   inputSchema:  { ciType, keyword … }
@@ -1187,14 +1165,14 @@
               </div>
               <div class="pipe-arrow" aria-hidden="true">→</div>
               <div class="pipe-box">
-                <h4>② 业务动作（表单自动生成）</h4>
+                <h4>2.业务动作（表单自动生成）</h4>
                 <div class="form-line"><span>配置项类型 *</span><span>下拉 · 服务器…</span></div>
                 <div class="form-line"><span>关键字</span><span>文本</span></div>
                 <div class="form-line"><span>返回条数</span><span>数字 · 默认 20</span></div>
               </div>
               <div class="pipe-arrow" aria-hidden="true">→</div>
               <div class="pipe-box">
-                <h4>③ 编译为 SUB_WORKFLOW</h4>
+                <h4>3.编译为 SUB_WORKFLOW</h4>
                 <pre>{ "type": "SUB_WORKFLOW",
   "subWorkflowParam": {
     "name": "…query_ci",
@@ -1205,7 +1183,7 @@
         </div>
 
         <div class="bento-card">
-          <span class="bento-badge cyan">🧩 复用，而不是复制</span>
+          <span class="bento-badge cyan">复用，而不是复制</span>
           <h3>业务模式里直接挑</h3>
           <ul class="tick">
             <li>动作选择器按业务域分组，搜索跨全部能力</li>
@@ -1232,8 +1210,8 @@
             <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.4rem;">右侧是业务模式步骤卡片的静态示意（HTML/CSS 模拟，不是真实应用）；数据取自 Demo 演示库。</p>
             <div role="group" aria-label="选择步骤状态" style="display:flex; flex-direction:column; gap:0.5rem;">
               <button type="button" class="state-btn" data-state="pinned" aria-pressed="true"><strong>已固定 v1</strong>引用后版本不再变化，库里发布 v2 也不受影响</button>
-              <button type="button" class="state-btn" data-state="upgrade" aria-pressed="false"><strong>⬆ 有新版本</strong>点徽标查看升级差异，确认后才升级</button>
-              <button type="button" class="state-btn" data-state="unavailable" aria-pressed="false"><strong>⚠ 版本不可用</strong>固定版本被撤回或能力已下线，编译结果不变</button>
+              <button type="button" class="state-btn" data-state="upgrade" aria-pressed="false"><strong>有新版本</strong>点徽标查看升级差异，确认后才升级</button>
+              <button type="button" class="state-btn" data-state="unavailable" aria-pressed="false"><strong>版本不可用</strong>固定版本被撤回或能力已下线，编译结果不变</button>
             </div>
           </div>
 
@@ -1241,7 +1219,7 @@
             <div class="mock-app-bar" aria-hidden="true"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span><span style="margin-left:6px;">业务模式 · 步骤卡片（示意）</span></div>
             <div class="mock-step">
               <div class="mock-step-head">
-                <span id="ms-icon" aria-hidden="true">🗂️</span>
+                <span id="ms-icon" aria-hidden="true"></span>
                 <span class="mock-step-title" id="ms-title">查询配置项</span>
                 <span class="mock-step-name" id="ms-name">std-L1-配置管理-cmdb-query_ci</span>
               </div>
@@ -1284,7 +1262,7 @@
 
       <div class="bento-grid" style="margin-bottom:1.5rem;">
         <div class="bento-card span-2">
-          <span class="bento-badge purple">🏷 命名规范</span>
+          <span class="bento-badge purple">命名规范</span>
           <h3><code>类型-层级-业务域-产品-功能</code></h3>
           <p><code>parseWorkflowName</code> 把名称切成 5 段；记录没有提供 <code>extension.domain</code> / <code>level</code> 时按名称兜底，显式值优先。段数不足 5，或类型、层级不合法时返回 <code>null</code>；<code>validateWorkflowName</code> 返回中文错误列表。</p>
           <ol class="name-parse" aria-label="命名解析示例：std-L1-云资源-ecs-snapshot">
@@ -1297,7 +1275,7 @@
           <p style="font-size:0.8rem;">类型取值：<code>std</code> / <code>proxy</code> / <code>tmp</code> / <code>custom</code>。示例为 Demo 演示库中的“云主机快照”。</p>
         </div>
         <div class="bento-card">
-          <span class="bento-badge orange">🔒 分层调用规则</span>
+          <span class="bento-badge orange">分层调用规则</span>
           <h3>高层可调低层，不可反向</h3>
           <table class="rule-table">
             <thead><tr><th scope="col">当前流程</th><th scope="col">可引用</th></tr></thead>
@@ -1313,7 +1291,7 @@
 
       <div class="fs-panel">
         <div class="fs-panel-header">
-          <h3 class="fs-title">🧭 动作选择器示意：按业务域分组 + 层级过滤</h3>
+          <h3 class="fs-title">动作选择器示意：按业务域分组 + 层级过滤</h3>
           <span class="badge-diff after">演示库 · 11 个可选能力</span>
         </div>
         <div class="level-bar" role="group" aria-label="模拟 currentWorkflowLevel">
@@ -1339,31 +1317,31 @@
       <div class="fs-panel" style="margin-bottom:1.5rem;">
         <div class="fanout">
           <div class="fan-col">
-            <div class="fan-box"><h4>👔 业务 IDE · <code>WorkflowIDE</code></h4>目录经 <code>toActions</code> 变成动作选择器里的业务动作，带业务域分组、层级过滤、版本徽标。</div>
+            <div class="fan-box"><h4>业务 IDE · <code>WorkflowIDE</code></h4>目录经 <code>toActions</code> 变成动作选择器里的业务动作，带业务域分组、层级过滤、版本徽标。</div>
           </div>
           <div class="fan-center" role="group" aria-label="共享的 LibraryProvider">
             <code>libraryProvider</code>
             <p>list / get / 可选 search<br/>引用稳定，变化即重新加载</p>
           </div>
           <div class="fan-col">
-            <div class="fan-box"><h4>✨ AI IDE · <code>AiWorkflowIDE</code></h4>目录经 <code>toTaskSchemas</code> / <code>toLibraryItems</code> 并入 AI 的 Schema、目录与检索工具。</div>
+            <div class="fan-box"><h4>AI IDE · <code>AiWorkflowIDE</code></h4>目录经 <code>toTaskSchemas</code> / <code>toLibraryItems</code> 并入 AI 的 Schema、目录与检索工具。</div>
           </div>
         </div>
       </div>
 
       <div class="bento-grid">
         <div class="bento-card">
-          <span class="bento-badge cyan">🔎 AI 检索</span>
+          <span class="bento-badge cyan">AI 检索</span>
           <h3>目录与检索</h3>
           <p><code>search_workflow_library</code> 支持按<strong>业务域</strong>过滤。Provider 实现了 <code>search</code> 时检索走服务端，否则在本地目录内匹配（结果最多展示 50 条）。</p>
         </div>
         <div class="bento-card">
-          <span class="bento-badge green">📌 自动固定</span>
+          <span class="bento-badge green">自动固定</span>
           <h3>AI 生成的子流程不乱填版本</h3>
           <p>AI 新建的 <code>SUB_WORKFLOW</code> 引用自动固定为目录当前最新版本；画布上已有的步骤与已有版本号一律不被改动。</p>
         </div>
         <div class="bento-card">
-          <span class="bento-badge orange">📏 大目录</span>
+          <span class="bento-badge orange">大目录</span>
           <h3><code>promptCatalogLimit</code></h3>
           <p>默认 50。目录注入系统提示词时按层级 L3 → L1 截断，超出部分提示 AI 改用检索工具，治理平台 1000+ 工作流也不会撑爆提示词。</p>
         </div>
@@ -1401,18 +1379,18 @@
         <p class="section-desc">走查中发现的问题和一批性能、工程质量收尾，全部来自 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG</a>。</p>
       </div>
       <ul class="quality-grid">
-        <li class="q-item"><h3><span aria-hidden="true">🔗</span>下拉字段「插入数据」</h3><p>下拉字段可改为引用上游步骤输出或全局入参，也可切回选择；已保存 <code>${…}</code> 时自动进入动态取值。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🎨</span>弹窗跟随主题</h3><p>动作选择、沙箱配置、参数联想弹窗不再在暗色下透明；动作选择弹窗的筛选拆为“分类”“业务域”两行。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">⚡</span>卡片视图更跟手</h3><p>编辑只更新定义，不再每次按键都做整图布局，切回画布时再补建。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🎯</span>按需订阅</h3><p>Store 订阅改为按需（<code>useShallow</code>），逐节点组件不再因无关状态变化而重渲染。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">↩️</span>撤销历史上限</h3><p>撤销历史上限 100 条，历史比较先做引用相等判断，避免每次都序列化整份定义。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🪆</span>多层嵌套控制流</h3><p>分支 / 并行泳道 / 循环体内支持任意层级嵌套控制流。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">⌨️</span>输入不再丢焦点</h3><p>步骤 ID 不再随时间变化，编辑时不再重建卡片、收起展开项。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🧹</span>展开不再重复信息</h3><p>去掉表单顶部与步骤头部重复的名称 / 描述横幅，保留敏感操作提示。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🛡</span>类型检查门禁</h3><p>CI 新增阻塞式全量类型检查，并修复了测试与演示代码中原有的类型错误。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🤖</span>AI 版本更稳</h3><p>AI 生成子工作流不再随意填版本，新建引用固定为目录当前最新版本。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">🔢</span>版本串解析修复</h3><p>流程库面板插入子工作流时，不再把 <code>"1.2.0"</code> 这类版本串错误解析成 <code>120</code>。</p></li>
-        <li class="q-item"><h3><span aria-hidden="true">💬</span>统一对话框</h3><p>控制流卡片的原生 <code>alert</code> / <code>confirm</code> 改用项目自带对话框，重复的子步骤列表代码合并为 <code>StepListEditor</code>。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>下拉字段「插入数据」</h3><p>下拉字段可改为引用上游步骤输出或全局入参，也可切回选择；已保存 <code>${…}</code> 时自动进入动态取值。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>弹窗跟随主题</h3><p>动作选择、沙箱配置、参数联想弹窗不再在暗色下透明；动作选择弹窗的筛选拆为“分类”“业务域”两行。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>卡片视图更跟手</h3><p>编辑只更新定义，不再每次按键都做整图布局，切回画布时再补建。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>按需订阅</h3><p>Store 订阅改为按需（<code>useShallow</code>），逐节点组件不再因无关状态变化而重渲染。</p></li>
+        <li class="q-item"><h3>撤销历史上限</h3><p>撤销历史上限 100 条，历史比较先做引用相等判断，避免每次都序列化整份定义。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>多层嵌套控制流</h3><p>分支 / 并行泳道 / 循环体内支持任意层级嵌套控制流。</p></li>
+        <li class="q-item"><h3>输入不再丢焦点</h3><p>步骤 ID 不再随时间变化，编辑时不再重建卡片、收起展开项。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>展开不再重复信息</h3><p>去掉表单顶部与步骤头部重复的名称 / 描述横幅，保留敏感操作提示。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>类型检查门禁</h3><p>CI 新增阻塞式全量类型检查，并修复了测试与演示代码中原有的类型错误。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>AI 版本更稳</h3><p>AI 生成子工作流不再随意填版本，新建引用固定为目录当前最新版本。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>版本串解析修复</h3><p>流程库面板插入子工作流时，不再把 <code>"1.2.0"</code> 这类版本串错误解析成 <code>120</code>。</p></li>
+        <li class="q-item"><h3><span aria-hidden="true"></span>统一对话框</h3><p>控制流卡片的原生 <code>alert</code> / <code>confirm</code> 改用项目自带对话框，重复的子步骤列表代码合并为 <code>StepListEditor</code>。</p></li>
       </ul>
     </section>
 
@@ -1442,18 +1420,18 @@
       <div class="fs-panel">
         <div class="two-col">
           <ol class="try-steps">
-            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>，使用默认的 <strong>👔 业务模式</strong>，并保持 <strong>💻 经典模式</strong>（层级控制只在经典模式下出现）。</li>
-            <li>在“📁 示例工作流...”下拉里选 <strong>📚 引用库能力（有新版本 / 版本不可用）</strong>。</li>
-            <li>展开步骤，看每个库能力的固定版本徽标；点 <strong>⬆ 有新版本</strong> 查看升级差异，确认后才会升级；<strong>⚠ 版本不可用</strong> 的步骤保持原样编译。</li>
-            <li>试试工具栏 <strong>📚 流程库...</strong>：“重新加载流程库”，或“模拟加载失败”后点击重试。</li>
+            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>，使用默认的 <strong>业务模式</strong>，并保持 <strong>经典模式</strong>（层级控制只在经典模式下出现）。</li>
+            <li>在“示例工作流...”下拉里选 <strong>引用库能力（有新版本 / 版本不可用）</strong>。</li>
+            <li>展开步骤，看每个库能力的固定版本徽标；点 <strong>有新版本</strong> 查看升级差异，确认后才会升级；<strong>版本不可用</strong> 的步骤保持原样编译。</li>
+            <li>试试工具栏 <strong>流程库...</strong>：“重新加载流程库”，或“模拟加载失败”后点击重试。</li>
             <li>用 <strong>层级：不限 / L1 / L2 / L3</strong> 切换当前流程层级，再打开动作选择器添加步骤，观察被隐藏的高层能力。</li>
-            <li>切到 <strong>✨ AI 模式</strong>，让 AI 检索并引用库能力（可按业务域），生成的子工作流会带上固定版本。</li>
+            <li>切到 <strong>AI 模式</strong>，让 AI 检索并引用库能力（可按业务域），生成的子工作流会带上固定版本。</li>
           </ol>
           <ul class="link-list">
-            <li><a href="./app">🎮 打开工作台 /app<small>业务模式 + 演示库</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">📝 CHANGELOG<small>[Unreleased] 即 1.2.0 的全部变更</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">📘 宿主接入指南<small>docs/integration-guide.md</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">🧭 演进路线图<small>docs/roadmap.md</small></a></li>
+            <li><a href="./app">打开工作台 /app<small>业务模式 + 演示库</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG<small>[Unreleased] 即 1.2.0 的全部变更</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南<small>docs/integration-guide.md</small></a></li>
+            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">演进路线图<small>docs/roadmap.md</small></a></li>
           </ul>
         </div>
       </div>
@@ -1462,11 +1440,11 @@
 
   <footer>
     <nav aria-label="页脚导航" style="margin-bottom: 1rem;">
-      <a href="./">⚡ v1.3.0 最新宣传页</a>
-      <a href="./v1-2.html">📜 v1.2.0 历史页</a>
-      <a href="./v1-1.html">📜 v1.1.0 历史页</a>
-      <a href="./v1-0.html">📜 v1.0.0 历史首发页</a>
-      <a href="./app">🎮 在线演练场</a>
+      <a href="./">v1.3.0 最新宣传页</a>
+      <a href="./v1-2.html">v1.2.0 历史页</a>
+      <a href="./v1-1.html">v1.1.0 历史页</a>
+      <a href="./v1-0.html">v1.0.0 历史首发页</a>
+      <a href="./app">在线演练场</a>
       <a href="https://github.com/yiyisf/reactflow-ui" target="_blank" rel="noreferrer">GitHub 仓库</a>
       <a href="https://www.npmjs.com/package/@yiyi_zhang/reactflow-ui" target="_blank" rel="noreferrer">npm 包主页</a>
     </nav>
@@ -1499,25 +1477,25 @@
         navigator.clipboard.writeText(text).then(done, () => { btn.textContent = '请手动复制'; setTimeout(() => { btn.textContent = orig; }, 1500); });
       } catch (e) { btn.textContent = '请手动复制'; setTimeout(() => { btn.textContent = orig; }, 1500); }
     }
-    document.getElementById('copy-install').addEventListener('click', (e) => copyText(document.getElementById('cli-cmd').textContent, e.currentTarget, '✓ 已复制'));
+    document.getElementById('copy-install').addEventListener('click', (e) => copyText(document.getElementById('cli-cmd').textContent, e.currentTarget, '已复制'));
 
     // ---- 版本固定演示 ----
     const QUERY_CI = 'std-L1-配置管理-cmdb-query_ci';
     const SNAPSHOT = 'std-L1-云资源-ecs-snapshot';
     const pinStates = {
       pinned: {
-        icon: '🗂️', title: '查询配置项', name: QUERY_CI, version: 1,
-        badges: '<span class="lib-badge" title="已固定版本 v1，库升级后不会自动变化">📚 流程库 v1</span>',
+        icon: '', title: '查询配置项', name: QUERY_CI, version: 1,
+        badges: '<span class="lib-badge" title="已固定版本 v1，库升级后不会自动变化">流程库 v1</span>',
         note: '已固定 v1：即使库里已发布 v2，这一步的编译结果也不会变化。'
       },
       upgrade: {
-        icon: '🗂️', title: '查询配置项', name: QUERY_CI, version: 1,
-        badges: '<span class="lib-badge" title="已固定版本 v1">📚 流程库 v1</span><button type="button" class="lib-badge up" id="upgrade-badge" aria-haspopup="dialog" title="查看升级差异并升级到库中最新版本">⬆ 有新版本 v2</button>',
+        icon: '', title: '查询配置项', name: QUERY_CI, version: 1,
+        badges: '<span class="lib-badge" title="已固定版本 v1">流程库 v1</span><button type="button" class="lib-badge up" id="upgrade-badge" aria-haspopup="dialog" title="查看升级差异并升级到库中最新版本">有新版本 v2</button>',
         note: '库里有 v2，但当前步骤仍按 v1 编译。点击黄色徽标查看升级差异。'
       },
       unavailable: {
-        icon: '📸', title: '云主机快照', name: SNAPSHOT, version: 1,
-        badges: '<span class="lib-badge" title="已固定版本 v1">📚 流程库 v1</span><span class="lib-badge bad" title="固定版本在库中不存在、已撤回或已下线">⚠ 版本不可用</span>',
+        icon: '', title: '云主机快照', name: SNAPSHOT, version: 1,
+        badges: '<span class="lib-badge" title="已固定版本 v1">流程库 v1</span><span class="lib-badge bad" title="固定版本在库中不存在、已撤回或已下线">版本不可用</span>',
         note: '演示库里 v1 已被治理服务撤回。步骤保持原样编译，不会自动改版本，由你决定如何处理。'
       }
     };
@@ -1534,7 +1512,7 @@
       $('ms-title').textContent = s.title;
       $('ms-name').textContent = s.name;
       if (pinState === 'upgrade' && upgraded) {
-        $('ms-badges').innerHTML = '<span class="lib-badge" title="已固定版本 v2">📚 流程库 v2</span><span class="lib-badge ok">✓ 已升级</span>';
+        $('ms-badges').innerHTML = '<span class="lib-badge" title="已固定版本 v2">流程库 v2</span><span class="lib-badge ok">已升级</span>';
         renderCompile(s.name, 2, true);
         $('ms-note').textContent = '升级由你确认后才发生：同时清理已删除入参的值、补上新增入参的默认值；新增的必填入参仍需你自己填写。';
       } else {
@@ -1574,17 +1552,17 @@
     // ---- 动作选择器：业务域分组 + 层级过滤 ----
     const RANK = { L1: 1, L2: 2, L3: 3 };
     const pickerItems = [
-      { domain: '云资源', level: 'L1', name: '创建云主机', icon: '🖥️' },
-      { domain: '云资源', level: 'L1', name: '云主机快照', icon: '📸' },
-      { domain: '监控运维', level: 'L1', name: '查询监控指标', icon: '📈' },
-      { domain: '监控运维', level: 'L2', name: '告警自动扩容', icon: '📊' },
-      { domain: '通知协助', level: 'L1', name: '发送短信', icon: '📱' },
-      { domain: '通知协助', level: 'L1', name: '发送群消息卡片', icon: '💬' },
-      { domain: '配置管理', level: 'L1', name: '查询配置项', icon: '🗂️' },
-      { domain: '运维操作', level: 'L2', name: '漏洞修复', icon: '🛠️' },
-      { domain: '应用管理', level: 'L3', name: '应用全量发布', icon: '🚀' },
-      { domain: '安全服务', level: 'L1', name: '临时授权', icon: '🔑' },
-      { domain: '数据服务', level: 'L1', name: '导出报表', icon: '📄' }
+      { domain: '云资源', level: 'L1', name: '创建云主机', icon: '' },
+      { domain: '云资源', level: 'L1', name: '云主机快照', icon: '' },
+      { domain: '监控运维', level: 'L1', name: '查询监控指标', icon: '' },
+      { domain: '监控运维', level: 'L2', name: '告警自动扩容', icon: '' },
+      { domain: '通知协助', level: 'L1', name: '发送短信', icon: '' },
+      { domain: '通知协助', level: 'L1', name: '发送群消息卡片', icon: '' },
+      { domain: '配置管理', level: 'L1', name: '查询配置项', icon: '' },
+      { domain: '运维操作', level: 'L2', name: '漏洞修复', icon: '' },
+      { domain: '应用管理', level: 'L3', name: '应用全量发布', icon: '' },
+      { domain: '安全服务', level: 'L1', name: '临时授权', icon: '' },
+      { domain: '数据服务', level: 'L1', name: '导出报表', icon: '' }
     ];
     let currentLevel = '';
     function renderPicker() {
@@ -1650,7 +1628,7 @@
         renderCode();
       });
     });
-    $('copy-code').addEventListener('click', (e) => copyText(codeSnippets[codeKey], e.currentTarget, '✓ 已复制代码'));
+    $('copy-code').addEventListener('click', (e) => copyText(codeSnippets[codeKey], e.currentTarget, '已复制代码'));
     renderCode();
   </script>
 </body>

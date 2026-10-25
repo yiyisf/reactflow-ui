@@ -14,6 +14,24 @@
 6. **亲手试试**：步骤轨道（编号圆点）+ 右侧资源卡片列表。
 7. **页脚**：历史版本、在线演练场、GitHub、npm，文字链接，不用 emoji。
 
+## 主题色轮换
+
+版本宣传页和海报一样使用活动主题色，每个版本换一个，避免审美疲劳。
+
+- 在 `<html>` 上写 `data-mode="dark" data-campaign="<主题>"`，并引入 `/src/styles/cmaster-tokens.css` 与 `/src/marketing/campaign.css`。页面里的强调色一律用 `--a`（主题色）、`--a-hi`（渐变与悬停）、`--on`（主题色实底上的文字），其余颜色用 `--cm-*` tokens。
+- 先按版本主题从对照表里选（Ember 发布与总览、Glacier 数据与集成、Nebula AI、Signal 里程碑与数字、Solar 活动与培训）；几个都合适时可以随机选，但**不能与上一个版本相同**。
+- 标志始终是品牌橙；非 Ember 主题时，标志是页面里唯一的橙色。成功 / 失败 / 警告等状态色保持语义，不跟主题色走。
+- `src/styles/releasePages.test.ts` 会检查：每页一个主题色、相邻版本不重复、没有 emoji、颜色只来自 tokens（标志除外）。
+
+| 版本 | 页面 | 主题色 |
+|---|---|---|
+| v1.0.0 | `v1-0.html` | Ember |
+| v1.1.0 | `v1-1.html` | Nebula |
+| v1.2.0 | `v1-2.html` | Signal |
+| v1.3.0 | `index.html` | Glacier |
+
+发新版本时：把当前 `index.html` 另存为 `v1-<n>.html` 归档，新首页选一个与 v1.3.0 不同的主题色，并在上表加一行。
+
 ## Bento 网格
 
 - 12 列网格，间距 `space-4`。常用组合：8 + 4（主卡 + 侧卡）、4 + 4 + 4（三张特性卡）、3 × 4（数字条）、12（全宽演示）。

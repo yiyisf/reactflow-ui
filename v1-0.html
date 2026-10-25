@@ -1,49 +1,29 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-mode="dark" data-campaign="ember">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
   <title>[Product Launch] Conductor Workflow IDE v1.0 GA · 让工作流编排与联调从 4.5 小时缩短至 12 分钟</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="/src/styles/cmaster-tokens.css" />
+  <link rel="stylesheet" href="/src/marketing/campaign.css" />
   <style>
     /* ==========================================================================
        STYLE: Bento Launchpad (现代暗黑流光发布风 / 开发者产品推广)
        SCENARIO: Conductor Workflow IDE (@yiyi_zhang/reactflow-ui) v1.0.0 GA 正式发布页
        CORE RULE: 拒绝枯燥功能罗列！首屏直给 Before vs. After 耗时对比、一行命令极速体验、可拖动 ROI 收益计算器
        ========================================================================== */
-    :root {
-      --bg-dark: #06080F;
-      --bg-card: #0E1322;
-      --bg-card-hover: #141C32;
-      --bg-panel: #090D18;
-      --bg-glass: rgba(14, 19, 34, 0.82);
-
-      --border-dim: #1E2942;
-      --border-glow: #6366F1;
-
-      --text-white: #F8FAFC;
-      --text-body: #94A3B8;
-      --text-muted: #64748B;
-
-      --brand-primary: #6366F1;
-      --brand-cyan: #06B6D4;
-      --brand-emerald: #10B981;
-      --brand-amber: #F59E0B;
-      --brand-rose: #F43F5E;
-
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-
-      --radius-md: 12px;
-      --radius-lg: 18px;
-    }
+    /* colours, fonts and radii come from src/marketing/campaign.css */
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background:
-        radial-gradient(ellipse 85% 55% at 50% -10%, rgba(99, 102, 241, 0.25), transparent 70%),
-        radial-gradient(ellipse 50% 40% at 85% 20%, rgba(6, 182, 212, 0.12), transparent 65%),
+        radial-gradient(ellipse 85% 55% at 50% -10%, color-mix(in srgb, var(--a) 25%, transparent), transparent 70%),
+        radial-gradient(ellipse 50% 40% at 85% 20%, color-mix(in srgb, var(--a) 12%, transparent), transparent 65%),
         var(--bg-dark);
       color: var(--text-white);
       font-family: var(--font-sans);
@@ -56,7 +36,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(6, 8, 15, 0.86);
+      background: var(--cm-overlay);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border-dim);
       padding: 0.75rem 2rem;
@@ -88,9 +68,9 @@
       font-family: var(--font-mono);
       font-size: 0.74rem;
       font-weight: 700;
-      color: #A5B4FC;
-      background: rgba(99, 102, 241, 0.16);
-      border: 1px solid rgba(99, 102, 241, 0.42);
+      color: var(--a);
+      background: color-mix(in srgb, var(--a) 16%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 42%, transparent);
       padding: 0.18rem 0.68rem;
       border-radius: 999px;
     }
@@ -102,7 +82,7 @@
     }
 
     .ghost-btn {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-highlight);
       color: var(--text-body);
       border: 1px solid var(--border-dim);
       padding: 0.44rem 0.9rem;
@@ -121,7 +101,7 @@
 
     .cta-btn {
       background: linear-gradient(135deg, var(--brand-primary), var(--brand-cyan));
-      color: #FFF;
+      color: var(--on);
       border: none;
       padding: 0.46rem 1.05rem;
       border-radius: 8px;
@@ -156,8 +136,8 @@
       font-family: var(--font-mono);
       font-size: 0.78rem;
       color: var(--brand-cyan);
-      background: rgba(6, 182, 212, 0.1);
-      border: 1px solid rgba(6, 182, 212, 0.32);
+      background: color-mix(in srgb, var(--a) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 32%, transparent);
       padding: 0.3rem 0.95rem;
       border-radius: 999px;
       margin-bottom: 1rem;
@@ -169,7 +149,7 @@
       font-weight: 800;
       letter-spacing: -0.025em;
       margin-bottom: 0.95rem;
-      background: linear-gradient(180deg, #FFFFFF 0%, #A5B4FC 100%);
+      background: linear-gradient(180deg, var(--cm-text-primary) 0%, var(--a) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -194,7 +174,7 @@
     .pm-tabs {
       display: inline-flex;
       gap: 0.35rem;
-      background: rgba(14, 19, 34, 0.9);
+      background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent);
       padding: 0.22rem;
       border-radius: 8px;
       border: 1px solid var(--border-dim);
@@ -213,8 +193,8 @@
     }
 
     .pm-tab.active {
-      background: rgba(99, 102, 241, 0.22);
-      color: #C7D2FE;
+      background: color-mix(in srgb, var(--a) 22%, transparent);
+      color: var(--a);
     }
 
     .install-shell {
@@ -223,12 +203,12 @@
       gap: 0.9rem;
       background: var(--bg-panel);
       border: 1px solid var(--border-glow);
-      box-shadow: 0 0 32px rgba(99, 102, 241, 0.22);
+      box-shadow: 0 0 32px color-mix(in srgb, var(--a) 22%, transparent);
       padding: 0.62rem 0.8rem 0.62rem 1.2rem;
       border-radius: 10px;
       font-family: var(--font-mono);
       font-size: 0.88rem;
-      color: #E2E8F0;
+      color: var(--text-primary);
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -236,9 +216,9 @@
     .install-shell .prompt-char { color: var(--brand-cyan); user-select: none; font-weight: 700; }
 
     .copy-cli-btn {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(6, 182, 212, 0.28));
-      border: 1px solid rgba(99, 102, 241, 0.5);
-      color: #FFF;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--a) 28%, transparent), color-mix(in srgb, var(--a) 28%, transparent));
+      border: 1px solid color-mix(in srgb, var(--a) 50%, transparent);
+      color: var(--text-primary);
       padding: 0.36rem 0.8rem;
       border-radius: 6px;
       font-size: 0.76rem;
@@ -269,8 +249,8 @@
     }
 
     .fs-panel.roi-highlight {
-      border-color: rgba(99, 102, 241, 0.45);
-      background: linear-gradient(155deg, rgba(99, 102, 241, 0.1) 0%, var(--bg-card) 65%);
+      border-color: color-mix(in srgb, var(--a) 45%, transparent);
+      background: linear-gradient(155deg, color-mix(in srgb, var(--a) 10%, transparent) 0%, var(--bg-card) 65%);
     }
 
     .panel-badge-row {
@@ -293,9 +273,9 @@
       font-family: var(--font-mono);
       font-size: 0.74rem;
       font-weight: 800;
-      color: #34D399;
-      background: rgba(16, 185, 129, 0.14);
-      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: var(--a);
+      background: color-mix(in srgb, var(--a) 14%, transparent);
+      border: 1px solid color-mix(in srgb, var(--a) 40%, transparent);
       padding: 0.15rem 0.6rem;
       border-radius: 999px;
       font-variant-numeric: tabular-nums;
@@ -323,8 +303,8 @@
     }
 
     .ba-box.after {
-      border-color: rgba(16, 185, 129, 0.45);
-      background: linear-gradient(165deg, rgba(16, 185, 129, 0.09) 0%, var(--bg-panel) 70%);
+      border-color: color-mix(in srgb, var(--cm-status-success) 45%, transparent);
+      background: linear-gradient(165deg, color-mix(in srgb, var(--cm-status-success) 9%, transparent) 0%, var(--bg-panel) 70%);
     }
 
     .ba-head {
@@ -335,7 +315,7 @@
       font-weight: 700;
       margin-bottom: 0.65rem;
       padding-bottom: 0.45rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      border-bottom: 1px solid var(--cm-border-subtle);
     }
 
     .ba-time {
@@ -352,7 +332,7 @@
       font-size: 0.78rem;
       color: var(--text-body);
       padding: 0.36rem 0;
-      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+      border-bottom: 1px dashed var(--cm-border-subtle);
       font-variant-numeric: tabular-nums;
     }
 
@@ -396,8 +376,8 @@
     }
 
     .roi-kpi-item {
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: var(--bg-highlight);
+      border: 1px solid var(--cm-border-subtle);
       border-radius: 8px;
       padding: 0.55rem 0.65rem;
       text-align: left;
@@ -537,7 +517,7 @@
     }
 
     .preset-chip {
-      background: rgba(255, 255, 255, 0.05);
+      background: var(--bg-highlight);
       border: 1px solid var(--border-dim);
       color: var(--text-body);
       padding: 0.3rem 0.7rem;
@@ -549,9 +529,9 @@
     }
 
     .preset-chip.active {
-      background: rgba(99, 102, 241, 0.22);
+      background: color-mix(in srgb, var(--a) 22%, transparent);
       border-color: var(--brand-primary);
-      color: #FFF;
+      color: var(--text-primary);
     }
 
     .sandbox-console {
@@ -562,7 +542,7 @@
       font-size: 0.76rem;
       padding-top: 0.55rem;
       border-top: 1px dashed var(--border-dim);
-      color: #CBD5E1;
+      color: var(--text-secondary);
       font-variant-numeric: tabular-nums;
     }
 
@@ -577,7 +557,7 @@
     }
 
     .wlsp-input-line {
-      color: #E2E8F0;
+      color: var(--text-primary);
       padding-bottom: 0.45rem;
       border-bottom: 1px solid var(--border-dim);
       margin-bottom: 0.45rem;
@@ -588,8 +568,8 @@
       justify-content: space-between;
       padding: 0.28rem 0.45rem;
       border-radius: 5px;
-      background: rgba(99, 102, 241, 0.16);
-      color: #C7D2FE;
+      background: color-mix(in srgb, var(--a) 16%, transparent);
+      color: var(--a);
       margin-bottom: 0.22rem;
     }
 
@@ -614,7 +594,7 @@
 
     .gantt-track {
       height: 10px;
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--bg-highlight);
       border-radius: 999px;
       position: relative;
       overflow: hidden;
@@ -669,7 +649,7 @@
       padding: 1.4rem 1.5rem;
       font-family: var(--font-mono);
       font-size: 0.82rem;
-      color: #E2E8F0;
+      color: var(--text-primary);
       white-space: pre-wrap;
       line-height: 1.65;
       overflow-x: auto;
@@ -727,18 +707,18 @@
     }
 
     @media print {
-      body { background: #FFF; color: #000; }
-      .launch-nav { position: static; background: #FFF; }
-      .fs-panel, .bento-box, .impact-card, .quickstart-box { border-color: #CBD5E1; background: #FFF; }
+      body { background: var(--cm-surface-1); color: var(--text-primary); }
+      .launch-nav { position: static; background: var(--cm-surface-1); }
+      .fs-panel, .bento-box, .impact-card, .quickstart-box { border-color: var(--border-primary); background: var(--cm-surface-1); }
     }
   </style>
 </head>
 <body>
   <!-- 历史版本提示条 -->
-  <div style="background: linear-gradient(90deg, #1e1b4b, #312e81); border-bottom: 1px solid #4338ca; padding: 0.5rem 1.5rem; text-align: center; font-size: 0.84rem; color: #c7d2fe; display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; z-index: 200; position: relative;">
-    <span>📜 <strong>历史版本回顾</strong>：您当前正在查阅 Conductor IDE v1.0.0 历史首发宣传页。</span>
-    <a href="./" style="color: #67e8f9; font-weight: 700; text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;">
-      ⚡ 点击进入最新发布的 v1.3.0「自助接入」发布宣传页 →
+  <div style="background: linear-gradient(90deg, var(--bg-secondary), var(--bg-secondary)); border-bottom: 1px solid var(--a); padding: 0.5rem 1.5rem; text-align: center; font-size: 0.84rem; color: var(--a); display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap; z-index: 200; position: relative;">
+    <span><strong>历史版本回顾</strong>：您当前正在查阅 Conductor IDE v1.0.0 历史首发宣传页。</span>
+    <a href="./" style="color: var(--a); font-weight: 700; text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;">
+      点击进入最新发布的 v1.3.0「自助接入」发布宣传页 →
     </a>
   </div>
 
@@ -754,13 +734,13 @@
         </svg>
         <span style="font-weight:800; letter-spacing:-0.02em;"><span style="color:#ff6a13;">C</span>MASTER</span>
       </a>
-      <a href="./" class="version-pill" style="text-decoration:none; color: #a5b4fc;" title="点击切换至最新 v1.3.0 宣传页">
-        📜 RELEASE v1.0.0 GA (点击切换至最新 v1.3.0 ⚡)
+      <a href="./" class="version-pill" style="text-decoration:none; color: var(--a);" title="点击切换至最新 v1.3.0 宣传页">
+        RELEASE v1.0.0 GA (点击切换至最新 v1.3.0 )
       </a>
       <span style="color:var(--text-muted);">@yiyi_zhang/reactflow-ui · 下一代 AI 原生工作流编排与本地确定性沙箱 IDE</span>
     </div>
     <div class="nav-right">
-      <a href="./app" class="ghost-btn">🎮 进入在线交互演练场</a>
+      <a href="./app" class="ghost-btn">进入在线交互演练场</a>
       <button class="cta-btn" onclick="document.getElementById('quickstart').scrollIntoView({behavior:'smooth'})">
         30 秒极速接入 →
       </button>
@@ -772,7 +752,7 @@
          L1 首屏决策层：直击痛点的价值主张 + 一行命令极速体验 + Before/After + ROI 计算器
          ======================================================================== -->
     <section class="hero-section">
-      <div class="hero-eyebrow">🚀 Conductor Workflow IDE 1.0 正式发布 · 终结“手搓千行 JSON + 苦等测试环境联调”</div>
+      <div class="hero-eyebrow">Conductor Workflow IDE 1.0 正式发布 · 终结“手搓千行 JSON + 苦等测试环境联调”</div>
       <h1 class="hero-title">把 4.5 小时的工作流手写排错与部署联调，压缩成 12 分钟的零延迟闭环</h1>
       <p class="hero-subtitle">
         为什么工作流推进慢？因为过去工程师 80% 的时间浪费在<strong>手写 `${taskRef.output}` 拼写排错</strong>与<strong>等待后端预发环境验证分支逻辑</strong>。v1.0 内置 <strong>W-LSP 确定性语言服务</strong>与<strong>浏览器 0ms 确定性沙箱引擎</strong>，在前端即可完成全分支故障注入演练与 AI 协同建模。
@@ -801,7 +781,7 @@
         <div>
           <div class="panel-badge-row">
             <span class="bento-tag">Before vs. After · 单条 15 节点工作流交付耗时实测</span>
-            <span class="speedup-pill">⚡ 提效 95.5% (4.5h → 12min)</span>
+            <span class="speedup-pill">提效 95.5% (4.5h → 12min)</span>
           </div>
           <div class="fs-title">拒绝自嗨式架构空谈：看看工程师每天真实省下的时间</div>
         </div>
@@ -809,32 +789,32 @@
         <div class="ba-columns">
           <!-- Before -->
           <div class="ba-box">
-            <div class="ba-head" style="color:#FB7185;">
-              <span>❌ 传统手搓 JSON + 预发联调</span>
+            <div class="ba-head" style="color:var(--cm-status-failed);">
+              <span>传统手搓 JSON + 预发联调</span>
               <span class="ba-time">4.5 小时</span>
             </div>
             <div class="ba-step">
               <span>1. 手写 DSL 拓扑与嵌套 SWITCH/DO_WHILE</span>
-              <strong style="color:#FB7185;">~75 min</strong>
+              <strong style="color:var(--cm-status-failed);">~75 min</strong>
             </div>
             <div class="ba-step">
               <span>2. 翻找上游文档核对 ${taskRef.output.xxx}</span>
-              <strong style="color:#FB7185;">~50 min</strong>
+              <strong style="color:var(--cm-status-failed);">~50 min</strong>
             </div>
             <div class="ba-step">
               <span>3. 部署测试环境造数据验证异常/超时分支</span>
-              <strong style="color:#FB7185;">~110 min</strong>
+              <strong style="color:var(--cm-status-failed);">~110 min</strong>
             </div>
             <div class="ba-step">
               <span>4. 修改节点引用名导致下游断链返工排查</span>
-              <strong style="color:#FB7185;">~35 min</strong>
+              <strong style="color:var(--cm-status-failed);">~35 min</strong>
             </div>
           </div>
 
           <!-- After -->
           <div class="ba-box after">
             <div class="ba-head" style="color:var(--brand-emerald);">
-              <span>✅ Workflow IDE v1.0 闭环流</span>
+              <span>Workflow IDE v1.0 闭环流</span>
               <span class="ba-time">12 分钟</span>
             </div>
             <div class="ba-step">
@@ -862,7 +842,7 @@
         <div>
           <div class="panel-badge-row">
             <span class="bento-tag">Interactive ROI Calculator · 团队收益实时测算</span>
-            <span style="font-family:var(--font-mono); font-size:0.72rem; color:#A5B4FC;">支持双滑块拖动</span>
+            <span style="font-family:var(--font-mono); font-size:0.72rem; color:var(--a);">支持双滑块拖动</span>
           </div>
           <div class="fs-title">拖动滑块，立即测算您的团队接入后每月释放的研发产能</div>
         </div>
@@ -873,7 +853,7 @@
             <input id="dev-slider" type="range" min="2" max="150" value="20" oninput="recalcROI()" />
           </div>
           <div class="slider-row">
-            <span>人均每月新增/变更流程：<strong id="wf-count-label" style="color:#A5B4FC;">4 条 / 月</strong></span>
+            <span>人均每月新增/变更流程：<strong id="wf-count-label" style="color:var(--a);">4 条 / 月</strong></span>
             <input id="wf-slider" type="range" min="1" max="20" value="4" oninput="recalcROI()" />
           </div>
 
@@ -900,22 +880,22 @@
       <div class="impact-card">
         <div class="impact-num">0 ms</div>
         <div class="impact-label">浏览器本地确定性沙箱试跑</div>
-        <div class="impact-sub">✓ 无需后端服务即可跑通全分支</div>
+        <div class="impact-sub">无需后端服务即可跑通全分支</div>
       </div>
       <div class="impact-card">
         <div class="impact-num">100%</div>
         <div class="impact-label">跨节点参数引用断链自动拦截</div>
-        <div class="impact-sub">★ W-LSP 拓扑祖先推导 + 自动重命名</div>
+        <div class="impact-sub">W-LSP 拓扑祖先推导 + 自动重命名</div>
       </div>
       <div class="impact-card">
         <div class="impact-num">3 级</div>
         <div class="impact-label">角色视图与语义缩放 (LOD)</div>
-        <div class="impact-sub">📋 业务 / 🔧 标准 / 💻 全开发同图协同</div>
+        <div class="impact-sub">业务 / 标准 / 全开发同图协同</div>
       </div>
       <div class="impact-card">
         <div class="impact-num">-60 MB</div>
         <div class="impact-label">移除外部冗余依赖瘦身</div>
-        <div class="impact-sub">⚡ 原生 Dagre SVG 引擎 + 159 项单测全绿</div>
+        <div class="impact-sub">原生 Dagre SVG 引擎 + 159 项单测全绿</div>
       </div>
     </section>
 
@@ -936,53 +916,53 @@
           <div class="bento-tag">Pillar 01 · In-Browser Deterministic Sandbox &amp; Mock Console</div>
           <div class="bento-h3">痛点终结：无需部署测试环境，在浏览器里注入 Mock 数据与节点故障一键试跑</div>
           <p class="bento-p">
-            以前为了验证“支付超时后是否能正确走退款补偿分支”，需要改代码、发预发、造脏数据。现在打开 <strong>🧪 人工模拟数据配置台</strong>，自定义 <code>workflow.input</code>、覆写单节点输出或直接注入 <code>FAILED / TIMED_OUT</code>，0ms 即可在画布上验证整条分支走向：
+            以前为了验证“支付超时后是否能正确走退款补偿分支”，需要改代码、发预发、造脏数据。现在打开 <strong>人工模拟数据配置台</strong>，自定义 <code>workflow.input</code>、覆写单节点输出或直接注入 <code>FAILED / TIMED_OUT</code>，0ms 即可在画布上验证整条分支走向：
           </p>
         </div>
 
         <div class="mini-sandbox">
           <div class="sandbox-preset-bar">
-            <button class="preset-chip active" onclick="runMiniSandbox('vip', this)">⚡ 场景 A：模拟 VIP 订单正常履约 (amount=1999)</button>
-            <button class="preset-chip" onclick="runMiniSandbox('fail', this)">💥 场景 B：向支付节点注入 502 TIMED_OUT 故障</button>
-            <button class="preset-chip" onclick="runMiniSandbox('loop', this)">🔄 场景 C：模拟 DO_WHILE 库存轮询 3 次迭代</button>
+            <button class="preset-chip active" onclick="runMiniSandbox('vip', this)">场景 A：模拟 VIP 订单正常履约 (amount=1999)</button>
+            <button class="preset-chip" onclick="runMiniSandbox('fail', this)">场景 B：向支付节点注入 502 TIMED_OUT 故障</button>
+            <button class="preset-chip" onclick="runMiniSandbox('loop', this)">场景 C：模拟 DO_WHILE 库存轮询 3 次迭代</button>
           </div>
 
           <!-- Interactive SVG Topology Preview -->
           <svg viewBox="0 0 680 86" style="width:100%; height:82px; display:block;">
             <!-- Edges -->
-            <line id="sb-edge-1" x1="135" y1="42" x2="215" y2="42" stroke="#10B981" stroke-width="2.5" />
-            <line id="sb-edge-2" x1="345" y1="42" x2="425" y2="22" stroke="#10B981" stroke-width="2.5" />
-            <line id="sb-edge-3" x1="345" y1="42" x2="425" y2="66" stroke="#334155" stroke-width="2" stroke-dasharray="4,4" />
-            <line id="sb-edge-4" x1="545" y1="22" x2="590" y2="42" stroke="#10B981" stroke-width="2.5" />
+            <line id="sb-edge-1" x1="135" y1="42" x2="215" y2="42" stroke-width="2.5" style="stroke: var(--cm-status-success)" />
+            <line id="sb-edge-2" x1="345" y1="42" x2="425" y2="22" stroke-width="2.5" style="stroke: var(--cm-status-success)" />
+            <line id="sb-edge-3" x1="345" y1="42" x2="425" y2="66" stroke-width="2" stroke-dasharray="4,4" style="stroke: var(--text-secondary)" />
+            <line id="sb-edge-4" x1="545" y1="22" x2="590" y2="42" stroke-width="2.5" style="stroke: var(--cm-status-success)" />
 
             <!-- Node 1: verify_order -->
-            <rect x="10" y="20" width="125" height="44" rx="8" fill="#0E1726" stroke="#10B981" stroke-width="2" />
-            <text x="22" y="39" fill="#F8FAFC" font-size="11" font-weight="700">1. verify_order</text>
-            <text x="22" y="55" fill="#34D399" font-size="10" font-family="monospace">COMPLETED · 45ms</text>
+            <rect x="10" y="20" width="125" height="44" rx="8" stroke-width="2" style="fill: var(--bg-secondary); stroke: var(--cm-status-success)" />
+            <text x="22" y="39" font-size="11" font-weight="700" style="fill: var(--bg-primary)">1. verify_order</text>
+            <text x="22" y="55" font-size="10" font-family="monospace" style="fill: var(--cm-status-success)">COMPLETED · 45ms</text>
 
             <!-- Node 2: charge_card -->
-            <rect id="sb-node-2" x="215" y="20" width="130" height="44" rx="8" fill="#0E1726" stroke="#10B981" stroke-width="2" />
-            <text x="227" y="39" fill="#F8FAFC" font-size="11" font-weight="700">2. charge_card</text>
-            <text id="sb-node-2-sub" x="227" y="55" fill="#34D399" font-size="10" font-family="monospace">COMPLETED · 120ms</text>
+            <rect id="sb-node-2" x="215" y="20" width="130" height="44" rx="8" stroke-width="2" style="fill: var(--bg-secondary); stroke: var(--cm-status-success)" />
+            <text x="227" y="39" font-size="11" font-weight="700" style="fill: var(--bg-primary)">2. charge_card</text>
+            <text id="sb-node-2-sub" x="227" y="55" font-size="10" font-family="monospace" style="fill: var(--cm-status-success)">COMPLETED · 120ms</text>
 
             <!-- Node 3A: ship_vip -->
-            <rect id="sb-node-3a" x="425" y="4" width="120" height="36" rx="7" fill="#0E1726" stroke="#10B981" stroke-width="2" />
-            <text x="435" y="20" fill="#F8FAFC" font-size="10.5" font-weight="700">3a. vip_dispatch</text>
-            <text id="sb-node-3a-sub" x="435" y="33" fill="#34D399" font-size="9.5" font-family="monospace">COMPLETED · 80ms</text>
+            <rect id="sb-node-3a" x="425" y="4" width="120" height="36" rx="7" stroke-width="2" style="fill: var(--bg-secondary); stroke: var(--cm-status-success)" />
+            <text x="435" y="20" font-size="10.5" font-weight="700" style="fill: var(--bg-primary)">3a. vip_dispatch</text>
+            <text id="sb-node-3a-sub" x="435" y="33" font-size="9.5" font-family="monospace" style="fill: var(--cm-status-success)">COMPLETED · 80ms</text>
 
             <!-- Node 3B: refund_compensate -->
-            <rect id="sb-node-3b" x="425" y="48" width="120" height="36" rx="7" fill="#0E1726" stroke="#334155" stroke-width="1.5" />
-            <text x="435" y="64" fill="#94A3B8" font-size="10.5" font-weight="700">3b. compensate</text>
-            <text id="sb-node-3b-sub" x="435" y="77" fill="#64748B" font-size="9.5" font-family="monospace">SKIPPED</text>
+            <rect id="sb-node-3b" x="425" y="48" width="120" height="36" rx="7" stroke-width="1.5" style="fill: var(--bg-secondary); stroke: var(--text-secondary)" />
+            <text x="435" y="64" font-size="10.5" font-weight="700" style="fill: var(--text-muted)">3b. compensate</text>
+            <text id="sb-node-3b-sub" x="435" y="77" font-size="9.5" font-family="monospace" style="fill: var(--text-muted)">SKIPPED</text>
 
             <!-- Node 4: notify_user -->
-            <rect id="sb-node-4" x="590" y="20" width="82" height="44" rx="8" fill="#0E1726" stroke="#10B981" stroke-width="2" />
-            <text x="600" y="39" fill="#F8FAFC" font-size="11" font-weight="700">4. notify</text>
-            <text id="sb-node-4-sub" x="600" y="55" fill="#34D399" font-size="9.5" font-family="monospace">DONE · 30ms</text>
+            <rect id="sb-node-4" x="590" y="20" width="82" height="44" rx="8" stroke-width="2" style="fill: var(--bg-secondary); stroke: var(--cm-status-success)" />
+            <text x="600" y="39" font-size="11" font-weight="700" style="fill: var(--bg-primary)">4. notify</text>
+            <text id="sb-node-4-sub" x="600" y="55" font-size="9.5" font-family="monospace" style="fill: var(--cm-status-success)">DONE · 30ms</text>
           </svg>
 
           <div class="sandbox-console">
-            <span id="sb-console-msg">✅ 沙箱推演完成：SWITCH 命中 [vip] 分支，全链路 4 节点执行成功</span>
+            <span id="sb-console-msg">沙箱推演完成：SWITCH 命中 [vip] 分支，全链路 4 节点执行成功</span>
             <span id="sb-console-time" style="color:var(--brand-cyan);">总耗时: 275ms</span>
           </div>
         </div>
@@ -1001,11 +981,11 @@
           <div class="wlsp-input-line">url: "https://api.pay/v1/<span style="color:var(--brand-cyan);">${charge_</span>|"</div>
           <div class="wlsp-pop-item">
             <span>charge_card.output.txId</span>
-            <span style="color:#34D399;">⚡ "tx_99201"</span>
+            <span style="color:var(--cm-status-success);">"tx_99201"</span>
           </div>
-          <div class="wlsp-pop-item" style="background:transparent; color:#94A3B8;">
+          <div class="wlsp-pop-item" style="background:transparent; color:var(--text-muted);">
             <span>workflow.input.orderId</span>
-            <span style="color:#A5B4FC;">⚡ "ORD-2026"</span>
+            <span style="color:var(--a);">"ORD-2026"</span>
           </div>
         </div>
       </div>
@@ -1016,13 +996,13 @@
           <div class="bento-tag">Pillar 03 · Cmd+K Copilot &amp; Shadow Diff</div>
           <div class="bento-h3">痛点终结：画布内联 Cmd+K 微调 + 架构级视觉 Diff</div>
           <p class="bento-p">
-            不论在对话栏描述需求，还是选中节点按 <code>Cmd+K</code> 微调，AI 提案都会以 <strong>👻 Shadow Graph</strong> 在画布上高亮 <code>+新增</code> / <code>~修改</code> / <code>-移除</code>，支持逐节点勾选采纳。
+            不论在对话栏描述需求，还是选中节点按 <code>Cmd+K</code> 微调，AI 提案都会以 <strong>Shadow Graph</strong> 在画布上高亮 <code>+新增</code> / <code>~修改</code> / <code>-移除</code>，支持逐节点勾选采纳。
           </p>
         </div>
         <div style="display:flex; gap:0.45rem; font-family:var(--font-mono); font-size:0.75rem;">
-          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:rgba(16,185,129,0.15); color:#34D399;">+2 新增节点</span>
-          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:rgba(245,158,11,0.15); color:#FBBF24;">~1 修改参数</span>
-          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:rgba(244,63,94,0.15); color:#FB7185;">✓ 支持部分采纳</span>
+          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:color-mix(in srgb, var(--cm-status-success) 15%, transparent); color:var(--cm-status-success);">+2 新增节点</span>
+          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:color-mix(in srgb, var(--cm-status-warning) 15%, transparent); color:var(--cm-status-warning);">~1 修改参数</span>
+          <span style="padding:0.22rem 0.55rem; border-radius:6px; background:color-mix(in srgb, var(--cm-status-failed) 15%, transparent); color:var(--cm-status-failed);">支持部分采纳</span>
         </div>
       </div>
 
@@ -1032,34 +1012,34 @@
           <div class="bento-tag">Pillar 04 · Time-Travel Waterfall &amp; Live Split-View Sync</div>
           <div class="bento-h3">痛点终结：拖动毫秒级时间旅行滑块，像看录像一样回放并发分支瓶颈</div>
           <p class="bento-p">
-            面对复杂的 <code>FORK_JOIN</code> 并行分支与 <code>DO_WHILE</code> 多轮循环，底部一键展开<strong>📊 并发甘特瀑布流</strong>。试着拖动下方时间轴滑块，实时观察不同时刻各并行任务的运行状态切换：
+            面对复杂的 <code>FORK_JOIN</code> 并行分支与 <code>DO_WHILE</code> 多轮循环，底部一键展开<strong>并发甘特瀑布流</strong>。试着拖动下方时间轴滑块，实时观察不同时刻各并行任务的运行状态切换：
           </p>
         </div>
 
         <div class="tt-box">
           <div class="slider-row" style="margin-bottom:0.55rem;">
-            <span>🕒 时间旅行回放游标 (<strong id="tt-time-label" style="color:var(--brand-cyan);">T = 280 ms</strong> / 420 ms)</span>
+            <span>时间旅行回放游标 (<strong id="tt-time-label" style="color:var(--brand-cyan);">T = 280 ms</strong> / 420 ms)</span>
             <input type="range" min="0" max="420" value="280" oninput="scrubTimeTravel(this.value)" />
           </div>
           <div class="gantt-row">
             <span>1. verify_order</span>
-            <div class="gantt-track"><div id="gt-1" class="gantt-bar" style="left:0%; width:22%; background:#10B981;"></div></div>
-            <span id="gt-st-1" style="color:#34D399;">DONE</span>
+            <div class="gantt-track"><div id="gt-1" class="gantt-bar" style="left:0%; width:22%; background:var(--cm-status-success);"></div></div>
+            <span id="gt-st-1" style="color:var(--cm-status-success);">DONE</span>
           </div>
           <div class="gantt-row">
             <span>2a. fork_risk</span>
-            <div class="gantt-track"><div id="gt-2" class="gantt-bar" style="left:22%; width:38%; background:#10B981;"></div></div>
-            <span id="gt-st-2" style="color:#34D399;">DONE</span>
+            <div class="gantt-track"><div id="gt-2" class="gantt-bar" style="left:22%; width:38%; background:var(--cm-status-success);"></div></div>
+            <span id="gt-st-2" style="color:var(--cm-status-success);">DONE</span>
           </div>
           <div class="gantt-row">
             <span>2b. fork_quota</span>
-            <div class="gantt-track"><div id="gt-3" class="gantt-bar" style="left:22%; width:55%; background:#3B82F6;"></div></div>
-            <span id="gt-st-3" style="color:#60A5FA;">RUNNING</span>
+            <div class="gantt-track"><div id="gt-3" class="gantt-bar" style="left:22%; width:55%; background:var(--a);"></div></div>
+            <span id="gt-st-3" style="color:var(--a);">RUNNING</span>
           </div>
           <div class="gantt-row" style="margin-bottom:0;">
             <span>3. settle_order</span>
-            <div class="gantt-track"><div id="gt-4" class="gantt-bar" style="left:77%; width:23%; background:#475569; opacity:0.35;"></div></div>
-            <span id="gt-st-4" style="color:#64748B;">PENDING</span>
+            <div class="gantt-track"><div id="gt-4" class="gantt-bar" style="left:77%; width:23%; background:var(--bg-tertiary); opacity:0.35;"></div></div>
+            <span id="gt-st-4" style="color:var(--text-muted);">PENDING</span>
           </div>
         </div>
       </div>
@@ -1109,7 +1089,7 @@ export function MyWorkflowStudio() {
          ======================================================================== -->
     <details class="evidence-drawer">
       <summary>
-        <span>📂 [L3 技术溯源] 查看 v1.0.0 四大核心支柱能力矩阵、包体积基准与全量导出符号表</span>
+        <span>[L3 技术溯源] 查看 v1.0.0 四大核心支柱能力矩阵、包体积基准与全量导出符号表</span>
         <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--brand-cyan);">点击展开 ▾</span>
       </summary>
       <table class="evidence-table">
@@ -1131,13 +1111,13 @@ export function MyWorkflowStudio() {
           <tr>
             <td><strong>流程验证与调试</strong></td>
             <td>必须对接后端 Conductor 实例或仅做简单高亮演示</td>
-            <td><strong>0ms 浏览器确定性沙箱</strong> + 🧪 人工模拟数据/故障注入台 + 📊 时间旅行甘特瀑布流</td>
+            <td><strong>0ms 浏览器确定性沙箱</strong> + 人工模拟数据/故障注入台 + 时间旅行甘特瀑布流</td>
             <td style="color:var(--brand-emerald);">单流程联调耗时从 110min 降至 5min</td>
           </tr>
           <tr>
             <td><strong>AI 协同范式</strong></td>
             <td>仅侧边栏全量替换 JSON，Mermaid 依赖重达 60MB+</td>
-            <td><strong>画布内联 Cmd+K 微调</strong> + 👻 Shadow Graph 部分采纳 + 零依赖 Dagre 原生 SVG 渲染</td>
+            <td><strong>画布内联 Cmd+K 微调</strong> + Shadow Graph 部分采纳 + 零依赖 Dagre 原生 SVG 渲染</td>
             <td style="color:var(--brand-emerald);">npm 安装体积减少 60MB+，首屏零闪烁</td>
           </tr>
           <tr>
@@ -1169,7 +1149,7 @@ export function MyWorkflowStudio() {
       const cmd = document.getElementById('cli-cmd').textContent;
       navigator.clipboard.writeText(cmd);
       const orig = btn.textContent;
-      btn.textContent = "✓ 已复制";
+      btn.textContent = "已复制";
       setTimeout(() => btn.textContent = orig, 1600);
     }
 
@@ -1208,82 +1188,82 @@ export function MyWorkflowStudio() {
       const time = document.getElementById('sb-console-time');
 
       if (scene === 'vip') {
-        n2.setAttribute('stroke', '#10B981');
+        n2.setAttribute('stroke', 'var(--cm-status-success)');
         n2Sub.textContent = 'COMPLETED · 120ms';
-        n2Sub.setAttribute('fill', '#34D399');
+        n2Sub.setAttribute('fill', 'var(--cm-status-success)');
 
-        e2.setAttribute('stroke', '#10B981');
+        e2.setAttribute('stroke', 'var(--cm-status-success)');
         e2.removeAttribute('stroke-dasharray');
-        e3.setAttribute('stroke', '#334155');
+        e3.setAttribute('stroke', 'var(--text-secondary)');
         e3.setAttribute('stroke-dasharray', '4,4');
 
-        n3a.setAttribute('stroke', '#10B981');
+        n3a.setAttribute('stroke', 'var(--cm-status-success)');
         n3aSub.textContent = 'COMPLETED · 80ms';
-        n3aSub.setAttribute('fill', '#34D399');
+        n3aSub.setAttribute('fill', 'var(--cm-status-success)');
 
-        n3b.setAttribute('stroke', '#334155');
+        n3b.setAttribute('stroke', 'var(--text-secondary)');
         n3bSub.textContent = 'SKIPPED';
-        n3bSub.setAttribute('fill', '#64748B');
+        n3bSub.setAttribute('fill', 'var(--text-muted)');
 
-        n4.setAttribute('stroke', '#10B981');
+        n4.setAttribute('stroke', 'var(--cm-status-success)');
         n4Sub.textContent = 'DONE · 30ms';
-        n4Sub.setAttribute('fill', '#34D399');
-        e4.setAttribute('stroke', '#10B981');
+        n4Sub.setAttribute('fill', 'var(--cm-status-success)');
+        e4.setAttribute('stroke', 'var(--cm-status-success)');
 
-        msg.textContent = '✅ 沙箱推演完成：SWITCH 命中 [vip] 分支，全链路 4 节点执行成功';
-        msg.style.color = '#34D399';
+        msg.textContent = '沙箱推演完成：SWITCH 命中 [vip] 分支，全链路 4 节点执行成功';
+        msg.style.color = 'var(--cm-status-success)';
         time.textContent = '总耗时: 275ms';
       } else if (scene === 'fail') {
-        n2.setAttribute('stroke', '#F43F5E');
+        n2.setAttribute('stroke', 'var(--cm-status-failed)');
         n2Sub.textContent = 'TIMED_OUT · 502ms';
-        n2Sub.setAttribute('fill', '#FB7185');
+        n2Sub.setAttribute('fill', 'var(--cm-status-failed)');
 
-        e2.setAttribute('stroke', '#334155');
+        e2.setAttribute('stroke', 'var(--text-secondary)');
         e2.setAttribute('stroke-dasharray', '4,4');
-        e3.setAttribute('stroke', '#F59E0B');
+        e3.setAttribute('stroke', 'var(--cm-status-warning)');
         e3.removeAttribute('stroke-dasharray');
 
-        n3a.setAttribute('stroke', '#334155');
+        n3a.setAttribute('stroke', 'var(--text-secondary)');
         n3aSub.textContent = 'SKIPPED';
-        n3aSub.setAttribute('fill', '#64748B');
+        n3aSub.setAttribute('fill', 'var(--text-muted)');
 
-        n3b.setAttribute('stroke', '#F59E0B');
+        n3b.setAttribute('stroke', 'var(--cm-status-warning)');
         n3bSub.textContent = 'COMPENSATED · 95ms';
-        n3bSub.setAttribute('fill', '#FBBF24');
+        n3bSub.setAttribute('fill', 'var(--cm-status-warning)');
 
-        n4.setAttribute('stroke', '#F43F5E');
+        n4.setAttribute('stroke', 'var(--cm-status-failed)');
         n4Sub.textContent = 'TERMINATED';
-        n4Sub.setAttribute('fill', '#FB7185');
-        e4.setAttribute('stroke', '#334155');
+        n4Sub.setAttribute('fill', 'var(--cm-status-failed)');
+        e4.setAttribute('stroke', 'var(--text-secondary)');
 
-        msg.textContent = '⚠️ 故障注入生效：charge_card 触发 502 超时，自动路由至 3b. compensate 退款补偿分支';
-        msg.style.color = '#FBBF24';
+        msg.textContent = '故障注入生效：charge_card 触发 502 超时，自动路由至 3b. compensate 退款补偿分支';
+        msg.style.color = 'var(--cm-status-warning)';
         time.textContent = '总耗时: 642ms';
       } else {
-        n2.setAttribute('stroke', '#8B5CF6');
+        n2.setAttribute('stroke', 'var(--a)');
         n2Sub.textContent = 'LOOP [1][2][3] · 210ms';
-        n2Sub.setAttribute('fill', '#C4B5FD');
+        n2Sub.setAttribute('fill', 'var(--a)');
 
-        e2.setAttribute('stroke', '#10B981');
+        e2.setAttribute('stroke', 'var(--cm-status-success)');
         e2.removeAttribute('stroke-dasharray');
-        e3.setAttribute('stroke', '#334155');
+        e3.setAttribute('stroke', 'var(--text-secondary)');
         e3.setAttribute('stroke-dasharray', '4,4');
 
-        n3a.setAttribute('stroke', '#10B981');
+        n3a.setAttribute('stroke', 'var(--cm-status-success)');
         n3aSub.textContent = 'ITER #3 PASS · 65ms';
-        n3aSub.setAttribute('fill', '#34D399');
+        n3aSub.setAttribute('fill', 'var(--cm-status-success)');
 
-        n3b.setAttribute('stroke', '#334155');
+        n3b.setAttribute('stroke', 'var(--text-secondary)');
         n3bSub.textContent = 'SKIPPED';
-        n3bSub.setAttribute('fill', '#64748B');
+        n3bSub.setAttribute('fill', 'var(--text-muted)');
 
-        n4.setAttribute('stroke', '#10B981');
+        n4.setAttribute('stroke', 'var(--cm-status-success)');
         n4Sub.textContent = 'DONE · 30ms';
-        n4Sub.setAttribute('fill', '#34D399');
-        e4.setAttribute('stroke', '#10B981');
+        n4Sub.setAttribute('fill', 'var(--cm-status-success)');
+        e4.setAttribute('stroke', 'var(--cm-status-success)');
 
-        msg.textContent = '🔄 循环推演完成：生成 __1 / __2 / __3 三轮迭代快照，可在节点胶囊一键切片查看';
-        msg.style.color = '#C4B5FD';
+        msg.textContent = '循环推演完成：生成 __1 / __2 / __3 三轮迭代快照，可在节点胶囊一键切片查看';
+        msg.style.color = 'var(--a)';
         time.textContent = '总耗时: 350ms';
       }
     }
@@ -1296,20 +1276,20 @@ export function MyWorkflowStudio() {
         const bar = document.getElementById(id);
         const st = document.getElementById(stId);
         if (t < start) {
-          bar.style.background = '#475569';
+          bar.style.background = 'var(--bg-tertiary)';
           bar.style.opacity = '0.35';
           st.textContent = 'PENDING';
-          st.style.color = '#64748B';
+          st.style.color = 'var(--text-muted)';
         } else if (t >= start && t < end) {
-          bar.style.background = '#3B82F6';
+          bar.style.background = 'var(--a)';
           bar.style.opacity = '1';
           st.textContent = 'RUNNING';
-          st.style.color = '#60A5FA';
+          st.style.color = 'var(--a)';
         } else {
-          bar.style.background = '#10B981';
+          bar.style.background = 'var(--cm-status-success)';
           bar.style.opacity = '1';
           st.textContent = 'DONE';
-          st.style.color = '#34D399';
+          st.style.color = 'var(--cm-status-success)';
         }
       };
 
@@ -1380,7 +1360,7 @@ console.assert(dfg.diagnostics.length === 0, '发现非法参数引用:', dfg.di
       const code = document.getElementById('qs-body').textContent;
       navigator.clipboard.writeText(code);
       const orig = btn.textContent;
-      btn.textContent = "✓ 已复制代码片段";
+      btn.textContent = "已复制代码片段";
       setTimeout(() => btn.textContent = orig, 1600);
     }
   </script>

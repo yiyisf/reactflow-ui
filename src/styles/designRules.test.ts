@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
  * telemetry guard tests, so a regression fails `npm test` before anyone has to spot it on screen.
  */
 const sources = import.meta.glob('../**/*.{ts,tsx,css}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-const files = Object.entries(sources).filter(([path]) => !/\.test\.tsx?$/.test(path) && !path.includes('/styles/cmaster'));
+const files = Object.entries(sources).filter(([path]) => !/\.test\.tsx?$/.test(path) && !/(^|\/)(cmaster-tokens\.css|cmasterTokens\.ts)$/.test(path));
 
 describe('CMASTER rule 6: text on accent fills is never hard-coded white', () => {
     it('no style block pairs an accent background with #fff / white text', () => {
@@ -32,7 +32,8 @@ describe('CMASTER rule 6: text on accent fills is never hard-coded white', () =>
  * The exceptions below are deliberate; anything else that regresses fails `npm test`.
  */
 const COLOUR_EXCEPTIONS: Record<string, string> = {
-    '../styles/tokens.css': 'bridge from legacy variables to --cm-* tokens, including the deprecated blue brand',
+    // import.meta.glob keys files next to this test as './x', everything else as '../dir/x'
+    './tokens.css': 'bridge from legacy variables to --cm-* tokens, including the deprecated blue brand',
     '../components/BrandLogo.tsx': 'logo artwork',
     '../components/ThemeControls.tsx': 'brand swatch for the deprecated blue theme',
 };
@@ -41,7 +42,9 @@ const EMOJI_EXCEPTIONS: Record<string, string> = {
     '../services/ai/toolExecutor.ts': 'tool results read by the model, not shown in the UI',
     '../services/ai/contextEngine.ts': 'context text read by the model, not shown in the UI',
 };
-const isUiSource = (p: string) => /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p) && !p.includes('/styles/cmaster');
+/** Generated token files hold the raw values by design. */
+const isGenerated = (p: string) => /(^|\/)(cmaster-tokens\.css|cmasterTokens\.ts)$/.test(p);
+const isUiSource = (p: string) => /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p) && !isGenerated(p);
 
 const EMOJI_FREE = Object.keys(sources).filter((p) => isUiSource(p) && !p.endsWith('.css') && !(p in EMOJI_EXCEPTIONS));
 

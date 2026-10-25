@@ -8,6 +8,7 @@ import { collectLibraryDomains, filterPickableActions, libraryDomainOf } from '.
 import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
 import { useShallow } from 'zustand/react/shallow';
 import useWorkflowStore from '../../store/workflowStore';
+import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
 /** 单次最多渲染的动作数（流程库可能有上千项）；超出请用搜索缩小范围 */
@@ -179,7 +180,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
               lineHeight: 1,
             }}
           >
-            ✕
+            <X size={16} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
 

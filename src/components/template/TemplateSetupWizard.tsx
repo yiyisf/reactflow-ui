@@ -6,6 +6,7 @@ import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate } from '../../template/types';
 import { applyTemplateVariables } from '../../template/applyTemplate';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
 
 export interface TemplateSetupWizardProps {
@@ -145,6 +146,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
 
           <button
             onClick={onClose}
+            aria-label="关闭"
             style={{
               background: 'none',
               border: 'none',
@@ -153,7 +155,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
               fontSize: 16,
             }}
           >
-            ✕
+            <X size={16} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
 

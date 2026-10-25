@@ -49,7 +49,7 @@ import { useOnboardingController, OnboardingToolbarButtons, OnboardingOverlays }
 import './styles/tokens.css';
 import './styles/executionStyles.css';
 import './components/AiNative/AiNative.css';
-import { ChevronLeft, ChevronRight, Code2, LayoutList, Map as MapIcon, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Code2, LayoutList, Map as MapIcon, MessageSquare, RotateCcw } from 'lucide-react';
 
 /** 恢复横幅文案，如"已恢复刚刚的编辑" / "已恢复 3 分钟前的编辑" */
 function formatRestoredBannerText(savedAt: number): string {
@@ -773,7 +773,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
                         borderBottom: '1px solid var(--border-primary)',
                         color: 'var(--text-secondary)', flexShrink: 0,
                     }}>
-                        <span>↺ {formatRestoredBannerText(restoredDraft.savedAt)}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" />{formatRestoredBannerText(restoredDraft.savedAt)}</span>
                         <button
                             onClick={handleDiscardRestore}
                             style={{

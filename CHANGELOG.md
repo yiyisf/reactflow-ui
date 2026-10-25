@@ -23,6 +23,8 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - 演示站顶栏、示例选择器、文件与演示设置菜单、AI 配置弹窗去掉 emoji；运行态示例用"运行中 / 失败 / 成功"标注状态。`HeaderPopover` 的 `icon` 接受 React 节点。
 - 守卫测试加强：emoji 检查也拦截 ✓ ✕ ✗ ↺ ▶ ⚠ 等文字符号；`components/AiNative` 下所有文件自动纳入"无 emoji"与新增的"无写死颜色"检查。截图回归新增 AI 设计器视图（深 / 浅），浅色图标检查也覆盖 AI 视图。
 
+- **演示站改用 CMASTER 主题**：`DemoApp.css` / `DemoHeader.css` 全部换用 tokens，删除 `.app.light-theme` 平行主题（它用 slate 色重新声明了 `--bg-*` / `--text-*`，优先级高于 CMASTER 浅色主题，导致演示站浅色模式并非 CMASTER 浅色）以及 19 组已无引用的旧样式；AI 已配置状态改为成功色浅底 + 文字，开关、弹出层、搜索框、错误提示随主题切换。`demo/` 纳入"无写死颜色"检查。
+
 ### Fixed
 - 浅色主题下业务卡片等处的图标不可见：宿主页面在 `[data-mode]` 之外解析的深色文字色被浅色 IDE 继承。每个 `[data-mode]` 根节点现在重设 `color: var(--text-primary)`。业务卡片中禁用的上移 / 下移箭头改用 `--cm-text-disabled`，两个主题下都可辨认。
 - AI 面板中把十六进制透明度拼接到颜色字符串上的写法（如 `${color}40`）改为 `color-mix`，避免颜色换成变量后边框失效。

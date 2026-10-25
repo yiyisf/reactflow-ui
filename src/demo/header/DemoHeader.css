@@ -78,8 +78,8 @@
 
 .dh .dh-segmented button.is-on {
   background: var(--color-accent);
-  color: var(--color-on-accent, #fff);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  color: var(--color-on-accent);
+  box-shadow: var(--cm-shadow-card);
 }
 
 /* Active mode is brand orange like every other segment (CMASTER rule 3); no separate business colour. */
@@ -123,15 +123,14 @@
   height: 32px;
   padding: 2px 10px;
   box-sizing: border-box;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border-color);
+  background: var(--cm-surface-0);
+  border: 1px solid var(--border-primary);
   border-radius: 7px;
   transition: border-color 0.2s, background 0.2s;
 }
 
 .dh .dh-search-field:focus-within {
-  border-color: var(--accent-primary);
-  background: rgba(0, 0, 0, 0.3);
+  border-color: var(--color-accent);
 }
 
 .dh .dh-search-field .search-icon {
@@ -174,9 +173,9 @@
 }
 
 .dh .dh-ai-btn.is-configured {
-  background: var(--color-success);
-  border-color: var(--color-success);
-  color: #fff;
+  background: var(--cm-success-tint);
+  border-color: color-mix(in srgb, var(--cm-status-success) 50%, transparent);
+  color: var(--cm-status-success);
 }
 
 .dh .dh-launch {
@@ -184,9 +183,9 @@
   padding: 0;
   justify-content: center;
   text-decoration: none;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2));
-  border-color: rgba(16, 185, 129, 0.5);
-  color: var(--text-primary);
+  background: var(--cm-data-tint);
+  border-color: color-mix(in srgb, var(--cm-data) 45%, transparent);
+  color: var(--cm-data);
 }
 
 .dh .dh-badge-dot {
@@ -196,8 +195,8 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--color-warning, #f59e0b);
-  border: 2px solid var(--bg-secondary);
+  background: var(--cm-status-warning);
+  border: 2px solid var(--cm-surface-1);
   box-sizing: content-box;
 }
 
@@ -210,10 +209,10 @@
   min-width: 170px;
   max-width: calc(100vw - 24px);
   box-sizing: border-box;
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
+  background: var(--cm-surface-1);
+  border: 1px solid var(--border-primary);
   border-radius: 10px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--cm-shadow-float);
   padding: 6px;
   font-size: 13px;
   color: var(--text-primary);
@@ -325,8 +324,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
-  transition: transform 0.15s;
+  background: var(--text-secondary);
+  transition: transform 0.15s, background-color 0.15s;
 }
 
 .dh .dh-toggle.is-on .dh-switch {
@@ -336,6 +335,7 @@
 
 .dh .dh-toggle.is-on .dh-switch-knob {
   transform: translateX(14px);
+  background: var(--color-on-accent);
 }
 
 .dh .dh-row-buttons {
@@ -351,8 +351,8 @@
 }
 
 .dh .dh-row-buttons .mode-btn.is-warn {
-  border-color: var(--color-warning, #f59e0b);
-  color: var(--color-warning, #f59e0b);
+  border-color: var(--cm-status-warning);
+  color: var(--cm-status-warning);
 }
 
 .dh .dh-field {
@@ -368,41 +368,6 @@
   width: 130px;
   max-width: 130px;
 }
-
-/* 浅色主题 */
-.app.light-theme .dh .dh-segmented {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-}
-
-.app.light-theme .dh .dh-segmented button {
-  color: #475569;
-}
-
-/* outranks the rule above, which would otherwise grey out the label on the orange fill */
-.app.light-theme .dh .dh-segmented button.is-on {
-  color: var(--color-on-accent);
-}
-
-.app.light-theme .dh .dh-search-field {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: #cbd5e1;
-}
-
-.app.light-theme .dh .dh-panel {
-  background: #fff;
-  border-color: #cbd5e1;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
-}
-
-.app.light-theme .dh .dh-badge-dot {
-  border-color: #fff;
-}
-
-.app.light-theme .dh .dh-ai-btn.is-configured {
-  color: #fff;
-}
-
 
 /* <=1100px：次要按钮只保留图标 */
 @media (max-width: 1100px) {
@@ -474,8 +439,8 @@
     max-width: none;
     height: 36px;
     z-index: var(--z-popover, 1500);
-    background: var(--bg-secondary);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    background: var(--cm-surface-1);
+    box-shadow: var(--cm-shadow-float);
   }
 
   .dh .dh-sample {

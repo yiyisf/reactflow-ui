@@ -2,6 +2,7 @@ import { WORKFLOW_RULES, TASK_RULES } from './validationRules';
 import { WorkflowDef, TaskDef } from '../types/conductor';
 import { ValidationItem, ValidationResults } from '../types/workflow';
 import { ruleEngine } from '../services/ai/ruleEngine';
+import { buildDataFlowGraph } from '../services/wlsp/workflowLsp';
 
 interface ValidationContext {
     taskRefs: Set<string>;
@@ -98,9 +99,48 @@ export const validateWorkflow = (workflowDef: WorkflowDef | null): ValidationRes
         return { isValid: false, errors, warnings };
     }
 
+    // 全部引用名（结构性校验用）
+    const allRefs = new Set<string>();
+    const collectRefs = (list: TaskDef[] | undefined) => {
+        (list || []).forEach(t => {
+            if (!t) return;
+            if (t.taskReferenceName) allRefs.add(t.taskReferenceName);
+            if (t.decisionCases) Object.values(t.decisionCases).forEach(collectRefs);
+            collectRefs(t.defaultCase);
+            (t.forkTasks || []).forEach(collectRefs);
+            collectRefs(t.loopOver);
+        });
+    };
+    collectRefs(workflowDef.tasks);
+
     // 2. 递归校验任务
     const validateTasksRecursive = (tasks: TaskDef[]) => {
-        tasks.forEach(task => {
+        tasks.forEach((task, index) => {
+            if (!task) return;
+            // 结构：FORK_JOIN / FORK_JOIN_DYNAMIC 后必须紧跟 JOIN（E21）
+            if (task.type === 'FORK_JOIN' || task.type === 'FORK_JOIN_DYNAMIC') {
+                const next = tasks[index + 1];
+                if (!next || next.type !== 'JOIN') {
+                    errors.push({
+                        type: 'TASK',
+                        ref: task.taskReferenceName,
+                        message: `并行任务 "${task.taskReferenceName}" 后面必须紧跟一个 JOIN 任务：请在它之后添加 JOIN，或删除中间插入的任务`,
+                    });
+                }
+            }
+            // 结构：joinOn 只能引用存在的任务（E21）
+            if (Array.isArray(task.joinOn)) {
+                task.joinOn.forEach(ref => {
+                    if (!allRefs.has(ref)) {
+                        errors.push({
+                            type: 'TASK',
+                            ref: task.taskReferenceName,
+                            message: `JOIN 任务 "${task.taskReferenceName}" 的 joinOn 引用了不存在的任务 "${ref}"：请删除该项或改成分支中实际的任务引用名`,
+                        });
+                    }
+                });
+            }
+
             // 执行通用规则
             executeRules(task, TASK_RULES.common as unknown as ValidationRule[], context, { errors, warnings });
 
@@ -129,6 +169,20 @@ export const validateWorkflow = (workflowDef: WorkflowDef | null): ValidationRes
     };
 
     validateTasksRecursive(workflowDef.tasks);
+
+    // 2b. 表达式引用了不存在的任务（${x.output…}，E21）
+    const seenUndefined = new Set<string>();
+    buildDataFlowGraph(workflowDef).diagnostics.forEach(d => {
+        if (d.issue !== 'undefined_ref') return;
+        const key = `${d.taskRef}|${d.expression}`;
+        if (seenUndefined.has(key)) return;
+        seenUndefined.add(key);
+        errors.push({
+            type: 'TASK',
+            ref: d.taskRef,
+            message: `任务 "${d.taskRef}" 的表达式 ${d.expression} 引用了不存在的任务：请改成已有任务的引用名，或先添加该任务`,
+        });
+    });
 
     // 3. 结构性校验 (环路检测)
     const cycleErrors = detectCycles(workflowDef.tasks);

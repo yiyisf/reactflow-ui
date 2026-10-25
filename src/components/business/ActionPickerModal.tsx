@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ActionRegistry } from '../../actions/registry';
 import type { ActionDefinition, ActionCategory } from '../../actions/types';
@@ -18,6 +18,8 @@ export interface ActionPickerModalProps {
   registry: ActionRegistry;
   /** 展示用的步骤序号（从 1 开始） */
   stepNumber: number;
+  /** 插入位置说明（如"分支 VIP · 第 2 步"）；提供时替代"第 N 步" */
+  positionLabel?: string;
   onClose: () => void;
   onSelect: (action: ActionDefinition) => void;
   /**
@@ -37,6 +39,7 @@ export interface ActionPickerModalProps {
 export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
   registry,
   stepNumber,
+  positionLabel,
   onClose,
   onSelect,
   currentWorkflowLevel,
@@ -82,6 +85,20 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
 
   const visibleActions = useMemo(() => filteredActions.slice(0, RENDER_LIMIT), [filteredActions]);
 
+  // Esc 关闭（选择器是模态框，焦点可能在其中任意控件上）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const position = positionLabel || `第 ${stepNumber} 步`;
+
   if (typeof document === 'undefined') return null;
 
   const categoryTabs = [
@@ -118,7 +135,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`选择要插入的业务动作（第 ${stepNumber} 步）`}
+        aria-label={`选择要插入的业务动作（${position}）`}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 760,
@@ -147,7 +164,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
           <div style={{ fontWeight: 600, fontSize: 15, flex: 1, whiteSpace: 'nowrap' }}>
             选择业务动作
             <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>
-              第 {stepNumber} 步
+              {position}
             </span>
           </div>
           <input

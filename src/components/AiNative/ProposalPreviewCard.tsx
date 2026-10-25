@@ -16,6 +16,7 @@ import { workflowToMermaid } from '../../utils/workflowToMermaid';
 import MermaidBlock from './MermaidBlock';
 import type { WorkflowDef } from '../../types/conductor';
 import { CmIcon } from '../icons/CmIcon';
+import { X } from 'lucide-react';
 
 interface ProposalPreviewCardProps {
     proposal: ProposedChange;
@@ -122,7 +123,7 @@ const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, cur
             {showDiagram && mermaidCode && <MermaidBlock code={mermaidCode} />}
 
             <div className="ai-proposal-card-actions">
-                <button className="ai-proposal-btn reject" onClick={onReject}>✕ 拒绝</button>
+                <button className="ai-proposal-btn reject" onClick={onReject}><X size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />拒绝</button>
                 <button
                     className={`ai-proposal-btn accept${isStale ? ' stale' : ''}`}
                     onClick={onAccept}

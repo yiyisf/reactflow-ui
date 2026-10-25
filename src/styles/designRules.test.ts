@@ -48,12 +48,9 @@ const EMOJI_FREE = [
     '../components/business/RunStoryTimeline.tsx',
     '../components/template/TemplateGallery.tsx',
     '../components/template/TemplateSetupWizard.tsx',
-    '../components/AiNative/AgentTimeline.tsx',
-    '../components/AiNative/AiCommandCenter.tsx',
-    '../components/AiNative/ClarificationCard.tsx',
-    '../components/AiNative/ProposalPreviewCard.tsx',
-    '../components/AiNative/WorkflowFormWizard.tsx',
     '../demo/mockGovernance/libraryData.ts',
+    // The whole AI panel (every file in components/AiNative) is migrated.
+    ...Object.keys(sources).filter((p) => p.startsWith('../components/AiNative/') && /\.tsx?$/.test(p) && !/\.test\./.test(p)),
 ];
 
 describe('CMASTER rule 7: no emoji in migrated UI files', () => {
@@ -63,8 +60,28 @@ describe('CMASTER rule 7: no emoji in migrated UI files', () => {
         const hits = text
             .split('\n')
             .map((line, i) => [i + 1, line] as const)
-            .filter(([, line]) => /\p{Extended_Pictographic}/u.test(line))
+            // Extended_Pictographic misses text dingbats such as ✓ ✕ ✗ ↺ ▶ ⚠ that render as ad-hoc icons.
+            .filter(([, line]) => /\p{Extended_Pictographic}|[✓✔✕✖✗✘↺↻▶⏭⏩⚠✦↕↵]/u.test(line))
             .map(([n, line]) => `${n}: ${line.trim()}`);
+        expect(hits).toEqual([]);
+    });
+});
+
+/** Files whose colours are fully tokenized. Add a file here once it has no raw hex / rgb(a) literals left. */
+const TOKEN_ONLY = Object.keys(sources).filter(
+    (p) => p.startsWith('../components/AiNative/') && /\.(tsx?|css)$/.test(p) && !/\.test\./.test(p),
+);
+
+describe('CMASTER rule 1: no raw colour literals in tokenized files', () => {
+    it('the list is not empty', () => expect(TOKEN_ONLY.length).toBeGreaterThan(0));
+    it.each(TOKEN_ONLY)('%s uses tokens only', (path) => {
+        const code = sources[path].replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+        const hits = code
+            .split('\n')
+            .map((line, i) => [i + 1, line] as const)
+            .filter(([, line]) => /#[0-9a-fA-F]{3,8}\b(?![-\w])|rgba?\(\s*\d/.test(line))
+            .map(([n, line]) => `${n}: ${line.trim()}`);
+        // Use var(--cm-*) or a legacy alias; for transparency, color-mix(in srgb, var(--cm-x) N%, transparent).
         expect(hits).toEqual([]);
     });
 });

@@ -7,17 +7,29 @@ import { computeDiff } from '../../services/ai/toolExecutor';
 import { callAICopilot, AIServiceConfig } from '../../services/aiService';
 import { getUpstreamAncestors } from '../../services/wlsp/workflowLsp';
 import { TASK_TYPES } from '../../config/taskTypes';
+import { CircleCheck, CircleX, CornerDownLeft, GitBranch, Globe, Loader, Settings, ShieldCheck, TriangleAlert, Braces, X, type LucideIcon } from 'lucide-react';
 
 interface InlineCanvasCopilotProps {
   aiConfig?: Partial<AIServiceConfig>;
 }
 
-const QUICK_ACTIONS = [
-  { label: '➕ 在下方插入 HTTP 请求', type: 'HTTP', name: 'http_call_task' },
-  { label: '⚖️ 在下方插入条件分支 (SWITCH)', type: 'SWITCH', name: 'switch_router' },
-  { label: '🔍 在下方插入 JQ 转换节点', type: 'JSON_JQ_TRANSFORM', name: 'jq_transform_task' },
-  { label: '🛡️ 为当前节点开启自动重试与容错', action: 'retry_hardening' },
+const QUICK_ACTIONS: { label: string; icon: LucideIcon; type?: string; name?: string; action?: string }[] = [
+  { label: '在下方插入 HTTP 请求', icon: Globe, type: 'HTTP', name: 'http_call_task' },
+  { label: '在下方插入条件分支 (SWITCH)', icon: GitBranch, type: 'SWITCH', name: 'switch_router' },
+  { label: '在下方插入 JQ 转换节点', icon: Braces, type: 'JSON_JQ_TRANSFORM', name: 'jq_transform_task' },
+  { label: '为当前节点开启自动重试与容错', icon: ShieldCheck, action: 'retry_hardening' },
 ];
+
+type StatusTone = 'success' | 'warning' | 'failed' | 'working';
+const STATUS_META: Record<StatusTone, { icon: LucideIcon; color: string }> = {
+  success: { icon: CircleCheck, color: 'var(--cm-status-success)' },
+  warning: { icon: TriangleAlert, color: 'var(--cm-status-warning)' },
+  failed: { icon: CircleX, color: 'var(--cm-status-failed)' },
+  working: { icon: Loader, color: 'var(--cm-ai)' },
+};
+const ICON_14 = { size: 14, strokeWidth: 1.75, 'aria-hidden': true } as const;
+/* Text on a filled --cm-ai surface: the lightest surface in dark mode reads on light indigo, and vice versa. */
+const ON_AI = 'var(--cm-surface-0)';
 
 export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConfig }) => {
   const { inlineCopilotTaskRef, setInlineCopilotTaskRef, selectedTask, workflowDef, taskMap, addNode, updateTask, selectTaskAction } = useWorkflowStore(useShallow((s) => ({
@@ -35,7 +47,7 @@ export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConf
   const setProposal = (ideStores?.aiStore ?? useAiStoreSingleton)((s) => s.setProposal);
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ tone: StatusTone; text: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const targetRef = inlineCopilotTaskRef || selectedTask?.taskReferenceName || null;
@@ -87,12 +99,12 @@ export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConf
         retryDelaySeconds: 2,
         timeoutSeconds: 60,
       });
-      setStatusMsg('✅ 已为当前节点开启指数退避重试 (3次) 与 60s 超时保护');
+      setStatusMsg({ tone: 'success', text: '已为当前节点开启指数退避重试（3 次）与 60s 超时保护' });
       setTimeout(() => setInlineCopilotTaskRef(null), 900);
       return;
     }
 
-    if (item.type) {
+    if (item.type && item.name) {
       const cfg = TASK_TYPES.find((t) => t.type === item.type);
       const newRef = `${item.name}_${Date.now().toString(36).slice(-4)}`;
       addNode(
@@ -109,7 +121,7 @@ export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConf
         `inline-cmdk-${newRef}`,
         {}
       );
-      setStatusMsg(`✅ 已在 ${targetRef} 后插入 ${item.type} 节点`);
+      setStatusMsg({ tone: 'success', text: `已在 ${targetRef} 后插入 ${item.type} 节点` });
       setTimeout(() => setInlineCopilotTaskRef(null), 700);
     }
   };
@@ -164,7 +176,7 @@ export const InlineCanvasCopilot: React.FC<InlineCanvasCopilotProps> = ({ aiConf
     }
 
     setLoading(true);
-    setStatusMsg('🤖 正在基于当前节点拓扑上下文生成 Shadow Graph 变更提案...');
+    setStatusMsg({ tone: 'working', text: '正在基于当前节点拓扑上下文生成 Shadow Graph 变更提案…' });
     try {
       const baseUrl = aiConfig?.baseUrl || localStorage.getItem('AI_BASE_URL') || '';
       const model = aiConfig?.model || localStorage.getItem('AI_MODEL') || '';
@@ -202,9 +214,9 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
           return;
         }
       }
-      setStatusMsg('⚠️ 未能解析 AI 返回的工作流 JSON，请重试');
+      setStatusMsg({ tone: 'warning', text: '未能解析 AI 返回的工作流 JSON，请换个说法重试' });
     } catch (err: any) {
-      setStatusMsg(`❌ 调用失败: ${err?.message || '未知错误'}`);
+      setStatusMsg({ tone: 'failed', text: `调用 AI 失败：${err?.message || '未知错误'}。请检查 AI 配置后重试` });
     } finally {
       setLoading(false);
     }
@@ -220,11 +232,11 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
         width: 540,
         maxWidth: 'calc(100vw - 40px)',
         zIndex: 2200,
-        background: 'rgba(15, 23, 42, 0.96)',
+        background: 'color-mix(in srgb, var(--cm-surface-1) 96%, transparent)',
         backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(99, 102, 241, 0.45)',
+        border: '1px solid color-mix(in srgb, var(--cm-ai) 45%, transparent)',
         borderRadius: 14,
-        boxShadow: '0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(99, 102, 241, 0.15)',
+        boxShadow: 'var(--cm-shadow-float), 0 0 0 1px color-mix(in srgb, var(--cm-ai) 15%, transparent)',
         overflow: 'hidden',
       }}
     >
@@ -235,8 +247,8 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 14px',
-          background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.18), rgba(56, 189, 248, 0.1))',
-          borderBottom: '1px solid rgba(148, 163, 184, 0.15)',
+          background: 'linear-gradient(90deg, color-mix(in srgb, var(--cm-ai) 18%, transparent), transparent)',
+          borderBottom: '1px solid var(--cm-border-subtle)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -246,20 +258,20 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
               fontWeight: 700,
               padding: '2px 7px',
               borderRadius: 5,
-              background: '#6366f1',
-              color: '#fff',
+              background: 'var(--cm-ai)',
+              color: ON_AI,
             }}
           >
             ⌘K 画布内联指令
           </span>
-          <span style={{ fontSize: 11, color: '#cbd5e1', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: 11, color: 'var(--cm-text-secondary)', fontFamily: 'var(--cm-font-mono)' }}>
             锚点:{' '}
-            <strong style={{ color: '#38bdf8' }}>
+            <strong style={{ color: 'var(--cm-data)' }}>
               {targetTask ? `${targetTask.name} (${targetTask.taskReferenceName})` : '画布全局'}
             </strong>
           </span>
           {upstreamTasks.length > 0 && (
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>
+            <span style={{ fontSize: 10, color: 'var(--cm-text-muted)' }}>
               · 可见上游 {upstreamTasks.length} 个节点
             </span>
           )}
@@ -270,12 +282,16 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
           style={{
             background: 'none',
             border: 'none',
-            color: '#94a3b8',
+            color: 'var(--cm-text-muted)',
             cursor: 'pointer',
-            fontSize: 13,
+            fontSize: 12,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
           }}
+          aria-label="关闭内联指令（Esc）"
         >
-          ESC ✕
+          Esc <X {...ICON_14} />
         </button>
       </div>
 
@@ -292,9 +308,9 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
             flex: 1,
             padding: '9px 12px',
             borderRadius: 8,
-            border: '1px solid rgba(148, 163, 184, 0.25)',
-            background: 'rgba(2, 6, 23, 0.65)',
-            color: '#f8fafc',
+            border: '1px solid var(--cm-border-default)',
+            background: 'var(--cm-surface-0)',
+            color: 'var(--cm-text-primary)',
             fontSize: 13,
             outline: 'none',
           }}
@@ -306,15 +322,18 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
             padding: '0 16px',
             borderRadius: 8,
             border: 'none',
-            background: 'linear-gradient(135deg, #6366f1, #38bdf8)',
-            color: '#fff',
+            background: 'var(--cm-ai)',
+            color: ON_AI,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
             fontSize: 12,
             fontWeight: 700,
             cursor: loading || !prompt.trim() ? 'not-allowed' : 'pointer',
             opacity: loading || !prompt.trim() ? 0.6 : 1,
           }}
         >
-          {loading ? '生成中...' : '执行 ↵'}
+          {loading ? '生成中…' : <>运行 <CornerDownLeft {...ICON_14} /></>}
         </button>
       </form>
 
@@ -337,12 +356,16 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
                 fontSize: 11,
                 padding: '4px 10px',
                 borderRadius: 999,
-                border: '1px solid rgba(148, 163, 184, 0.2)',
-                background: 'rgba(30, 41, 59, 0.65)',
-                color: '#cbd5e1',
+                border: '1px solid var(--cm-border-default)',
+                background: 'var(--cm-surface-2)',
+                color: 'var(--cm-text-secondary)',
                 cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
               }}
             >
+              <item.icon size={12} strokeWidth={1.75} aria-hidden="true" />
               {item.label}
             </button>
           ))}
@@ -356,13 +379,17 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
               fontSize: 11,
               padding: '4px 10px',
               borderRadius: 999,
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              background: 'rgba(56, 189, 248, 0.1)',
-              color: '#38bdf8',
+              border: '1px solid var(--cm-border-default)',
+              background: 'var(--cm-surface-2)',
+              color: 'var(--cm-text-secondary)',
               cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
             }}
           >
-            ⚙️ 打开属性抽屉
+            <Settings size={12} strokeWidth={1.75} aria-hidden="true" />
+            打开属性抽屉
           </button>
         </div>
       )}
@@ -372,11 +399,16 @@ Return ONLY the updated full WorkflowDef JSON object (wrapped in \`\`\`json ... 
           style={{
             padding: '6px 14px 10px',
             fontSize: 11,
-            color: '#38bdf8',
-            borderTop: '1px solid rgba(148, 163, 184, 0.1)',
+            color: STATUS_META[statusMsg.tone].color,
+            borderTop: '1px solid var(--cm-border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
           }}
+          role="status"
         >
-          {statusMsg}
+          {React.createElement(STATUS_META[statusMsg.tone].icon, { size: 12, strokeWidth: 1.75, 'aria-hidden': true })}
+          {statusMsg.text}
         </div>
       )}
     </div>

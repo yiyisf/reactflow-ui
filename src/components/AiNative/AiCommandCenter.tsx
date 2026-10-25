@@ -6,6 +6,7 @@
  *           streaming messages, tool-call pipeline.
  */
 
+import { RotateCcw, X } from 'lucide-react';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import useWorkflowStore from '../../store/workflowStore';
 import { useIdeStores } from '../../store/ideStoresContext';
@@ -397,7 +398,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                 if (instance && REPAIR_TERMINAL_STATUSES.has(instance.status)) {
                     const outcome = instance.status === 'COMPLETED'
                         ? `${actionLabel}成功，工作流已恢复正常执行。`
-                        : `✗ ${actionLabel}后仍未成功（状态：${instance.status}），可能需要进一步排查。`;
+                        : `${actionLabel}后仍未成功（状态：${instance.status}），可能需要进一步排查。`;
                     aiStore.getState().addMessage({ role: 'assistant', content: outcome });
                     return;
                 }
@@ -847,7 +848,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         className="ai-checkpoint-btn discard"
                                         onClick={() => clearCheckpoint()}
                                     >
-                                        ✕ 放弃断点
+                                        <X size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />放弃断点
                                     </button>
                                 </div>
                             </div>
@@ -864,7 +865,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         runner.send(t);
                                     }}
                                 >
-                                    ↺ 重试上一条消息
+                                    <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />重试上一条消息
                                 </button>
                             </div>
                         )}
@@ -896,7 +897,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     title="取消选中"
                                     aria-label="取消选中节点"
                                 >
-                                    ×
+                                    <X size={12} strokeWidth={1.75} aria-hidden="true" />
                                 </button>
                             </div>
                             <div className="ai-node-context-chips">

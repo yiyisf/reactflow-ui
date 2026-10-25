@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import dagre from 'dagre';
-import useWorkflowStore from '../../store/workflowStore';
 
 interface MermaidBlockProps {
     code: string;
@@ -120,7 +119,6 @@ function parseMermaidFlowchart(rawCode: string): {
 }
 
 const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
-    const theme = useWorkflowStore((s) => s.theme);
 
     const layout = useMemo(() => {
         const parsed = parseMermaidFlowchart(code);
@@ -197,11 +195,10 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
         );
     }
 
-    const isLight = theme === 'light';
-    const nodeFill = isLight ? '#f8fafc' : '#1e293b';
-    const nodeStroke = isLight ? '#6366f1' : '#818cf8';
-    const textFill = isLight ? '#0f172a' : '#f8fafc';
-    const edgeStroke = isLight ? '#64748b' : '#94a3b8';
+    // Theme-aware through the surrounding [data-mode] root; CSS properties (not SVG attributes) so var() resolves everywhere.
+    const nodeStyle = { fill: 'var(--cm-surface-2)', stroke: 'var(--cm-ai)' };
+    const textStyle = { fill: 'var(--cm-text-primary)' };
+    const edgeStyle = { stroke: 'var(--cm-text-muted)' };
 
     return (
         <div
@@ -231,7 +228,7 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
                         markerHeight="6"
                         orient="auto-start-reverse"
                     >
-                        <path d="M 0 1 L 10 5 L 0 9 z" fill={edgeStroke} />
+                        <path d="M 0 1 L 10 5 L 0 9 z" style={{ fill: edgeStyle.stroke }} />
                     </marker>
                 </defs>
 
@@ -249,7 +246,7 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
                             <path
                                 d={d}
                                 fill="none"
-                                stroke={edgeStroke}
+                                style={edgeStyle}
                                 strokeWidth={1.6}
                                 strokeDasharray={e.dashed ? '4,4' : undefined}
                                 markerEnd="url(#mmd-arrow)"
@@ -259,7 +256,7 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
                                     x={mid.x}
                                     y={mid.y - 5}
                                     textAnchor="middle"
-                                    fill={textFill}
+                                    style={textStyle}
                                     fontSize={10}
                                     fontFamily="sans-serif"
                                 >
@@ -279,15 +276,14 @@ const MermaidBlock: React.FC<MermaidBlockProps> = ({ code }) => {
                                 width={n.width}
                                 height={n.height}
                                 rx={rx}
-                                fill={nodeFill}
-                                stroke={nodeStroke}
+                                style={nodeStyle}
                                 strokeWidth={1.5}
                             />
                             <text
                                 x={n.width / 2}
                                 y={n.height / 2 + 4}
                                 textAnchor="middle"
-                                fill={textFill}
+                                style={textStyle}
                                 fontSize={11}
                                 fontWeight={600}
                                 fontFamily="sans-serif"

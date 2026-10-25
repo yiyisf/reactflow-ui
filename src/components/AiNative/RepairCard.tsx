@@ -7,11 +7,12 @@
 
 import React, { useState } from 'react';
 import type { RepairProposal, RepairAction } from '../../store/aiStore';
+import { Check, Lightbulb, Pencil, Play, RotateCcw, SkipForward, Wrench, X, type LucideIcon } from 'lucide-react';
 
 const RISK_META = {
-    low:    { label: '低风险', color: '#10b981' },
-    medium: { label: '中风险', color: '#f59e0b' },
-    high:   { label: '高风险', color: '#ef4444' },
+    low:    { label: '低风险', color: 'var(--cm-status-success)' },
+    medium: { label: '中风险', color: 'var(--cm-status-warning)' },
+    high:   { label: '高风险', color: 'var(--cm-status-failed)' },
 } as const;
 
 const ACTION_TYPE_LABEL: Record<RepairAction['type'], string> = {
@@ -21,11 +22,11 @@ const ACTION_TYPE_LABEL: Record<RepairAction['type'], string> = {
     modify_def:      '修改工作流定义',
 };
 
-const ACTION_TYPE_ICON: Record<RepairAction['type'], string> = {
-    rerun_from:      '▶',
-    skip:            '⏭',
-    retry_workflow:  '↺',
-    modify_def:      '✏️',
+const ACTION_TYPE_ICON: Record<RepairAction['type'], LucideIcon> = {
+    rerun_from:      Play,
+    skip:            SkipForward,
+    retry_workflow:  RotateCcw,
+    modify_def:      Pencil,
 };
 
 interface RepairCardProps {
@@ -53,9 +54,9 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
     return (
         <div className="ai-repair-card">
             <div className="ai-repair-card-header">
-                <span className="ai-repair-card-icon">🔧</span>
+                <span className="ai-repair-card-icon" style={{ display: 'inline-flex', color: 'var(--cm-ai)' }}><Wrench size={18} strokeWidth={1.75} aria-hidden="true" /></span>
                 <div className="ai-repair-card-title">故障诊断与修复方案</div>
-                <button className="ai-repair-dismiss" onClick={onDismiss} title="关闭" aria-label="关闭修复卡片">×</button>
+                <button className="ai-repair-dismiss" onClick={onDismiss} title="关闭" aria-label="关闭修复卡片"><X size={14} strokeWidth={1.75} aria-hidden="true" /></button>
             </div>
 
             <div className="ai-repair-diagnosis">{repair.diagnosis}</div>
@@ -80,7 +81,7 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
                                     {riskMeta && (
                                         <span
                                             className="ai-repair-risk-badge"
-                                            style={{ color: riskMeta.color, borderColor: riskMeta.color + '40' }}
+                                            style={{ color: riskMeta.color, borderColor: `color-mix(in srgb, ${riskMeta.color} 25%, transparent)` }}
                                         >
                                             {riskMeta.label}
                                         </span>
@@ -96,7 +97,7 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
                                                     onClick={() => handleExecClick(action)}
                                                     autoFocus
                                                 >
-                                                    ✓ 确认
+                                                    <Check size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />立即执行
                                                 </button>
                                                 <button
                                                     className="ai-repair-exec-btn"
@@ -112,7 +113,7 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
                                                 onClick={() => handleExecClick(action)}
                                                 title={canExecute ? ACTION_TYPE_LABEL[action.type] : '当前环境不支持此操作'}
                                             >
-                                                {ACTION_TYPE_ICON[action.type]} 执行
+                                                {React.createElement(ACTION_TYPE_ICON[action.type], { size: 14, strokeWidth: 1.75, 'aria-hidden': true, style: { verticalAlign: -2, marginRight: 4 } })}执行
                                             </button>
                                         )
                                     )}
@@ -125,7 +126,7 @@ const RepairCard: React.FC<RepairCardProps> = ({ repair, canExecute, onExecuteAc
 
             {!canExecute && (
                 <div className="ai-repair-no-exec-hint">
-                    💡 集成方未提供 executionActions，操作按钮已禁用。可参考诊断内容手动修复。
+                    <Lightbulb size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />集成方未提供 executionActions，操作按钮已禁用。可参考诊断内容手动修复。
                 </div>
             )}
         </div>

@@ -11,6 +11,8 @@ import TaskDetailPanel from '../TaskDetailPanel';
 import ExecutionTaskPanel from '../ExecutionTaskPanel';
 import useWorkflowStore from '../../store/workflowStore';
 import { useShallow } from 'zustand/react/shallow';
+import useAiStoreSingleton from '../../store/aiStore';
+import { useIdeStoresOptional } from '../../store/ideStoresContext';
 import type { ExecutionActions } from '../../types/workflow';
 import type { WorkflowDef } from '../../types/conductor';
 
@@ -35,6 +37,10 @@ const CanvasPreview: React.FC<CanvasPreviewProps> = ({
             setSelectedTask: s.setSelectedTask,
         })));
 
+    // Task-detail AI helpers use the same AI config as the chat (this instance's aiStore)
+    const ideStores = useIdeStoresOptional();
+    const aiConfig = (ideStores?.aiStore ?? useAiStoreSingleton)(s => s.config);
+
     const handleNodeClick = (task: any) => {
         if (mode !== 'run') {
             selectTaskAction(task, true);
@@ -57,6 +63,7 @@ const CanvasPreview: React.FC<CanvasPreviewProps> = ({
                 isOpen={isDetailPanelOpen && mode !== 'run'}
                 onClose={() => setIsDetailPanelOpen(false)}
                 theme={theme}
+                aiConfig={aiConfig}
             />
             {mode === 'run' && (
                 <ExecutionTaskPanel executionActions={executionActions} />

@@ -4,6 +4,7 @@ import { ActionRegistry, defaultActionRegistry } from '../../actions/registry';
 import type { ActionDefinition } from '../../actions/types';
 import { ActionForm } from './ActionForm';
 import { NestedControlStep } from './NestedControlStep';
+import { CmIcon } from '../icons/CmIcon';
 
 export interface StepListEditorProps {
   steps: BusinessStep[];
@@ -120,7 +121,7 @@ export const StepListEditor: React.FC<StepListEditorProps> = ({
                     {indexPrefix}#{cIdx + 1}
                   </span>
                 )}
-                <span style={{ fontSize: compact ? 14 : 16 }}>{childAction?.icon || '⚙️'}</span>
+                <CmIcon name={childAction?.icon} size={compact ? 14 : 16} />
                 {compact ? (
                   <span
                     style={{
@@ -163,7 +164,7 @@ export const StepListEditor: React.FC<StepListEditorProps> = ({
                       padding: compact ? '1px 3px' : '2px 4px',
                     }}
                   >
-                    🗑️
+                    <CmIcon name="trash" size={16} />
                   </button>
                 )}
                 <span

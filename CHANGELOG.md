@@ -18,6 +18,7 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **橙底文字改为深色**：新增 `--color-on-accent`（橙色品牌为 `--cm-on-brand` 深色，蓝色品牌仍为白色）与 `--color-on-danger`，替换 54 处写死在强调色底上的白字（工具栏主按钮、节点角标、业务卡片、模板中心、AI 面板、演示站顶栏等）。
 - **IDE 外壳的 emoji 换成 Lucide 图标**（线宽 1.75）：工具栏（数据血缘、AI 微调、撤销 / 重做、诊断、配置、沙箱试运行、模拟数据、瀑布流回放、返回编辑）、主题切换、业务视图切换、导入接口、模板中心、执行状态栏、AI IDE 视图切换与对话开关、Shadow Graph 评审条（按钮文案改为"全部采纳 / 放弃"，增删改计数改用 `--cm-diff-*`）。模板中心按钮不再使用蓝色。
 - 新增守卫测试 `src/styles/designRules.test.ts`：禁止在强调色底上写死白字；已迁移的文件不允许再出现 emoji。
+- **数据图标改为图标名**：新增 `CmIcon` 组件与 `iconRegistry`（66 个 Lucide 图标名 + 77 个常见 emoji 别名）。内置动作、模板、任务类型元数据、演示流程库数据的 `icon` 由 emoji 改为图标名（如 `'server'`、`'rocket'`）；`ActionDefinition.icon` / `WorkflowTemplate.icon` 仍为 `string`，宿主或治理服务传入的 emoji 会映射为对应图标显示，未知值显示默认图标。业务卡片、动作选择器、运行故事线、模板中心与向导、AI 指令中心、表单向导、提案卡片中的 emoji 一并换成图标；按钮与状态文案去掉了前缀 emoji。`getTaskTypeMeta` 的默认图标由 `'⚙️'` 改为 `'settings'`。
 
 ---
 

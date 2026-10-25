@@ -6,6 +6,7 @@ import type { WorkflowDef } from '../../types/conductor';
 import type { WorkflowTemplate } from '../../template/types';
 import { applyTemplateVariables } from '../../template/applyTemplate';
 import { executeLocalSandboxDryRun } from '../../utils/localSandboxEngine';
+import { CmIcon } from '../icons/CmIcon';
 
 export interface TemplateSetupWizardProps {
   template: WorkflowTemplate;
@@ -131,7 +132,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22 }}>{template.icon}</span>
+            <CmIcon name={template.icon} size={20} />
             <div>
               <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>
                 {template.title}
@@ -206,7 +207,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     fontWeight: 700,
                   }}
                 >
-                  {isDone ? '✓' : item.step}
+                  {isDone ? <CmIcon name="approval" size={12} /> : item.step}
                 </div>
                 <span
                   style={{
@@ -243,7 +244,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     border: '1px solid rgba(16, 185, 129, 0.25)',
                   }}
                 >
-                  <div style={{ fontSize: 11, color: '#34d399' }}>⚡ 预期单次节省人工</div>
+                  <div style={{ fontSize: 11, color: '#34d399' }}><CmIcon name="zap" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />预期单次节省人工</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981', marginTop: 4 }}>
                     约 {template.roi.minutesSavedPerRun} 分钟
                   </div>
@@ -257,7 +258,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     border: '1px solid rgba(59, 130, 246, 0.25)',
                   }}
                 >
-                  <div style={{ fontSize: 11, color: '#60a5fa' }}>🔄 典型每周频次</div>
+                  <div style={{ fontSize: 11, color: '#60a5fa' }}><CmIcon name="refresh" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />典型每周频次</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#3b82f6', marginTop: 4 }}>
                     约 {template.roi.typicalRunsPerWeek} 次 / 周
                   </div>
@@ -271,7 +272,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     border: '1px solid rgba(245, 158, 11, 0.25)',
                   }}
                 >
-                  <div style={{ fontSize: 11, color: '#fbbf24' }}>🔥 累计被采用</div>
+                  <div style={{ fontSize: 11, color: '#fbbf24' }}><CmIcon name="flame" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />累计被采用</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b', marginTop: 4 }}>
                     {template.roi.popularityCount ?? 1200} 次
                   </div>
@@ -289,7 +290,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                 }}
               >
                 <div style={{ fontWeight: 600, color: 'var(--text-primary, #f8fafc)', fontSize: 13, marginBottom: 4 }}>
-                  💡 解决的痛点
+                  <CmIcon name="lightbulb" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />解决的痛点
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary, #b0bec5)' }}>
                   {template.valueProposition}
@@ -346,7 +347,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   color: '#93c5fd',
                 }}
               >
-                ✏️ <strong>开箱即用填空</strong>：无需修改复杂的流程连线与 JSON，仅需确认以下几个业务变量即可：
+                <CmIcon name="pencil" size={14} style={{ verticalAlign: -2, marginRight: 4 }} /><strong>开箱即用填空</strong>：无需修改复杂的流程连线与 JSON，仅需确认以下几个业务变量即可：
               </div>
 
               {template.variables.map((v) => {
@@ -464,7 +465,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     cursor: isSimulating ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {isSimulating ? '⏳ 模拟试跑中...' : '▶ 立即试跑验证'}
+                  {isSimulating ? '模拟试跑中...' : '立即试跑验证'}
                 </button>
               </div>
 
@@ -480,7 +481,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                     lineHeight: 1.5,
                   }}
                 >
-                  🎉 <strong>试跑通过</strong>: {simSummary}
+                  <CmIcon name="sparkles" size={14} style={{ verticalAlign: -2, marginRight: 4 }} /><strong>试跑通过</strong>: {simSummary}
                 </div>
               )}
 
@@ -584,7 +585,7 @@ export const TemplateSetupWizard: React.FC<TemplateSetupWizardProps> = ({
                   gap: 6,
                 }}
               >
-                <span>⚡</span>
+                <span><CmIcon name="zap" size={16} /></span>
                 <span>注入参数并进入流程编辑器</span>
               </button>
             )}

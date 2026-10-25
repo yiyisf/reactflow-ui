@@ -8,6 +8,7 @@ import { collectLibraryDomains, filterPickableActions, libraryDomainOf } from '.
 import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
 import { useShallow } from 'zustand/react/shallow';
 import useWorkflowStore from '../../store/workflowStore';
+import { CmIcon } from '../icons/CmIcon';
 
 /** 单次最多渲染的动作数（流程库可能有上千项）；超出请用搜索缩小范围 */
 const RENDER_LIMIT = 200;
@@ -84,13 +85,13 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
 
   const categoryTabs = [
     { id: 'all', label: '全部' },
-    { id: 'compute', label: '🖥️ 计算与主机' },
-    { id: 'storage', label: '💾 存储快照' },
-    { id: 'monitor', label: '📊 监控指标' },
-    { id: 'notify', label: '📢 通知消息' },
-    { id: 'human', label: '👤 人工审批' },
-    { id: 'logic', label: '⏳ 流程控制' },
-    { id: 'custom', label: domainMode ? '🧩 自定义' : '🧩 流程库 / 自定义' },
+    { id: 'compute', label: '计算与主机' },
+    { id: 'storage', label: '存储快照' },
+    { id: 'monitor', label: '监控指标' },
+    { id: 'notify', label: '通知消息' },
+    { id: 'human', label: '人工审批' },
+    { id: 'logic', label: '流程控制' },
+    { id: 'custom', label: domainMode ? '自定义' : '流程库 / 自定义' },
   ] as const;
 
   return createPortal(
@@ -299,7 +300,7 @@ export const ActionPickerModal: React.FC<ActionPickerModalProps> = ({
                 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                  <span style={{ fontSize: 18, lineHeight: 1 }}>{action.icon}</span>
+                  <CmIcon name={action.icon} size={18} />
                   <span style={{ fontWeight: 600, fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {action.name}
                   </span>

@@ -4,7 +4,7 @@ export const notifySendMessageAction: ActionDefinition = {
   id: 'notify.send_message',
   name: '发送运维通知',
   category: 'notify',
-  icon: '📢',
+  icon: 'megaphone',
   description: '向指定运维协同群（钉钉/企微/飞书）或负责人发送通知卡片',
   riskLevel: 'safe',
   fields: [
@@ -80,7 +80,7 @@ export const humanApprovalAction: ActionDefinition = {
   id: 'human.approval',
   name: '人工确认 / 审批',
   category: 'human',
-  icon: '👤',
+  icon: 'user',
   description: '在执行高危变动或财务扣费前，暂停流程并等待指定责任人点击确认',
   riskLevel: 'safe',
   fields: [
@@ -159,7 +159,7 @@ export const controlWaitAction: ActionDefinition = {
   id: 'control.wait',
   name: '等待缓冲',
   category: 'logic',
-  icon: '⏳',
+  icon: 'hourglass',
   description: '在两个步骤之间暂停等待一段时间（等待系统自检、镜像就绪等）',
   riskLevel: 'safe',
   fields: [
@@ -212,7 +212,7 @@ export const controlDecisionAction: ActionDefinition = {
   id: 'control.decision',
   name: '条件分支',
   category: 'logic',
-  icon: '🔀',
+  icon: 'shuffle',
   description: '根据输入参数或上下文表达式，精准分流执行不同业务分支',
   riskLevel: 'safe',
   fields: [
@@ -257,7 +257,7 @@ export const controlForkAction: ActionDefinition = {
   id: 'control.fork',
   name: '并行并发组',
   category: 'logic',
-  icon: '⚡',
+  icon: 'zap',
   description: '同时并发执行多条独立业务泳道，并在全部完成后汇聚向下流转',
   riskLevel: 'safe',
   fields: [],
@@ -289,7 +289,7 @@ export const controlLoopAction: ActionDefinition = {
   id: 'control.loop',
   name: '循环迭代',
   category: 'logic',
-  icon: '🔁',
+  icon: 'repeat',
   description: '重复循环执行内部步骤，直到满足退出条件或达到最大轮次',
   riskLevel: 'safe',
   fields: [

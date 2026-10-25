@@ -15,6 +15,7 @@ import { getTaskTypeMeta } from '../../utils/taskTypeMeta';
 import { workflowToMermaid } from '../../utils/workflowToMermaid';
 import MermaidBlock from './MermaidBlock';
 import type { WorkflowDef } from '../../types/conductor';
+import { CmIcon } from '../icons/CmIcon';
 
 interface ProposalPreviewCardProps {
     proposal: ProposedChange;
@@ -48,7 +49,7 @@ const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, cur
     return (
         <div className={`ai-proposal-card${isStale ? ' stale' : ''}`}>
             <div className="ai-proposal-card-header">
-                <span className="ai-proposal-card-icon">{isStale ? '⚠️' : '✦'}</span>
+                <span className="ai-proposal-card-icon">{isStale ? <CmIcon name="alert" size={14} /> : <CmIcon name="sparkles" size={14} />}</span>
                 <span className="ai-proposal-card-title">
                     {isStale ? '变更方案（画布已修改）' : `变更方案 · ${proposedDef.name || '工作流'}`}
                 </span>
@@ -63,8 +64,8 @@ const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, cur
                         }
                     >
                         {verification.isValid
-                            ? `✓ 拓扑与数据流校验通过${verification.dataFlowLinks > 0 ? ` · ${verification.dataFlowLinks} 处数据流引用` : ''}`
-                            : `⚠ ${verification.errors.length} 项待完善`}
+                            ? `拓扑与数据流校验通过${verification.dataFlowLinks > 0 ? ` · ${verification.dataFlowLinks} 处数据流引用` : ''}`
+                            : `${verification.errors.length} 项待完善`}
                     </span>
                 )}
             </div>
@@ -90,7 +91,7 @@ const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, cur
                     return (
                         <div key={step.ref} className={`ai-proposal-step ${step.status}`}>
                             <span className="ai-proposal-step-num">{i + 1}</span>
-                            <span className="ai-proposal-step-icon">{meta.icon}</span>
+                            <span className="ai-proposal-step-icon"><CmIcon name={meta.icon} size={14} /></span>
                             <span className="ai-proposal-step-name">{step.task.name || step.ref}</span>
                             {badge && <span className={`ai-proposal-step-badge ${badge.className}`}>{badge.label}</span>}
                             {step.status === 'modified' && step.changes && step.changes.length > 0 && (
@@ -125,13 +126,13 @@ const ProposalPreviewCard: React.FC<ProposalPreviewCardProps> = ({ proposal, cur
                 <button
                     className={`ai-proposal-btn accept${isStale ? ' stale' : ''}`}
                     onClick={onAccept}
-                    title={isStale ? '⚠️ 方案基于旧版画布，应用后可能覆盖手动编辑' : undefined}
+                    title={isStale ? '方案基于旧版画布，应用后可能覆盖手动编辑' : undefined}
                 >
-                    {isStale ? '⚠ 仍然应用' : '✓ 应用变更'}
+                    {isStale ? '仍然应用' : '应用变更'}
                 </button>
             </div>
 
-            <div className="ai-proposal-followup-hint">💬 也可以直接告诉我还要怎么调整</div>
+            <div className="ai-proposal-followup-hint"><CmIcon name="message" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />也可以直接告诉我还要怎么调整</div>
         </div>
     );
 };

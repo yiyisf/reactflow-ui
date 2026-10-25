@@ -88,6 +88,7 @@ CMASTER 是编排平台、Workflow IDE（`@yiyi_zhang/reactflow-ui`）、文档�
 - **Lucide**，线宽 1.75；工具栏与菜单 16px，节点图标块 14px，Bento 卡片标题前 18px，空状态 24px。
 - IDE 映射：数据血缘 `Waypoints`，AI 微调 `Sparkles`（`ai` 色），撤销/重做 `Undo2`/`Redo2`，诊断 `Stethoscope`，配置 `Settings2`，试运行 `FlaskConical`，模拟数据 `SlidersHorizontal`，瀑布流回放 `ChartGantt`，业务模式 `LayoutList`，开发者模式 `Code2`。
 - 只有图标的按钮必须有 `title` 与 `aria-label`。
+- 数据里的图标（动作、模板、任务类型、流程库扩展字段）存图标名而不是 emoji，例如 `icon: 'server'`，用 `<CmIcon name={...} />` 渲染；可用名称见 `src/components/icons/iconRegistry.ts`。宿主或治理服务仍传 emoji 时，常见 emoji 会自动映射为对应图标，未知值显示默认的设置图标。
 
 ## Logo
 

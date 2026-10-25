@@ -25,6 +25,7 @@ import type { ExecutionActions } from '../../types/workflow';
 import type { AiEvent } from '../../types/aiEvents';
 import LibraryPanel from './LibraryPanel';
 import { useLibraryCatalogSnapshot } from '../../library/useLibraryCatalog';
+import { CmIcon } from '../icons/CmIcon';
 
 interface AiCommandCenterProps {
     systemPrompt?: string;
@@ -98,12 +99,12 @@ interface WorkflowTemplate {
 }
 
 const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
-    { icon: '📦', name: '订单处理', desc: '下单→支付→发货', prompt: '创建一个电商订单处理流程：下单确认、支付验证、库存扣减、发货通知' },
-    { icon: '👤', name: '员工审批', desc: '申请→审批→执行', prompt: '创建一个员工申请审批流程：提交申请、直属领导审批、HR审批、结果通知' },
-    { icon: '🚀', name: 'CI/CD', desc: '构建→测试→发布', prompt: '创建一个CI/CD部署流水线：代码检出、构建镜像、单元测试、推送镜像、部署发布' },
-    { icon: '📧', name: '消息通知', desc: '触发→处理→发送', prompt: '创建一个消息通知工作流：接收事件、处理数据、并行发送邮件和短信通知' },
-    { icon: '🔄', name: '数据同步', desc: '读取→转换→写入', prompt: '创建一个数据同步流程：从数据库读取数据、JQ转换格式、写入目标系统、发送完成通知' },
-    { icon: '🔍', name: 'AI 内容审核', desc: '提交→AI审→人工', prompt: '创建一个AI辅助内容审核流程：提交内容、AI初审打分、条件分支（分数低则人工复核）、发布或拒绝' },
+    { icon: 'package', name: '订单处理', desc: '下单→支付→发货', prompt: '创建一个电商订单处理流程：下单确认、支付验证、库存扣减、发货通知' },
+    { icon: 'user', name: '员工审批', desc: '申请→审批→执行', prompt: '创建一个员工申请审批流程：提交申请、直属领导审批、HR审批、结果通知' },
+    { icon: 'rocket', name: 'CI/CD', desc: '构建→测试→发布', prompt: '创建一个CI/CD部署流水线：代码检出、构建镜像、单元测试、推送镜像、部署发布' },
+    { icon: 'mail', name: '消息通知', desc: '触发→处理→发送', prompt: '创建一个消息通知工作流：接收事件、处理数据、并行发送邮件和短信通知' },
+    { icon: 'refresh', name: '数据同步', desc: '读取→转换→写入', prompt: '创建一个数据同步流程：从数据库读取数据、JQ转换格式、写入目标系统、发送完成通知' },
+    { icon: 'search', name: 'AI 内容审核', desc: '提交→AI审→人工', prompt: '创建一个AI辅助内容审核流程：提交内容、AI初审打分、条件分支（分数低则人工复核）、发布或拒绝' },
 ];
 
 // ─── Welcome chips logic ──────────────────────────────────────────────────────
@@ -395,7 +396,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                 const instance = await onPollExecution(wfId);
                 if (instance && REPAIR_TERMINAL_STATUSES.has(instance.status)) {
                     const outcome = instance.status === 'COMPLETED'
-                        ? `✓ ${actionLabel}成功，工作流已恢复正常执行。`
+                        ? `${actionLabel}成功，工作流已恢复正常执行。`
                         : `✗ ${actionLabel}后仍未成功（状态：${instance.status}），可能需要进一步排查。`;
                     aiStore.getState().addMessage({ role: 'assistant', content: outcome });
                     return;
@@ -510,7 +511,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     role="tab"
                     aria-selected={activeTab === 'chat'}
                 >
-                    💬 对话
+                    <CmIcon name="message" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />对话
                 </button>
                 {hasLibrary && (
                     <button
@@ -519,7 +520,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         role="tab"
                         aria-selected={activeTab === 'library'}
                     >
-                        📚 工作流库
+                        <CmIcon name="library" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />工作流库
                         <span className="ai-panel-tab-count">{libraryItems.length}</span>
                     </button>
                 )}
@@ -533,7 +534,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                 <>
                     <div className="ai-cc-header">
                         <div className="ai-cc-title">
-                            <span className="ai-cc-title-icon">✨</span>
+                            <span className="ai-cc-title-icon"><CmIcon name="sparkles" size={16} /></span>
                             AI 工作流助手
                             {workflowDef && (
                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 4 }}>
@@ -542,7 +543,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             )}
                         </div>
                         <div className="ai-cc-actions">
-                            {/* ▶ Run workflow button — only when workflow loaded and execution wired */}
+                            {/* Run workflow button — only when workflow loaded and execution wired */}
                             {workflowDef && onTriggerExecution && onPollExecution && !showRunCard && (
                                 <button
                                     className="ai-run-header-btn"
@@ -550,7 +551,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     disabled={isStreaming}
                                     title="执行当前工作流"
                                 >
-                                    ▶ 执行
+                                    <CmIcon name="play" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />执行
                                 </button>
                             )}
                             {(onOpenCanvas || onCloseCanvas) && (
@@ -560,17 +561,17 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     aria-label={canvasOpen ? '关闭画布' : '查看画布'}
                                     className={`ai-canvas-toggle-btn${canvasOpen ? ' active' : ''}`}
                                 >
-                                    🗺️
+                                    <CmIcon name="map" size={16} />
                                 </button>
                             )}
                             {showConfigButton && (
-                                <button onClick={onShowConfig} title="配置 AI 服务" aria-label="配置 AI 服务">⚙️</button>
+                                <button onClick={onShowConfig} title="配置 AI 服务" aria-label="配置 AI 服务"><CmIcon name="settings" size={16} /></button>
                             )}
                             <button
                                 onClick={() => { runner.abort(); clearMessages(); }}
                                 title="清空对话"
                                 aria-label="清空对话"
-                            >🗑️</button>
+                            ><CmIcon name="trash" size={16} /></button>
                         </div>
                     </div>
 
@@ -578,7 +579,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     {mode === 'run' && runtimeStatus !== 'none' && (
                         <div className={`ai-runtime-banner ai-runtime-banner-${runtimeStatus}`}>
                             <span className="ai-runtime-banner-icon">
-                                {runtimeStatus === 'failed' ? '🔴' : runtimeStatus === 'completed' ? '✅' : '🔵'}
+                                <CmIcon name={runtimeStatus === 'failed' ? 'x' : runtimeStatus === 'completed' ? 'approval' : 'activity'} size={14} />
                             </span>
                             <span className="ai-runtime-banner-text">
                                 {runtimeStatus === 'failed' && '工作流执行失败 — AI 可协助分析原因'}
@@ -592,7 +593,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         {/* Permission restriction banner */}
                         {isRestricted && (
                             <div className="ai-permission-banner" role="alert">
-                                <span className="ai-permission-icon">🔒</span>
+                                <span className="ai-permission-icon"><CmIcon name="lock" size={16} /></span>
                                 <span>{restrictionMessage}</span>
                             </div>
                         )}
@@ -600,13 +601,13 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                         {/* A1: Onboarding card when no API key */}
                         {noApiKey && (
                             <div className="ai-onboarding-card">
-                                <div className="ai-onboarding-icon">🤖</div>
+                                <div className="ai-onboarding-icon"><CmIcon name="sparkles" size={16} /></div>
                                 <div className="ai-onboarding-title">配置 AI 服务，开始使用</div>
                                 <div className="ai-onboarding-desc">
                                     只需填写 API Key，即可用自然语言创建和编辑工作流。支持 OpenAI、Anthropic、DeepSeek、Groq 等主流服务。
                                 </div>
                                 <button className="ai-onboarding-btn" onClick={onShowConfig}>
-                                    ⚙️ 立即配置
+                                    <CmIcon name="settings" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />立即配置
                                 </button>
                             </div>
                         )}
@@ -636,7 +637,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                                             disabled={isStreaming}
                                                             title={t.prompt}
                                                         >
-                                                            <span className="ai-template-icon">{t.icon}</span>
+                                                            <span className="ai-template-icon"><CmIcon name={t.icon} size={18} /></span>
                                                             <span className="ai-template-name">{t.name}</span>
                                                             <span className="ai-template-desc">{t.desc}</span>
                                                         </button>
@@ -800,7 +801,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                             <div className={`ai-checkpoint-card ${durableCheckpoint.status}`} role="region" aria-label="断点续跑恢复">
                                 <div className="ai-checkpoint-header">
                                     <span className="ai-checkpoint-icon">
-                                        {durableCheckpoint.status === 'failed' ? '⚡' : '⏸'}
+                                        <CmIcon name={durableCheckpoint.status === 'failed' ? 'zap' : 'pause'} size={14} />
                                     </span>
                                     <span className="ai-checkpoint-title">
                                         {durableCheckpoint.status === 'failed'
@@ -831,7 +832,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         className="ai-checkpoint-btn resume"
                                         onClick={() => runner.resume()}
                                     >
-                                        ▶ 从断点继续生成
+                                        <CmIcon name="play" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />从断点继续生成
                                     </button>
                                     {durableCheckpoint.workingDraft && Array.isArray(durableCheckpoint.workingDraft.tasks) && durableCheckpoint.workingDraft.tasks.length > 0 && (
                                         <button
@@ -839,7 +840,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                             onClick={() => runner.commitDraftNow()}
                                             title="对当前已生成的草稿立即执行语义校验并生成变更方案"
                                         >
-                                            ✓ 校验并采用当前草稿
+                                            <CmIcon name="approval" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />校验并采用当前草稿
                                         </button>
                                     )}
                                     <button
@@ -875,7 +876,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                     {undoStack.length > 0 && !isStreaming && !pendingProposal && (
                         <div className="ai-undo-row">
                             <button className="ai-undo-btn" onClick={handleUndo} title="撤销最近一次 AI 变更，恢复到变更前的状态">
-                                ↩ 撤销上次 AI 变更
+                                <CmIcon name="undo" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />撤销上次 AI 变更
                                 <span className="ai-undo-depth">{undoStack.length}</span>
                             </button>
                         </div>
@@ -905,7 +906,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         className="ai-node-context-chip error-fix"
                                         onClick={() => handleChipClick(`修复「${selectedTask.taskReferenceName}」的 ${selectedTaskErrors.length} 个校验错误`)}
                                     >
-                                        🔧 修复 {selectedTaskErrors.length} 个校验错误
+                                        <CmIcon name="wrench" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />修复 {selectedTaskErrors.length} 个校验错误
                                     </button>
                                 )}
                                 {buildNodeChips(
@@ -943,9 +944,9 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                 rows={1}
                             />
                             {isStreaming ? (
-                                <button className="ai-cc-send-btn stop" onClick={handleStop} title="停止" aria-label="停止生成">⏹</button>
+                                <button className="ai-cc-send-btn stop" onClick={handleStop} title="停止" aria-label="停止生成"><CmIcon name="stop" size={16} /></button>
                             ) : (
-                                <button className="ai-cc-send-btn" onClick={handleSend} title="发送（Enter）" aria-label="发送消息">🚀</button>
+                                <button className="ai-cc-send-btn" onClick={handleSend} title="发送（Enter）" aria-label="发送消息"><CmIcon name="send" size={16} /></button>
                             )}
                         </div>
                     </div>

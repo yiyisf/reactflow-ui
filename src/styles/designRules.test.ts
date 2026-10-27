@@ -65,15 +65,22 @@ describe('CMASTER rule 7: no emoji in UI source', () => {
 
 const TOKEN_ONLY = Object.keys(sources).filter((p) => isUiSource(p) && !(p in COLOUR_EXCEPTIONS));
 
+const stripCommentsPreservingLines = (src: string) =>
+    src
+        .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''))
+        .replace(/^\s*\/\/.*$/gm, '');
+
 describe('CMASTER rule 1: no raw colour literals in UI source', () => {
     it('covers the code base', () => expect(TOKEN_ONLY.length).toBeGreaterThan(100));
     it.each(TOKEN_ONLY)('%s uses tokens only', (path) => {
-        const code = sources[path].replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+        const code = stripCommentsPreservingLines(sources[path]);
         const hits = code
             .split('\n')
             .map((line, i) => [i + 1, line] as const)
             .filter(([, line]) =>
-                /#[0-9a-fA-F]{3,8}\b(?![-\w])|rgba?\(\s*\d|(?:\bcolor|\bbackground(?:-color)?|\bborder(?:-[a-z]+)?):\s*['"]?(?:white|black)\b/i.test(line),
+                /#[0-9a-fA-F]{3,8}\b(?![-\w])|rgba?\(\s*\d|(?:\bcolor|\bbackground(?:-color)?|\bborder(?:-[a-z]+)?|\boutline(?:-color)?|\bbox-shadow|\bfill|\bstroke)\s*[:=]\s*[^;\n]*\b(?:white|black)\b/i.test(
+                    line,
+                ),
             )
             .map(([n, line]) => `${n}: ${line.trim()}`);
         // Use var(--cm-*) or a legacy alias; for transparency, color-mix(in srgb, var(--cm-x) N%, transparent).
@@ -84,13 +91,18 @@ describe('CMASTER rule 1: no raw colour literals in UI source', () => {
 describe('CMASTER rule 8: verb-first button copy (never 确定 / 提交)', () => {
     it('no UI component or dialog defaults to or renders generic 确定 / 提交 button labels', () => {
         const offenders: string[] = [];
-        const banned = /(?:confirmLabel|confirmText)\s*=\s*['"](?:确定|提交)['"]|>\s*(?:确定|提交)\s*<\/button>/;
+        const bannedProp = /(?:confirmLabel|confirmText)\s*[:=]\s*['"](?:确定|提交)['"]/;
+        const bannedButtonText = />\s*(?:确定|提交)\s*<\/button>/g;
         for (const [path, text] of files) {
             if (!/\.(tsx?)$/.test(path)) continue;
-            const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+            const code = stripCommentsPreservingLines(text);
             code.split('\n').forEach((line, i) => {
-                if (banned.test(line)) offenders.push(`${path}:${i + 1}: ${line.trim()}`);
+                if (bannedProp.test(line)) offenders.push(`${path}:${i + 1}: ${line.trim()}`);
             });
+            for (const m of code.matchAll(bannedButtonText)) {
+                const lineNum = code.slice(0, m.index).split('\n').length;
+                offenders.push(`${path}:${lineNum}: ${m[0].replace(/\s+/g, ' ').trim()}`);
+            }
         }
         expect(offenders).toEqual([]);
     });
@@ -101,9 +113,12 @@ describe('CMASTER rule 9: global link styles must exclude .cm-btn', () => {
         const offenders: string[] = [];
         for (const [path, text] of files) {
             if (!path.endsWith('.css')) continue;
-            const code = text.replace(/\/\*[\s\S]*?\*\//g, '');
+            const code = stripCommentsPreservingLines(text);
             code.split('\n').forEach((line, i) => {
-                if (/(?:^|[\s,}])a(?::hover|:visited|:focus)?\s*[{,]/.test(line) && !/not\(\.cm-btn\)/.test(line)) {
+                if (
+                    /(?:^|[},])\s*a(?::(?:hover|visited|focus|focus-visible|active|link))*\s*[{,]/.test(line) &&
+                    !/not\(\.cm-btn\)/.test(line)
+                ) {
                     offenders.push(`${path}:${i + 1}: ${line.trim()}`);
                 }
             });

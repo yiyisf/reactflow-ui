@@ -7,11 +7,11 @@ interface ConfirmDialogProps {
     message: string;
     onConfirm: () => void;
     onCancel: () => void;
-    /** 确认按钮文案，建议动词开头说明会发生什么（如"删除"）；缺省为"确定" */
+    /** 确认按钮文案，动词开头说明会发生什么（如"删除"）；缺省为"继续" */
     confirmLabel?: string;
 }
 
-const ConfirmDialog = ({ message, onConfirm, onCancel, confirmLabel = '确定' }: ConfirmDialogProps) => {
+const ConfirmDialog = ({ message, onConfirm, onCancel, confirmLabel = '继续' }: ConfirmDialogProps) => {
     const cancelRef = useRef<HTMLButtonElement>(null);
     const { theme, themeColor } = useWorkflowStore(useShallow((s) => ({ theme: s.theme, themeColor: s.themeColor })));
 

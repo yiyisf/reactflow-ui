@@ -27,7 +27,7 @@ const PromptDialog = ({
     label,
     defaultValue = '',
     placeholder = '',
-    confirmText = '确定',
+    confirmText = '保存',
     cancelText = '取消',
     onConfirm,
     onCancel,

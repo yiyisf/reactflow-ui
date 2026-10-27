@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 
 interface ConfirmState {
     message: string;
-    /** 确认按钮文案（动词开头，如"删除"）；缺省为"确定" */
+    /** 确认按钮文案（动词开头，如"删除"）；缺省为"继续" */
     confirmLabel?: string;
     resolve: (value: boolean) => void;
 }

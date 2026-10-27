@@ -456,6 +456,7 @@ const DecisionNode = ({ id, data, selected }: DecisionNodeProps) => {
             {dialog.type === 'delete' && (
                 <ConfirmDialog
                     message={`确定要删除分支 "${dialog.branch}" 及其下的所有任务吗？此操作不可撤销。`}
+                    confirmLabel="删除分支"
                     onConfirm={handleDeleteConfirm}
                     onCancel={closeDialog}
                 />

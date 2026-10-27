@@ -942,6 +942,7 @@ const WorkflowDesigner: React.FC<WorkflowDesignerProps> = ({
             {confirmState && (
                 <ConfirmDialog
                     message={confirmState.message}
+                    confirmLabel={confirmState.confirmLabel}
                     onConfirm={handleConfirm}
                     onCancel={handleCancel}
                 />

@@ -192,6 +192,7 @@ const NodeWrapper = ({
             {showConfirm && (
                 <ConfirmDialog
                     message={describeTaskRemoval(useWorkflowStore.getState().workflowDef, nodeId).message}
+                    confirmLabel="删除"
                     onConfirm={() => {
                         removeNode(nodeId);
                         setShowConfirm(false);

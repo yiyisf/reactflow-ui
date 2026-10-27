@@ -72,9 +72,42 @@ describe('CMASTER rule 1: no raw colour literals in UI source', () => {
         const hits = code
             .split('\n')
             .map((line, i) => [i + 1, line] as const)
-            .filter(([, line]) => /#[0-9a-fA-F]{3,8}\b(?![-\w])|rgba?\(\s*\d/.test(line))
+            .filter(([, line]) =>
+                /#[0-9a-fA-F]{3,8}\b(?![-\w])|rgba?\(\s*\d|(?:\bcolor|\bbackground(?:-color)?|\bborder(?:-[a-z]+)?):\s*['"]?(?:white|black)\b/i.test(line),
+            )
             .map(([n, line]) => `${n}: ${line.trim()}`);
         // Use var(--cm-*) or a legacy alias; for transparency, color-mix(in srgb, var(--cm-x) N%, transparent).
         expect(hits).toEqual([]);
+    });
+});
+
+describe('CMASTER rule 8: verb-first button copy (never 确定 / 提交)', () => {
+    it('no UI component or dialog defaults to or renders generic 确定 / 提交 button labels', () => {
+        const offenders: string[] = [];
+        const banned = /(?:confirmLabel|confirmText)\s*=\s*['"](?:确定|提交)['"]|>\s*(?:确定|提交)\s*<\/button>/;
+        for (const [path, text] of files) {
+            if (!/\.(tsx?)$/.test(path)) continue;
+            const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+            code.split('\n').forEach((line, i) => {
+                if (banned.test(line)) offenders.push(`${path}:${i + 1}: ${line.trim()}`);
+            });
+        }
+        expect(offenders).toEqual([]);
+    });
+});
+
+describe('CMASTER rule 9: global link styles must exclude .cm-btn', () => {
+    it('bare a / a:hover rules in CSS files use a:not(.cm-btn)', () => {
+        const offenders: string[] = [];
+        for (const [path, text] of files) {
+            if (!path.endsWith('.css')) continue;
+            const code = text.replace(/\/\*[\s\S]*?\*\//g, '');
+            code.split('\n').forEach((line, i) => {
+                if (/(?:^|[\s,}])a(?::hover|:visited|:focus)?\s*[{,]/.test(line) && !/not\(\.cm-btn\)/.test(line)) {
+                    offenders.push(`${path}:${i + 1}: ${line.trim()}`);
+                }
+            });
+        }
+        expect(offenders).toEqual([]);
     });
 });

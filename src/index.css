@@ -13,12 +13,12 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
+a:not(.cm-btn) {
   font-weight: 500;
   color: var(--color-accent);
   text-decoration: inherit;
 }
-a:hover {
+a:not(.cm-btn):hover {
   color: var(--color-accent-hover);
 }
 

@@ -1302,8 +1302,8 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    color: white;
-    border: 2px solid white;
+    color: var(--cm-canvas);
+    border: 2px solid var(--cm-surface-1);
     display: flex;
     align-items: center;
     justify-content: center;

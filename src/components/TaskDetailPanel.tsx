@@ -480,7 +480,7 @@ const TaskDetailPanel = ({ task, isOpen = true, onClose, aiConfig }: TaskDetailP
 
     /**
      * 带"全屏编辑"按钮的代码/表达式文本域。
-     * 编辑模式下右上角出现 ⛶ 按钮，点击打开全屏编辑器；只读模式退化为普通 textarea。
+     * 编辑模式下右上角出现全屏按钮，点击打开全屏编辑器；只读模式退化为普通 textarea。
      */
     const renderCodeArea = (
         label: string,

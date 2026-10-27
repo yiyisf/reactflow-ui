@@ -243,6 +243,7 @@ export function OnboardingOverlays({ c }: { c: OnboardingController }) {
       {c.confirmReplace && (
         <ConfirmDialog
           message="新建流程会替换当前画布上的流程。替换后可以用撤销（⌘Z / Ctrl+Z）找回。继续新建吗？"
+          confirmLabel="继续新建"
           onConfirm={() => c.resolveConfirmReplace(true)}
           onCancel={() => c.resolveConfirmReplace(false)}
         />

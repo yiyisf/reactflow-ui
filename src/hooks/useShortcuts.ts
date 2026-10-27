@@ -6,7 +6,7 @@ import { getLayoutedElements } from '../layout/autoLayout';
 import { describeTaskRemoval } from '../utils/taskEditing';
 
 interface ShortcutCallbacks {
-    confirm?: (message: string) => Promise<boolean>;
+    confirm?: (message: string, confirmLabel?: string) => Promise<boolean>;
     showToast?: (text: string, type?: 'success' | 'error' | 'info') => void;
     onSave?: (def: any) => void;
 }
@@ -78,7 +78,7 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
         e.preventDefault();
         const ref = selectedTask.taskReferenceName;
         const { message } = describeTaskRemoval(useWorkflowStore.getState().workflowDef, ref);
-        confirmFn(message).then(ok => {
+        confirmFn(message, '删除').then(ok => {
             if (ok) removeNode(ref);
         });
     }, [mode, selectedTask, removeNode, confirmFn]);

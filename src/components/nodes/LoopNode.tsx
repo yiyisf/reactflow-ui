@@ -319,6 +319,7 @@ const LoopNode = ({ id, data, selected }: LoopNodeProps) => {
             {showConfirm && (
                 <ConfirmDialog
                     message={describeTaskRemoval(useWorkflowStore.getState().workflowDef, id).message}
+                    confirmLabel="删除"
                     onConfirm={() => { removeNode(id); setShowConfirm(false); }}
                     onCancel={() => setShowConfirm(false)}
                 />

@@ -16,11 +16,12 @@ interface ShortcutCallbacks {
  * 管理流程图编辑器的全局键盘快捷键
  */
 export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
-    const { mode, removeNode, selectedTask, pasteTask } = useWorkflowStore(useShallow((s) => ({
+    const { mode, removeNode, selectedTask, pasteTask, copyTask } = useWorkflowStore(useShallow((s) => ({
             mode: s.mode,
             removeNode: s.removeNode,
             selectedTask: s.selectedTask,
             pasteTask: s.pasteTask,
+            copyTask: s.copyTask,
         })));
 
     // 使用 zundo 提供的 temporal store
@@ -94,13 +95,10 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
         }
 
         e.preventDefault();
-        try {
-            localStorage.setItem('conductor-clipboard', JSON.stringify(selectedTask));
-            toastFn?.('任务已复制', 'success');
-        } catch {
-            toastFn?.('复制失败', 'error');
-        }
-    }, [mode, selectedTask, toastFn]);
+        // R20：剪贴板只放内存，不写 localStorage（HTTP 任务可能带手写的 Authorization 等请求头）
+        copyTask(JSON.parse(JSON.stringify(selectedTask)));
+        toastFn?.('任务已复制', 'success');
+    }, [mode, selectedTask, copyTask, toastFn]);
 
     // 绑定粘贴键: mod+v
     useHotkeys('mod+v', (e) => {
@@ -108,22 +106,20 @@ export const useShortcuts = (callbacks?: ShortcutCallbacks) => {
         if (isTyping(e as any)) return;
 
         e.preventDefault();
-        try {
-            const data = localStorage.getItem('conductor-clipboard');
-            if (data) {
-                const task = JSON.parse(data);
-                pasteTask(task);
-                toastFn?.('任务已粘贴', 'success');
-            }
-        } catch {
-            toastFn?.('粘贴失败', 'error');
+        const task = useWorkflowStore.getState().copiedTask;
+        if (!task) {
+            toastFn?.('剪贴板里没有任务：先选中一个任务按 ⌘C 复制', 'info');
+            return;
         }
+        pasteTask(task);
+        toastFn?.('任务已粘贴', 'success');
     }, [mode, pasteTask, toastFn]);
 
     // 绑定保存: mod+s（输入框里也生效，并且总是给出反馈）
     useHotkeys('mod+s', (e) => {
         e.preventDefault();
-        const def = useWorkflowStore.getState().workflowDef;
+        // R19：运行态画布展示的是实例定义，保存的永远是编辑中的定义
+        const def = useWorkflowStore.getState().getEditingWorkflowDef();
         if (!def) {
             toastFn?.('没有可保存的工作流：请先打开或新建一个工作流', 'info');
             return;

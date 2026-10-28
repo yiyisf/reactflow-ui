@@ -504,6 +504,9 @@ export class AgentRunner {
             if (!repairAllowed) {
                 activeDefs = activeDefs.filter(d => d.function.name !== 'propose_repair');
             }
+            // A17：执行前按本轮发给模型的工具列表校验。模型（或流程内容里的提示注入）调用列表外的工具时一律拒绝
+            const allowedToolNames = new Set(activeDefs.map(d => d.function.name));
+            const proposalsAllowed = mode !== 'run' && editAllowed;
 
             const existingMsg = ai.getState().messages.find(m => m.id === assistantMsgId);
             fullAssistantText = existingMsg?.content ?? '';
@@ -570,6 +573,18 @@ export class AgentRunner {
 
                 for (const tc of stepToolCalls) {
                     if (signal.aborted) break;
+                    if (!allowedToolNames.has(tc.name)) {
+                        const why = mode === 'run'
+                            ? '运行态只能查看和诊断'
+                            : !editAllowed ? '当前没有编辑权限' : '本轮没有提供这个工具';
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: `调用被拒绝：工具 ${tc.name} 不在本轮可用的工具列表里（${why}）。不要再调用它，改用可用的工具，或直接回复用户。`,
+                            tool_call_id: tc.id,
+                        });
+                        ai.getState().addTimelineEntry(`已拒绝调用 ${tc.name}：${why}`, 'warning');
+                        continue;
+                    }
                     ai.getState().setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
                     onAiEvent?.({ type: 'tool:called', timestamp: Date.now(), tool: tc.name });
 
@@ -770,6 +785,8 @@ export class AgentRunner {
             // (and wasn't aborted), automatically verify & commit the draft as a proposal!
             if (
                 isCurrent() &&
+                // A17：只读或运行态下不生成方案（含从旧断点续跑时带回来的草稿）
+                proposalsAllowed &&
                 !signal.aborted &&
                 !hitStepLimit &&
                 !pausedForUser &&

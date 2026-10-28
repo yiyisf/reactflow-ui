@@ -8,6 +8,12 @@ All UI, docs pages, landing pages, posters and social images follow the CMASTER 
 Use the `cmaster-design` skill (`.claude/skills/cmaster-design/SKILL.md`). It says which guideline and golden example to read for the task.
 Design source of truth lives in `design/` (start at `design/README.md`).
 
+## Engineering workflow
+
+For planning, implementation, verification and review, read [`docs/agent-engineering.md`](docs/agent-engineering.md). It maps where requirements, standards (ENG-1 to ENG-4), checks and decisions live.
+For development tasks, use the installed agent-engineering skill matching the requested outcome: `deliver-change` for full implementation, the relevant phase skill for narrower requests (routing table in the guide).
+Explicit task limits and project authorities govern. Report a missing skill; this reference is not permission to install, commit, push or publish.
+
 ## Hard rules (never break these)
 
 1. **Colors, radii, spacing, fonts, shadows come from tokens.** Use `var(--cm-*)` (generated in `src/styles/cmaster-tokens.css`).

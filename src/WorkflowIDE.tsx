@@ -299,7 +299,11 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
         return (def: WorkflowDef) => {
             setSaveNameNotice(onboardingEnabled ? saveNameHint(def.name, onboardingDomains) : null);
             track('workflow_saved');
-            onSaveProp(def);
+            // R19：运行态画布展示的是实例定义，保存的永远是编辑中的定义
+            const toSave = useWorkflowStore.getState().editWorkflowDefStash ?? def;
+            onSaveProp(toSave);
+            // R19：交给宿主保存后，执行验证运行的已保存版本就是这一份
+            useWorkflowStore.getState().markWorkflowSaved(toSave);
         };
     }, [onSaveProp, track, onboardingEnabled, onboardingDomains]);
 
@@ -391,6 +395,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     useEffect(() => {
         if (workflowDef) {
             setWorkflow(workflowDef, layoutDirection);
+            // R19：宿主传入的定义视为服务端已保存的版本
+            useWorkflowStore.getState().markWorkflowSaved();
             // Clear history after loading a new workflow to prevent undoing to empty state
             useWorkflowStore.temporal.getState().clear();
         }
@@ -407,10 +413,10 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
 
     // Expose imperative API via ref
     useImperativeHandle(ref, () => ({
-        getWorkflowDef: () => useWorkflowStore.getState().workflowDef,
+        getWorkflowDef: () => useWorkflowStore.getState().getEditingWorkflowDef(),
         getValidationResults: () => useWorkflowStore.getState().validationResults,
         save: () => {
-            const def = useWorkflowStore.getState().workflowDef;
+            const def = useWorkflowStore.getState().getEditingWorkflowDef();
             if (def && onSave) onSave(def);
         },
         createBlankWorkflow: (name?: string) => {
@@ -430,6 +436,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             if (def === prevDef) return;
             prevDef = def;
             if (skipInitial) { skipInitial = false; return; }
+            // R19：运行态展示实例定义、离开运行态换回编辑定义，都不是用户的修改，不通知宿主
+            if (state.editWorkflowDefStash || state.mode === 'run') return;
             if (def) onWorkflowChange(def);
         });
         return unsub;

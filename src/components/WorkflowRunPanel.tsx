@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { parseWorkflowInputParams, WorkflowInputParam } from '../types/conductor';
 import { WorkflowInstance } from '../types/conductor';
 import './WorkflowRunPanel.css';
-import { X } from 'lucide-react';
+import { X, TriangleAlert } from 'lucide-react';
 import { startExecutionPolling, type ExecutionPoller } from '../utils/executionPoller';
 
 export interface WorkflowRunPanelProps {
@@ -22,8 +22,11 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
     onPollExecution,
     executionPollInterval = 3000,
 }) => {
-    const { workflowDef, showRunPanel, setShowRunPanel, setRunState, importExecutionJSON, setMode } = useWorkflowStore(useShallow((s) => ({
+    const { workflowDef, showRunPanel, setShowRunPanel, setRunState, importExecutionJSON, setMode, hasUnsavedChanges } = useWorkflowStore(useShallow((s) => ({
             workflowDef: s.workflowDef,
+            // R19：定义或保存基线一变就重新计算（hasUnsavedChanges 读的是 store 当前值）
+            // 只在面板打开时计算，避免拖拽等高频更新时反复序列化整个定义
+            hasUnsavedChanges: s.showRunPanel && s.workflowDef !== null && s.hasUnsavedChanges(),
             showRunPanel: s.showRunPanel,
             setShowRunPanel: s.setShowRunPanel,
             setRunState: s.setRunState,
@@ -293,6 +296,17 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
                     )}
 
                     {submitError && <p className="wrp-error wrp-submit-error">{submitError}</p>}
+
+                    {/* R19：执行按「名称 + 版本」启动服务端已保存的定义，画布上未保存的修改不会参与运行 */}
+                    {hasUnsavedChanges && onTriggerExecution && (
+                        <p className="wrp-unsaved-notice" role="status" data-testid="wrp-unsaved-notice">
+                            <TriangleAlert size={14} strokeWidth={1.75} aria-hidden="true" />
+                            <span>
+                                画布有未保存的修改。将运行已保存的版本（<code>{workflowDef.name}</code> v{workflowDef.version ?? 1}），
+                                这些修改不会参与本次执行；要验证修改，先保存再执行。
+                            </span>
+                        </p>
+                    )}
                 </div>
 
                 {/* Footer */}

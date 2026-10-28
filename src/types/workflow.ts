@@ -1,7 +1,7 @@
 import { Node, Edge, Position } from 'reactflow';
 import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from './conductor';
 
-// ─── 视图模式 ───────────────────────────────────────────────────────────────────────────
+// ─── 视图模式 ───────────────────────────────────────────────────────────────
 
 /**
  * 视图详情级别（独立于编辑模式）
@@ -11,7 +11,7 @@ import { WorkflowDef, TaskDef, WorkflowInstance, TaskInstance } from './conducto
  */
 export type ViewMode = 'business' | 'standard' | 'developer';
 
-// ─── 运行态输入 ─────────────────────────────────────────────────────────────────────────
+// ─── 运行态输入 ─────────────────────────────────────────────────────────────
 
 /**
  * `workflowExecution` prop 的公共类型（WorkflowIDE 与 AiWorkflowIDE 共用）。
@@ -19,7 +19,7 @@ export type ViewMode = 'business' | 'standard' | 'developer';
  */
 export type WorkflowExecutionInput = WorkflowInstance | TaskInstance[];
 
-// ─── AI Diff 类型 ─────────────────────────────────────────────────────────────────────
+// ─── AI Diff 类型 ─────────────────────────────────────────────────────────
 
 export interface WorkflowDiffRow {
     kind: 'add' | 'mod' | 'del';

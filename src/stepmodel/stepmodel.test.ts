@@ -575,3 +575,56 @@ describe('v1.3.1 业务模式往返无损（B1–B8 / B19 / B20）', () => {
     expect(roundTrip({ name: 'w', version: 1, description: '', tasks: [] }).description).toBe('');
   });
 });
+
+describe('v1.3.2 B21：业务模式往返保留 JOIN 的 joinOn', () => {
+  const wf = (tasks: any[]) => ({ name: 'wf', version: 1, schemaVersion: 2, tasks }) as any;
+  const simple = (ref: string) => ({ name: ref, taskReferenceName: ref, type: 'SIMPLE' as const, inputParameters: {} });
+  const partialJoinDef = () => wf([
+    { name: 'par', taskReferenceName: 'p', type: 'FORK_JOIN', forkTasks: [[simple('a')], [simple('b')], [simple('c')]] },
+    // 只等前两条分支：c 是“发了就不管”的旁路，合法设计
+    { name: 'par_join', taskReferenceName: 'pj', type: 'JOIN', joinOn: ['a', 'b'] },
+    simple('after'),
+  ]);
+
+  it('[B21-01] 只等部分分支的 FORK 往返后 joinOn 不变，全部任务逐字段一致', () => {
+    const def = partialJoinDef();
+    const out = compileStepModelToWorkflowDef(decompileWorkflowDefToStepModel(def));
+    expect(out.tasks[1].joinOn).toEqual(['a', 'b']);
+    expect(out.tasks).toEqual(def.tasks);
+    const twice = compileStepModelToWorkflowDef(decompileWorkflowDefToStepModel(out));
+    expect(twice.tasks).toEqual(def.tasks);
+  });
+
+  it('[B21-02] 等待的泳道末尾追加步骤：只把该项换成新的末尾，未等待的泳道仍不等待', () => {
+    const model = decompileWorkflowDefToStepModel(partialJoinDef());
+    const lane0 = model.steps[0].forkLanes![0];
+    const extra = decompileWorkflowDefToStepModel(wf([simple('a2')])).steps[0];
+    lane0.steps.push(extra);
+    const out = compileStepModelToWorkflowDef(model);
+    expect(out.tasks[1].joinOn).toEqual(['a2', 'b']);
+  });
+
+  it('[B21-03] 删除一条被等待的泳道：对应项移除，其余保留', () => {
+    const model = decompileWorkflowDefToStepModel(partialJoinDef());
+    model.steps[0].forkLanes = model.steps[0].forkLanes!.slice(1);
+    const out = compileStepModelToWorkflowDef(model);
+    expect(out.tasks[1].joinOn).toEqual(['b']);
+  });
+
+  it('[B21-04] 新增泳道默认等待其末尾任务', () => {
+    const model = decompileWorkflowDefToStepModel(partialJoinDef());
+    const d = decompileWorkflowDefToStepModel(wf([simple('d')])).steps[0];
+    model.steps[0].forkLanes!.push({ laneId: 'lane_3', steps: [d] });
+    const out = compileStepModelToWorkflowDef(model);
+    expect(out.tasks[1].joinOn).toEqual(['a', 'b', 'd']);
+  });
+
+  it('[B21-05] 业务模式新建的并行组（没有原 JOIN）仍默认等待全部非空泳道', () => {
+    const def = wf([
+      { name: 'par', taskReferenceName: 'p', type: 'FORK_JOIN', forkTasks: [[simple('a')], [simple('b')]] },
+    ]);
+    const out = compileStepModelToWorkflowDef(decompileWorkflowDefToStepModel(def));
+    const join = out.tasks.find((t) => t.type === 'JOIN')!;
+    expect(join.joinOn).toEqual(['a', 'b']);
+  });
+});

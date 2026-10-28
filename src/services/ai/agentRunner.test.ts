@@ -185,6 +185,8 @@ describe('AgentRunner', () => {
     });
 
     it('creates a pendingRepair from propose_repair', async () => {
+        // propose_repair 只在运行态提供（A17 起列表外的调用会被拒绝）
+        useWorkflowStore.getState().setMode('run');
         const { transport } = scriptedTransport([
             [{ type: 'tool_call', id: 't1', name: 'propose_repair', args: { diagnosis: '任务超时', actions: [{ id: 'a1', label: '重跑', type: 'rerun_from', taskRef: 'x' }] } }],
         ]);
@@ -195,6 +197,7 @@ describe('AgentRunner', () => {
 
         const repair = useAiStore.getState().pendingRepair;
         expect(repair?.diagnosis).toBe('任务超时');
+        useWorkflowStore.getState().setMode('edit');
     });
 
     it('creates a pendingClarification from ask_clarification', async () => {
@@ -257,10 +260,8 @@ describe('AgentRunner', () => {
     });
 
     it('respects aiPermissions.canEdit=false by using read-only tools only (no proposal even if the model tries)', async () => {
-        // Even a replace_workflow tool_call should fall outside the active tool defs in read-only
-        // mode; the runner still executes whatever the model calls (protocol-level), so this test
-        // documents that patch/replace tools are excluded from `activeDefs` sent to the model —
-        // verified via the request payload rather than by blocking execution client-side.
+        // patch/replace tools are excluded from `activeDefs` sent to the model; calls outside that
+        // list are additionally rejected client-side (A17, see the tests below).
         const { transport, seenRequests } = scriptedTransport([
             [{ type: 'text', content: '只读模式下我不能修改工作流' }, { type: 'done' }],
         ]);
@@ -272,6 +273,79 @@ describe('AgentRunner', () => {
         const toolNames = seenRequests[0].tools.map(t => t.function.name);
         expect(toolNames).not.toContain('replace_workflow');
         expect(toolNames).not.toContain('patch_workflow');
+    });
+
+    describe('A17: 执行前按本轮可用工具白名单校验', () => {
+        const validWorkflow = { name: 'hijacked', tasks: [{ name: 'x', taskReferenceName: 'x', type: 'SIMPLE' }], version: 1 };
+        const toolMsgs = (req: AgentRequest) => req.messages.filter(m => m.role === 'tool');
+
+        it('[A17-01] 只读权限下模型调用 replace_workflow 被拒绝：不生成方案，时间线记一条警告', async () => {
+            const { transport, seenRequests } = scriptedTransport([
+                [{ type: 'tool_call', id: 't1', name: 'replace_workflow', args: { workflow: validWorkflow } }],
+                [{ type: 'text', content: '好的' }, { type: 'done' }],
+            ]);
+            useAiStore.getState().setConfig({ apiKey: '', transport });
+
+            const runner = new AgentRunner(() => ({ aiPermissions: { canEdit: false } }), testStores);
+            await runner.send('改成并行');
+
+            expect(useAiStore.getState().pendingProposal).toBeNull();
+            expect(useWorkflowStore.getState().workflowDef?.name).toBe('test_wf');
+            const rejected = toolMsgs(seenRequests[1]).find(m => m.tool_call_id === 't1');
+            expect(rejected?.content).toContain('调用被拒绝');
+            expect(useAiStore.getState().timelineEntries.some(e => e.label.includes('已拒绝调用 replace_workflow'))).toBe(true);
+        });
+
+        it('[A17-02] 运行态下 patch_workflow 与草稿阶段工具都被拒绝，安全网也不自动提交方案', async () => {
+            useWorkflowStore.getState().setMode('run');
+            const { transport } = scriptedTransport([
+                [
+                    { type: 'tool_call', id: 't1', name: 'init_workflow_blueprint', args: { name: 'hijacked' } },
+                    { type: 'tool_call', id: 't2', name: 'patch_workflow', args: { operations: [] } },
+                ],
+                [{ type: 'text', content: '完成' }, { type: 'done' }],
+            ]);
+            useAiStore.getState().setConfig({ apiKey: '', transport });
+
+            const runner = new AgentRunner(() => ({}), testStores);
+            await runner.send('顺便把流程改了');
+
+            expect(useAiStore.getState().pendingProposal).toBeNull();
+            const labels = useAiStore.getState().timelineEntries.map(e => e.label);
+            expect(labels.some(l => l.includes('已拒绝调用 init_workflow_blueprint'))).toBe(true);
+            expect(labels.some(l => l.includes('已拒绝调用 patch_workflow'))).toBe(true);
+            useWorkflowStore.getState().setMode('edit');
+        });
+
+        it('[A17-03] 只读权限下自定义工具不会被执行', async () => {
+            let executed = false;
+            toolRegistry.setTools([{
+                definition: { type: 'function', function: { name: 'delete_servers', description: '', parameters: {} } },
+                execute: async () => { executed = true; return 'deleted'; },
+            }]);
+            const { transport, seenRequests } = scriptedTransport([
+                [{ type: 'tool_call', id: 't1', name: 'delete_servers', args: {} }],
+                [{ type: 'text', content: '好的' }, { type: 'done' }],
+            ]);
+            useAiStore.getState().setConfig({ apiKey: '', transport });
+
+            const runner = new AgentRunner(() => ({ aiPermissions: { canEdit: false } }), testStores);
+            await runner.send('清理服务器');
+
+            expect(executed).toBe(false);
+            expect(toolMsgs(seenRequests[1]).find(m => m.tool_call_id === 't1')?.content).toContain('调用被拒绝');
+        });
+
+        it('[A17-04] 编辑态下本轮提供的工具照常执行', async () => {
+            const { transport } = scriptedTransport([
+                [{ type: 'tool_call', id: 't1', name: 'get_workflow_state', args: {} }],
+                [{ type: 'text', content: 'ok' }, { type: 'done' }],
+            ]);
+            useAiStore.getState().setConfig({ apiKey: '', transport });
+            const runner = new AgentRunner(() => ({}), testStores);
+            await runner.send('看看');
+            expect(useAiStore.getState().timelineEntries.some(e => e.label.includes('已拒绝'))).toBe(false);
+        });
     });
 
     it('excludes propose_repair when aiPermissions.canRepair=false', async () => {

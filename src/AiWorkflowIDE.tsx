@@ -360,7 +360,11 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         if (!onSaveProp) return undefined;
         return (def: WorkflowDef) => {
             track('workflow_saved');
-            onSaveProp(def);
+            // R19：运行态画布展示的是实例定义，保存的永远是编辑中的定义
+            const toSave = useWorkflowStore.getState().editWorkflowDefStash ?? def;
+            onSaveProp(toSave);
+            // R19：交给宿主保存后，执行验证运行的已保存版本就是这一份
+            useWorkflowStore.getState().markWorkflowSaved(toSave);
         };
     }, [onSaveProp, track]);
     // 转发现有 onAiEvent：仅把 type 交给埋点；宿主回调保持原样
@@ -493,6 +497,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     useEffect(() => {
         if (propDef) {
             workflowStore.setWorkflow(propDef);
+            // R19：宿主传入的定义视为服务端已保存的版本
+            useWorkflowStore.getState().markWorkflowSaved();
             workflowStore.setMode('edit');
         }
     }, [propDef]);
@@ -529,6 +535,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         if (!draftKey && !onDraftChange) return;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
+            // R19：运行态画布展示的是实例定义，不写进草稿；离开运行态换回编辑定义后会再触发一次保存
+            if (useWorkflowStore.getState().editWorkflowDefStash) return;
             const def = useWorkflowStore.getState().workflowDef;
             const msgs = stores.aiStore.getState().messages;
             const proposal = stores.aiStore.getState().pendingProposal;
@@ -563,10 +571,16 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     }, [workflowExecution]);
 
     // ── Notify parent on workflow change ────────────────────────────────────
+    // R19：运行态展示的实例定义不是用户的修改，不通知宿主；离开运行态换回的编辑定义与之前通知过的是同一个对象，也不重复通知
+    const lastNotifiedDefRef = useRef<WorkflowDef | null>(null);
     useEffect(() => {
-        if (onWorkflowChange && workflowStore.workflowDef) {
-            onWorkflowChange(workflowStore.workflowDef);
-        }
+        const def = workflowStore.workflowDef;
+        if (!onWorkflowChange || !def) return;
+        const s = useWorkflowStore.getState();
+        if (s.editWorkflowDefStash || s.mode === 'run') return;
+        if (def === lastNotifiedDefRef.current) return;
+        lastNotifiedDefRef.current = def;
+        onWorkflowChange(def);
     }, [workflowStore.workflowDef, onWorkflowChange]);
 
     // ── Responsive layout: observe this component's own container width ────
@@ -642,7 +656,7 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     // ── Ref API ─────────────────────────────────────────────────────────────
     // Use getState() to avoid stale closure — ref callbacks must always reflect latest store state.
     useImperativeHandle(ref, () => ({
-        getWorkflowDef: () => useWorkflowStore.getState().workflowDef,
+        getWorkflowDef: () => useWorkflowStore.getState().getEditingWorkflowDef(),
         setWorkflow: (def: WorkflowDef) => {
             useWorkflowStore.getState().setWorkflow(def);
             useWorkflowStore.getState().setMode('edit');

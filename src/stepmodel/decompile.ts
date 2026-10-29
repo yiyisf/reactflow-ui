@@ -208,8 +208,9 @@ export function decompileWorkflowDefToStepModel(
 
   return {
     name: def.name || 'unnamed_workflow',
-    description: def.description || '',
-    version: def.version || 1,
+    // B22：原定义没有的字段保持 undefined，编译时才不会补出 "description": "" / "version": 1
+    description: def.description,
+    version: def.version,
     steps,
     inputParameters: def.inputParameters,
     rawWorkflowDef: structuredClone(def),

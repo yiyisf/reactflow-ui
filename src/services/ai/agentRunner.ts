@@ -495,15 +495,21 @@ export class AgentRunner {
 
         try {
             const customDefs = toolRegistry.getDefinitions();
-            const mode = useWorkflowStore.getState().mode;
             const editAllowed = aiPermissions?.canEdit !== false;
             const repairAllowed = aiPermissions?.canRepair !== false;
-            let activeDefs = mode === 'run' || !editAllowed
-                ? RUN_MODE_TOOL_DEFINITIONS
-                : [...TOOL_DEFINITIONS.filter(d => !EDIT_MODE_EXCLUDED_TOOLS.has(d.function.name)), ...customDefs];
-            if (!repairAllowed) {
-                activeDefs = activeDefs.filter(d => d.function.name !== 'propose_repair');
-            }
+            // A17：按当前模式和权限决定发给模型、也允许执行的工具。模式每步重新读取：
+            // 会话进行中切到运行态时，编辑工具从下一次调用起就失效
+            const resolveToolAccess = () => {
+                const mode = useWorkflowStore.getState().mode;
+                let defs = mode === 'run' || !editAllowed
+                    ? RUN_MODE_TOOL_DEFINITIONS
+                    : [...TOOL_DEFINITIONS.filter(d => !EDIT_MODE_EXCLUDED_TOOLS.has(d.function.name)), ...customDefs];
+                if (!repairAllowed) {
+                    defs = defs.filter(d => d.function.name !== 'propose_repair');
+                }
+                return { mode, activeDefs: defs, allowedToolNames: new Set(defs.map(d => d.function.name)) };
+            };
+            const proposalsAllowed = () => useWorkflowStore.getState().mode !== 'run' && editAllowed;
 
             const existingMsg = ai.getState().messages.find(m => m.id === assistantMsgId);
             fullAssistantText = existingMsg?.content ?? '';
@@ -528,8 +534,9 @@ export class AgentRunner {
 
                 const stepToolCalls: Array<{ id: string; name: string; args: Record<string, any> }> = [];
                 liveStepText = '';
+                const offered = resolveToolAccess();
 
-                for await (const event of streamChat(agentHistory, activeDefs, config, signal)) {
+                for await (const event of streamChat(agentHistory, offered.activeDefs, config, signal)) {
                     if (signal.aborted) break;
                     switch (event.type) {
                         case 'text':
@@ -568,8 +575,22 @@ export class AgentRunner {
                 } | null = null;
                 let pendingPlanResult: { title: string; steps: any[]; summary?: string } | null = null;
 
+                // A17：执行前校验——既要在本步发给模型的列表里，也要在执行时的模式下仍然允许（流式输出期间可能切到了运行态）
+                const current = resolveToolAccess();
                 for (const tc of stepToolCalls) {
                     if (signal.aborted) break;
+                    if (!offered.allowedToolNames.has(tc.name) || !current.allowedToolNames.has(tc.name)) {
+                        const why = current.mode === 'run'
+                            ? '运行态只能查看和诊断'
+                            : !editAllowed ? '当前没有编辑权限' : '本轮没有提供这个工具';
+                        toolResultMsgs.push({
+                            role: 'tool',
+                            content: `调用被拒绝：工具 ${tc.name} 不在本轮可用的工具列表里（${why}）。不要再调用它，改用可用的工具，或直接回复用户。`,
+                            tool_call_id: tc.id,
+                        });
+                        ai.getState().addTimelineEntry(`已拒绝调用 ${tc.name}：${why}`, 'warning');
+                        continue;
+                    }
                     ai.getState().setToolStatus(TOOL_STATUS_LABELS[tc.name] ?? `执行 ${tc.name}…`);
                     onAiEvent?.({ type: 'tool:called', timestamp: Date.now(), tool: tc.name });
 
@@ -770,6 +791,8 @@ export class AgentRunner {
             // (and wasn't aborted), automatically verify & commit the draft as a proposal!
             if (
                 isCurrent() &&
+                // A17：只读或运行态下不生成方案（含从旧断点续跑时带回来的草稿；按结束时的模式判断）
+                proposalsAllowed() &&
                 !signal.aborted &&
                 !hitStepLimit &&
                 !pausedForUser &&

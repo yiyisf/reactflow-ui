@@ -52,7 +52,8 @@ const MyWorkflowApp = () => {
 
 | 属性名 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `workflowDef` | `WorkflowDef` | `undefined` | 初始加载的工作流定义 JSON 对象。不传时显示空状态引导面板。 |
+| `workflowDef` | `WorkflowDef` | `undefined` | 初始加载的工作流定义 JSON 对象。不传时显示空状态引导面板。默认视为服务端已保存的版本，见 `workflowDefSaved`。 |
+| `workflowDefSaved` | `boolean` | `true` | `workflowDef` 是否是服务端已保存的版本。传入本地文件、草稿等还没保存的定义时设为 `false`，「执行验证」会提示将运行已保存的版本（`AiWorkflowIDE` 同名属性同样生效）。 |
 | `readOnly` | `boolean` | `false` | 是否开启只读模式。开启后无法拖拽、连接或编辑节点。 |
 | `height` | `string \| number` | `'100%'` | 组件高度。 |
 | `theme` | `'dark' \| 'light'` | `'dark'` | 主题模式。 |
@@ -63,7 +64,7 @@ const MyWorkflowApp = () => {
 
 | 属性名 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `onSave` | `(def: WorkflowDef) => void` | 保存回调，通过 Ctrl+S / Cmd+S 快捷键或 `ref.save()` 触发。 |
+| `onSave` | `(def: WorkflowDef) => void \| Promise<unknown>` | 保存回调，通过 Ctrl+S / Cmd+S 快捷键或 `ref.save()` 触发。异步保存请返回 Promise：resolve 后 IDE 才把这份定义记为已保存的版本，reject 时「执行验证」面板继续提示画布有未保存的修改。同步返回时交出即视为已保存。 |
 | `onWorkflowChange` | `(def: WorkflowDef) => void` | 工作流定义变更时的实时回调。仅在任务增删改、属性修改等数据变化时触发；拖拽、缩放、选中等纯 UI 操作不触发。 |
 | `onRequestImport` | `() => void` | (可选) 空状态面板点击「导入 JSON」时触发。宿主应用可在此打开文件选择器或自定义导入逻辑。 |
 | `searchQuery` | `string` | (可选) 传入搜索关键词，匹配的任务节点会高亮显示。 |
@@ -200,7 +201,11 @@ const App = () => {
       <button onClick={() => ideRef.current?.save()}>保存</button>
       <WorkflowIDE
         ref={ideRef}
-        onSave={(def) => fetch('/api/save', { method: 'POST', body: JSON.stringify(def) })}
+        // 返回 Promise：保存失败时 IDE 不会把这份定义当成已保存的版本
+        onSave={async (def) => {
+          const res = await fetch('/api/save', { method: 'POST', body: JSON.stringify(def) });
+          if (!res.ok) throw new Error(`保存失败：HTTP ${res.status}`);
+        }}
         onWorkflowChange={(def) => console.log('changed:', def.name)}
       />
     </div>
@@ -216,6 +221,7 @@ const App = () => {
 | `getValidationResults()` | `ValidationResults` | 获取当前校验结果（错误和警告列表） |
 | `save()` | `void` | 触发 `onSave` 回调（等同于 Ctrl+S） |
 | `createBlankWorkflow(name?)` | `void` | 程序化创建空白工作流并进入编辑模式。可选传入工作流名称，默认为 `'new_workflow'`。调用后画布显示中央 [+] 引导按钮，撤销历史自动清空。 |
+| `markSaved(def?)` | `void` | 把定义记为服务端已保存的版本，不传时取当前编辑中的定义。「执行验证」按名称 + 版本运行已保存的版本，画布与它不同时会提示。通过 `workflowDef` 属性传入的定义（`workflowDefSaved` 不为 `false`）、`onSave` 成功后的定义会自动记为已保存；用其它方式加载服务端定义后调用它（`AiWorkflowIDE` 的 ref 同样提供）。 |
 
 ## 📄 从零新建工作流
 

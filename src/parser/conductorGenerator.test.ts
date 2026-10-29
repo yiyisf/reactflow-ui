@@ -90,3 +90,21 @@ describe('findPairedJoinRef (E8)', () => {
         expect(findPairedJoinRef(tasks, 'f')).toBe('j');
     });
 });
+
+describe('syncForkJoinOn: 删除中间分支不错位（B21）', () => {
+    it('removing a joined middle branch drops only its entry; later branches keep their own state', () => {
+        const prev = forkPair([[simple('a')], [simple('b')], [simple('c')]], ['a', 'b']);
+        const next = clone(prev);
+        next[0].forkTasks!.splice(0, 1);
+        syncForkJoinOn(next, prev);
+        expect(next[1].joinOn).toEqual(['b']);
+    });
+
+    it('removing an unjoined branch keeps the joinOn unchanged', () => {
+        const prev = forkPair([[simple('a')], [simple('b')], [simple('c')]], ['b', 'c']);
+        const next = clone(prev);
+        next[0].forkTasks!.splice(0, 1);
+        syncForkJoinOn(next, prev);
+        expect(next[1].joinOn).toEqual(['b', 'c']);
+    });
+});

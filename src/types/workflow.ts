@@ -189,6 +189,18 @@ export interface WorkflowState {
     viewMode: ViewMode;
     workflowDef: WorkflowDef | null;
     workflowInstance: WorkflowInstance | null;
+    /**
+     * R19：运行态展示的实例定义（与编辑中的定义不同时才有值）。
+     * 运行实例里的定义只用于渲染运行视图，不会替换编辑中的定义。
+     */
+    runWorkflowDef: WorkflowDef | null;
+    /** R19：运行态展示实例定义期间，暂存的编辑中定义；离开运行态时原样恢复 */
+    editWorkflowDefStash: WorkflowDef | null;
+    /**
+     * R19：最近一次加载或保存时的定义（序列化后），用于判断画布是否有未保存的修改。
+     * 为 null 表示 IDE 不知道服务端保存过哪个版本。
+     */
+    savedWorkflowJson: string | null;
     nodes: WorkflowNode[];
     edges: Edge[];
     taskMap: Record<string, TaskDef>;
@@ -303,6 +315,12 @@ export interface WorkflowActions {
     setRunState: (state: RunState, execId?: string | null, error?: string | null) => void;
     /** P4.3: 切回 edit 模式并聚焦到指定任务的指定参数字段 */
     switchToEditAndFocusParam: (taskRef: string, paramKey?: string) => void;
+    /** R19：把定义记为已保存（宿主加载定义、或交给 onSave 后调用）；不传时取编辑中的定义 */
+    markWorkflowSaved: (def?: WorkflowDef | null) => void;
+    /** R19：编辑中的定义（运行态展示实例定义时取暂存的编辑定义）。保存、导出、宿主读取都用它 */
+    getEditingWorkflowDef: () => WorkflowDef | null;
+    /** R19：当前定义与最近一次加载 / 保存的版本不同（或从未记录过保存版本）时返回 true */
+    hasUnsavedChanges: () => boolean;
     /** W-LSP: 切换数据血缘飞线叠加显示 */
     setShowDataLineage: (show: boolean) => void;
     /** W-LSP: 清除重构提示文案 */

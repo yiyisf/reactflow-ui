@@ -184,11 +184,103 @@ function rebuildFromDef(def: WorkflowDef, state: Pick<WorkflowStore, 'layoutDire
     };
 }
 
+/**
+ * R19：在不记录撤销历史的情况下执行一次状态变更。
+ * 运行态切换展示的定义、离开运行态恢复编辑中的定义，都不是用户的编辑，不应进入 ⌘Z 历史。
+ */
+function withoutHistory(apply: () => void) {
+    const t = getTemporal();
+    if (!t || !t.isTracking) {
+        apply();
+        return;
+    }
+    t.pause();
+    try {
+        apply();
+    } finally {
+        getTemporal()?.resume();
+    }
+}
+
+/**
+ * 加载一份定义：规范化旧字段、补齐缺失的 joinOn，并重新解析画布与布局。
+ * 返回要写入 store 的字段，由调用方和其它字段一起一次 set 完成。
+ */
+function loadWorkflowPatch(workflowJson: any, dir: LayoutDirection, state: Pick<WorkflowStore, 'mode' | 'workflowLoadKey'>) {
+    const def = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
+    normalizeLegacyTaskFields(def.tasks);
+    // 加载时只补齐缺失的 joinOn，导入的部分 joinOn 原样保留（E5）
+    syncForkJoinOn(def.tasks);
+
+    const { nodes, edges, taskMap } = parseWorkflow(def, dir, { hideEmptyBranches: state.mode !== 'edit' });
+    const laid = getLayoutedElements(nodes, edges, { direction: dir, mode: state.mode });
+    return {
+        workflowDef: def,
+        nodes: laid.nodes,
+        edges: laid.edges,
+        taskMap,
+        validationResults: validateWorkflow(def),
+        layoutDirection: dir,
+        workflowLoadKey: state.workflowLoadKey + 1,
+        graphStale: false,
+    };
+}
+
 /** 选中的任务在新定义里已不存在时，清空选中并关闭详情面板（E12） */
 function selectionPatch(state: Pick<WorkflowStore, 'selectedTask'>, taskMap: Record<string, TaskDef>) {
     const ref = state.selectedTask?.taskReferenceName;
     if (ref && !taskMap[ref]) return { selectedTask: null, isDetailPanelOpen: false };
     return {};
+}
+
+/**
+ * 本地偏好（localStorage `conductor-ui-prefs`）的版本迁移。
+ * - v0 → v1：默认连线从贝塞尔曲线改为折线
+ * - v1 → v2（R20）：删除旧版本写进去的剪贴板任务 `copiedTask`
+ */
+export function migratePersistedPrefs(persisted: any, version: number) {
+    if (!persisted || typeof persisted !== 'object') return persisted;
+    if (version < 1 && persisted.edgeType === 'default') {
+        persisted.edgeType = 'smoothstep';
+    }
+    if (version < 2) {
+        delete persisted.copiedTask;
+    }
+    return persisted;
+}
+
+/**
+ * R19：离开运行态时，把运行期间暂存的编辑中定义换回来（不记撤销历史）。
+ * 没有暂存（运行的就是当前定义，或宿主只给了运行实例）时什么都不做。
+ */
+function restoreEditDefAfterRun(nextMode: EditorMode) {
+    const state = useWorkflowStore.getState();
+    const stash = state.editWorkflowDefStash;
+    if (!stash) {
+        if (state.runWorkflowDef) useWorkflowStore.setState({ runWorkflowDef: null });
+        return;
+    }
+    withoutHistory(() => {
+        const rebuilt = rebuildFromDef(stash, { layoutDirection: state.layoutDirection, mode: nextMode });
+        useWorkflowStore.setState({
+            ...rebuilt,
+            ...selectionPatch(state, rebuilt.taskMap),
+            graphStale: false,
+            runWorkflowDef: null,
+            editWorkflowDefStash: null,
+            workflowLoadKey: state.workflowLoadKey + 1,
+        });
+    });
+}
+
+/**
+ * R20：早期版本的 ⌘C 把整个任务写进 localStorage['conductor-clipboard']，这里在加载时清掉残留。
+ * 剪贴板现在只放在内存里（store.copiedTask）。
+ */
+try {
+    globalThis.localStorage?.removeItem('conductor-clipboard');
+} catch {
+    // 隐私模式等环境下 localStorage 不可用，忽略
 }
 
 const useWorkflowStore = create<WorkflowStore>()(
@@ -198,6 +290,9 @@ const useWorkflowStore = create<WorkflowStore>()(
                 mode: 'view',
                 workflowDef: null as WorkflowDef | null,
                 workflowInstance: null as WorkflowInstance | null,
+                runWorkflowDef: null as WorkflowDef | null,
+                editWorkflowDefStash: null as WorkflowDef | null,
+                savedWorkflowJson: null as string | null,
                 nodes: [],
                 edges: [],
                 taskMap: {},
@@ -253,25 +348,11 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
-                    const dir = direction || get().layoutDirection;
-                    const workflowWithSync = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
-                    normalizeLegacyTaskFields(workflowWithSync.tasks);
-                    // 加载时只补齐缺失的 joinOn，导入的部分 joinOn 原样保留（E5）
-                    syncForkJoinOn(workflowWithSync.tasks);
-
-                    const { nodes, edges, taskMap } = parseWorkflow(workflowWithSync, dir, { hideEmptyBranches: get().mode !== 'edit' });
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: dir, mode: get().mode });
-                    const validationResults = validateWorkflow(workflowWithSync);
-
                     set({
-                        workflowDef: workflowWithSync,
-                        nodes: layoutedNodes,
-                        edges: layoutedEdges,
-                        taskMap,
-                        validationResults,
-                        layoutDirection: dir,
-                        workflowLoadKey: get().workflowLoadKey + 1,
-                        graphStale: false,
+                        ...loadWorkflowPatch(workflowJson, direction || get().layoutDirection, get()),
+                        // 宿主或用户换了流程：之前暂存的编辑定义作废，不能在离开运行态时再恢复回来
+                        runWorkflowDef: null,
+                        editWorkflowDefStash: null,
                     });
                 },
 
@@ -306,6 +387,7 @@ const useWorkflowStore = create<WorkflowStore>()(
                             showWaterfallPanel: false,
                             activeLoopIterations: {},
                         });
+                        restoreEditDefAfterRun(mode);
                     }
                     set({ mode });
 
@@ -366,9 +448,21 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                     if (tasks.length === 0) return;
 
-                    // 如果探测到新的定义，先更新图表，确保 taskMap 是最新的
-                    if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(get().workflowDef)) {
-                        get().setWorkflow(workflowDef);
+                    // R19：实例里的定义与当前定义不同时（服务端补了默认字段、键序不同，或运行的是已保存的旧版本），
+                    // 只用它渲染运行视图；编辑中的定义暂存起来，离开运行态时原样恢复，不会被服务端版本替换。
+                    const current = get().workflowDef;
+                    if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(current)) {
+                        const stash = get().editWorkflowDefStash ?? current;
+                        // 一次 set 同时写入实例定义和暂存：同步订阅者（WorkflowIDE 的 onWorkflowChange）
+                        // 不能看到"实例定义 + 没有暂存"的中间状态，否则会把实例定义当成用户修改推给宿主
+                        withoutHistory(() => {
+                            const patch = loadWorkflowPatch(workflowDef, get().layoutDirection, get());
+                            set({
+                                ...patch,
+                                runWorkflowDef: patch.workflowDef,
+                                editWorkflowDefStash: stash,
+                            });
+                        });
                     }
 
                     // R5 / R9: group `ref__N` loop records under their base ref once; pair dynamic forks per iteration.
@@ -962,7 +1056,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         schemaVersion: 2
                     };
                     get().setWorkflow(blankDef);
-                    set({ mode: 'edit' });
+                    // R19：新建的流程还没有保存过的版本，之前流程的保存基线作废
+                    set({ mode: 'edit', savedWorkflowJson: null });
                 },
 
                 applyAIGeneratedWorkflow: (workflowJson: any) => {
@@ -995,6 +1090,8 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 // P4.3: 切回 edit 模式，选中任务并聚焦到指定参数字段
                 switchToEditAndFocusParam: (taskRef: string, paramKey?: string) => {
+                    // R19：从运行视图跳回编辑时，先换回编辑中的定义，再定位任务
+                    if (get().mode === 'run') restoreEditDefAfterRun('edit');
                     const { workflowDef, layoutDirection, taskMap } = get();
                     if (!workflowDef) return;
 
@@ -1015,6 +1112,18 @@ const useWorkflowStore = create<WorkflowStore>()(
                             showAnalysisPanel: false,
                         });
                     }
+                },
+
+                getEditingWorkflowDef: () => get().editWorkflowDefStash ?? get().workflowDef,
+                markWorkflowSaved: (saved?: WorkflowDef | null) => {
+                    const def = saved === undefined ? (get().editWorkflowDefStash ?? get().workflowDef) : saved;
+                    set({ savedWorkflowJson: def ? JSON.stringify(def) : null });
+                },
+                hasUnsavedChanges: () => {
+                    const { savedWorkflowJson } = get();
+                    const def = get().editWorkflowDefStash ?? get().workflowDef;
+                    if (!def) return false;
+                    return savedWorkflowJson === null || savedWorkflowJson !== JSON.stringify(def);
                 },
 
                 // Pillar 1: W-LSP 数据血缘开关与重构提示清除
@@ -1095,24 +1204,16 @@ const useWorkflowStore = create<WorkflowStore>()(
         ),
         {
             name: 'conductor-ui-prefs',
-            version: 1,
+            version: 2,
             storage: createJSONStorage(() => localStorage),
-            migrate: (persisted: any, version: number) => {
-                if (version === 0) {
-                    // v0 → v1: 默认连线从贝塞尔曲线改为折线
-                    if (persisted.edgeType === 'default') {
-                        persisted.edgeType = 'smoothstep';
-                    }
-                }
-                return persisted;
-            },
+            migrate: migratePersistedPrefs,
             partialize: (state: WorkflowStore) => ({
                 theme: state.theme,
                 themeColor: state.themeColor,
                 layoutDirection: state.layoutDirection,
                 edgeType: state.edgeType,
                 nodesLocked: state.nodesLocked,
-                copiedTask: state.copiedTask,
+                // R20：复制的任务只留在内存里，不写 localStorage（HTTP 任务可能带手写的 Authorization 等请求头）
                 viewMode: state.viewMode,
             }),
         }

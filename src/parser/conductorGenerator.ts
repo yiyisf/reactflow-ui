@@ -292,16 +292,36 @@ function syncPair(fork: TaskDef, join: TaskDef, previousRoot: TaskDef[] | null, 
     const unchanged = prevLast.length === nextLast.length && prevLast.every((r, idx) => r === nextLast[idx]);
     if (unchanged) return;
 
+    // 新旧分支按内容对应（B21）：分支里还留着原分支的任一任务，就是同一条分支；
+    // 都对不上时，分支数没变按位置对应（例如末尾任务被改名）。这样删掉中间一条分支时，
+    // 后面的分支不会错位继承前一条分支的 joinOn 项。
+    const laneRefs = (lanes: TaskDef[][] | undefined) =>
+        (lanes || []).map(lane => new Set((lane || []).map(t => t?.taskReferenceName).filter(Boolean)));
+    const prevLanes = laneRefs(prevFork.forkTasks);
+    const nextLanes = laneRefs(fork.forkTasks);
+    const sameCount = prevLanes.length === nextLanes.length;
+    const prevIdxOfNext = nextLanes.map((refs, j) => {
+        const byContent = prevLanes.findIndex(prev => [...refs].some(r => prev.has(r)));
+        if (byContent >= 0) return byContent;
+        return sameCount ? j : -1;
+    });
+
     const result: string[] = [];
     const push = (ref: string | null) => {
         if (ref && !result.includes(ref)) result.push(ref);
     };
 
     for (const entry of current) {
+        if (nextLast.includes(entry)) {
+            // 仍是某条分支的末尾任务：原样保留
+            push(entry);
+            continue;
+        }
         const branchIdx = prevLast.indexOf(entry);
         if (branchIdx >= 0) {
-            // 原来 join 在某分支末尾：跟随该分支新的末尾（分支变空 / 被删则去掉）
-            push(branchIdx < nextLast.length ? nextLast[branchIdx] : null);
+            // 原来 join 在某分支末尾：跟随对应分支新的末尾（分支变空 / 被删则去掉）
+            const j = prevIdxOfNext.indexOf(branchIdx);
+            push(j >= 0 ? nextLast[j] : null);
         } else if (!existingRefs || existingRefs.has(entry)) {
             // 用户自定义的条目（如分支中间的任务），只要任务还在就保留
             push(entry);
@@ -309,8 +329,9 @@ function syncPair(fork: TaskDef, join: TaskDef, previousRoot: TaskDef[] | null, 
     }
 
     // 新增分支，或原本为空的分支有了第一个任务：追加其末尾任务
-    nextLast.forEach((ref, idx) => {
-        const prev = idx < prevLast.length ? prevLast[idx] : null;
+    nextLast.forEach((ref, j) => {
+        const i = prevIdxOfNext[j];
+        const prev = i >= 0 && i < prevLast.length ? prevLast[i] : null;
         if (ref && prev === null) push(ref);
     });
 

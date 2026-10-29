@@ -3,6 +3,8 @@ import { CircleCheck, CircleX, Play, X } from 'lucide-react';
 import { parseWorkflowInputParams } from '../../types/conductor';
 import type { WorkflowDef, WorkflowInstance } from '../../types/conductor';
 import { coerceRunInputs } from './runInputs';
+import useWorkflowStore from '../../store/workflowStore';
+import UnsavedRunNotice from '../UnsavedRunNotice';
 
 interface WorkflowRunCardProps {
     workflowDef: WorkflowDef;
@@ -57,6 +59,8 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const cancelledRef = useRef(false);
+    // R19：运行卡片同样按「名称 + 版本」启动已保存的版本；只在填写表单时计算，避免运行中反复序列化定义
+    const hasUnsavedChanges = useWorkflowStore(st => phase === 'form' && st.workflowDef !== null && st.hasUnsavedChanges());
 
     useEffect(() => {
         return () => {
@@ -138,6 +142,11 @@ const WorkflowRunCard: React.FC<WorkflowRunCardProps> = ({
                 <div style={{ color: 'var(--text-secondary)', marginBottom: 12, fontSize: 12 }}>
                     工作流：<strong style={{ color: 'var(--text-primary)' }}>{workflowDef.name}</strong>
                 </div>
+                {hasUnsavedChanges && (
+                    <div style={{ marginBottom: 'var(--cm-space-3)' }}>
+                        <UnsavedRunNotice workflowName={workflowDef.name} version={workflowDef.version} />
+                    </div>
+                )}
 
                 {inputParams.length === 0 ? (
                     <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: '6px 0', marginBottom: 12 }}>

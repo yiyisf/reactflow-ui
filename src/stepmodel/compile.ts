@@ -2,6 +2,7 @@ import type { WorkflowDef, TaskDef } from '../types/conductor';
 import type { BusinessWorkflowModel, BusinessStep } from './types';
 import { ActionRegistry, defaultActionRegistry } from '../actions/registry';
 import type { ActionDefinition } from '../actions/types';
+import { syncForkJoinOn } from '../parser/conductorGenerator';
 
 const isPlainObject = (v: unknown): v is Record<string, any> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -193,9 +194,15 @@ function compileJoinFor(step: BusinessStep, forkTask: TaskDef): TaskDef {
     } as TaskDef);
   }
 
-  const joinOn: string[] = [];
-  for (const lane of forkTask.forkTasks || []) {
-    if (lane && lane.length > 0) joinOn.push(lane[lane.length - 1].taskReferenceName);
+  // B21：原 JOIN 已有 joinOn 时以它为准（导入的设计可能只等部分分支）；
+  // 泳道增删、泳道末尾任务变化由 compileStepModelToWorkflowDef 按原定义逐项同步。
+  // 没有原 JOIN（业务模式新建的并行组）才默认等待所有非空泳道。
+  const rawJoinOn = Array.isArray(raw.joinOn) && raw.joinOn.length > 0 ? [...raw.joinOn] : null;
+  const joinOn: string[] = rawJoinOn ?? [];
+  if (!rawJoinOn) {
+    for (const lane of forkTask.forkTasks || []) {
+      if (lane && lane.length > 0) joinOn.push(lane[lane.length - 1].taskReferenceName);
+    }
   }
   return dropUndefined({
     name: `${step.taskReferenceName}_join`,
@@ -243,6 +250,8 @@ export function compileStepModelToWorkflowDef(
     : {};
 
   const tasks: TaskDef[] = compileStepList(model.steps, model.name, registry);
+  // B21：与专业模式（E5）一致——只按原定义同步受结构变化影响的 joinOn 项，其余原样保留
+  syncForkJoinOn(tasks, model.rawWorkflowDef?.tasks ?? null);
 
   return {
     ...baseDef,

@@ -28,9 +28,10 @@
 | v1.0.0 | `v1-0.html` | Ember |
 | v1.1.0 | `v1-1.html` | Nebula |
 | v1.2.0 | `v1-2.html` | Signal |
-| v1.3.0 | `index.html` | Glacier |
+| v1.3.0 | `v1-3.html` | Glacier |
+| v1.3.1 + v1.3.2 | `index.html` | Ember |
 
-发新版本时：把当前 `index.html` 另存为 `v1-<n>.html` 归档，新首页选一个与 v1.3.0 不同的主题色，并在上表加一行。
+发新版本时：把当前 `index.html` 另存为 `v1-<n>.html` 归档，新首页选一个与上一版不同的主题色，并在上表加一行。
 
 ## Bento 网格
 

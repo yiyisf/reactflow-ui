@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
   const isAi = mode === 'ai'
   const isDev = mode === 'development'
 
-  // 开发服务器重写插件：将 /app 请求自动重定向到 /app.html，/v1-0、/v1-1、/v1-2 分别重定向到对应 html
+  // 开发服务器重写插件：将 /app 请求自动重定向到 /app.html，/v1-0、/v1-1、/v1-2、/v1-3 分别重定向到对应 html
   const devAppRewritePlugin = {
     name: 'dev-app-rewrite',
     configureServer(server) {
@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => {
           req.url = '/v1-1.html'
         } else if (req.url === '/v1-2' || req.url === '/v1-2/') {
           req.url = '/v1-2.html'
+        } else if (req.url === '/v1-3' || req.url === '/v1-3/') {
+          req.url = '/v1-3.html'
         }
         next()
       })
@@ -51,6 +53,7 @@ export default defineConfig(({ mode }) => {
             v10: path.resolve(__dirname, 'v1-0.html'),
             v11: path.resolve(__dirname, 'v1-1.html'),
             v12: path.resolve(__dirname, 'v1-2.html'),
+            v13: path.resolve(__dirname, 'v1-3.html'),
             app: path.resolve(__dirname, 'app.html'),
           },
         },

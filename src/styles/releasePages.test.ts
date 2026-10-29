@@ -14,7 +14,8 @@ const LOGO_LITERALS = new Set(['#ff6a13', '#0b0a09']);
 const versionOf = (path: string, html: string): string => {
     const m = /v1-(\d+)\.html$/.exec(path);
     if (m) return `1.${m[1]}`;
-    return /CMASTER v(\d+\.\d+)/.exec(html)?.[1] ?? 'latest';
+    // the current page names its full version (v1.3.2), so it sorts after the archived v1-3.html (1.3)
+    return /CMASTER v(\d+\.\d+(?:\.\d+)?)/.exec(html)?.[1] ?? 'latest';
 };
 
 const entries = Object.entries(pages)

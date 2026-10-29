@@ -99,6 +99,27 @@ describe('R19: 运行态不替换编辑中的定义', () => {
         expect(store().editWorkflowDefStash).toBeNull();
         expect(store().runWorkflowDef).toBeNull();
     });
+
+    it('[R19-07] 编辑态直接导入执行数据时，同步订阅者看不到"实例定义 + 没有暂存"的中间状态', () => {
+        store().updateWorkflowProperties({ description: '本地未保存的修改' });
+        // 与 WorkflowIDE 通知 onWorkflowChange 的条件一致：定义变了、没有暂存、不在运行态
+        const leaked: unknown[] = [];
+        let prevDef = store().workflowDef;
+        const unsub = useWorkflowStore.subscribe((s) => {
+            if (s.workflowDef === prevDef) return;
+            prevDef = s.workflowDef;
+            if (!s.editWorkflowDefStash && s.mode !== 'run') leaked.push(s.workflowDef);
+        });
+        try {
+            expect(store().mode).toBe('edit');
+            store().importExecutionJSON(instance('COMPLETED'));
+            store().setMode('edit');
+        } finally {
+            unsub();
+        }
+        expect(leaked).toEqual([]);
+        expect(store().workflowDef?.description).toBe('本地未保存的修改');
+    });
 });
 
 describe('R20: 剪贴板任务不落盘', () => {

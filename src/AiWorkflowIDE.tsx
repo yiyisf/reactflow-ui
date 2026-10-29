@@ -50,6 +50,7 @@ import './styles/tokens.css';
 import './styles/executionStyles.css';
 import './components/AiNative/AiNative.css';
 import { ChevronLeft, ChevronRight, Code2, LayoutList, Map as MapIcon, MessageSquare, RotateCcw } from 'lucide-react';
+import { handOffSave, type HostSaveHandler } from './utils/hostSave';
 
 /** 恢复横幅文案，如"已恢复刚刚的编辑" / "已恢复 3 分钟前的编辑" */
 function formatRestoredBannerText(savedAt: number): string {
@@ -230,7 +231,8 @@ export interface AiWorkflowIDEProps {
     taskSchemas?: TaskSchema[];
 
     // ── Callbacks ──────────────────────────────────────────────────────────
-    onSave?: (def: WorkflowDef) => void;
+    /** 保存回调。异步保存请返回 Promise：resolve 后才记为已保存的版本 */
+    onSave?: HostSaveHandler;
     onWorkflowChange?: (def: WorkflowDef) => void;
     onRequestImport?: () => void;
     executionActions?: ExecutionActions;
@@ -362,9 +364,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
             track('workflow_saved');
             // R19：运行态画布展示的是实例定义，保存的永远是编辑中的定义
             const toSave = useWorkflowStore.getState().editWorkflowDefStash ?? def;
-            onSaveProp(toSave);
-            // R19：交给宿主保存后，执行验证运行的已保存版本就是这一份
-            useWorkflowStore.getState().markWorkflowSaved(toSave);
+            // R19：宿主保存成功后（异步保存等 Promise resolve），执行验证运行的已保存版本才是这一份
+            handOffSave(onSaveProp, toSave);
         };
     }, [onSaveProp, track]);
     // 转发现有 onAiEvent：仅把 type 交给埋点；宿主回调保持原样

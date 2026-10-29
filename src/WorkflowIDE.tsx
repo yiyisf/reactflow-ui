@@ -36,6 +36,7 @@ import './styles/tokens.css';
 import './styles/executionStyles.css';
 import { LayoutList, LayoutTemplate, Network, Plug, TriangleAlert, X } from 'lucide-react';
 import { saveNameHint } from './onboarding/naming';
+import { handOffSave, type HostSaveHandler } from './utils/hostSave';
 
 /**
  * WorkflowIDE 的命令式 API（通过 ref 调用）
@@ -107,9 +108,10 @@ export interface WorkflowIDEProps {
 
     /**
      * 点击保存按钮时的回调函数。
+     * 异步保存请返回 Promise：resolve 后 IDE 才把这份定义记为已保存，reject 时执行面板继续提示"有未保存的修改"。
      * @param def 最新的工作流定义对象
      */
-    onSave?: (def: WorkflowDef) => void;
+    onSave?: HostSaveHandler;
 
     /**
      * 工作流定义发生变更时的实时回调 (可选)。
@@ -301,9 +303,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             track('workflow_saved');
             // R19：运行态画布展示的是实例定义，保存的永远是编辑中的定义
             const toSave = useWorkflowStore.getState().editWorkflowDefStash ?? def;
-            onSaveProp(toSave);
-            // R19：交给宿主保存后，执行验证运行的已保存版本就是这一份
-            useWorkflowStore.getState().markWorkflowSaved(toSave);
+            // R19：宿主保存成功后（异步保存等 Promise resolve），执行验证运行的已保存版本才是这一份
+            handOffSave(onSaveProp, toSave);
         };
     }, [onSaveProp, track, onboardingEnabled, onboardingDomains]);
 

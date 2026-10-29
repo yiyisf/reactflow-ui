@@ -63,7 +63,7 @@ const MyWorkflowApp = () => {
 
 | 属性名 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `onSave` | `(def: WorkflowDef) => void` | 保存回调，通过 Ctrl+S / Cmd+S 快捷键或 `ref.save()` 触发。 |
+| `onSave` | `(def: WorkflowDef) => void \| Promise<unknown>` | 保存回调，通过 Ctrl+S / Cmd+S 快捷键或 `ref.save()` 触发。异步保存请返回 Promise：resolve 后 IDE 才把这份定义记为已保存的版本，reject 时「执行验证」面板继续提示画布有未保存的修改。同步返回时交出即视为已保存。 |
 | `onWorkflowChange` | `(def: WorkflowDef) => void` | 工作流定义变更时的实时回调。仅在任务增删改、属性修改等数据变化时触发；拖拽、缩放、选中等纯 UI 操作不触发。 |
 | `onRequestImport` | `() => void` | (可选) 空状态面板点击「导入 JSON」时触发。宿主应用可在此打开文件选择器或自定义导入逻辑。 |
 | `searchQuery` | `string` | (可选) 传入搜索关键词，匹配的任务节点会高亮显示。 |
@@ -200,7 +200,11 @@ const App = () => {
       <button onClick={() => ideRef.current?.save()}>保存</button>
       <WorkflowIDE
         ref={ideRef}
-        onSave={(def) => fetch('/api/save', { method: 'POST', body: JSON.stringify(def) })}
+        // 返回 Promise：保存失败时 IDE 不会把这份定义当成已保存的版本
+        onSave={async (def) => {
+          const res = await fetch('/api/save', { method: 'POST', body: JSON.stringify(def) });
+          if (!res.ok) throw new Error(`保存失败：HTTP ${res.status}`);
+        }}
         onWorkflowChange={(def) => console.log('changed:', def.name)}
       />
     </div>

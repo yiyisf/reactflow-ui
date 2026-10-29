@@ -202,6 +202,30 @@ function withoutHistory(apply: () => void) {
     }
 }
 
+/**
+ * 加载一份定义：规范化旧字段、补齐缺失的 joinOn，并重新解析画布与布局。
+ * 返回要写入 store 的字段，由调用方和其它字段一起一次 set 完成。
+ */
+function loadWorkflowPatch(workflowJson: any, dir: LayoutDirection, state: Pick<WorkflowStore, 'mode' | 'workflowLoadKey'>) {
+    const def = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
+    normalizeLegacyTaskFields(def.tasks);
+    // 加载时只补齐缺失的 joinOn，导入的部分 joinOn 原样保留（E5）
+    syncForkJoinOn(def.tasks);
+
+    const { nodes, edges, taskMap } = parseWorkflow(def, dir, { hideEmptyBranches: state.mode !== 'edit' });
+    const laid = getLayoutedElements(nodes, edges, { direction: dir, mode: state.mode });
+    return {
+        workflowDef: def,
+        nodes: laid.nodes,
+        edges: laid.edges,
+        taskMap,
+        validationResults: validateWorkflow(def),
+        layoutDirection: dir,
+        workflowLoadKey: state.workflowLoadKey + 1,
+        graphStale: false,
+    };
+}
+
 /** 选中的任务在新定义里已不存在时，清空选中并关闭详情面板（E12） */
 function selectionPatch(state: Pick<WorkflowStore, 'selectedTask'>, taskMap: Record<string, TaskDef>) {
     const ref = state.selectedTask?.taskReferenceName;
@@ -324,25 +348,8 @@ const useWorkflowStore = create<WorkflowStore>()(
 
                 // 初始化或更新工作流并执行布局
                 setWorkflow: (workflowJson: any, direction?: LayoutDirection) => {
-                    const dir = direction || get().layoutDirection;
-                    const workflowWithSync = JSON.parse(JSON.stringify(workflowJson)) as WorkflowDef;
-                    normalizeLegacyTaskFields(workflowWithSync.tasks);
-                    // 加载时只补齐缺失的 joinOn，导入的部分 joinOn 原样保留（E5）
-                    syncForkJoinOn(workflowWithSync.tasks);
-
-                    const { nodes, edges, taskMap } = parseWorkflow(workflowWithSync, dir, { hideEmptyBranches: get().mode !== 'edit' });
-                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(nodes, edges, { direction: dir, mode: get().mode });
-                    const validationResults = validateWorkflow(workflowWithSync);
-
                     set({
-                        workflowDef: workflowWithSync,
-                        nodes: layoutedNodes,
-                        edges: layoutedEdges,
-                        taskMap,
-                        validationResults,
-                        layoutDirection: dir,
-                        workflowLoadKey: get().workflowLoadKey + 1,
-                        graphStale: false,
+                        ...loadWorkflowPatch(workflowJson, direction || get().layoutDirection, get()),
                         // 宿主或用户换了流程：之前暂存的编辑定义作废，不能在离开运行态时再恢复回来
                         runWorkflowDef: null,
                         editWorkflowDefStash: null,
@@ -446,10 +453,13 @@ const useWorkflowStore = create<WorkflowStore>()(
                     const current = get().workflowDef;
                     if (workflowDef && JSON.stringify(workflowDef) !== JSON.stringify(current)) {
                         const stash = get().editWorkflowDefStash ?? current;
+                        // 一次 set 同时写入实例定义和暂存：同步订阅者（WorkflowIDE 的 onWorkflowChange）
+                        // 不能看到"实例定义 + 没有暂存"的中间状态，否则会把实例定义当成用户修改推给宿主
                         withoutHistory(() => {
-                            get().setWorkflow(workflowDef);
+                            const patch = loadWorkflowPatch(workflowDef, get().layoutDirection, get());
                             set({
-                                runWorkflowDef: get().workflowDef,
+                                ...patch,
+                                runWorkflowDef: patch.workflowDef,
                                 editWorkflowDefStash: stash,
                             });
                         });

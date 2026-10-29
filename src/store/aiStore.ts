@@ -177,6 +177,11 @@ interface AiState {
     workingDraft: WorkflowDef | null;
     /** PI-style durable session checkpoint for pause/resume/fault-recovery */
     durableCheckpoint: DurableSessionCheckpoint | null;
+    /**
+     * A18：有未完成的断点时用户又发了一条消息。先不发送，等用户选「继续上次」还是「放弃断点并发送」，
+     * 避免可续跑的断点被静默丢弃。
+     */
+    pendingSend: { text: string; modelText?: string } | null;
 }
 
 export interface TimelineEntry {
@@ -233,6 +238,7 @@ interface AiActions {
     setSynthesisStage: (phase: SynthesisPhase, draft?: WorkflowDef | null) => void;
     saveCheckpoint: (checkpoint: DurableSessionCheckpoint | null) => void;
     clearCheckpoint: () => void;
+    setPendingSend: (pending: { text: string; modelText?: string } | null) => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -275,6 +281,7 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             synthesisPhase: 'idle',
             workingDraft: null,
             durableCheckpoint: null,
+            pendingSend: null,
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -319,6 +326,7 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
                 synthesisPhase: 'idle',
                 workingDraft: null,
                 durableCheckpoint: null,
+                pendingSend: null,
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
@@ -423,7 +431,8 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             })),
 
             saveCheckpoint: (checkpoint) => set({ durableCheckpoint: checkpoint }),
-            clearCheckpoint: () => set({ durableCheckpoint: null, synthesisPhase: 'idle', workingDraft: null }),
+            clearCheckpoint: () => set({ durableCheckpoint: null, synthesisPhase: 'idle', workingDraft: null, pendingSend: null }),
+            setPendingSend: (pending) => set({ pendingSend: pending }),
 
             hydrateFromDraft: (messages, pendingProposal, durableCheckpoint) => set({
                 messages: messages.length > 0 ? messages : [WELCOME_MESSAGE],

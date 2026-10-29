@@ -852,3 +852,55 @@ describe('AgentRunner', () => {
         expect(proposal?.proposedDef.tasks.some((t: any) => t.subWorkflowParam?.name === 'notify')).toBe(true);
     });
 });
+
+describe('A18: 发送新消息前不静默丢弃可续跑的断点', () => {
+    const checkpoint = () => ({
+        sessionId: 'sess_old', userPrompt: '创建一个订单流程', assistantMsgId: 'm_old', phase: 'topology' as const,
+        workingDraft: { name: 'order_flow', tasks: [{ name: 'a', taskReferenceName: 'a', type: 'NOOP' }] } as any,
+        agentHistory: [{ role: 'user' as const, content: '创建一个订单流程' }], stepIndex: 2, selfHealCount: 0,
+        status: 'paused' as const, updatedAt: Date.now(),
+    });
+
+    beforeEach(() => {
+        resetStores();
+        useAiStore.getState().saveCheckpoint(checkpoint());
+        useAiStore.getState().setPendingSend(null);
+    });
+
+    it('[A18-01] 没配 API Key 时报错，但断点还在', async () => {
+        useAiStore.getState().setConfig({ apiKey: '', transport: undefined });
+        await new AgentRunner(() => ({}), testStores).send('再加一个审批');
+        expect(useAiStore.getState().durableCheckpoint?.sessionId).toBe('sess_old');
+        const msgs = useAiStore.getState().messages;
+        expect(msgs[msgs.length - 1]?.content).toContain('未配置 API Key');
+    });
+
+    it('[A18-02] 有断点时先不发送，记下这条消息等用户选择', async () => {
+        const { transport, callCount } = scriptedTransport([[{ type: 'text', content: 'x' }, { type: 'done' }]]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+        await new AgentRunner(() => ({}), testStores).send('再加一个审批', { modelText: '模型文本' });
+        expect(callCount()).toBe(0);
+        expect(useAiStore.getState().durableCheckpoint?.sessionId).toBe('sess_old');
+        expect(useAiStore.getState().pendingSend).toEqual({ text: '再加一个审批', modelText: '模型文本' });
+    });
+
+    it('[A18-03] 用户确认放弃断点后才发送', async () => {
+        const { transport, callCount } = scriptedTransport([[{ type: 'text', content: '好的' }, { type: 'done' }]]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+        useAiStore.getState().setPendingSend({ text: '再加一个审批' });
+        await new AgentRunner(() => ({}), testStores).send('再加一个审批', { discardCheckpoint: true });
+        expect(callCount()).toBe(1);
+        expect(useAiStore.getState().durableCheckpoint).toBeNull();
+        expect(useAiStore.getState().pendingSend).toBeNull();
+    });
+
+    it('[A18-04] 选择继续上次：从断点续跑，这条消息作为补充要求', async () => {
+        const { transport, seenRequests } = scriptedTransport([[{ type: 'text', content: '继续' }, { type: 'done' }]]);
+        useAiStore.getState().setConfig({ apiKey: '', transport });
+        useAiStore.getState().setPendingSend({ text: '再加一个审批' });
+        await new AgentRunner(() => ({}), testStores).resume('再加一个审批');
+        expect(useAiStore.getState().pendingSend).toBeNull();
+        const userTurns = seenRequests[0].messages.filter(m => m.role === 'user').map(m => m.content);
+        expect(userTurns).toEqual(expect.arrayContaining(['创建一个订单流程', '再加一个审批']));
+    });
+});

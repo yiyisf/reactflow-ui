@@ -106,6 +106,10 @@ export interface SendOptions {
      * 例如"执行方案"要附上计划步骤、澄清选项要附上原问题。
      */
     modelText?: string;
+    /**
+     * A18：有未完成的断点时，默认先不发送，交给界面让用户选择；传 true 表示用户已确认放弃断点。
+     */
+    discardCheckpoint?: boolean;
 }
 
 /** 把待执行计划整理成随"执行方案"一起发给模型的文本（计划卡片的步骤不在聊天记录里） */
@@ -345,6 +349,7 @@ export class AgentRunner {
             assistantMsgId = store.addMessage({ role: 'assistant', content: '' });
         }
         store.setRetryInput(null);
+        store.setPendingSend(null);
 
         await this.runDurableLoop({
             sessionId: checkpoint.sessionId,
@@ -365,6 +370,23 @@ export class AgentRunner {
         if (!text.trim() || store.isStreaming) return;
         const modelText = options.modelText?.trim() ? options.modelText : text;
 
+        // A18：先检查配置。原来先清断点再检查，没配 API Key 时发一条消息，上次暂停的会话断点就没了
+        const config = ai.getState().config;
+        // apiKey is only required in direct mode — endpoint/custom transports don't need one.
+        if (!config.apiKey && !config.transport) {
+            store.addMessage({ role: 'user', content: text });
+            store.addMessage({ role: 'assistant', content: '未配置 API Key。请点击对话面板右上角的设置按钮配置 AI 服务后重试。' });
+            return;
+        }
+
+        // A18：有未完成的断点时先不发送，由界面让用户选「继续上次」还是「放弃断点并发送」
+        const checkpoint = store.durableCheckpoint;
+        if (checkpoint && checkpoint.status !== 'completed' && !options.discardCheckpoint) {
+            store.setPendingSend({ text, ...(options.modelText ? { modelText: options.modelText } : {}) });
+            return;
+        }
+        store.setPendingSend(null);
+
         // Snapshot messages BEFORE adding the new user turn — buildHistory appends
         // userInput itself, so using the pre-add list avoids double-counting it.
         const priorMessages = store.messages;
@@ -377,15 +399,6 @@ export class AgentRunner {
         store.clearTimeline();
         store.setSynthesisStage('idle', null);
         store.saveCheckpoint(null);
-
-        const config = ai.getState().config;
-
-        // apiKey is only required in direct mode — endpoint/custom transports don't need one.
-        if (!config.apiKey && !config.transport) {
-            store.addMessage({ role: 'assistant', content: '未配置 API Key。请点击对话面板右上角的设置按钮配置 AI 服务后重试。' });
-            store.setStreaming(false);
-            return;
-        }
 
         const assistantMsgId = store.addMessage({ role: 'assistant', content: '' });
         const agentHistory = this.buildHistory(modelText, priorMessages);

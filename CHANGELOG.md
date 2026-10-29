@@ -35,6 +35,16 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **U3** 任务列表的模拟状态徽标改为图标 + 中文 + 颜色（共用 `statusMeta`），不再显示英文状态。
 - **U4** 标题徽标改为「本地试运行」；启动按钮改为主按钮（品牌色填充，文字 `--color-on-accent`，橙色主题即 `--cm-on-brand`）。失败 / 超时选项说明可选任务会带错完成继续。
 
+> v1.3.2 批次 3（校验与业务模式）：E24–E26、B22。
+
+### Fixed · 校验器
+- **E24** TERMINATE 没填 `terminationStatus` 只给警告（原来 `enum` 规则把空值也判为错误）；填错才报错。
+- **E25** SWITCH 只写了 `caseValueParam` / `caseExpression`（DECISION 的字段）时由警告升级为错误，提示给出改法；有 `expression` 没有 `evaluatorType` 时报错。Conductor 的 SWITCH 只读 `evaluatorType` + `expression`，旧写法保存会被拒。AI 规范化自动把旧写法迁移为 `value-param` / `javascript` + `expression`；自然语言向导生成的 SWITCH 也改用规范写法。
+- **E26** 新增规则：KAFKA_PUBLISH 的 `kafka_request.topic` 与 `bootStrapServers` 必填；EVENT 的 `sink` 必填；WAIT 不能同时配置 `duration` 与 `until`；INLINE 只认 `expression`，写在 `scriptExpression` 里会提示移过去。业务模式「发送运维通知」动作、内置模板与示例流程补上 `sink`（示例的 KAFKA 改为 `kafka_request` 结构）；AI 规范化补 EVENT 的 `sink`、迁移 INLINE 的脚本字段。
+
+### Fixed · 业务模式
+- **B22** 往返不再给没有 `description` / `version` / `schemaVersion` 的定义补出 `"description": ""`、`"version": 1` 等字段；已有字段与键序原样保留。
+
 ---
 
 ## [1.3.1] - 2026-10-25

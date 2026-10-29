@@ -112,6 +112,7 @@ export const templateEcsAutoProvision: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'notify_devops',
         type: 'EVENT',
+        sink: 'conductor',
         description: '向运维协同群发送交付卡片',
         inputParameters: {
           _actionId: 'notify.send_message',
@@ -216,6 +217,7 @@ export const templateEcsDailySnapshotBackup: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'notify_result',
         type: 'EVENT',
+        sink: 'conductor',
         description: '发送备份执行简报',
         inputParameters: {
           _actionId: 'notify.send_message',
@@ -326,6 +328,7 @@ export const templateEcsHighLoadAutoscale: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'notify_upgrade_done',
         type: 'EVENT',
+        sink: 'conductor',
         description: '发送变配完成汇报',
         inputParameters: {
           _actionId: 'notify.send_message',
@@ -440,6 +443,7 @@ export const templateEcsVulnerabilityPatch: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'report_patch_result',
         type: 'EVENT',
+        sink: 'conductor',
         description: '发送合规汇报',
         inputParameters: {
           _actionId: 'notify.send_message',
@@ -535,6 +539,7 @@ export const templateEcsNightIdleShutdown: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'notify_cost_saving',
         type: 'EVENT',
+        sink: 'conductor',
         description: '发送夜间节能降本简报',
         inputParameters: {
           _actionId: 'notify.send_message',
@@ -629,6 +634,7 @@ export const templateEcsMorningBoot: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'notify_team_ready',
         type: 'EVENT',
+        sink: 'conductor',
         description: '向研发测试群发送环境就绪广播',
         inputParameters: {
           _actionId: 'notify.send_message',
@@ -731,6 +737,7 @@ export const templateEcsDiskExpansion: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'notify_expand_done',
         type: 'EVENT',
+        sink: 'conductor',
         description: '发送扩容完成通知',
         inputParameters: {
           _actionId: 'notify.send_message',
@@ -819,6 +826,7 @@ export const templateEcsEmergencyIsolation: WorkflowTemplate = {
         name: 'send_operation_notification',
         taskReferenceName: 'alert_secops_incident',
         type: 'EVENT',
+        sink: 'conductor',
         description: '发送安全应急处置最高级别预警',
         inputParameters: {
           _actionId: 'notify.send_message',

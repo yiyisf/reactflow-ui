@@ -50,6 +50,8 @@ export const notifySendMessageAction: ActionDefinition = {
     name: 'send_operation_notification',
     taskReferenceName: ctx.taskReferenceName,
     type: 'EVENT',
+    // E26：Conductor 注册 EVENT 任务时要求 sink；conductor 表示发到 Conductor 内部事件队列，可在专业模式改成 kafka:topic 等
+    sink: 'conductor',
     description: `发送通知: ${values.title || ctx.taskReferenceName}`,
     inputParameters: {
       _actionId: 'notify.send_message',

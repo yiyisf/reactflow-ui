@@ -204,3 +204,27 @@ describe('E25: AI 规范化把 SWITCH 迁移到 evaluatorType + expression', () 
         expect(d.expression).toBeUndefined();
     });
 });
+
+describe('E26: AI 规范化补齐 EVENT sink、迁移 INLINE 脚本字段', () => {
+    it('[E26-06] EVENT 没有 sink 时补 conductor，写在 inputParameters 里的 sink 移到任务上', () => {
+        const { workflow } = normalizeWorkflowDef({
+            name: 'wf', version: 1,
+            tasks: [
+                { name: 'e1', taskReferenceName: 'e1', type: 'EVENT', inputParameters: { msg: 'x' } },
+                { name: 'e2', taskReferenceName: 'e2', type: 'EVENT', inputParameters: { sink: 'kafka:orders', msg: 'x' } },
+            ],
+        } as any);
+        const [e1, e2] = workflow.tasks as any[];
+        expect(e1.sink).toBe('conductor');
+        expect(e2.sink).toBe('kafka:orders');
+        expect(e2.inputParameters.sink).toBeUndefined();
+    });
+
+    it('[E26-07] INLINE 的 scriptExpression 移到 expression', () => {
+        const t = normalizeWorkflowDef({
+            name: 'wf', version: 1,
+            tasks: [{ name: 'i', taskReferenceName: 'i', type: 'INLINE', inputParameters: { evaluatorType: 'graaljs', scriptExpression: '1 + 1' } }],
+        } as any).workflow.tasks[0] as any;
+        expect(t.inputParameters).toEqual({ evaluatorType: 'graaljs', expression: '1 + 1' });
+    });
+});

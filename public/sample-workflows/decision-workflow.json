@@ -91,6 +91,7 @@
                     "name": "log_unknown_user",
                     "taskReferenceName": "log_unknown_ref",
                     "type": "EVENT",
+                    "sink": "conductor",
                     "inputParameters": {
                         "event": "unknown_user_type",
                         "userId": "${workflow.input.userId}"

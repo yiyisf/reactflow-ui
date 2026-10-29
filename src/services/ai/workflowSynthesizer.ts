@@ -219,6 +219,24 @@ export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = [], option
         t.inputParameters = inputParams;
     }
 
+    // E26：EVENT 必须有 sink（Conductor 注册时校验）；模型常把它写进 inputParameters 或漏掉
+    if (t.type === 'EVENT' && !t.sink) {
+        const fromInput = t.inputParameters?.sink;
+        t.sink = typeof fromInput === 'string' && fromInput.trim() ? fromInput : 'conductor';
+        if (fromInput !== undefined) {
+            t.inputParameters = { ...t.inputParameters };
+            delete t.inputParameters.sink;
+        }
+        autoFixed.push(`为事件任务「${t.taskReferenceName}」设置 sink：${t.sink}`);
+    }
+
+    // E26：INLINE 只读 inputParameters.expression；scriptExpression 是 LAMBDA 的字段
+    if (t.type === 'INLINE' && t.inputParameters && !t.inputParameters.expression && t.inputParameters.scriptExpression) {
+        const { scriptExpression, ...rest } = t.inputParameters;
+        t.inputParameters = { ...rest, expression: scriptExpression };
+        autoFixed.push(`把脚本任务「${t.taskReferenceName}」的 scriptExpression 移到 expression`);
+    }
+
     // Normalize SUB_WORKFLOW task config
     if (t.type === 'SUB_WORKFLOW') {
         Object.assign(t, normalizeSubWorkflowRef(t, autoFixed, options));

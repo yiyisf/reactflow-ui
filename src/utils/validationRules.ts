@@ -27,9 +27,15 @@ export const TASK_RULES = {
         ],
         'INLINE': [
             {
+                // E26：INLINE 只读 inputParameters.expression；scriptExpression 是 LAMBDA 的字段
                 field: 'inputParameters.expression', type: 'custom',
-                validate: (_val: any, task: any) => !!(task?.inputParameters?.expression || task?.inputParameters?.scriptExpression),
+                validate: (val: any) => hasText(val),
                 message: 'INLINE 任务缺少脚本表达式 (expression)'
+            },
+            {
+                field: 'inputParameters.expression', type: 'custom',
+                validate: (val: any, task: any) => hasText(val) || !hasText(task?.inputParameters?.scriptExpression),
+                message: 'INLINE 任务把脚本写在了 scriptExpression（LAMBDA 的字段），Conductor 不会执行：把它移到 inputParameters.expression'
             },
             {
                 field: 'inputParameters.evaluatorType', type: 'required', level: 'warning',
@@ -50,6 +56,33 @@ export const TASK_RULES = {
                 field: 'inputParameters.startWorkflow.name', type: 'custom',
                 validate: (_val: any, task: any) => !!(task?.inputParameters?.startWorkflow?.name),
                 message: 'START_WORKFLOW 任务缺少目标工作流名称'
+            }
+        ],
+        // E26：补齐保存到 Conductor 前必填的字段
+        'KAFKA_PUBLISH': [
+            {
+                field: 'inputParameters.kafka_request.topic', type: 'custom',
+                validate: (val: any) => hasText(val),
+                message: 'KAFKA_PUBLISH 任务缺少主题：在 inputParameters.kafka_request.topic 填写要推送的 topic'
+            },
+            {
+                field: 'inputParameters.kafka_request.bootStrapServers', type: 'custom',
+                validate: (val: any) => hasText(val),
+                message: 'KAFKA_PUBLISH 任务缺少 Kafka 地址：在 inputParameters.kafka_request.bootStrapServers 填写，如 kafka-1:9092,kafka-2:9092'
+            }
+        ],
+        'EVENT': [
+            {
+                field: 'sink', type: 'custom',
+                validate: (val: any) => hasText(val),
+                message: 'EVENT 任务缺少 sink：填写事件发往哪里，如 conductor 或 kafka:topic_name'
+            }
+        ],
+        'WAIT': [
+            {
+                field: 'inputParameters.until', type: 'custom',
+                validate: (val: any, task: any) => !(hasText(val) && hasText(task?.inputParameters?.duration)),
+                message: 'WAIT 任务同时配置了 duration 和 until，Conductor 只允许二选一：等一段时间用 duration，等到某个时刻用 until'
             }
         ],
         'DYNAMIC': [

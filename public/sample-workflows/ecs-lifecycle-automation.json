@@ -93,6 +93,7 @@
       "name": "send_operation_notification",
       "taskReferenceName": "notify_devops_team",
       "type": "EVENT",
+      "sink": "conductor",
       "description": "发送协同群通知",
       "inputParameters": {
         "_actionId": "notify.send_message",

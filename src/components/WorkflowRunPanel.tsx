@@ -6,6 +6,7 @@ import { WorkflowInstance } from '../types/conductor';
 import './WorkflowRunPanel.css';
 import { X } from 'lucide-react';
 import UnsavedRunNotice from './UnsavedRunNotice';
+import { coerceRunInputs } from './AiNative/runInputs';
 import { startExecutionPolling, type ExecutionPoller } from '../utils/executionPoller';
 
 export interface WorkflowRunPanelProps {
@@ -119,17 +120,14 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
                 return null;
             }
         }
-        const obj: Record<string, any> = {};
-        params.forEach(p => {
-            const raw = formValues[p.name] ?? (p.defaultValue !== undefined ? String(p.defaultValue) : '');
-            if (raw === '' && !p.required) return;
-            if (p.type === 'number') obj[p.name] = Number(raw);
-            else if (p.type === 'boolean') obj[p.name] = raw === 'true';
-            else if (p.type === 'object' || p.type === 'array') {
-                try { obj[p.name] = JSON.parse(raw); } catch { obj[p.name] = raw; }
-            } else obj[p.name] = raw;
-        });
-        return obj;
+        // R22：先判空再转类型（与 AI 运行卡片共用）。原来留空的必填数字 / 布尔被转成 0 / false，绕过了必填校验
+        const { input, errors } = coerceRunInputs(params, formValues);
+        const messages = Object.values(errors);
+        if (messages.length > 0) {
+            setSubmitError(messages.join('；'));
+            return null;
+        }
+        return input as Record<string, any>;
     }, [inputMode, jsonInput, formValues, params]);
 
     const handleExecute = useCallback(async () => {

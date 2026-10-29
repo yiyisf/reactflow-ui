@@ -4,6 +4,7 @@
  *   ?ide=classic|ai     WorkflowIDE 的执行验证面板 / AiWorkflowIDE 的运行卡片
  *   ?theme=dark|light
  *   ?edited=1           加载后改一处属性，制造未保存的修改
+ *   ?inputs=1           声明一个必填的数字入参 qty（R22），发起的执行记在 window.__triggered
  * classic 会直接打开执行验证面板；ai 由测试点击「执行」打开运行卡片。
  */
 import { createRoot } from 'react-dom/client';
@@ -26,8 +27,19 @@ const SAVED: WorkflowDef = {
         { name: 'notify_customer', taskReferenceName: 'notify_customer', type: 'SIMPLE', inputParameters: {} },
     ],
 } as WorkflowDef;
+if (params.get('inputs') === '1') {
+    Object.assign(SAVED, {
+        inputParameters: ['qty'],
+        inputSchema: { name: 'order_fulfillment_input', type: 'JSON', data: { type: 'object', properties: { qty: { type: 'integer' } }, required: ['qty'] } },
+    });
+}
 
-const trigger = async () => ({ workflowId: 'fixture-run' });
+const triggered: unknown[] = [];
+(window as unknown as { __triggered: unknown[] }).__triggered = triggered;
+const trigger = async (_name: string, _version: number, input: Record<string, unknown>) => {
+    triggered.push(input);
+    return { workflowId: 'fixture-run' };
+};
 const poll = async () => null;
 
 createRoot(document.getElementById('root')!).render(

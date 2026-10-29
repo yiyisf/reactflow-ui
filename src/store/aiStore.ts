@@ -163,8 +163,13 @@ interface AiState {
     pendingAutoSend: string | null;
     /** Current in-flight step label (e.g. "正在搜索工作流库…"), set by AgentRunner */
     toolStatus: string;
-    /** Last message that failed to send, offered back via a retry button */
+    /** Last message that failed to send, offered back via a retry button (the text the user saw) */
     retryInput: string | null;
+    /**
+     * A19：失败那条消息发给模型的文本（与展示文本不同时才有值，如「执行方案」附带的计划）。
+     * 重试时与 retryInput 一起带上：聊天里显示 retryInput，模型收到这一段。
+     */
+    retryModelText: string | null;
     /**
      * Append-only log of completed steps for the current agent turn (M2.2 AgentTimeline).
      * Cleared at the start of each `send()`. Self-heal retries log their own entry so
@@ -232,7 +237,8 @@ interface AiActions {
         durableCheckpoint?: DurableSessionCheckpoint | null,
     ) => void;
     setToolStatus: (status: string) => void;
-    setRetryInput: (input: string | null) => void;
+    /** 设置重试内容；modelText 是发给模型的文本（与展示文本不同时传） */
+    setRetryInput: (input: string | null, modelText?: string | null) => void;
     addTimelineEntry: (label: string, icon?: 'done' | 'warning') => void;
     clearTimeline: () => void;
     setSynthesisStage: (phase: SynthesisPhase, draft?: WorkflowDef | null) => void;
@@ -277,6 +283,7 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             pendingAutoSend: null,
             toolStatus: '',
             retryInput: null,
+            retryModelText: null,
             timelineEntries: [],
             synthesisPhase: 'idle',
             workingDraft: null,
@@ -322,6 +329,7 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
                 pendingAutoSend: null,
                 toolStatus: '',
                 retryInput: null,
+                retryModelText: null,
                 timelineEntries: [],
                 synthesisPhase: 'idle',
                 workingDraft: null,
@@ -418,7 +426,7 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
 
             setPendingAutoSend: (msg) => set({ pendingAutoSend: msg }),
             setToolStatus: (status) => set({ toolStatus: status }),
-            setRetryInput: (input) => set({ retryInput: input }),
+            setRetryInput: (input, modelText = null) => set({ retryInput: input, retryModelText: input ? modelText : null }),
 
             addTimelineEntry: (label, icon = 'done') => set(s => ({
                 timelineEntries: [...s.timelineEntries, { id: `tl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, label, icon }],

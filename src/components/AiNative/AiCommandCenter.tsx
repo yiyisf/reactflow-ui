@@ -286,6 +286,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         pendingSend,
         setPendingSend,
         retryInput,
+        retryModelText,
         setRetryInput,
         clearMessages,
         clearPlan,
@@ -933,8 +934,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     className="ai-retry-btn"
                                     onClick={() => {
                                         const t = retryInput;
+                                        const modelText = retryModelText ?? undefined;
                                         setRetryInput(null);
-                                        runner.send(t);
+                                        // A19：聊天里显示原来的文本，模型收到原来的模型文本
+                                        runner.send(t, modelText ? { modelText } : {});
                                     }}
                                 >
                                     <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />重试上一条消息

@@ -406,6 +406,7 @@ export class AgentRunner {
         await this.runDurableLoop({
             sessionId: `sess_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
             userPrompt: modelText,
+            displayText: text,
             assistantMsgId,
             agentHistory,
             initialDraft: null,
@@ -421,6 +422,8 @@ export class AgentRunner {
     private async runDurableLoop(params: {
         sessionId: string;
         userPrompt: string;
+        /** 聊天里显示的那条用户消息（缺省同 userPrompt）；失败重试时用它显示，userPrompt 发给模型 */
+        displayText?: string;
         assistantMsgId: string;
         agentHistory: Message[];
         /** 断点续跑：checkpoint 里的半成品草稿（视为本会话已有进展） */
@@ -876,7 +879,9 @@ export class AgentRunner {
                 if (hasProgress()) {
                     persistCheckpoint('failed', humanized.display);
                 } else {
-                    ai.getState().setRetryInput(userPrompt);
+                    // A19：重试按钮显示用户看到的文本，同时带上发给模型的文本（如「执行方案」附带的计划）
+                    const shown = params.displayText ?? userPrompt;
+                    ai.getState().setRetryInput(shown, shown !== userPrompt ? userPrompt : null);
                 }
             } else {
                 if (hasProgress()) {

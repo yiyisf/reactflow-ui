@@ -904,3 +904,44 @@ describe('A18: 发送新消息前不静默丢弃可续跑的断点', () => {
         expect(userTurns).toEqual(expect.arrayContaining(['创建一个订单流程', '再加一个审批']));
     });
 });
+
+describe('A19: 失败重试分开保存展示文本与模型文本', () => {
+    beforeEach(() => resetStores());
+
+    it('[A19-01] 「执行方案」失败后重试：聊天里显示原文，模型仍收到附带的计划', async () => {
+        let call = 0;
+        const seen: AgentRequest[] = [];
+        const stream = async function* (req: AgentRequest): AsyncGenerator<StreamEvent> {
+            seen.push(req);
+            if (call++ === 0) {
+                yield { type: 'error', message: 'HTTP 503 Service Unavailable' };
+                return;
+            }
+            yield { type: 'text', content: '好的' };
+            yield { type: 'done' };
+        };
+        useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
+        const runner = new AgentRunner(() => ({}), testStores);
+        const planText = '请按照下面这份已确认的计划执行：1. 加审批';
+        await runner.send('执行方案：加审批', { modelText: planText });
+
+        const s = useAiStore.getState();
+        expect(s.retryInput).toBe('执行方案：加审批');
+        expect(s.retryModelText).toBe(planText);
+
+        // 与界面上的重试按钮相同的调用
+        await runner.send(s.retryInput!, { modelText: s.retryModelText! });
+        const userMsgs = useAiStore.getState().messages.filter(m => m.role === 'user').map(m => m.content);
+        expect(userMsgs).toEqual(['执行方案：加审批', '执行方案：加审批']);
+        const lastUserToModel = seen[1].messages.filter(m => m.role === 'user').pop();
+        expect(lastUserToModel?.content).toBe(planText);
+    });
+
+    it('[A19-02] 普通消息失败时不记模型文本', async () => {
+        const stream = async function* (): AsyncGenerator<StreamEvent> { yield { type: 'error', message: 'HTTP 500' }; };
+        useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
+        await new AgentRunner(() => ({}), testStores).send('你好');
+        expect(useAiStore.getState().retryInput).toBe('你好');
+        expect(useAiStore.getState().retryModelText).toBeNull();
+    });
+});

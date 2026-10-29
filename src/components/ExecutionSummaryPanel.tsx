@@ -6,7 +6,7 @@ import { analyzeExecution, formatDuration, getCategoryIcon, getCategoryColor, Ex
 import { getStatusMeta } from '../utils/statusMeta';
 import { TemplateExtractor } from './template/TemplateExtractor';
 import './ExecutionSummaryPanel.css';
-import { Hammer, X } from 'lucide-react';
+import { ArrowRight, ChartColumn, CircleAlert, Hammer, X } from 'lucide-react';
 
 /** Sandbox dry runs use this id prefix; they are not real runs, so they cannot become templates (R17). */
 const isSandboxInstance = (workflowId?: string) => !!workflowId && workflowId.startsWith('sandbox-dryrun-');
@@ -42,10 +42,7 @@ const ExecutionSummaryPanel: React.FC = () => {
             {/* Header */}
             <div className="esp-header">
                 <div className="esp-title">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                        <rect x="2" y="2" width="12" height="12" rx="2" />
-                        <path d="M5 8h6M5 5h3M5 11h4" />
-                    </svg>
+                    <ChartColumn size={14} strokeWidth={1.75} aria-hidden="true" />
                     执行分析
                 </div>
                 {wfMeta && WfIcon && (
@@ -116,9 +113,7 @@ const ExecutionSummaryPanel: React.FC = () => {
                 {steps.filter(s => s.diagnostics.length > 0).map(step => (
                     <div key={step.taskRef} className="esp-diagnostic-card">
                         <div className="esp-diag-task-ref">
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ color: 'var(--status-failed)', flexShrink: 0 }}>
-                                <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm-.75 4a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0V5zm.75 7a1 1 0 110-2 1 1 0 010 2z" />
-                            </svg>
+                            <CircleAlert size={12} strokeWidth={1.75} aria-hidden="true" style={{ color: 'var(--status-failed)', flexShrink: 0 }} />
                             {step.taskRef}
                         </div>
                         {step.diagnostics.map((diag, i) => (
@@ -133,9 +128,7 @@ const ExecutionSummaryPanel: React.FC = () => {
                                     onClick={() => switchToEditAndFocusParam(step.taskRef, diag.suggestEditParam)}
                                 >
                                     去修复
-                                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                        <path d="M5 8h6M9 5l3 3-3 3" />
-                                    </svg>
+                                    <ArrowRight size={12} strokeWidth={1.75} aria-hidden="true" />
                                 </button>
                             </div>
                         ))}

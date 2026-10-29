@@ -1,4 +1,5 @@
 import { WorkflowDiff } from '../../types/workflow';
+import { Check, Undo2 } from 'lucide-react';
 import './DiffCard.css';
 
 interface DiffCardProps {
@@ -43,24 +44,17 @@ export default function DiffCard({ diff, applied, onApply, onUndo }: DiffCardPro
             <div className="diff-actions">
                 {!applied ? (
                     <button className="diff-btn apply" onClick={onApply}>
-                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 8l3.5 3.5L13 5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <Check size={12} strokeWidth={1.75} aria-hidden="true" />
                         应用更改
                     </button>
                 ) : (
                     <>
                         <button className="diff-btn applied" disabled>
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M3 8l3.5 3.5L13 5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <Check size={12} strokeWidth={1.75} aria-hidden="true" />
                             已应用
                         </button>
                         <button className="diff-btn undo" onClick={onUndo}>
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M3.5 8a4.5 4.5 0 1 1 1.4 3.3" strokeLinecap="round" />
-                                <path d="M3 4.5L4.5 8L7 6.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <Undo2 size={12} strokeWidth={1.75} aria-hidden="true" />
                             撤销
                         </button>
                     </>

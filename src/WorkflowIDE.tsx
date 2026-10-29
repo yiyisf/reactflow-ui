@@ -34,7 +34,7 @@ import {
 } from './components/onboarding/OnboardingController';
 import './styles/tokens.css';
 import './styles/executionStyles.css';
-import { LayoutList, LayoutTemplate, Network, Plug, TriangleAlert, X } from 'lucide-react';
+import { ChartColumn, Copy, Download, LayoutList, LayoutTemplate, Network, Play, Plug, Square, TriangleAlert, X } from 'lucide-react';
 import { saveNameHint } from './onboarding/naming';
 import { handOffSave, type HostSaveHandler } from './utils/hostSave';
 import { isSameWorkflow } from './utils/sameWorkflow';
@@ -630,7 +630,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         }}
                         title="填写工作流入参并触发真实执行"
                     >
-                        <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5z" /></svg>
+                        <Play size={14} strokeWidth={1.75} aria-hidden="true" />
                         执行验证
                     </button>
                 )}
@@ -651,10 +651,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                         }}
                         title="查看执行概览与异常分析"
                     >
-                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                            <rect x="2" y="2" width="12" height="12" rx="2" />
-                            <path d="M5 8h6M5 5h3M5 11h4" />
-                        </svg>
+                        <ChartColumn size={14} strokeWidth={1.75} aria-hidden="true" />
                         分析
                     </button>
                 )}
@@ -674,7 +671,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             }}
                             title="停止流转预览"
                         >
-                            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="4" width="8" height="8" rx="1" /></svg>
+                            <Square size={14} strokeWidth={1.75} aria-hidden="true" />
                             停止
                         </button>
                     ) : (
@@ -690,7 +687,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             }}
                             title="按连线顺序播放步骤流转动画（不执行任何步骤）"
                         >
-                            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5z" /></svg>
+                            <Play size={14} strokeWidth={1.75} aria-hidden="true" />
                             流转预览
                         </button>
                     )
@@ -710,9 +707,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             }}
                             title="导出工作流 JSON 文件"
                         >
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M3 10v2.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V10M5 7l3 3 3-3M8 2v8" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <Download size={14} strokeWidth={1.75} aria-hidden="true" />
                             导出 JSON
                         </button>
                         <button
@@ -727,9 +722,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             }}
                             title="复制 Conductor DSL 到剪贴板"
                         >
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <rect x="4" y="4" width="9" height="10" rx="1" /><path d="M2 10V3a1 1 0 0 1 1-1h7" strokeLinecap="round" />
-                            </svg>
+                            <Copy size={14} strokeWidth={1.75} aria-hidden="true" />
                             复制 DSL
                         </button>
                     </>

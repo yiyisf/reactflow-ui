@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { parseWorkflowInputParams, WorkflowInputParam } from '../types/conductor';
 import { WorkflowInstance } from '../types/conductor';
 import './WorkflowRunPanel.css';
-import { X } from 'lucide-react';
+import { Play, X } from 'lucide-react';
 import UnsavedRunNotice from './UnsavedRunNotice';
 import { coerceRunInputs } from './AiNative/runInputs';
 import { startExecutionPolling, type ExecutionPoller } from '../utils/executionPoller';
@@ -194,9 +194,7 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
                 {/* Header */}
                 <div className="wrp-header">
                     <div className="wrp-header-title">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ color: 'var(--status-completed)' }}>
-                            <path d="M4 3l9 5-9 5z" />
-                        </svg>
+                        <Play size={16} strokeWidth={1.75} aria-hidden="true" style={{ color: 'var(--status-completed)' }} />
                         执行验证
                     </div>
                     <div className="wrp-workflow-name">
@@ -320,9 +318,7 @@ const WorkflowRunPanel: React.FC<WorkflowRunPanelProps> = ({
                                 </>
                             ) : (
                                 <>
-                                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                                        <path d="M4 3l9 5-9 5z" />
-                                    </svg>
+                                    <Play size={14} strokeWidth={1.75} aria-hidden="true" />
                                     发起执行
                                 </>
                             )}

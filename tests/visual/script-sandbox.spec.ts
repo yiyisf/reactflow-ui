@@ -92,3 +92,18 @@ test('script sandbox · 沙箱默认求值器端到端：INLINE、javascript SWI
     expect(elapsed).toBeLessThan(15000);
     test.info().annotations.push({ type: 'elapsed', description: `${elapsed} ms for 42 scripts` });
 });
+
+test('script sandbox · 宿主 CSP 不允许沙箱时如实报「未执行」，后续脚本不再重复等待', async ({ page }) => {
+    await page.goto('/tests/visual/fixtures/script-sandbox-csp.html');
+    await expect(page.locator('html[data-fixture-ready="1"]')).toBeAttached();
+    const run = () => page.evaluate(async () => {
+        const t = performance.now();
+        const r = await (window as any).__evaluate('1 + 1', {});
+        return { r, ms: performance.now() - t };
+    });
+    const first = await run();
+    expect(first.r).toMatchObject({ ok: false, notExecuted: true, error: expect.stringContaining('没有执行') });
+    const second = await run();
+    expect(second.r).toEqual(first.r);
+    expect(second.ms).toBeLessThan(200);
+});

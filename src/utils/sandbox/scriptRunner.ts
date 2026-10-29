@@ -149,6 +149,8 @@ export function createWorkerScriptEvaluator(options: { timeoutMs?: number } = {}
     let onWindowMessage: ((e: MessageEvent) => void) | null = null;
     let seq = 0;
     const pending = new Map<number, (r: ScriptResult) => void>();
+    /** why the sandbox could not start; kept so later scripts report it at once instead of waiting again */
+    let unavailable: string | null = null;
 
     const stop = () => {
         for (const resolve of pending.values()) resolve({ ok: false, error: '脚本沙箱已关闭' });
@@ -160,8 +162,13 @@ export function createWorkerScriptEvaluator(options: { timeoutMs?: number } = {}
         frame?.remove();
         frame = null;
     };
+    const dispose = () => {
+        stop();
+        unavailable = null;
+    };
 
     const start = (): Promise<MessagePort | string> => {
+        if (unavailable) return Promise.resolve(unavailable);
         if (port) return port;
         if (typeof document === 'undefined' || typeof window === 'undefined' || typeof Worker === 'undefined'
             || typeof Blob === 'undefined' || typeof MessageChannel === 'undefined' || !document.body) {
@@ -209,6 +216,7 @@ export function createWorkerScriptEvaluator(options: { timeoutMs?: number } = {}
         const p = await start();
         if (typeof p === 'string') {
             stop();
+            unavailable = p;
             return { ok: false, error: p, notExecuted: true };
         }
         let payload: unknown;
@@ -234,7 +242,7 @@ export function createWorkerScriptEvaluator(options: { timeoutMs?: number } = {}
         });
     };
 
-    return { evaluate, dispose: stop };
+    return { evaluate, dispose };
 }
 
 /** Evaluator used by the synchronous API: never runs scripts, says so. */

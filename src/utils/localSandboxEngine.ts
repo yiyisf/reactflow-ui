@@ -82,6 +82,8 @@ interface SandboxRuntimeContext {
   seqCounter: number;
   /** refs spawned by the most recent FORK_JOIN_DYNAMIC, consumed by its JOIN */
   lastDynamicSpawn: string[] | null;
+  /** set by a TERMINATE task: the workflow ends with this status, reason and output (Conductor semantics) */
+  termination: { status: 'COMPLETED' | 'FAILED' | 'TERMINATED'; reason: string; output: Record<string, any> } | null;
 }
 
 function getNormalizedMock(
@@ -333,9 +335,21 @@ function record(
 
 const FAILED_STATUSES = new Set(['FAILED', 'FAILED_WITH_TERMINAL_ERROR', 'TIMED_OUT']);
 
+const OPTIONAL_CONTINUE_STATUSES = new Set(['FAILED', 'TIMED_OUT']);
+
 function* executeTaskList(tasks: WorkflowTask[], ctx: SandboxRuntimeContext, iteration?: number): Gen<Flow> {
   for (const task of tasks) {
+    const before = ctx.tasks.length;
     const status = yield* executeSingleTask(task, ctx, iteration);
+    if (status === 'FAILED' && task.optional) {
+      // S11: an optional task that fails or times out is COMPLETED_WITH_ERRORS and the workflow continues (Conductor)
+      const own = ctx.tasks.slice(before).find((t) => t.workflowTask === task && OPTIONAL_CONTINUE_STATUSES.has(t.status));
+      if (own) {
+        own.status = 'COMPLETED_WITH_ERRORS';
+        own.sandboxWarnings = [...(own.sandboxWarnings ?? []), '可选任务（optional）失败，按 Conductor 记为带错完成，流程继续'];
+        continue;
+      }
+    }
     if (status === 'FAILED' || status === 'TERMINATED') return status;
   }
   return 'COMPLETED';
@@ -672,22 +686,19 @@ function* executeLocalTask(
     case 'NOOP':
       return done({}, 1);
     case 'TERMINATE': {
-      const terminationStatus = input.terminationStatus || 'COMPLETED';
+      // S12: the TERMINATE task itself completes; the workflow ends with terminationStatus and output = workflowOutput
+      const raw = String(input.terminationStatus || 'COMPLETED').toUpperCase();
+      if (raw !== 'COMPLETED' && raw !== 'FAILED' && raw !== 'TERMINATED') {
+        return fail(`terminationStatus 只能是 COMPLETED、FAILED 或 TERMINATED，当前是 ${input.terminationStatus}`);
+      }
+      const terminationStatus = raw as 'COMPLETED' | 'FAILED' | 'TERMINATED';
+      const output = input.workflowOutput && typeof input.workflowOutput === 'object' ? input.workflowOutput : {};
       const out = {
         terminationStatus,
         terminationReason: input.terminationReason || '',
-        output: input.workflowOutput || {},
+        output,
       };
-      if (terminationStatus === 'FAILED') {
-        ctx.currentTimeMs += 4;
-        record(ctx, task, base, {
-          status: 'FAILED_WITH_TERMINAL_ERROR',
-          reasonForIncompletion: input.terminationReason || 'Terminated with FAILED status',
-          outputData: out,
-          sandboxExecution: 'executed',
-        }, iteration);
-        return 'FAILED';
-      }
+      ctx.termination = { status: terminationStatus, reason: input.terminationReason || '', output };
       done(out, 4);
       return 'TERMINATED';
     }
@@ -747,6 +758,7 @@ function createContext(workflowDef: WorkflowDef, options: SandboxDryRunOptions, 
     canRunScripts,
     seqCounter: 0,
     lastDynamicSpawn: null,
+    termination: null,
   };
   return { ctx, baseStartTime };
 }
@@ -758,19 +770,27 @@ function buildInstance(
   finalResult: Flow,
 ): WorkflowInstance {
   const workflowOutput: Record<string, any> = {};
-  if (workflowDef.outputParameters && Object.keys(workflowDef.outputParameters).length > 0) {
+  if (ctx.termination) {
+    Object.assign(workflowOutput, ctx.termination.output);
+  } else if (workflowDef.outputParameters && Object.keys(workflowDef.outputParameters).length > 0) {
     Object.assign(workflowOutput, resolveExpressionValue(workflowDef.outputParameters, ctx));
   } else {
     const lastTask = ctx.tasks[ctx.tasks.length - 1];
     if (lastTask?.outputData) Object.assign(workflowOutput, lastTask.outputData);
   }
   const failed = ctx.tasks.find((t) => FAILED_STATUSES.has(t.status));
+  const status: WorkflowInstance['status'] = ctx.termination
+    ? ctx.termination.status
+    : finalResult === 'FAILED' ? 'FAILED' : 'COMPLETED';
+  const reasonForIncompletion = ctx.termination
+    ? (ctx.termination.status === 'COMPLETED' ? undefined : ctx.termination.reason || `TERMINATE 以 ${ctx.termination.status} 结束流程`)
+    : finalResult === 'FAILED' ? failed?.reasonForIncompletion : undefined;
   return {
     workflowId: `sandbox-dryrun-${Date.now().toString(36)}`,
     workflowName: workflowDef.name || 'sandbox_workflow',
     workflowVersion: workflowDef.version || 1,
-    // TERMINATE with terminationStatus COMPLETED ends the workflow as COMPLETED (FAILED is returned as 'FAILED' above)
-    status: finalResult === 'FAILED' ? 'FAILED' : 'COMPLETED',
+    // TERMINATE decides the status (COMPLETED / FAILED / TERMINATED); otherwise the last flow result does
+    status,
     startTime: baseStartTime,
     endTime: ctx.currentTimeMs,
     createTime: baseStartTime,
@@ -779,7 +799,7 @@ function buildInstance(
     output: workflowOutput,
     variables: ctx.variables,
     tasks: ctx.tasks,
-    reasonForIncompletion: finalResult === 'FAILED' ? failed?.reasonForIncompletion : undefined,
+    reasonForIncompletion,
     workflowDefinition: structuredClone(workflowDef),
     isSandbox: true,
   };

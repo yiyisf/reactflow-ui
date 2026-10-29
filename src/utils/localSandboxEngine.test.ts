@@ -369,3 +369,90 @@ describe('Async sandbox: tasks without outside systems run for real', () => {
     expect(instance.tasks[0].reasonForIncompletion).toMatch(/Web Worker/);
   });
 });
+
+describe('v1.3.2 批次 2：沙箱与 Conductor 语义对齐', () => {
+  it('[S11-01] 可选任务失败记为带错完成，流程继续', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'optional_fail',
+        tasks: [
+          { name: 'h', taskReferenceName: 'h', type: 'HTTP', optional: true, inputParameters: {} },
+          { name: 'after', taskReferenceName: 'after', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { h: { status: 'FAILED', reasonForIncompletion: '下游 503' } } },
+    );
+    expect(instance.status).toBe('COMPLETED');
+    const h = instance.tasks.find((t) => t.referenceTaskName === 'h')!;
+    expect(h.status).toBe('COMPLETED_WITH_ERRORS');
+    expect(h.reasonForIncompletion).toBe('下游 503');
+    expect(instance.tasks.map((t) => t.referenceTaskName)).toEqual(['h', 'after']);
+  });
+
+  it('[S11-02] 可选的脚本任务失败、超时也继续；非可选任务失败仍中断', async () => {
+    const optionalScript = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'optional_script',
+        tasks: [
+          { name: 'i', taskReferenceName: 'i', type: 'INLINE', optional: true, inputParameters: { evaluatorType: 'javascript', expression: 'throw new Error("x")' } },
+          { name: 's', taskReferenceName: 's', type: 'SIMPLE', optional: true, inputParameters: {} },
+          { name: 'after', taskReferenceName: 'after', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { s: { status: 'TIMED_OUT' } } },
+    );
+    expect(optionalScript.status).toBe('COMPLETED');
+    expect(optionalScript.tasks.map((t) => [t.referenceTaskName, t.status])).toEqual([
+      ['i', 'COMPLETED_WITH_ERRORS'],
+      ['s', 'COMPLETED_WITH_ERRORS'],
+      ['after', 'COMPLETED'],
+    ]);
+
+    const required = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'required_fail',
+        tasks: [
+          { name: 'h', taskReferenceName: 'h', type: 'HTTP', inputParameters: {} },
+          { name: 'after', taskReferenceName: 'after', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { h: { status: 'FAILED' } } },
+    );
+    expect(required.status).toBe('FAILED');
+    expect(required.tasks.map((t) => t.referenceTaskName)).toEqual(['h']);
+  });
+
+  it.each([
+    ['COMPLETED', 'COMPLETED', undefined],
+    ['FAILED', 'FAILED', '库存不足'],
+    ['TERMINATED', 'TERMINATED', '库存不足'],
+  ] as const)('[S12-01] TERMINATE 以 %s 结束：实例状态 %s，输出取 workflowOutput，之后的任务不执行', async (terminationStatus, expected, reason) => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'term_' + terminationStatus,
+        outputParameters: { ignored: '${workflow.input.a}' },
+        tasks: [
+          {
+            name: 't', taskReferenceName: 't', type: 'TERMINATE',
+            inputParameters: { terminationStatus, terminationReason: '库存不足', workflowOutput: { code: 'OUT_OF_STOCK', a: '${workflow.input.a}' } },
+          },
+          { name: 'n', taskReferenceName: 'n', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, workflowInput: { a: 3 } },
+    );
+    expect(instance.status).toBe(expected);
+    expect(instance.output).toEqual({ code: 'OUT_OF_STOCK', a: 3 });
+    expect(instance.reasonForIncompletion).toBe(reason);
+    expect(instance.tasks.map((t) => [t.referenceTaskName, t.status])).toEqual([['t', 'COMPLETED']]);
+  });
+
+  it('[S12-02] terminationStatus 写错时 TERMINATE 失败并说明可选值', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      { name: 'term_bad', tasks: [{ name: 't', taskReferenceName: 't', type: 'TERMINATE', inputParameters: { terminationStatus: 'DONE' } }] },
+      { scriptEvaluator: evaluate },
+    );
+    expect(instance.status).toBe('FAILED');
+    expect(instance.tasks[0].reasonForIncompletion).toMatch(/COMPLETED、FAILED 或 TERMINATED/);
+  });
+});

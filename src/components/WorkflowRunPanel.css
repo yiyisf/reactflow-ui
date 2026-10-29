@@ -192,7 +192,7 @@ textarea.wrp-input { resize: vertical; }
 
 .wrp-submit-error { margin-top: 8px; }
 
-.wrp-content .cm-unsaved-run-notice { margin-top: 12px; }
+.wrp-content .cm-unsaved-run-notice { margin-top: var(--cm-space-3); }
 
 .wrp-hint {
     font-size: 12px;

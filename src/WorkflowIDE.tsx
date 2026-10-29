@@ -37,6 +37,7 @@ import './styles/executionStyles.css';
 import { LayoutList, LayoutTemplate, Network, Plug, TriangleAlert, X } from 'lucide-react';
 import { saveNameHint } from './onboarding/naming';
 import { handOffSave, type HostSaveHandler } from './utils/hostSave';
+import { isSameWorkflow } from './utils/sameWorkflow';
 
 /**
  * WorkflowIDE 的命令式 API（通过 ref 调用）
@@ -409,15 +410,21 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     // 只在 workflowDef 变化时读取，切换这个标记本身不重新加载定义
     const workflowDefSavedRef = useRef(workflowDefSaved);
     workflowDefSavedRef.current = workflowDefSaved;
+    const layoutDirectionRef = useRef(layoutDirection);
+    layoutDirectionRef.current = layoutDirection;
     useEffect(() => {
-        if (workflowDef) {
-            setWorkflow(workflowDef, layoutDirection);
-            // R19：宿主传入的定义默认视为服务端已保存的版本；宿主声明未保存时清空基线
-            useWorkflowStore.getState().markWorkflowSaved(workflowDefSavedRef.current ? undefined : null);
-            // Clear history after loading a new workflow to prevent undoing to empty state
-            useWorkflowStore.temporal.getState().clear();
-        }
-    }, [workflowDef, setWorkflow, layoutDirection]);
+        if (!workflowDef) return;
+        const current = useWorkflowStore.getState().getEditingWorkflowDef();
+        // R21：受控用法下宿主把 onWorkflowChange 的结果回写成 prop。内容与画布相同就什么都不做：
+        // 不重新布局、不触发 fitView、不清撤销历史，也不把用户的修改记成已保存
+        if (isSameWorkflow(current, workflowDef)) return;
+        // 只有真正换了流程才清撤销历史；同一流程被宿主改动时保留，用户仍能撤回到之前的状态
+        const switching = !current || current.name !== workflowDef.name;
+        setWorkflow(workflowDef, layoutDirectionRef.current);
+        // R19：宿主传入的定义默认视为服务端已保存的版本；宿主声明未保存时清空基线
+        useWorkflowStore.getState().markWorkflowSaved(workflowDefSavedRef.current ? undefined : null);
+        if (switching) useWorkflowStore.temporal.getState().clear();
+    }, [workflowDef, setWorkflow]);
 
     // Handle Execution Data Injection
     useEffect(() => {

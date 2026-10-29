@@ -69,6 +69,21 @@ const MyWorkflowApp = () => {
 | `onRequestImport` | `() => void` | (可选) 空状态面板点击「导入 JSON」时触发。宿主应用可在此打开文件选择器或自定义导入逻辑。 |
 | `searchQuery` | `string` | (可选) 传入搜索关键词，匹配的任务节点会高亮显示。 |
 
+### 受控与非受控用法
+
+两种写法都支持，按宿主是否需要实时持有定义来选：
+
+- **非受控**：只在加载或切换流程时传入 `workflowDef`，编辑过程中不再改它；需要当前定义时调用 `ref.getWorkflowDef()`，保存走 `onSave`。
+- **受控**：用 `onWorkflowChange` 把最新定义写回自己的 state，再传回 `workflowDef`。传回的定义与画布内容相同时 IDE 什么都不做：不重新布局、不触发 fitView、不清撤销历史，也不把未保存的修改记成已保存。
+
+```tsx
+// 受控用法
+const [def, setDef] = useState<WorkflowDef>(loaded);
+<WorkflowIDE workflowDef={def} onWorkflowChange={setDef} onSave={save} />
+```
+
+传入内容不同的定义时 IDE 会重新加载它：流程名变了视为换了一个流程，会清空撤销历史；同一流程被宿主改动时保留撤销历史。`AiWorkflowIDE` 同样适用。
+
 ### 运行态集成 (Runtime)
 
 如果需要展示工作流的执行状态，请传入 `workflowExecution` 属性。

@@ -3,7 +3,9 @@ import type {
   TaskDef as WorkflowTask,
   WorkflowInstance,
   TaskInstance as TaskExecution,
+  WorkflowInputParam,
 } from '../types/conductor';
+import { parseWorkflowInputParams } from '../types/conductor';
 import { JqError, runJq } from './sandbox/jq';
 import {
   createWorkerScriptEvaluator,
@@ -706,23 +708,29 @@ function* executeLocalTask(
   return fail(`沙箱无法执行 ${task.type}`);
 }
 
+/** Typed placeholder for a declared input that has neither an example nor a default value. */
+function sampleForType(param: WorkflowInputParam): unknown {
+  switch (param.type) {
+    case 'number': return 1;
+    case 'boolean': return true;
+    case 'object': return {};
+    case 'array': return [];
+    default: return `sample_${param.name}`;
+  }
+}
+
 /**
  * Build mock workflow input: declared input parameters plus every `${workflow.input.<field>}` the tasks reference.
+ * S13: declared parameters take their type, example and default from `inputSchema` / `inputTemplate`
+ * (`parseWorkflowInputParams`), so a number parameter gets a number, not a `sample_x` string.
  */
 export function buildDefaultWorkflowMockInput(workflowDef: WorkflowDef): Record<string, any> {
   const input: Record<string, any> = {};
 
-  if (Array.isArray(workflowDef.inputParameters)) {
-    for (const param of workflowDef.inputParameters as any[]) {
-      const paramName = typeof param === 'string' ? param : param?.name;
-      const defaultVal =
-        typeof param === 'object' && param !== null
-          ? param.example ?? param.defaultValue ?? `sample_${paramName}`
-          : `sample_${paramName}`;
-      if (paramName && !(paramName in input)) {
-        input[paramName] = defaultVal;
-      }
-    }
+  for (const param of parseWorkflowInputParams(workflowDef.inputParameters as any[] | undefined, workflowDef)) {
+    if (!param.name || param.name in input) continue;
+    const value = param.example ?? param.defaultValue;
+    input[param.name] = value !== undefined && value !== '' ? structuredClone(value) : sampleForType(param);
   }
 
   // Auto-discover ${workflow.input.<field>} expressions across all tasks in the workflow
@@ -745,10 +753,14 @@ export function buildDefaultWorkflowMockInput(workflowDef: WorkflowDef): Record<
 
 function createContext(workflowDef: WorkflowDef, options: SandboxDryRunOptions, canRunScripts: boolean) {
   const baseStartTime = Date.now() - 2000;
-  const workflowInput = options.workflowInput || buildDefaultWorkflowMockInput(workflowDef);
+  // S13: like Conductor at start, inputTemplate fills inputs the caller did not give; variables start from the definition
+  const workflowInput = {
+    ...structuredClone(workflowDef.inputTemplate ?? {}),
+    ...(options.workflowInput || buildDefaultWorkflowMockInput(workflowDef)),
+  };
   const ctx: SandboxRuntimeContext = {
     workflowInput,
-    variables: {},
+    variables: structuredClone(workflowDef.variables ?? {}),
     taskOutputs: {},
     taskInputs: {},
     taskMocks: options.taskMocks || {},

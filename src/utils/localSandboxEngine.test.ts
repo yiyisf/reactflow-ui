@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { executeLocalSandboxDryRun, executeLocalSandboxDryRunAsync } from './localSandboxEngine';
+import { buildDefaultWorkflowMockInput, executeLocalSandboxDryRun, executeLocalSandboxDryRunAsync } from './localSandboxEngine';
 import type { ScriptEvaluator } from './sandbox/scriptRunner';
 import type { WorkflowDef } from '../types/conductor';
 
@@ -445,6 +445,48 @@ describe('v1.3.2 批次 2：沙箱与 Conductor 语义对齐', () => {
     expect(instance.output).toEqual({ code: 'OUT_OF_STOCK', a: 3 });
     expect(instance.reasonForIncompletion).toBe(reason);
     expect(instance.tasks.map((t) => [t.referenceTaskName, t.status])).toEqual([['t', 'COMPLETED']]);
+  });
+
+  it('[S13-01] 默认模拟入参按 inputSchema 类型与 inputTemplate 默认值生成', () => {
+    const input = buildDefaultWorkflowMockInput({
+      name: 'typed_inputs',
+      inputParameters: ['qty', 'vip', 'tags', 'meta', 'region', 'note'],
+      inputSchema: {
+        name: 'typed_inputs_input',
+        type: 'JSON',
+        data: {
+          type: 'object',
+          properties: {
+            qty: { type: 'integer' },
+            vip: { type: 'boolean' },
+            tags: { type: 'array' },
+            meta: { type: 'object' },
+            region: { type: 'string', examples: ['cn-north'] },
+          },
+        },
+      },
+      inputTemplate: { qty: 5 },
+      tasks: [{ name: 'x', taskReferenceName: 'x', type: 'NOOP', inputParameters: { e: '${workflow.input.extra}' } }],
+    } as WorkflowDef);
+    expect(input).toEqual({ qty: 5, vip: true, tags: [], meta: {}, region: 'cn-north', note: 'sample_note', extra: 'mock_extra' });
+  });
+
+  it('[S13-02] 执行时 inputTemplate 补齐缺省入参，variables 取定义里的初值', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'template_fill',
+        inputParameters: ['a', 'b'],
+        inputTemplate: { a: 2, b: 10 },
+        variables: { count: 1 },
+        tasks: [
+          { name: 'calc', taskReferenceName: 'calc', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', a: '${workflow.input.a}', b: '${workflow.input.b}', c: '${workflow.variables.count}', expression: '$.a * $.b + $.c' } },
+        ],
+      } as WorkflowDef,
+      { scriptEvaluator: evaluate, workflowInput: { a: 3 } },
+    );
+    expect(instance.input).toEqual({ a: 3, b: 10 });
+    expect(instance.tasks[0].outputData).toEqual({ result: 31 });
+    expect(instance.variables).toEqual({ count: 1 });
   });
 
   it('[S12-02] terminationStatus 写错时 TERMINATE 失败并说明可选值', async () => {

@@ -6,6 +6,20 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ## [Unreleased]
 
+> v1.3.2 批次 1（P0）：R19 / R20 / B21 / A17。审计结果与修复范围见 `docs/v1.3.2-release-plan.md`。
+
+### Fixed
+- **R19 执行验证不再覆盖本地修改**：运行态轮询拿到的实例定义只用于渲染运行视图（`runWorkflowDef`），编辑中的定义暂存（`editWorkflowDefStash`），离开运行态原样换回，不进撤销历史，也不触发 `onWorkflowChange`。运行态下 ⌘S、`ref.save()`、`ref.getWorkflowDef()` 与 AI 草稿都取编辑中的定义。
+- **R19 未保存提示**：画布与已保存版本不同时，执行验证面板（WorkflowIDE）与 AI 运行卡片（AiWorkflowIDE）提示「将运行已保存的版本」（警告色 + 图标 + 中文，共用组件 `UnsavedRunNotice`）。
+- **R20 剪贴板不落盘**：复制的任务只放内存，不再写 localStorage；偏好持久化版本 v1 → v2，迁移时删除旧 `copiedTask`，加载时清除 `conductor-clipboard` 残留键。
+- **B21 业务模式往返保留 joinOn**：编译以原 JOIN 的 `joinOn` 为准，只同步受泳道增删 / 末尾任务变化影响的项；`syncForkJoinOn` 按内容对应新旧分支，删除中间分支时后面的分支不再错位。
+- **A17 工具调用白名单**：AI 执行工具前按当前模式与权限校验，列表外的调用返回失败结果并记时间线警告；模式每步重新读取，会话中途进入运行态后编辑工具与兜底自动提交立即失效。
+
+### Added
+- `onSave` 可以返回 Promise：resolve 后才把定义记为已保存的版本，reject 时继续提示未保存。同步返回保持原语义。
+- `workflowDefSaved` 属性（WorkflowIDE / AiWorkflowIDE，默认 `true`）：传入本地文件、草稿等还没保存的定义时设为 `false`。
+- `ref.markSaved(def?)`（WorkflowIDE / AiWorkflowIDE）：宿主用其它方式加载或确认保存了服务端定义后调用。AiWorkflowIDE 的 `ref.setWorkflow` 与新建空白流程会清空旧流程的保存基线。
+
 ---
 
 ## [1.3.1] - 2026-10-25

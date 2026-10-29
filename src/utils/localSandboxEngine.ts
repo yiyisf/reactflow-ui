@@ -3,7 +3,9 @@ import type {
   TaskDef as WorkflowTask,
   WorkflowInstance,
   TaskInstance as TaskExecution,
+  WorkflowInputParam,
 } from '../types/conductor';
+import { parseWorkflowInputParams } from '../types/conductor';
 import { JqError, runJq } from './sandbox/jq';
 import {
   createWorkerScriptEvaluator,
@@ -82,6 +84,8 @@ interface SandboxRuntimeContext {
   seqCounter: number;
   /** refs spawned by the most recent FORK_JOIN_DYNAMIC, consumed by its JOIN */
   lastDynamicSpawn: string[] | null;
+  /** set by a TERMINATE task: the workflow ends with this status, reason and output (Conductor semantics) */
+  termination: { status: 'COMPLETED' | 'FAILED' | 'TERMINATED'; reason: string; output: Record<string, any> } | null;
 }
 
 function getNormalizedMock(
@@ -333,9 +337,21 @@ function record(
 
 const FAILED_STATUSES = new Set(['FAILED', 'FAILED_WITH_TERMINAL_ERROR', 'TIMED_OUT']);
 
+const OPTIONAL_CONTINUE_STATUSES = new Set(['FAILED', 'TIMED_OUT']);
+
 function* executeTaskList(tasks: WorkflowTask[], ctx: SandboxRuntimeContext, iteration?: number): Gen<Flow> {
   for (const task of tasks) {
+    const before = ctx.tasks.length;
     const status = yield* executeSingleTask(task, ctx, iteration);
+    if (status === 'FAILED' && task.optional) {
+      // S11: an optional task that fails or times out is COMPLETED_WITH_ERRORS and the workflow continues (Conductor)
+      const own = ctx.tasks.slice(before).find((t) => t.workflowTask === task && OPTIONAL_CONTINUE_STATUSES.has(t.status));
+      if (own) {
+        own.status = 'COMPLETED_WITH_ERRORS';
+        own.sandboxWarnings = [...(own.sandboxWarnings ?? []), '可选任务（optional）失败，按 Conductor 记为带错完成，流程继续'];
+        continue;
+      }
+    }
     if (status === 'FAILED' || status === 'TERMINATED') return status;
   }
   return 'COMPLETED';
@@ -460,9 +476,10 @@ function* executeSingleTask(task: WorkflowTask, ctx: SandboxRuntimeContext, iter
   }
 
   // ── tasks that run for real ──
+  // S16: a mock that only changes the duration (or says COMPLETED without custom output) keeps the real execution
   const executable = ['INLINE', 'LAMBDA', 'JSON_JQ_TRANSFORM', 'SET_VARIABLE', 'TERMINATE', 'WAIT', 'NOOP'];
-  if (executable.includes(task.type) && !mock) {
-    return yield* executeLocalTask(task, ctx, base, iteration);
+  if (executable.includes(task.type) && (!mock || isTimingOnlyMock(mock))) {
+    return yield* executeLocalTask(task, ctx, base, iteration, mock?.durationMs);
   }
 
   // ── tasks that need an outside system: mocked (or user mock on any task) ──
@@ -562,10 +579,17 @@ function* executeLoop(
 
   for (;;) {
     iter += 1;
+    const before = ctx.tasks.length;
     const res = yield* executeTaskList(loopOver, ctx, iter);
-    summary[String(iter)] = Object.fromEntries(
-      loopOver.filter((c) => ctx.taskOutputs[c.taskReferenceName]).map((c) => [c.taskReferenceName, ctx.taskOutputs[c.taskReferenceName]]),
+    // S15: every task that ran in this iteration, including ones nested in SWITCH / FORK / inner loops (Conductor
+    // exposes them all to the loop condition); tasks on branches not taken this iteration are left out
+    const ranThisIteration = new Set(
+      ctx.tasks.slice(before).map((t) => t.workflowTask?.taskReferenceName).filter((r): r is string => !!r && r !== task.taskReferenceName),
     );
+    const iterationOutputs: Record<string, any> = Object.fromEntries(
+      [...ranThisIteration].filter((r) => ctx.taskOutputs[r]).map((r) => [r, ctx.taskOutputs[r]]),
+    );
+    summary[String(iter)] = iterationOutputs;
     exec.outputData = { iteration: iter, ...summary };
     ctx.taskOutputs[task.taskReferenceName] = exec.outputData;
     if (res !== 'COMPLETED') {
@@ -584,8 +608,7 @@ function* executeLoop(
       continue;
     }
     // Conductor binds the loop's own output (with `iteration`), each child's output and the loop's inputs to `$`.
-    const scope: Record<string, unknown> = { ...base.resolvedInput, [task.taskReferenceName]: exec.outputData };
-    for (const c of loopOver) if (ctx.taskOutputs[c.taskReferenceName]) scope[c.taskReferenceName] = ctx.taskOutputs[c.taskReferenceName];
+    const scope: Record<string, unknown> = { ...base.resolvedInput, ...iterationOutputs, [task.taskReferenceName]: exec.outputData };
     const cond = yield* runScript(task.loopCondition, scope);
     if (!cond.ok) {
       if (cond.notExecuted) {
@@ -612,21 +635,45 @@ function* executeLoop(
   return flow;
 }
 
+/** A mock that only sets the duration, or COMPLETED without custom output: the task can still run for real (S16). */
+function isTimingOnlyMock(mock: TaskMockOverride): boolean {
+  return !mock.outputData && !mock.forceCase && (!mock.status || mock.status === 'COMPLETED');
+}
+
 function* executeLocalTask(
   task: WorkflowTask,
   ctx: SandboxRuntimeContext,
   base: ReturnType<typeof beginTask>,
   iteration?: number,
+  durationOverrideMs?: number,
 ): Gen<Flow> {
   const input = base.resolvedInput;
+  const hasOverride = typeof durationOverrideMs === 'number' && durationOverrideMs >= 0;
+  const timingWarnings = hasOverride ? [`按配置台把耗时设为 ${durationOverrideMs} ms，任务仍真实执行`] : [];
+  const spend = (ms: number) => {
+    ctx.currentTimeMs += hasOverride ? durationOverrideMs! : ms;
+  };
   const fail = (reason: string, outputData: Record<string, any> = { error: reason }, duration = 6): Flow => {
-    ctx.currentTimeMs += duration;
-    record(ctx, task, base, { status: 'FAILED', reasonForIncompletion: reason, outputData, sandboxExecution: 'executed' }, iteration);
+    spend(duration);
+    record(ctx, task, base, {
+      status: 'FAILED',
+      reasonForIncompletion: reason,
+      outputData,
+      sandboxExecution: 'executed',
+      ...(timingWarnings.length ? { sandboxWarnings: timingWarnings } : {}),
+    }, iteration);
     return 'FAILED';
   };
   const done = (outputData: Record<string, any>, duration: number, extra: Partial<TaskExecution> = {}): Flow => {
-    ctx.currentTimeMs += duration;
-    record(ctx, task, base, { status: 'COMPLETED', outputData, sandboxExecution: 'executed', ...extra }, iteration);
+    spend(duration);
+    const warnings = [...timingWarnings, ...(extra.sandboxWarnings ?? [])];
+    record(ctx, task, base, {
+      status: 'COMPLETED',
+      outputData,
+      sandboxExecution: 'executed',
+      ...extra,
+      ...(warnings.length ? { sandboxWarnings: warnings } : {}),
+    }, iteration);
     return 'COMPLETED';
   };
 
@@ -672,22 +719,19 @@ function* executeLocalTask(
     case 'NOOP':
       return done({}, 1);
     case 'TERMINATE': {
-      const terminationStatus = input.terminationStatus || 'COMPLETED';
+      // S12: the TERMINATE task itself completes; the workflow ends with terminationStatus and output = workflowOutput
+      const raw = String(input.terminationStatus || 'COMPLETED').toUpperCase();
+      if (raw !== 'COMPLETED' && raw !== 'FAILED' && raw !== 'TERMINATED') {
+        return fail(`terminationStatus 只能是 COMPLETED、FAILED 或 TERMINATED，当前是 ${input.terminationStatus}`);
+      }
+      const terminationStatus = raw as 'COMPLETED' | 'FAILED' | 'TERMINATED';
+      const output = input.workflowOutput && typeof input.workflowOutput === 'object' ? input.workflowOutput : {};
       const out = {
         terminationStatus,
         terminationReason: input.terminationReason || '',
-        output: input.workflowOutput || {},
+        output,
       };
-      if (terminationStatus === 'FAILED') {
-        ctx.currentTimeMs += 4;
-        record(ctx, task, base, {
-          status: 'FAILED_WITH_TERMINAL_ERROR',
-          reasonForIncompletion: input.terminationReason || 'Terminated with FAILED status',
-          outputData: out,
-          sandboxExecution: 'executed',
-        }, iteration);
-        return 'FAILED';
-      }
+      ctx.termination = { status: terminationStatus, reason: input.terminationReason || '', output };
       done(out, 4);
       return 'TERMINATED';
     }
@@ -695,23 +739,29 @@ function* executeLocalTask(
   return fail(`沙箱无法执行 ${task.type}`);
 }
 
+/** Typed placeholder for a declared input that has neither an example nor a default value. */
+function sampleForType(param: WorkflowInputParam): unknown {
+  switch (param.type) {
+    case 'number': return 1;
+    case 'boolean': return true;
+    case 'object': return {};
+    case 'array': return [];
+    default: return `sample_${param.name}`;
+  }
+}
+
 /**
  * Build mock workflow input: declared input parameters plus every `${workflow.input.<field>}` the tasks reference.
+ * S13: declared parameters take their type, example and default from `inputSchema` / `inputTemplate`
+ * (`parseWorkflowInputParams`), so a number parameter gets a number, not a `sample_x` string.
  */
 export function buildDefaultWorkflowMockInput(workflowDef: WorkflowDef): Record<string, any> {
   const input: Record<string, any> = {};
 
-  if (Array.isArray(workflowDef.inputParameters)) {
-    for (const param of workflowDef.inputParameters as any[]) {
-      const paramName = typeof param === 'string' ? param : param?.name;
-      const defaultVal =
-        typeof param === 'object' && param !== null
-          ? param.example ?? param.defaultValue ?? `sample_${paramName}`
-          : `sample_${paramName}`;
-      if (paramName && !(paramName in input)) {
-        input[paramName] = defaultVal;
-      }
-    }
+  for (const param of parseWorkflowInputParams(workflowDef.inputParameters as any[] | undefined, workflowDef)) {
+    if (!param.name || param.name in input) continue;
+    const value = param.example ?? param.defaultValue;
+    input[param.name] = value !== undefined && value !== '' ? structuredClone(value) : sampleForType(param);
   }
 
   // Auto-discover ${workflow.input.<field>} expressions across all tasks in the workflow
@@ -734,10 +784,14 @@ export function buildDefaultWorkflowMockInput(workflowDef: WorkflowDef): Record<
 
 function createContext(workflowDef: WorkflowDef, options: SandboxDryRunOptions, canRunScripts: boolean) {
   const baseStartTime = Date.now() - 2000;
-  const workflowInput = options.workflowInput || buildDefaultWorkflowMockInput(workflowDef);
+  // S13: like Conductor at start, inputTemplate fills inputs the caller did not give; variables start from the definition
+  const workflowInput = {
+    ...structuredClone(workflowDef.inputTemplate ?? {}),
+    ...(options.workflowInput || buildDefaultWorkflowMockInput(workflowDef)),
+  };
   const ctx: SandboxRuntimeContext = {
     workflowInput,
-    variables: {},
+    variables: structuredClone(workflowDef.variables ?? {}),
     taskOutputs: {},
     taskInputs: {},
     taskMocks: options.taskMocks || {},
@@ -747,6 +801,7 @@ function createContext(workflowDef: WorkflowDef, options: SandboxDryRunOptions, 
     canRunScripts,
     seqCounter: 0,
     lastDynamicSpawn: null,
+    termination: null,
   };
   return { ctx, baseStartTime };
 }
@@ -758,19 +813,27 @@ function buildInstance(
   finalResult: Flow,
 ): WorkflowInstance {
   const workflowOutput: Record<string, any> = {};
-  if (workflowDef.outputParameters && Object.keys(workflowDef.outputParameters).length > 0) {
+  if (ctx.termination) {
+    Object.assign(workflowOutput, ctx.termination.output);
+  } else if (workflowDef.outputParameters && Object.keys(workflowDef.outputParameters).length > 0) {
     Object.assign(workflowOutput, resolveExpressionValue(workflowDef.outputParameters, ctx));
   } else {
     const lastTask = ctx.tasks[ctx.tasks.length - 1];
     if (lastTask?.outputData) Object.assign(workflowOutput, lastTask.outputData);
   }
   const failed = ctx.tasks.find((t) => FAILED_STATUSES.has(t.status));
+  const status: WorkflowInstance['status'] = ctx.termination
+    ? ctx.termination.status
+    : finalResult === 'FAILED' ? 'FAILED' : 'COMPLETED';
+  const reasonForIncompletion = ctx.termination
+    ? (ctx.termination.status === 'COMPLETED' ? undefined : ctx.termination.reason || `TERMINATE 以 ${ctx.termination.status} 结束流程`)
+    : finalResult === 'FAILED' ? failed?.reasonForIncompletion : undefined;
   return {
     workflowId: `sandbox-dryrun-${Date.now().toString(36)}`,
     workflowName: workflowDef.name || 'sandbox_workflow',
     workflowVersion: workflowDef.version || 1,
-    // TERMINATE with terminationStatus COMPLETED ends the workflow as COMPLETED (FAILED is returned as 'FAILED' above)
-    status: finalResult === 'FAILED' ? 'FAILED' : 'COMPLETED',
+    // TERMINATE decides the status (COMPLETED / FAILED / TERMINATED); otherwise the last flow result does
+    status,
     startTime: baseStartTime,
     endTime: ctx.currentTimeMs,
     createTime: baseStartTime,
@@ -779,7 +842,7 @@ function buildInstance(
     output: workflowOutput,
     variables: ctx.variables,
     tasks: ctx.tasks,
-    reasonForIncompletion: finalResult === 'FAILED' ? failed?.reasonForIncompletion : undefined,
+    reasonForIncompletion,
     workflowDefinition: structuredClone(workflowDef),
     isSandbox: true,
   };

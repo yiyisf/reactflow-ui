@@ -13,6 +13,8 @@ import {
 const LOOP_SAFETY_DEFAULT = 20;
 import type { TaskDef } from '../types/conductor';
 import { ClipboardList, Compass, Eraser, FlaskConical, RefreshCw, RotateCcw, Shuffle, TriangleAlert, X, Zap } from 'lucide-react';
+import { getSwitchRoutingHint, type SwitchRoutingHint } from '../utils/sandbox/switchHints';
+import { getStatusMeta } from '../utils/statusMeta';
 
 interface SandboxConfigModalProps {
     isOpen: boolean;
@@ -112,31 +114,11 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
         }
     }, [allTasks, selectedTaskRef]);
 
-    // Extract SWITCH routing hints tied to workflow.input.*
-    const switchInputHints = useMemo(() => {
-        const hints: Array<{
-            switchRef: string;
-            switchName: string;
-            inputField: string | null;
-            cases: string[];
-        }> = [];
-        for (const t of allTasks) {
-            if (t.type === 'SWITCH' || t.type === 'DECISION') {
-                const cases = Object.keys(t.decisionCases || {});
-                if (cases.length === 0) continue;
-                const paramKey = t.caseValueParam || 'case_value';
-                const rawExpr = String(t.inputParameters?.[paramKey] ?? t.expression ?? '');
-                const match = rawExpr.match(/\$\{\s*workflow\.input\.([a-zA-Z0-9_]+)\s*\}/);
-                hints.push({
-                    switchRef: t.taskReferenceName,
-                    switchName: t.name || t.taskReferenceName,
-                    inputField: match ? match[1] : null,
-                    cases,
-                });
-            }
-        }
-        return hints;
-    }, [allTasks]);
+    // S14: SWITCH routing hints, identified with the same rules the sandbox uses to choose a branch
+    const switchInputHints = useMemo(
+        () => allTasks.map(getSwitchRoutingHint).filter((h): h is SwitchRoutingHint => h !== null),
+        [allTasks],
+    );
 
     if (!isOpen || !workflowDef || typeof document === 'undefined') return null;
 
@@ -262,6 +244,9 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
             onClick={onClose}
         >
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="本地沙箱试运行配置台"
                 style={{
                     width: 'min(920px, 96vw)',
                     height: 'min(660px, 90vh)',
@@ -295,12 +280,13 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                     fontSize: 11,
                                     padding: '2px 8px',
                                     borderRadius: 999,
-                                    background: 'color-mix(in srgb, var(--cm-status-success) 14%, transparent)',
-                                    color: 'var(--cm-status-success)',
+                                    background: 'color-mix(in srgb, var(--cm-data) 14%, transparent)',
+                                    color: 'var(--cm-data)',
                                     fontWeight: 600,
                                 }}
                             >
-                                0ms 确定性求值
+                                {/* U4：脚本在隔离环境里运行，单个最长 2 秒，不是"0ms" */}
+                                本地试运行
                             </span>
                         </div>
                         <div style={{ fontSize: 12, color: textSecondary, marginTop: 4 }}>
@@ -407,8 +393,10 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                             <span style={{ color: textSecondary }}>
                                                 节点 <b>{hint.switchName}</b> (<code>{hint.switchRef}</code>)
                                                 {hint.inputField
-                                                    ? ` 绑定入参字段 "${hint.inputField}" — 点击一键切换分支:`
-                                                    : ' 可选分支 (可在 Tab 2 强制指定):'}
+                                                    ? ` 按入参 "${hint.inputField}" 选择分支，点击改入参切换：`
+                                                    : hint.evaluator === 'javascript'
+                                                        ? ' 按脚本判断，点击到「2. 节点级人工 Mock」里强制指定分支：'
+                                                        : ' 判断取值不直接来自入参，点击到「2. 节点级人工 Mock」里强制指定分支：'}
                                             </span>
                                             {hint.cases.map((c) => (
                                                 <button
@@ -587,27 +575,31 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                     {ref} · {t.type}
                                                 </div>
                                             </div>
-                                            {isEnabled && (
-                                                <span
-                                                    style={{
-                                                        fontSize: 10,
-                                                        padding: '2px 6px',
-                                                        borderRadius: 999,
-                                                        background:
-                                                            draft.status === 'FAILED' || draft.status === 'TIMED_OUT'
-                                                                ? 'color-mix(in srgb, var(--cm-status-failed) 20%, transparent)'
-                                                                : 'color-mix(in srgb, var(--cm-status-success) 20%, transparent)',
-                                                        color:
-                                                            draft.status === 'FAILED' || draft.status === 'TIMED_OUT'
-                                                                ? 'var(--cm-status-failed)'
-                                                                : 'var(--cm-status-success)',
-                                                        fontWeight: 700,
-                                                        flexShrink: 0,
-                                                    }}
-                                                >
-                                                    {draft.status === 'COMPLETED' ? '已定制' : draft.status}
-                                                </span>
-                                            )}
+                                            {isEnabled && (() => {
+                                                // U3：模拟状态用共用的「状态 → 图标 + 中文 + 颜色」映射（规则 5）
+                                                const meta = getStatusMeta(draft.status);
+                                                const Icon = meta.icon;
+                                                return (
+                                                    <span
+                                                        data-testid="sandbox-mock-badge"
+                                                        style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 3,
+                                                            fontSize: 10,
+                                                            padding: '2px 6px',
+                                                            borderRadius: 999,
+                                                            background: `color-mix(in srgb, ${meta.color} 20%, transparent)`,
+                                                            color: meta.color,
+                                                            fontWeight: 700,
+                                                            flexShrink: 0,
+                                                        }}
+                                                    >
+                                                        <Icon size={10} strokeWidth={1.75} aria-hidden="true" />
+                                                        {draft.status === 'COMPLETED' ? '已定制' : `模拟${meta.label}`}
+                                                    </span>
+                                                );
+                                            })()}
                                         </div>
                                     );
                                 })}
@@ -699,8 +691,8 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                 {(
                                                     [
                                                         { id: 'COMPLETED', label: '正常成功' },
-                                                        { id: 'FAILED', label: '失败中断 (FAILED)' },
-                                                        { id: 'TIMED_OUT', label: '超时中断 (TIMED_OUT)' },
+                                                        { id: 'FAILED', label: '失败 (FAILED)' },
+                                                        { id: 'TIMED_OUT', label: '超时 (TIMED_OUT)' },
                                                         { id: 'COMPLETED_WITH_ERRORS', label: '带错完成' },
                                                     ] as const
                                                 ).map((st) => {
@@ -730,6 +722,13 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                                     );
                                                 })}
                                             </div>
+                                            {(currentDraft.status === 'FAILED' || currentDraft.status === 'TIMED_OUT') && (
+                                                <div style={{ fontSize: 11, color: textSecondary, marginTop: 6 }}>
+                                                    {currentTask.optional
+                                                        ? '这是可选任务（optional）：失败后按 Conductor 记为带错完成，流程继续。'
+                                                        : '流程会在这里中断；要让流程继续，把任务设为可选（optional）。'}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div>
@@ -1104,12 +1103,12 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                 padding: '8px 20px',
                                 borderRadius: 8,
                                 border: 'none',
-                                background: 'linear-gradient(135deg, var(--color-accent), var(--cm-data))',
-                                color: 'var(--text-primary)',
+                                // U4：主按钮——品牌色填充，文字用 on-accent（橙色主题下即 --cm-on-brand）
+                                background: 'var(--color-accent)',
+                                color: 'var(--color-on-accent)',
                                 fontSize: 12,
                                 fontWeight: 700,
                                 cursor: 'pointer',
-                                boxShadow: '0 4px 14px color-mix(in srgb, var(--color-accent) 35%, transparent)',
                             }}
                         >
                             <Zap size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />应用模拟数据并启动沙箱试运行

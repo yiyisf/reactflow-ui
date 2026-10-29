@@ -2,9 +2,13 @@
  * Runs Conductor JavaScript expressions (INLINE, SWITCH / DECISION javascript evaluators, DO_WHILE loop conditions)
  * for the in-browser sandbox.
  *
- * The expression is workflow content, possibly written by someone else, so it never runs on the page itself: it runs in a
- * dedicated Web Worker with network, storage and messaging APIs removed, and the worker is terminated when a script
- * exceeds its time budget (an infinite loop cannot freeze the IDE).
+ * The expression is workflow content, possibly written by someone else, so it never runs on the page itself (S10):
+ * - it runs in a Web Worker started from a hidden sandboxed iframe (opaque origin) whose Content-Security-Policy is
+ *   `default-src 'none'`. The worker inherits that policy, so `import()`, `FontFace`, `fetch`, WebSocket and the like
+ *   cannot reach the network whatever globals the script finds;
+ * - network, storage and messaging globals are also removed inside the worker (defence in depth);
+ * - every evaluation gets a fresh worker, so one script cannot see or change another script's input or result;
+ * - a script that exceeds its time budget is stopped (an infinite loop cannot freeze the IDE).
  */
 
 export type ScriptResult =
@@ -16,7 +20,7 @@ export type ScriptEvaluator = (expression: string, input: Record<string, unknown
 
 export interface WorkerScriptEvaluator {
     evaluate: ScriptEvaluator;
-    /** Stop the worker. Further calls start a new one. */
+    /** Stop the sandbox. Further calls start a new one. */
     dispose: () => void;
 }
 
@@ -24,7 +28,8 @@ export const DEFAULT_SCRIPT_TIMEOUT_MS = 2000;
 
 /**
  * Body of the worker. Kept as a plain function so it can be stringified; it must not reference anything outside itself.
- * Globals that reach the network, storage or other contexts are removed before any workflow script runs.
+ * Globals that reach the network, storage or other contexts are removed before any workflow script runs (the frame's
+ * CSP already blocks the network; this is defence in depth).
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function workerMain(): void {
@@ -47,7 +52,9 @@ function workerMain(): void {
         }
     }
     g.onmessage = (e: MessageEvent) => {
-        const { id, expression, input } = e.data as { id: number; expression: string; input: unknown };
+        // one evaluation per worker: the frame starts a fresh worker for every script and terminates it afterwards
+        g.onmessage = null;
+        const { expression, input } = e.data as { expression: string; input: unknown };
         try {
             // Non-strict on purpose: Conductor scripts are often `function f(){...} f();` and rely on sloppy-mode eval.
             const run = new Function('$', '__src', 'return eval(__src);');
@@ -58,90 +65,184 @@ function workerMain(): void {
             } catch {
                 safe = String(value);
             }
-            post({ id, ok: true, value: safe });
+            post({ ok: true, value: safe });
         } catch (err) {
-            post({ id, ok: false, error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) });
+            post({ ok: false, error: err instanceof Error ? `${err.name}: ${err.message}` : String(err) });
         }
     };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
- * Create an evaluator backed by an isolated Web Worker.
- * Returns an evaluator that reports `notExecuted` when the page cannot create workers (no Worker API, or a CSP that
- * forbids blob: workers), so the sandbox can say why a script did not run instead of guessing a result.
+ * Script of the sandbox iframe. Kept as a plain function so it can be stringified; it must not reference anything
+ * outside itself. It receives a MessagePort from the page, then for every request starts a fresh worker from
+ * `workerSource`, enforces the time budget and forwards exactly one result.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function frameMain(workerSource: string): void {
+    const w = window as any;
+    let port: MessagePort | null = null;
+    let workerUrl: string | null = null;
+    const workerFor = (): Worker => {
+        if (!workerUrl) workerUrl = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
+        return new Worker(workerUrl);
+    };
+    w.addEventListener('message', (e: MessageEvent) => {
+        if (e.source !== w.parent || !e.data || e.data.type !== 'cm-script-sandbox-port' || port) return;
+        port = e.ports[0];
+        port.onmessage = (ev: MessageEvent) => {
+            const { id, expression, input, timeoutMs } = ev.data as { id: number; expression: string; input: unknown; timeoutMs: number };
+            let settled = false;
+            let worker: Worker | null = null;
+            const reply = (r: Record<string, unknown>) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                worker?.terminate();
+                port!.postMessage({ id, ...r });
+            };
+            const timer = setTimeout(() => reply({ ok: false, timedOut: true }), timeoutMs);
+            try {
+                worker = workerFor();
+            } catch (err) {
+                reply({ ok: false, notExecuted: true, error: '页面不允许创建脚本沙箱（可能是 CSP 限制了 blob: Worker），脚本没有执行：' + (err instanceof Error ? err.message : String(err)) });
+                return;
+            }
+            // only the first message counts: a script posting its own messages can at most change its own result
+            worker.onmessage = (m: MessageEvent) => {
+                const d = m.data || {};
+                if (d.ok === true) reply({ ok: true, value: d.value });
+                else reply({ ok: false, error: typeof d.error === 'string' ? d.error : '脚本执行失败' });
+            };
+            worker.onerror = (m: ErrorEvent) => {
+                m.preventDefault();
+                reply({ ok: false, error: m.message || '脚本沙箱异常' });
+            };
+            worker.postMessage({ expression, input });
+        };
+        port.postMessage({ type: 'ready' });
+    });
+    w.parent.postMessage({ type: 'cm-script-sandbox-loaded' }, '*');
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/** CSP of the sandbox iframe; workers created from it inherit this policy. */
+const FRAME_CSP = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; worker-src blob:";
+
+function frameSrcdoc(): string {
+    const workerSource = `(${workerMain.toString()})();`;
+    const script = `(${frameMain.toString()})(${JSON.stringify(workerSource)});`.replace(/<\/script/gi, '<\\/script');
+    return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}"></head><body><script>${script}</script></body></html>`;
+}
+
+/**
+ * Create an evaluator backed by the sandbox described at the top of this file.
+ * Reports `notExecuted` when the page cannot host it (no DOM or Web Worker API, or a CSP that forbids the sandbox),
+ * so the sandbox can say why a script did not run instead of guessing a result.
  */
 export function createWorkerScriptEvaluator(options: { timeoutMs?: number } = {}): WorkerScriptEvaluator {
     const timeoutMs = options.timeoutMs ?? DEFAULT_SCRIPT_TIMEOUT_MS;
-    let worker: Worker | null = null;
-    let url: string | null = null;
+    /** how long the frame may take to load before the sandbox counts as unavailable */
+    const loadTimeoutMs = Math.max(3000, timeoutMs);
+    let frame: HTMLIFrameElement | null = null;
+    let port: Promise<MessagePort | string> | null = null;
+    let onWindowMessage: ((e: MessageEvent) => void) | null = null;
     let seq = 0;
     const pending = new Map<number, (r: ScriptResult) => void>();
+    /** why the sandbox could not start; kept so later scripts report it at once instead of waiting again */
+    let unavailable: string | null = null;
 
     const stop = () => {
-        worker?.terminate();
-        worker = null;
-        if (url) URL.revokeObjectURL(url);
-        url = null;
+        for (const resolve of pending.values()) resolve({ ok: false, error: '脚本沙箱已关闭' });
+        pending.clear();
+        if (onWindowMessage) window.removeEventListener('message', onWindowMessage);
+        onWindowMessage = null;
+        port?.then((p) => { if (typeof p !== 'string') p.close(); });
+        port = null;
+        frame?.remove();
+        frame = null;
+    };
+    const dispose = () => {
+        stop();
+        unavailable = null;
     };
 
-    const start = (): Worker | string => {
-        if (worker) return worker;
-        if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') {
-            return '当前环境不支持 Web Worker，脚本没有执行';
+    const start = (): Promise<MessagePort | string> => {
+        if (unavailable) return Promise.resolve(unavailable);
+        if (port) return port;
+        if (typeof document === 'undefined' || typeof window === 'undefined' || typeof Worker === 'undefined'
+            || typeof Blob === 'undefined' || typeof MessageChannel === 'undefined' || !document.body) {
+            return Promise.resolve('当前环境不支持 Web Worker，脚本没有执行');
         }
+        port = new Promise<MessagePort | string>((resolve) => {
+            const el = document.createElement('iframe');
+            el.setAttribute('sandbox', 'allow-scripts');
+            el.setAttribute('aria-hidden', 'true');
+            el.setAttribute('tabindex', '-1');
+            el.title = '脚本沙箱';
+            el.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden;';
+            const failTimer = setTimeout(() => {
+                resolve('脚本沙箱没有启动（页面的 CSP 可能不允许内嵌 iframe 或 blob: Worker），脚本没有执行');
+            }, loadTimeoutMs);
+            onWindowMessage = (e: MessageEvent) => {
+                if (e.source !== el.contentWindow || !e.data || e.data.type !== 'cm-script-sandbox-loaded') return;
+                const channel = new MessageChannel();
+                channel.port1.onmessage = (ev: MessageEvent) => {
+                    const d = ev.data as { type?: string; id?: number } & Record<string, unknown>;
+                    if (d.type === 'ready') {
+                        clearTimeout(failTimer);
+                        resolve(channel.port1);
+                        return;
+                    }
+                    if (typeof d.id !== 'number') return;
+                    const done = pending.get(d.id);
+                    if (!done) return;
+                    pending.delete(d.id);
+                    if (d.ok === true) done({ ok: true, value: d.value });
+                    else if (d.timedOut) done({ ok: false, error: `脚本运行超过 ${timeoutMs} ms 被终止（可能存在死循环）` });
+                    else done({ ok: false, error: String(d.error ?? '脚本执行失败'), ...(d.notExecuted ? { notExecuted: true } : {}) });
+                };
+                el.contentWindow!.postMessage({ type: 'cm-script-sandbox-port' }, '*', [channel.port2]);
+            };
+            window.addEventListener('message', onWindowMessage);
+            el.srcdoc = frameSrcdoc();
+            document.body.appendChild(el);
+            frame = el;
+        });
+        return port;
+    };
+
+    const evaluate: ScriptEvaluator = async (expression, input) => {
+        const p = await start();
+        if (typeof p === 'string') {
+            stop();
+            unavailable = p;
+            return { ok: false, error: p, notExecuted: true };
+        }
+        let payload: unknown;
         try {
-            url = URL.createObjectURL(new Blob([`(${workerMain.toString()})();`], { type: 'text/javascript' }));
-            worker = new Worker(url);
-        } catch (e) {
-            stop();
-            return `页面不允许创建脚本沙箱（可能是 CSP 限制了 blob: Worker），脚本没有执行：${e instanceof Error ? e.message : String(e)}`;
+            payload = JSON.parse(JSON.stringify(input ?? {}));
+        } catch {
+            payload = {};
         }
-        worker.onmessage = (e: MessageEvent) => {
-            const { id, ...rest } = e.data as { id: number } & ScriptResult;
-            pending.get(id)?.(rest as ScriptResult);
-            pending.delete(id);
-        };
-        worker.onerror = (e) => {
-            const msg = e.message || '脚本沙箱异常';
-            for (const resolve of pending.values()) resolve({ ok: false, error: msg });
-            pending.clear();
-            stop();
-        };
-        return worker;
-    };
-
-    const evaluate: ScriptEvaluator = (expression, input) =>
-        new Promise((resolve) => {
-            const w = start();
-            if (typeof w === 'string') {
-                resolve({ ok: false, error: w, notExecuted: true });
-                return;
-            }
-            const id = ++seq;
-            const timer = setTimeout(() => {
+        const id = ++seq;
+        return new Promise<ScriptResult>((resolve) => {
+            // backstop in case the frame itself stops answering; the frame enforces the budget first
+            const backstop = setTimeout(() => {
                 if (!pending.has(id)) return;
                 pending.delete(id);
-                // the script may be stuck in a loop: kill the worker; the next call starts a fresh one
-                for (const other of pending.values()) other({ ok: false, error: '同一沙箱中的另一个脚本超时，本脚本被一并终止' });
-                pending.clear();
                 stop();
                 resolve({ ok: false, error: `脚本运行超过 ${timeoutMs} ms 被终止（可能存在死循环）` });
-            }, timeoutMs);
+            }, timeoutMs + 2000);
             pending.set(id, (r) => {
-                clearTimeout(timer);
+                clearTimeout(backstop);
                 resolve(r);
             });
-            let payload: unknown;
-            try {
-                payload = JSON.parse(JSON.stringify(input ?? {}));
-            } catch {
-                payload = {};
-            }
-            w.postMessage({ id, expression, input: payload });
+            p.postMessage({ id, expression, input: payload, timeoutMs });
         });
+    };
 
-    return { evaluate, dispose: stop };
+    return { evaluate, dispose };
 }
 
 /** Evaluator used by the synchronous API: never runs scripts, says so. */

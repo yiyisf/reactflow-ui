@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { executeLocalSandboxDryRun, executeLocalSandboxDryRunAsync } from './localSandboxEngine';
+import { buildDefaultWorkflowMockInput, executeLocalSandboxDryRun, executeLocalSandboxDryRunAsync } from './localSandboxEngine';
 import type { ScriptEvaluator } from './sandbox/scriptRunner';
 import type { WorkflowDef } from '../types/conductor';
 
@@ -367,5 +367,191 @@ describe('Async sandbox: tasks without outside systems run for real', () => {
     });
     expect(instance.tasks[0].sandboxExecution).toBe('not_executed');
     expect(instance.tasks[0].reasonForIncompletion).toMatch(/Web Worker/);
+  });
+});
+
+describe('v1.3.2 批次 2：沙箱与 Conductor 语义对齐', () => {
+  it('[S11-01] 可选任务失败记为带错完成，流程继续', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'optional_fail',
+        tasks: [
+          { name: 'h', taskReferenceName: 'h', type: 'HTTP', optional: true, inputParameters: {} },
+          { name: 'after', taskReferenceName: 'after', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { h: { status: 'FAILED', reasonForIncompletion: '下游 503' } } },
+    );
+    expect(instance.status).toBe('COMPLETED');
+    const h = instance.tasks.find((t) => t.referenceTaskName === 'h')!;
+    expect(h.status).toBe('COMPLETED_WITH_ERRORS');
+    expect(h.reasonForIncompletion).toBe('下游 503');
+    expect(instance.tasks.map((t) => t.referenceTaskName)).toEqual(['h', 'after']);
+  });
+
+  it('[S11-02] 可选的脚本任务失败、超时也继续；非可选任务失败仍中断', async () => {
+    const optionalScript = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'optional_script',
+        tasks: [
+          { name: 'i', taskReferenceName: 'i', type: 'INLINE', optional: true, inputParameters: { evaluatorType: 'javascript', expression: 'throw new Error("x")' } },
+          { name: 's', taskReferenceName: 's', type: 'SIMPLE', optional: true, inputParameters: {} },
+          { name: 'after', taskReferenceName: 'after', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { s: { status: 'TIMED_OUT' } } },
+    );
+    expect(optionalScript.status).toBe('COMPLETED');
+    expect(optionalScript.tasks.map((t) => [t.referenceTaskName, t.status])).toEqual([
+      ['i', 'COMPLETED_WITH_ERRORS'],
+      ['s', 'COMPLETED_WITH_ERRORS'],
+      ['after', 'COMPLETED'],
+    ]);
+
+    const required = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'required_fail',
+        tasks: [
+          { name: 'h', taskReferenceName: 'h', type: 'HTTP', inputParameters: {} },
+          { name: 'after', taskReferenceName: 'after', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { h: { status: 'FAILED' } } },
+    );
+    expect(required.status).toBe('FAILED');
+    expect(required.tasks.map((t) => t.referenceTaskName)).toEqual(['h']);
+  });
+
+  it.each([
+    ['COMPLETED', 'COMPLETED', undefined],
+    ['FAILED', 'FAILED', '库存不足'],
+    ['TERMINATED', 'TERMINATED', '库存不足'],
+  ] as const)('[S12-01] TERMINATE 以 %s 结束：实例状态 %s，输出取 workflowOutput，之后的任务不执行', async (terminationStatus, expected, reason) => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'term_' + terminationStatus,
+        outputParameters: { ignored: '${workflow.input.a}' },
+        tasks: [
+          {
+            name: 't', taskReferenceName: 't', type: 'TERMINATE',
+            inputParameters: { terminationStatus, terminationReason: '库存不足', workflowOutput: { code: 'OUT_OF_STOCK', a: '${workflow.input.a}' } },
+          },
+          { name: 'n', taskReferenceName: 'n', type: 'NOOP' },
+        ],
+      },
+      { scriptEvaluator: evaluate, workflowInput: { a: 3 } },
+    );
+    expect(instance.status).toBe(expected);
+    expect(instance.output).toEqual({ code: 'OUT_OF_STOCK', a: 3 });
+    expect(instance.reasonForIncompletion).toBe(reason);
+    expect(instance.tasks.map((t) => [t.referenceTaskName, t.status])).toEqual([['t', 'COMPLETED']]);
+  });
+
+  it('[S13-01] 默认模拟入参按 inputSchema 类型与 inputTemplate 默认值生成', () => {
+    const input = buildDefaultWorkflowMockInput({
+      name: 'typed_inputs',
+      inputParameters: ['qty', 'vip', 'tags', 'meta', 'region', 'note'],
+      inputSchema: {
+        name: 'typed_inputs_input',
+        type: 'JSON',
+        data: {
+          type: 'object',
+          properties: {
+            qty: { type: 'integer' },
+            vip: { type: 'boolean' },
+            tags: { type: 'array' },
+            meta: { type: 'object' },
+            region: { type: 'string', examples: ['cn-north'] },
+          },
+        },
+      },
+      inputTemplate: { qty: 5 },
+      tasks: [{ name: 'x', taskReferenceName: 'x', type: 'NOOP', inputParameters: { e: '${workflow.input.extra}' } }],
+    } as WorkflowDef);
+    expect(input).toEqual({ qty: 5, vip: true, tags: [], meta: {}, region: 'cn-north', note: 'sample_note', extra: 'mock_extra' });
+  });
+
+  it('[S13-02] 执行时 inputTemplate 补齐缺省入参，variables 取定义里的初值', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'template_fill',
+        inputParameters: ['a', 'b'],
+        inputTemplate: { a: 2, b: 10 },
+        variables: { count: 1 },
+        tasks: [
+          { name: 'calc', taskReferenceName: 'calc', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', a: '${workflow.input.a}', b: '${workflow.input.b}', c: '${workflow.variables.count}', expression: '$.a * $.b + $.c' } },
+        ],
+      } as WorkflowDef,
+      { scriptEvaluator: evaluate, workflowInput: { a: 3 } },
+    );
+    expect(instance.input).toEqual({ a: 3, b: 10 });
+    expect(instance.tasks[0].outputData).toEqual({ result: 31 });
+    expect(instance.variables).toEqual({ count: 1 });
+  });
+
+  it('[S15-01] 循环条件能取到嵌套在 SWITCH / FORK 里的子任务输出，没走的分支不计入', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'nested_loop_scope',
+        tasks: [{
+          name: 'loop', taskReferenceName: 'loop', type: 'DO_WHILE',
+          loopCondition: '$.counter.result < 3 && !$.never',
+          loopOver: [{
+            name: 'route', taskReferenceName: 'route', type: 'SWITCH', evaluatorType: 'value-param', expression: 'k',
+            inputParameters: { k: 'go' },
+            decisionCases: {
+              go: [{
+                name: 'fork', taskReferenceName: 'fork', type: 'FORK_JOIN',
+                forkTasks: [[{
+                  name: 'counter', taskReferenceName: 'counter', type: 'INLINE',
+                  inputParameters: { evaluatorType: 'javascript', i: '${loop.output.iteration}', expression: '($.i || 0) + 1' },
+                }]],
+              }, { name: 'join', taskReferenceName: 'join', type: 'JOIN', joinOn: ['counter'] }],
+            },
+            defaultCase: [{ name: 'never', taskReferenceName: 'never', type: 'NOOP' }],
+          }],
+        }],
+      },
+      { scriptEvaluator: evaluate },
+    );
+    expect(instance.status).toBe('COMPLETED');
+    const loop = instance.tasks.find((t) => t.referenceTaskName === 'loop')!;
+    expect(loop.iteration).toBe(3);
+    expect(loop.status).toBe('COMPLETED');
+    expect(Object.keys(loop.outputData?.['1'] ?? {}).sort()).toEqual(['counter', 'fork', 'join', 'route']);
+  });
+
+  it('[S16-01] 配置台只改耗时时，INLINE 仍真实执行，只调整耗时', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'timing_only',
+        tasks: [{ name: 'calc', taskReferenceName: 'calc', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', a: 4, expression: '$.a * 2' } }],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { calc: { __isMockOverride: true, durationMs: 1500 } } },
+    );
+    const calc = instance.tasks[0];
+    expect(calc.sandboxExecution).toBe('executed');
+    expect(calc.outputData).toEqual({ result: 8 });
+    expect((calc.endTime ?? 0) - (calc.startTime ?? 0)).toBe(1500);
+    expect(calc.sandboxWarnings?.[0]).toMatch(/1500 ms/);
+
+    const withOutput = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'custom_output',
+        tasks: [{ name: 'calc', taskReferenceName: 'calc', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', expression: '1' } }],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { calc: { __isMockOverride: true, outputData: { result: 'mocked' } } } },
+    );
+    expect(withOutput.tasks[0].sandboxExecution).toBe('mocked');
+    expect(withOutput.tasks[0].outputData).toEqual({ result: 'mocked' });
+  });
+
+  it('[S12-02] terminationStatus 写错时 TERMINATE 失败并说明可选值', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      { name: 'term_bad', tasks: [{ name: 't', taskReferenceName: 't', type: 'TERMINATE', inputParameters: { terminationStatus: 'DONE' } }] },
+      { scriptEvaluator: evaluate },
+    );
+    expect(instance.status).toBe('FAILED');
+    expect(instance.tasks[0].reasonForIncompletion).toMatch(/COMPLETED、FAILED 或 TERMINATED/);
   });
 });

@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 模拟严格 CSP 的宿主：不允许内联脚本，沙箱 iframe 里的脚本跑不起来 -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval'" />
+    <title>CMASTER · 脚本隔离 · 严格 CSP 宿主（测试夹具）</title>
+  </head>
+  <body>
+    <script type="module" src="./script-sandbox.ts"></script>
+  </body>
+</html>

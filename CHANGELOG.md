@@ -20,6 +20,21 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - `workflowDefSaved` 属性（WorkflowIDE / AiWorkflowIDE，默认 `true`）：传入本地文件、草稿等还没保存的定义时设为 `false`。
 - `ref.markSaved(def?)`（WorkflowIDE / AiWorkflowIDE）：宿主用其它方式加载或确认保存了服务端定义后调用。AiWorkflowIDE 的 `ref.setWorkflow` 与新建空白流程会清空旧流程的保存基线。
 
+> v1.3.2 批次 2（沙箱）：S10–S16、U3、U4。
+
+### Fixed · 沙箱
+- **S10 脚本隔离**：沙箱脚本改在隐藏的 sandbox iframe（不透明源，CSP `default-src 'none'`）里、每次求值新建的 Worker 中运行。`import()`、`FontFace`、`fetch` 等都发不出请求；脚本不能接管消息伪造后续脚本的结果，也读不到它们的入参。页面不能承载沙箱时仍标为「未执行」并说明原因。
+- **S11 可选任务**：`optional: true` 的任务失败或超时记为「带错完成」（`COMPLETED_WITH_ERRORS`），流程继续。
+- **S12 TERMINATE**：实例状态取 `terminationStatus`（COMPLETED / FAILED / TERMINATED），流程输出取 `workflowOutput`，原因取 `terminationReason`；TERMINATE 任务本身记为成功。`terminationStatus` 写错时任务失败并列出可选值。
+- **S13 入参**：默认模拟入参按 `inputSchema` 的类型、示例与 `inputTemplate` 的默认值生成（数字给数字）；执行前用 `inputTemplate` 补齐没给的入参，`variables` 取定义里的初值。
+- **S14 配置台快速路由**：按引擎同一规则识别 SWITCH 判断依据（value-param 读 `inputParameters[expression]`，javascript 只能强制分支）。
+- **S15 循环条件**：`$` 包含本轮执行过的全部子任务输出（含嵌套在 SWITCH / FORK 里的），没走的分支不计入。
+- **S16 只改耗时**：配置台只设耗时时，INLINE / JQ 等仍真实执行，只调整耗时。
+
+### Fixed · 沙箱配置台
+- **U3** 任务列表的模拟状态徽标改为图标 + 中文 + 颜色（共用 `statusMeta`），不再显示英文状态。
+- **U4** 标题徽标改为「本地试运行」；启动按钮改为主按钮（品牌色填充，文字 `--color-on-accent`，橙色主题即 `--cm-on-brand`）。失败 / 超时选项说明可选任务会带错完成继续。
+
 ---
 
 ## [1.3.1] - 2026-10-25

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, forwardRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useImperativeHandle, forwardRef, useState, useMemo, useRef } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import WorkflowDesigner from './components/WorkflowDesigner';
 import TaskDetailPanel from './components/TaskDetailPanel';
@@ -52,6 +52,11 @@ export interface WorkflowIDERef {
     createBlankWorkflow: (name?: string) => void;
     /** 打开「导入接口」对话框（OpenAPI / Swagger / Postman / curl），供宿主或自助接入向导调用 */
     openApiImport: () => void;
+    /**
+     * 把定义记为服务端已保存的版本（不传时取当前编辑中的定义）。「执行验证」按名称 + 版本运行已保存的版本，
+     * 画布与它不同时会提示。宿主在自己确认保存成功、或用其它方式加载了服务端定义后调用。
+     */
+    markSaved: (def?: WorkflowDef) => void;
 }
 
 /**
@@ -61,8 +66,15 @@ export interface WorkflowIDEProps {
     /**
      * 初始加载的工作流定义 JSON 对象。
      * 如果在组件挂载后通过 Props 更新此值，IDE 内容也会随之更新。
+     * 传入的定义默认视为服务端已保存的版本（「执行验证」据此判断画布有没有未保存的修改），见 `workflowDefSaved`。
      */
     workflowDef?: WorkflowDef;
+
+    /**
+     * `workflowDef` 是否是服务端已保存的版本，默认 `true`。
+     * 传入本地文件、草稿等还没保存的定义时设为 `false`，「执行验证」会提示将运行已保存的版本。
+     */
+    workflowDefSaved?: boolean;
 
     /**
      * 是否开启只读模式。
@@ -233,6 +245,7 @@ export interface WorkflowIDEProps {
  */
 export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     workflowDef,
+    workflowDefSaved = true,
     readOnly = false,
     theme = 'dark',
     themeColor = 'blue',
@@ -393,11 +406,14 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     }, [viewMode, workflowExecution, setViewMode]);
 
     // Handle initial workflow load
+    // 只在 workflowDef 变化时读取，切换这个标记本身不重新加载定义
+    const workflowDefSavedRef = useRef(workflowDefSaved);
+    workflowDefSavedRef.current = workflowDefSaved;
     useEffect(() => {
         if (workflowDef) {
             setWorkflow(workflowDef, layoutDirection);
-            // R19：宿主传入的定义视为服务端已保存的版本
-            useWorkflowStore.getState().markWorkflowSaved();
+            // R19：宿主传入的定义默认视为服务端已保存的版本；宿主声明未保存时清空基线
+            useWorkflowStore.getState().markWorkflowSaved(workflowDefSavedRef.current ? undefined : null);
             // Clear history after loading a new workflow to prevent undoing to empty state
             useWorkflowStore.temporal.getState().clear();
         }
@@ -425,6 +441,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             useWorkflowStore.temporal.getState().clear();
         },
         openApiImport: () => setShowApiImport(true),
+        markSaved: (def?: WorkflowDef) => useWorkflowStore.getState().markWorkflowSaved(def),
     }), [onSave]);
 
     // Notify consumer when workflowDef changes (skip initial load from props)

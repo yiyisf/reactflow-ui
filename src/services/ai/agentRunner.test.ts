@@ -346,6 +346,65 @@ describe('AgentRunner', () => {
             await runner.send('看看');
             expect(useAiStore.getState().timelineEntries.some(e => e.label.includes('已拒绝'))).toBe(false);
         });
+
+        it('[A17-05] 会话中途切到运行态：已发出的编辑工具调用被拒绝，下一步不再提供编辑工具', async () => {
+            const seenRequests: AgentRequest[] = [];
+            let call = 0;
+            const stream = async function* (req: AgentRequest): AsyncGenerator<StreamEvent> {
+                seenRequests.push(req);
+                if (call++ === 0) {
+                    // 模型输出期间用户发起了执行验证
+                    useWorkflowStore.getState().setMode('run');
+                    yield { type: 'tool_call', id: 't1', name: 'patch_workflow', args: { operations: [] } };
+                    return;
+                }
+                yield { type: 'text', content: '好的' };
+                yield { type: 'done' };
+            };
+            useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
+
+            try {
+                const runner = new AgentRunner(() => ({}), testStores);
+                await runner.send('把重试次数改成 3');
+
+                expect(seenRequests[0].tools.map(t => t.function.name)).toContain('patch_workflow');
+                expect(toolMsgs(seenRequests[1]).find(m => m.tool_call_id === 't1')?.content).toContain('运行态只能查看和诊断');
+                expect(seenRequests[1].tools.map(t => t.function.name)).not.toContain('patch_workflow');
+            } finally {
+                useWorkflowStore.getState().setMode('edit');
+            }
+        });
+
+        it('[A17-06] 草稿已开始后切到运行态：安全网不自动提交方案', async () => {
+            let call = 0;
+            const stream = async function* (): AsyncGenerator<StreamEvent> {
+                const step = call++;
+                if (step === 0) {
+                    yield { type: 'tool_call', id: 'tc_bp', name: 'init_workflow_blueprint', args: { name: 'draft_wf', inputParameters: ['userId'] } };
+                    return;
+                }
+                if (step === 1) {
+                    yield {
+                        type: 'tool_call', id: 'tc_topo', name: 'scaffold_workflow_topology',
+                        args: { tasks: [{ name: 'fetch_profile', taskReferenceName: 'fetch_profile_ref', type: 'HTTP', httpRequest: { uri: 'https://api.internal/users/${workflow.input.userId}', method: 'GET' } }] },
+                    };
+                    return;
+                }
+                // 草稿已经动过；模型结束前用户进入了运行态
+                useWorkflowStore.getState().setMode('run');
+                yield { type: 'text', content: '完成' };
+                yield { type: 'done' };
+            };
+            useAiStore.getState().setConfig({ apiKey: '', transport: { type: 'custom', stream } });
+
+            try {
+                const runner = new AgentRunner(() => ({}), testStores);
+                await runner.send('创建一个流程');
+                expect(useAiStore.getState().pendingProposal).toBeNull();
+            } finally {
+                useWorkflowStore.getState().setMode('edit');
+            }
+        });
     });
 
     it('excludes propose_repair when aiPermissions.canRepair=false', async () => {

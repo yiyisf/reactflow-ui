@@ -1056,7 +1056,8 @@ const useWorkflowStore = create<WorkflowStore>()(
                         schemaVersion: 2
                     };
                     get().setWorkflow(blankDef);
-                    set({ mode: 'edit' });
+                    // R19：新建的流程还没有保存过的版本，之前流程的保存基线作废
+                    set({ mode: 'edit', savedWorkflowJson: null });
                 },
 
                 applyAIGeneratedWorkflow: (workflowJson: any) => {

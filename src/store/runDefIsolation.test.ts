@@ -122,6 +122,18 @@ describe('R19: 运行态不替换编辑中的定义', () => {
     });
 });
 
+describe('R19: 保存基线随流程切换', () => {
+    it('[R19-11] 新建空白流程后，之前流程的保存基线作废', () => {
+        store().setMode('edit');
+        store().setWorkflow(SAVED);
+        store().markWorkflowSaved();
+        expect(store().savedWorkflowJson).not.toBeNull();
+        store().createBlankWorkflow('another_flow');
+        expect(store().savedWorkflowJson).toBeNull();
+        expect(store().hasUnsavedChanges()).toBe(true);
+    });
+});
+
 describe('R20: 剪贴板任务不落盘', () => {
     it('[R20-01] 复制带 Authorization 头的 HTTP 任务后，localStorage 里没有任务内容', () => {
         store().copyTask({

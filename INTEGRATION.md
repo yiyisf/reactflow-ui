@@ -52,7 +52,8 @@ const MyWorkflowApp = () => {
 
 | 属性名 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `workflowDef` | `WorkflowDef` | `undefined` | 初始加载的工作流定义 JSON 对象。不传时显示空状态引导面板。 |
+| `workflowDef` | `WorkflowDef` | `undefined` | 初始加载的工作流定义 JSON 对象。不传时显示空状态引导面板。默认视为服务端已保存的版本，见 `workflowDefSaved`。 |
+| `workflowDefSaved` | `boolean` | `true` | `workflowDef` 是否是服务端已保存的版本。传入本地文件、草稿等还没保存的定义时设为 `false`，「执行验证」会提示将运行已保存的版本（`AiWorkflowIDE` 同名属性同样生效）。 |
 | `readOnly` | `boolean` | `false` | 是否开启只读模式。开启后无法拖拽、连接或编辑节点。 |
 | `height` | `string \| number` | `'100%'` | 组件高度。 |
 | `theme` | `'dark' \| 'light'` | `'dark'` | 主题模式。 |
@@ -220,6 +221,7 @@ const App = () => {
 | `getValidationResults()` | `ValidationResults` | 获取当前校验结果（错误和警告列表） |
 | `save()` | `void` | 触发 `onSave` 回调（等同于 Ctrl+S） |
 | `createBlankWorkflow(name?)` | `void` | 程序化创建空白工作流并进入编辑模式。可选传入工作流名称，默认为 `'new_workflow'`。调用后画布显示中央 [+] 引导按钮，撤销历史自动清空。 |
+| `markSaved(def?)` | `void` | 把定义记为服务端已保存的版本，不传时取当前编辑中的定义。「执行验证」按名称 + 版本运行已保存的版本，画布与它不同时会提示。通过 `workflowDef` 属性传入的定义（`workflowDefSaved` 不为 `false`）、`onSave` 成功后的定义会自动记为已保存；用其它方式加载服务端定义后调用它（`AiWorkflowIDE` 的 ref 同样提供）。 |
 
 ## 📄 从零新建工作流
 

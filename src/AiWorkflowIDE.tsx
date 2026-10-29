@@ -66,8 +66,13 @@ function formatRestoredBannerText(savedAt: number): string {
 
 export interface AiWorkflowIDEProps {
     // ── Workflow data ──────────────────────────────────────────────────────
-    /** 初始工作流定义（编辑态） */
+    /** 初始工作流定义（编辑态）。默认视为服务端已保存的版本，见 `workflowDefSaved` */
     workflowDef?: WorkflowDef;
+    /**
+     * `workflowDef` 是否是服务端已保存的版本，默认 `true`。
+     * 传入本地文件、草稿等还没保存的定义时设为 `false`，运行卡片会提示将运行已保存的版本。
+     */
+    workflowDefSaved?: boolean;
     /** 运行态执行实例数据（完整 Conductor Workflow 实例，或裸的任务实例数组） */
     workflowExecution?: WorkflowExecutionInput;
 
@@ -302,8 +307,15 @@ export interface AiWorkflowIDEProps {
 export interface AiWorkflowIDERef {
     /** 获取当前工作流定义 */
     getWorkflowDef: () => WorkflowDef | null;
-    /** 程序化设置工作流 */
+    /**
+     * 程序化设置工作流。设置后 IDE 不知道它是否已保存；加载的是服务端已保存的定义时，接着调用 `markSaved()`。
+     */
     setWorkflow: (def: WorkflowDef) => void;
+    /**
+     * 把定义记为服务端已保存的版本（不传时取当前编辑中的定义）。运行卡片按名称 + 版本运行已保存的版本，
+     * 画布与它不同时会提示。宿主在自己确认保存成功、或用 setWorkflow 加载了服务端定义后调用。
+     */
+    markSaved: (def?: WorkflowDef) => void;
     /** 新建空白工作流 */
     createBlankWorkflow: (name?: string) => void;
     /** 获取 AI 使用指标 */
@@ -315,6 +327,7 @@ export interface AiWorkflowIDERef {
 const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((props, ref) => {
     const {
         workflowDef: propDef,
+        workflowDefSaved = true,
         workflowExecution,
         aiConfig: propAiConfig,
         aiConfigStorageKey,
@@ -495,11 +508,14 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     }, [propValidationRules]);
 
     // ── Workflow def ────────────────────────────────────────────────────────
+    // 只在 workflowDef 变化时读取，切换这个标记本身不重新加载定义
+    const workflowDefSavedRef = useRef(workflowDefSaved);
+    workflowDefSavedRef.current = workflowDefSaved;
     useEffect(() => {
         if (propDef) {
             workflowStore.setWorkflow(propDef);
-            // R19：宿主传入的定义视为服务端已保存的版本
-            useWorkflowStore.getState().markWorkflowSaved();
+            // R19：宿主传入的定义默认视为服务端已保存的版本；宿主声明未保存时清空基线
+            useWorkflowStore.getState().markWorkflowSaved(workflowDefSavedRef.current ? undefined : null);
             workflowStore.setMode('edit');
         }
     }, [propDef]);
@@ -536,9 +552,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         if (!draftKey && !onDraftChange) return;
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => {
-            // R19：运行态画布展示的是实例定义，不写进草稿；离开运行态换回编辑定义后会再触发一次保存
-            if (useWorkflowStore.getState().editWorkflowDefStash) return;
-            const def = useWorkflowStore.getState().workflowDef;
+            // R19：运行态画布展示的是实例定义，草稿里写编辑中的定义；AI 对话和方案照常保存
+            const def = useWorkflowStore.getState().getEditingWorkflowDef();
             const msgs = stores.aiStore.getState().messages;
             const proposal = stores.aiStore.getState().pendingProposal;
             const checkpoint = stores.aiStore.getState().durableCheckpoint;
@@ -660,8 +675,11 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
         getWorkflowDef: () => useWorkflowStore.getState().getEditingWorkflowDef(),
         setWorkflow: (def: WorkflowDef) => {
             useWorkflowStore.getState().setWorkflow(def);
+            // R19：换了流程，之前流程的保存基线作废；宿主确认是已保存的版本时再调用 markSaved()
+            useWorkflowStore.getState().markWorkflowSaved(null);
             useWorkflowStore.getState().setMode('edit');
         },
+        markSaved: (def?: WorkflowDef) => useWorkflowStore.getState().markWorkflowSaved(def),
         createBlankWorkflow: (name?: string) => useWorkflowStore.getState().createBlankWorkflow(name),
         getAiMetrics: () => stores.aiStore.getState().getMetrics(),
     }), []);

@@ -63,6 +63,25 @@ describe('CMASTER rule 7: no emoji in UI source', () => {
     });
 });
 
+const SVG_EXCEPTIONS: Record<string, string> = {
+    '../components/BrandLogo.tsx': 'CMASTER logo, drawn as its own SVG',
+    '../components/AiNative/MermaidBlock.tsx': 'renders the Mermaid diagram SVG, not an icon',
+};
+const SVG_FREE = Object.keys(sources).filter((p) => /\.tsx$/.test(p) && isUiSource(p) && !(p in SVG_EXCEPTIONS));
+
+describe('CMASTER rule 7: icons come from lucide-react, not inline <svg>', () => {
+    it('covers the code base', () => expect(SVG_FREE.length).toBeGreaterThan(80));
+    it.each(SVG_FREE)('%s draws no inline <svg>', (path) => {
+        const hits = stripCommentsPreservingLines(sources[path])
+            .split('\n')
+            .map((line, i) => [i + 1, line] as const)
+            .filter(([, line]) => /<svg\b/.test(line))
+            .map(([n, line]) => `${n}: ${line.trim()}`);
+        // Use a lucide-react icon (strokeWidth 1.75) or <CmIcon> for data icons.
+        expect(hits).toEqual([]);
+    });
+});
+
 const TOKEN_ONLY = Object.keys(sources).filter((p) => isUiSource(p) && !(p in COLOUR_EXCEPTIONS));
 
 const stripCommentsPreservingLines = (src: string) =>

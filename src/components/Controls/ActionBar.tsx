@@ -5,7 +5,7 @@ import ControlButton from './ControlButton';
 import SandboxConfigModal from '../SandboxConfigModal';
 import { useStore } from 'zustand';
 import { ExecutionActions } from '../../types/workflow';
-import { ChartGantt, FlaskConical, Pencil, Redo2, Settings2, SlidersHorizontal, Sparkles, Stethoscope, Undo2, Waypoints } from 'lucide-react';
+import { ChartGantt, ChevronDown, Clock, FileText, FlaskConical, Pause, Pencil, Play, Redo2, RotateCcw, RotateCw, Settings2, SlidersHorizontal, Sparkles, Square, Stethoscope, Undo2, Waypoints } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 /** CMASTER toolbar icon: Lucide, stroke 1.75 (design/guidelines/brand.md · 图标). */
@@ -255,7 +255,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     {/* 继续（PAUSED → RUNNING） */}
                     {isPaused && executionActions.onResume && (
                         <ControlButton
-                            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5z" /></svg>}
+                            icon={<Play size={14} strokeWidth={1.75} aria-hidden="true" />}
                             label="继续"
                             title={!allowOperations ? "操作权限受限" : "继续执行工作流"}
                             onClick={() => allowOperations && executionActions.onResume!(wfId)}
@@ -267,7 +267,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     {/* 暂停（RUNNING → PAUSED） */}
                     {isRunning && executionActions.onPause && (
                         <ControlButton
-                            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="4" y="3" width="3" height="10" rx="1" /><rect x="9" y="3" width="3" height="10" rx="1" /></svg>}
+                            icon={<Pause size={14} strokeWidth={1.75} aria-hidden="true" />}
                             label="暂停"
                             title={!allowOperations ? "操作权限受限" : "暂停工作流执行"}
                             onClick={() => allowOperations && executionActions.onPause!(wfId)}
@@ -278,7 +278,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     {/* 终止（RUNNING/PAUSED → TERMINATED） */}
                     {(isRunning || isPaused) && executionActions.onTerminate && (
                         <ControlButton
-                            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1" /></svg>}
+                            icon={<Square size={14} strokeWidth={1.75} aria-hidden="true" />}
                             label="终止"
                             title={!allowOperations ? "操作权限受限" : "终止工作流执行"}
                             onClick={() => allowOperations && executionActions.onTerminate!(wfId)}
@@ -290,7 +290,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                     {/* 重试（FAILED/TIMED_OUT/TERMINATED） */}
                     {isTerminal && executionActions.onRetry && (
                         <ControlButton
-                            icon={<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M13 2v4h-4" /><path d="M13 6A7 7 0 1 1 9.5 2.5" /></svg>}
+                            icon={<RotateCw size={14} strokeWidth={1.75} aria-hidden="true" />}
                             label="重试"
                             title={!allowOperations ? "操作权限受限" : "重试失败的工作流"}
                             onClick={() => allowOperations && executionActions.onRetry!(wfId)}
@@ -324,7 +324,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                                     height: '32px',
                                 }}
                             >
-                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 14v-4h4" /><path d="M3 10A7 7 0 1 1 6.5 13.5" /></svg>
+                                <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" />
                                 重启
                             </button>
                             {/* 下拉触发器：展开版本选项 */}
@@ -348,9 +348,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                                     fontSize: '10px',
                                 }}
                             >
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-                                    <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-                                </svg>
+                                <ChevronDown size={12} strokeWidth={1.75} aria-hidden="true" />
                             </button>
 
                             {/* 下拉菜单 */}
@@ -377,7 +375,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-secondary)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                     >
-                                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="8" cy="8" r="6" /><path d="M8 5v3l2 1" /></svg>
+                                        <Clock size={14} strokeWidth={1.75} aria-hidden="true" />
                                         <div>
                                             <div style={{ fontWeight: 600, fontSize: '13px' }}>当前版本</div>
                                             <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>使用最新工作流定义</div>
@@ -389,7 +387,7 @@ const ActionBar: React.FC<ActionBarProps> = ({ onShowHealthCheck, showHealthChec
                                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-secondary)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                     >
-                                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="2" width="10" height="12" rx="1" /><path d="M6 6h4M6 9h3" /></svg>
+                                        <FileText size={14} strokeWidth={1.75} aria-hidden="true" />
                                         <div>
                                             <div style={{ fontWeight: 600, fontSize: '13px' }}>执行版本</div>
                                             <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>使用本次运行时的定义</div>

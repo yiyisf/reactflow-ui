@@ -283,7 +283,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
         synthesisPhase,
         workingDraft,
         durableCheckpoint,
+        pendingSend,
+        setPendingSend,
         retryInput,
+        retryModelText,
         setRetryInput,
         clearMessages,
         clearPlan,
@@ -868,6 +871,35 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         <span>原因：{durableCheckpoint.lastError}</span>
                                     )}
                                 </div>
+                                {/* A18：断点还在时用户又发了消息：先问清楚，不静默丢弃断点 */}
+                                {pendingSend && (
+                                    <div className="ai-checkpoint-pending" role="status">
+                                        <span>
+                                            「{pendingSend.text.length > 40 ? `${pendingSend.text.slice(0, 40)}…` : pendingSend.text}」还没有发送：上次的生成没完成，发送新消息会放弃这个断点。
+                                        </span>
+                                        <div className="ai-checkpoint-actions">
+                                            <button
+                                                className="ai-checkpoint-btn resume"
+                                                onClick={() => { void runner.resume(pendingSend.text); }}
+                                            >
+                                                <CmIcon name="play" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />继续上次（把这条作为补充要求）
+                                            </button>
+                                            <button
+                                                className="ai-checkpoint-btn discard"
+                                                onClick={() => { void runner.send(pendingSend.text, { modelText: pendingSend.modelText, discardCheckpoint: true }); }}
+                                            >
+                                                放弃断点并发送
+                                            </button>
+                                            <button
+                                                className="ai-checkpoint-btn discard"
+                                                onClick={() => setPendingSend(null)}
+                                            >
+                                                暂不发送
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {!pendingSend && (
                                 <div className="ai-checkpoint-actions">
                                     <button
                                         className="ai-checkpoint-btn resume"
@@ -891,6 +923,7 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                         <X size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />放弃断点
                                     </button>
                                 </div>
+                                )}
                             </div>
                         )}
 
@@ -901,8 +934,10 @@ const AiCommandCenter: React.FC<AiCommandCenterProps> = ({
                                     className="ai-retry-btn"
                                     onClick={() => {
                                         const t = retryInput;
+                                        const modelText = retryModelText ?? undefined;
                                         setRetryInput(null);
-                                        runner.send(t);
+                                        // A19：聊天里显示原来的文本，模型收到原来的模型文本
+                                        runner.send(t, modelText ? { modelText } : {});
                                     }}
                                 >
                                     <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: -2, marginRight: 4 }} />重试上一条消息

@@ -356,9 +356,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                 alignItems: 'center',
                                 gap: 8,
                             }}>
-                                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                                    <path d="M13 2v4h-4" /><path d="M13 6A7 7 0 1 1 9.5 2.5" />
-                                </svg>
+                                <RotateCw size={14} strokeWidth={1.75} aria-hidden="true" />
                                 已重试 {retryTotal} 次，共 {attempts.length} 次尝试{iterationTotal > 0 ? `（${iterationTotal} 轮迭代）` : ''}
                             </div>
                         )}
@@ -423,10 +421,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                             fontSize: 10,
                                             fontWeight: 600,
                                         }}>
-                                            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                                <circle cx="8" cy="8" r="6" />
-                                                <path d="M8 5v3M8 11v.5" />
-                                            </svg>
+                                            <CircleAlert size={12} strokeWidth={1.75} aria-hidden="true" />
                                             操作权限受限
                                         </div>
                                     )}
@@ -445,9 +440,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                             onMouseEnter={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnHover)}
                                             onMouseLeave={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnStyle)}
                                         >
-                                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                                                <path d="M3 14v-4h4" /><path d="M3 10A7 7 0 1 1 6.5 13.5" />
-                                            </svg>
+                                            <RotateCcw size={14} strokeWidth={1.75} aria-hidden="true" />
                                             从此处重新运行
                                         </button>
                                     )}
@@ -464,9 +457,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
                                             onMouseEnter={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnDangerHover)}
                                             onMouseLeave={e => !allowOperations || Object.assign(e.currentTarget.style, taskOpBtnStyle)}
                                         >
-                                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                                                <path d="M4 4l8 8M12 4l-8 8" />
-                                            </svg>
+                                            <SkipForward size={14} strokeWidth={1.75} aria-hidden="true" />
                                             跳过此任务
                                         </button>
                                     )}
@@ -500,7 +491,7 @@ const ExecutionTaskPanel: React.FC<ExecutionTaskPanelProps> = ({ executionAction
 
 /* ── Helpers ── */
 import StructuredJsonViewer from './StructuredJsonViewer';
-import { CircleSlash, FlaskConical, Play, TriangleAlert, X } from 'lucide-react';
+import { CircleAlert, CircleSlash, FlaskConical, Play, RotateCcw, RotateCw, SkipForward, TriangleAlert, X } from 'lucide-react';
 
 const taskOpBtnStyle: React.CSSProperties = {
     display: 'inline-flex',

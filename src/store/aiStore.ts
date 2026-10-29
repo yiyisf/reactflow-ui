@@ -163,8 +163,13 @@ interface AiState {
     pendingAutoSend: string | null;
     /** Current in-flight step label (e.g. "正在搜索工作流库…"), set by AgentRunner */
     toolStatus: string;
-    /** Last message that failed to send, offered back via a retry button */
+    /** Last message that failed to send, offered back via a retry button (the text the user saw) */
     retryInput: string | null;
+    /**
+     * A19：失败那条消息发给模型的文本（与展示文本不同时才有值，如「执行方案」附带的计划）。
+     * 重试时与 retryInput 一起带上：聊天里显示 retryInput，模型收到这一段。
+     */
+    retryModelText: string | null;
     /**
      * Append-only log of completed steps for the current agent turn (M2.2 AgentTimeline).
      * Cleared at the start of each `send()`. Self-heal retries log their own entry so
@@ -177,6 +182,11 @@ interface AiState {
     workingDraft: WorkflowDef | null;
     /** PI-style durable session checkpoint for pause/resume/fault-recovery */
     durableCheckpoint: DurableSessionCheckpoint | null;
+    /**
+     * A18：有未完成的断点时用户又发了一条消息。先不发送，等用户选「继续上次」还是「放弃断点并发送」，
+     * 避免可续跑的断点被静默丢弃。
+     */
+    pendingSend: { text: string; modelText?: string } | null;
 }
 
 export interface TimelineEntry {
@@ -227,12 +237,14 @@ interface AiActions {
         durableCheckpoint?: DurableSessionCheckpoint | null,
     ) => void;
     setToolStatus: (status: string) => void;
-    setRetryInput: (input: string | null) => void;
+    /** 设置重试内容；modelText 是发给模型的文本（与展示文本不同时传） */
+    setRetryInput: (input: string | null, modelText?: string | null) => void;
     addTimelineEntry: (label: string, icon?: 'done' | 'warning') => void;
     clearTimeline: () => void;
     setSynthesisStage: (phase: SynthesisPhase, draft?: WorkflowDef | null) => void;
     saveCheckpoint: (checkpoint: DurableSessionCheckpoint | null) => void;
     clearCheckpoint: () => void;
+    setPendingSend: (pending: { text: string; modelText?: string } | null) => void;
 }
 
 export type AiStore = AiState & AiActions;
@@ -271,10 +283,12 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             pendingAutoSend: null,
             toolStatus: '',
             retryInput: null,
+            retryModelText: null,
             timelineEntries: [],
             synthesisPhase: 'idle',
             workingDraft: null,
             durableCheckpoint: null,
+            pendingSend: null,
             metrics: {
                 totalProposals: 0,
                 acceptedProposals: 0,
@@ -315,10 +329,12 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
                 pendingAutoSend: null,
                 toolStatus: '',
                 retryInput: null,
+                retryModelText: null,
                 timelineEntries: [],
                 synthesisPhase: 'idle',
                 workingDraft: null,
                 durableCheckpoint: null,
+                pendingSend: null,
             }),
 
             setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
@@ -410,7 +426,7 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
 
             setPendingAutoSend: (msg) => set({ pendingAutoSend: msg }),
             setToolStatus: (status) => set({ toolStatus: status }),
-            setRetryInput: (input) => set({ retryInput: input }),
+            setRetryInput: (input, modelText = null) => set({ retryInput: input, retryModelText: input ? modelText : null }),
 
             addTimelineEntry: (label, icon = 'done') => set(s => ({
                 timelineEntries: [...s.timelineEntries, { id: `tl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, label, icon }],
@@ -423,7 +439,8 @@ const createAiStoreCreator = (): StateCreator<AiStore> =>
             })),
 
             saveCheckpoint: (checkpoint) => set({ durableCheckpoint: checkpoint }),
-            clearCheckpoint: () => set({ durableCheckpoint: null, synthesisPhase: 'idle', workingDraft: null }),
+            clearCheckpoint: () => set({ durableCheckpoint: null, synthesisPhase: 'idle', workingDraft: null, pendingSend: null }),
+            setPendingSend: (pending) => set({ pendingSend: pending }),
 
             hydrateFromDraft: (messages, pendingProposal, durableCheckpoint) => set({
                 messages: messages.length > 0 ? messages : [WELCOME_MESSAGE],

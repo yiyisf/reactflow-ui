@@ -4,25 +4,18 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 
 ---
 
-## [Unreleased]
+## [1.3.2] - 2026-10-29
 
-> v1.3.2 批次 1（P0）：R19 / R20 / B21 / A17。审计结果与修复范围见 `docs/v1.3.2-release-plan.md`。
+> 主题：v1.4.0 之前的补丁版 —— 修数据丢失与越权（P0），让沙箱、校验器、业务模式往返与运行视图如实反映 Conductor 的行为，界面不再"说谎"。不改公开接口（只新增可选属性）。审计结果、编号与验收见 `docs/v1.3.2-release-plan.md`。
 
-### Fixed
+### Fixed · P0 数据丢失与越权
 - **R19 执行验证不再覆盖本地修改**：运行态轮询拿到的实例定义只用于渲染运行视图（`runWorkflowDef`），编辑中的定义暂存（`editWorkflowDefStash`），离开运行态原样换回，不进撤销历史，也不触发 `onWorkflowChange`。运行态下 ⌘S、`ref.save()`、`ref.getWorkflowDef()` 与 AI 草稿都取编辑中的定义。
 - **R19 未保存提示**：画布与已保存版本不同时，执行验证面板（WorkflowIDE）与 AI 运行卡片（AiWorkflowIDE）提示「将运行已保存的版本」（警告色 + 图标 + 中文，共用组件 `UnsavedRunNotice`）。
 - **R20 剪贴板不落盘**：复制的任务只放内存，不再写 localStorage；偏好持久化版本 v1 → v2，迁移时删除旧 `copiedTask`，加载时清除 `conductor-clipboard` 残留键。
 - **B21 业务模式往返保留 joinOn**：编译以原 JOIN 的 `joinOn` 为准，只同步受泳道增删 / 末尾任务变化影响的项；`syncForkJoinOn` 按内容对应新旧分支，删除中间分支时后面的分支不再错位。
 - **A17 工具调用白名单**：AI 执行工具前按当前模式与权限校验，列表外的调用返回失败结果并记时间线警告；模式每步重新读取，会话中途进入运行态后编辑工具与兜底自动提交立即失效。
 
-### Added
-- `onSave` 可以返回 Promise：resolve 后才把定义记为已保存的版本，reject 时继续提示未保存。同步返回保持原语义。
-- `workflowDefSaved` 属性（WorkflowIDE / AiWorkflowIDE，默认 `true`）：传入本地文件、草稿等还没保存的定义时设为 `false`。
-- `ref.markSaved(def?)`（WorkflowIDE / AiWorkflowIDE）：宿主用其它方式加载或确认保存了服务端定义后调用。AiWorkflowIDE 的 `ref.setWorkflow` 与新建空白流程会清空旧流程的保存基线。
-
-> v1.3.2 批次 2（沙箱）：S10–S16、U3、U4。
-
-### Fixed · 沙箱
+### Fixed · 沙箱执行引擎
 - **S10 脚本隔离**：沙箱脚本改在隐藏的 sandbox iframe（不透明源，CSP `default-src 'none'`）里、每次求值新建的 Worker 中运行。`import()`、`FontFace`、`fetch` 等都发不出请求；脚本不能接管消息伪造后续脚本的结果，也读不到它们的入参。页面不能承载沙箱时仍标为「未执行」并说明原因。
 - **S11 可选任务**：`optional: true` 的任务失败或超时记为「带错完成」（`COMPLETED_WITH_ERRORS`），流程继续。
 - **S12 TERMINATE**：实例状态取 `terminationStatus`（COMPLETED / FAILED / TERMINATED），流程输出取 `workflowOutput`，原因取 `terminationReason`；TERMINATE 任务本身记为成功。`terminationStatus` 写错时任务失败并列出可选值。
@@ -31,13 +24,7 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 - **S15 循环条件**：`$` 包含本轮执行过的全部子任务输出（含嵌套在 SWITCH / FORK 里的），没走的分支不计入。
 - **S16 只改耗时**：配置台只设耗时时，INLINE / JQ 等仍真实执行，只调整耗时。
 
-### Fixed · 沙箱配置台
-- **U3** 任务列表的模拟状态徽标改为图标 + 中文 + 颜色（共用 `statusMeta`），不再显示英文状态。
-- **U4** 标题徽标改为「本地试运行」；启动按钮改为主按钮（品牌色填充，文字 `--color-on-accent`，橙色主题即 `--cm-on-brand`）。失败 / 超时选项说明可选任务会带错完成继续。
-
-> v1.3.2 批次 3（校验与业务模式）：E24–E26、B22。
-
-### Fixed · 校验器
+### Fixed · 编辑器与校验器
 - **E24** TERMINATE 没填 `terminationStatus` 只给警告（原来 `enum` 规则把空值也判为错误）；填错才报错。
 - **E25** SWITCH 只写了 `caseValueParam` / `caseExpression`（DECISION 的字段）时由警告升级为错误，提示给出改法；有 `expression` 没有 `evaluatorType` 时报错。Conductor 的 SWITCH 只读 `evaluatorType` + `expression`，旧写法保存会被拒。AI 规范化自动把旧写法迁移为 `value-param` / `javascript` + `expression`；自然语言向导生成的 SWITCH 也改用规范写法。
 - **E26** 新增规则：KAFKA_PUBLISH 的 `kafka_request.topic` 与 `bootStrapServers` 必填；EVENT 的 `sink` 必填；WAIT 不能同时配置 `duration` 与 `until`；INLINE 只认 `expression`，写在 `scriptExpression` 里会提示移过去。业务模式「发送运维通知」动作、内置模板与示例流程补上 `sink`（示例的 KAFKA 改为 `kafka_request` 结构）；AI 规范化补 EVENT 的 `sink`、迁移 INLINE 的脚本字段。
@@ -45,19 +32,31 @@ All notable changes to `@yiyi_zhang/reactflow-ui` are documented in this file.
 ### Fixed · 业务模式
 - **B22** 往返不再给没有 `description` / `version` / `schemaVersion` 的定义补出 `"description": ""`、`"version": 1` 等字段；已有字段与键序原样保留。
 
-
-> v1.3.2 批次 4（运行与接入）：R21–R23、U1、U2、U5。
-
-### Fixed · 运行与接入
+### Fixed · 运行视图、执行验证、模板中心与 SDK 接入
 - **R21 受控用法**：宿主用 `onWorkflowChange` 回写 `workflowDef` 时，内容与画布相同就不再重新加载：不重新布局、不触发 fitView、不清撤销历史，也不把未保存的修改记成已保存。只有换了流程（流程名变了）才清撤销历史。`INTEGRATION.md` 补「受控与非受控用法」。
 - **R22** 执行验证面板里必填的数字 / 布尔参数留空时不再被转成 `0` / `false` 发出去；与 AI 运行卡片共用同一套转换，非法数字也会提示。
 - **R23** 模板中心选模板时，画布上已有流程会先确认替换哪个流程，替换后可以撤销。
 - 导出 JSON、复制 DSL 取编辑中的定义，运行态下不再导出实例定义。
 
-### Fixed · 界面
+### Fixed · AI 能力
+- **A18 发送前先检查配置**：没配 API Key（也没接 transport）时只提示配置问题，不再先清掉上一次暂停的会话断点。有可续跑的断点时，新消息先不发，断点卡片里问「继续上次（把这条作为补充要求）」「放弃断点并发送」还是「暂不发送」，不再静默丢弃断点。
+- **A19 失败重试**：重试分开保存展示文本与模型文本。「执行方案」等带整段计划文本的消息失败后重试，时间线里显示的仍是用户原话，模型收到的仍是完整文本。
+
+### Fixed · 界面不说谎与设计规则
 - **U1** 模板「试跑演示」按真实状态显示图标 + 中文状态 + 对应颜色，失败时写出失败任务与原因，不再一律「试跑通过」。
 - **U2** 模板中心「全部场景」显示实际模板数。
+- **U3** 任务列表的模拟状态徽标改为图标 + 中文 + 颜色（共用 `statusMeta`），不再显示英文状态。
+- **U4** 标题徽标改为「本地试运行」；启动按钮改为主按钮（品牌色填充，文字 `--color-on-accent`，橙色主题即 `--cm-on-brand`）。失败 / 超时选项说明可选任务会带错完成继续。
 - **U5** 没接 `onTriggerExecution` 时不显示「执行验证」；「复制 DSL」复制后提示结果，失败时说明原因并建议改用导出。共用 Toast 改为表面色底 + 状态图标 + 正文色文字，深浅两套主题都清晰。
+- **U6** 工具栏、执行验证面板、ActionBar、执行分析 / 任务面板与 AI 改动卡片里手画的 `<svg>` 图标换成 lucide 图标（stroke 1.75）。`designRules.test.ts` 新增检查：UI `.tsx` 文件出现内联 `<svg>` 即失败，Logo 与 Mermaid 图渲染列为例外。
+
+### Docs
+- **D1** `docs/v1.3.1-release-plan.md` 标为已发布；`ROADMAP.md` 补 1.3.1、1.3.2 条目；`docs/roadmap.md` 按实际发布节奏更新 1.4.0、1.5.0 目标日期；`docs/v1.3.2-release-plan.md` 补完成情况。
+
+### Added
+- `onSave` 可以返回 Promise：resolve 后才把定义记为已保存的版本，reject 时继续提示未保存。同步返回保持原语义。
+- `workflowDefSaved` 属性（WorkflowIDE / AiWorkflowIDE，默认 `true`）：传入本地文件、草稿等还没保存的定义时设为 `false`。
+- `ref.markSaved(def?)`（WorkflowIDE / AiWorkflowIDE）：宿主用其它方式加载或确认保存了服务端定义后调用。AiWorkflowIDE 的 `ref.setWorkflow` 与新建空白流程会清空旧流程的保存基线。
 
 ---
 

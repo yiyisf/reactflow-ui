@@ -345,7 +345,7 @@ export function DemoHeader(p: DemoHeaderProps) {
           <a
             href={p.baseUrl}
             className="mode-btn dh-launch"
-            title="查看 Conductor Workflow IDE v1.3.0「自助接入」发布宣传页"
+            title="查看 Conductor Workflow IDE v1.3.2「补齐与打磨」发布宣传页"
             aria-label="v1.3 宣传页"
           >
             <Zap size={15} strokeWidth={1.75} aria-hidden="true" />

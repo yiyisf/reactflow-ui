@@ -1,2410 +1,502 @@
-<!DOCTYPE html>
-<html lang="zh-CN" data-mode="dark" data-campaign="glacier">
+<!doctype html>
+<html lang="zh-CN" data-mode="dark" data-campaign="ember">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="CMASTER Workflow IDE v1.3.0：自助接入。新团队不靠陪跑，自己把第一个流程跑起来——登记产品、规范命名、接口导入、统一扩展点与接入埋点。" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="CMASTER Workflow IDE v1.3.1 与 v1.3.2：补齐与打磨。沙箱真实执行无外部依赖的任务，生成的 JSON 按 Conductor 规范写，编辑中的修改不会被运行覆盖，界面只显示真实状态。" />
   <link rel="icon" type="image/svg+xml" href="./logo.svg" />
-  <title>CMASTER v1.3.0 · 自助接入 · 新团队不靠陪跑，自己把第一个流程跑起来</title>
+  <title>CMASTER v1.3.2 · 补齐与打磨 · 试跑结果按 Conductor 的规则来</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="/src/styles/cmaster-tokens.css" />
+  <link rel="stylesheet" href="/design/reference/components.css" />
   <link rel="stylesheet" href="/src/marketing/campaign.css" />
   <style>
-    /* STYLE: Bento Launchpad（沿用 v1.1.0 视觉语言与令牌，v1.3.0 叙事：自助接入） */
-    /* colours, fonts and radii come from src/marketing/campaign.css */
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background:
-        radial-gradient(ellipse 85% 55% at 50% -10%, color-mix(in srgb, var(--a) 22%, transparent), transparent 70%),
-        radial-gradient(ellipse 60% 40% at 85% 25%, color-mix(in srgb, var(--a) 16%, transparent), transparent 65%),
-        radial-gradient(ellipse 50% 35% at 15% 45%, color-mix(in srgb, var(--a) 14%, transparent), transparent 60%),
-        var(--bg-dark);
-      color: var(--text-white);
-      font-family: var(--font-sans);
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* Sticky Top Nav */
-    .launch-nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--cm-overlay);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border-dim);
-      padding: 0.75rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .nav-left {
-      display: flex;
-      align-items: center;
-      gap: 0.85rem;
-      font-size: 0.85rem;
-    }
-
-    .brand-logo {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 800;
-      color: var(--text-white);
-      text-decoration: none;
-      letter-spacing: -0.01em;
-    }
-
-    .version-pill {
-      font-family: var(--font-mono);
-      font-size: 0.74rem;
-      font-weight: 700;
-      color: var(--a);
-      background: color-mix(in srgb, var(--a) 16%, transparent);
-      border: 1px solid color-mix(in srgb, var(--a) 42%, transparent);
-      padding: 0.2rem 0.7rem;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .version-switch {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      background: var(--cm-overlay);
-      border: 1px solid var(--border-dim);
-      padding: 0.15rem 0.4rem;
-      border-radius: 8px;
-    }
-
-    .version-switch a {
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      text-decoration: none;
-      padding: 0.18rem 0.55rem;
-      border-radius: 5px;
-      color: var(--text-muted);
-      transition: all 0.15s;
-    }
-
-    .version-switch a.active {
-      background: color-mix(in srgb, var(--a) 25%, transparent);
-      color: var(--a);
-      font-weight: 700;
-    }
-
-    .version-switch a:hover:not(.active) {
-      color: var(--text-white);
-    }
-
-    /* 版本下拉：历史版本收进菜单，不再单独占位 */
-    .version-dropdown {
-      position: relative;
-    }
-
-    .version-dropdown summary {
-      list-style: none;
-      cursor: pointer;
-      user-select: none;
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      color: var(--a);
-      background: color-mix(in srgb, var(--a) 20%, transparent);
-      border: 1px solid color-mix(in srgb, var(--a) 42%, transparent);
-      padding: 0.25rem 0.7rem;
-      border-radius: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
-    .version-dropdown summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .version-dropdown[open] .vd-caret {
-      transform: rotate(180deg);
-    }
-
-    .vd-caret {
-      display: inline-block;
-      transition: transform 0.15s;
-    }
-
-    .vd-menu {
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      min-width: 100%;
-      white-space: nowrap;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      background: color-mix(in srgb, var(--cm-surface-1) 98%, transparent);
-      border: 1px solid var(--border-dim);
-      border-radius: 8px;
-      padding: 0.3rem;
-      box-shadow: var(--cm-shadow-float);
-      z-index: 300;
-    }
-
-    .vd-menu a {
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      text-decoration: none;
-      padding: 0.35rem 0.6rem;
-      border-radius: 5px;
-      color: var(--text-muted);
-    }
-
-    .vd-menu a.active {
-      background: color-mix(in srgb, var(--a) 25%, transparent);
-      color: var(--a);
-      font-weight: 700;
-    }
-
-    .vd-menu a:hover:not(.active) {
-      color: var(--text-white);
-      background: var(--bg-highlight);
-    }
-
-    .nav-right {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .ghost-btn {
-      background: var(--bg-highlight);
-      color: var(--text-body);
-      border: 1px solid var(--border-dim);
-      padding: 0.44rem 0.9rem;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
-
-    .ghost-btn:hover {
-      color: var(--text-white);
-      border-color: var(--brand-emerald);
-    }
-
-    .cta-btn {
-      background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan));
-      color: var(--on);
-      border: none;
-      padding: 0.46rem 1.15rem;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      font-weight: 800;
-      cursor: pointer;
-      text-decoration: none;
-      transition: opacity 0.15s, transform 0.15s;
-    }
-
-    .cta-btn:hover { opacity: 0.94; transform: translateY(-1px); }
-
-    .container {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 2.5rem 2rem 5rem;
-    }
-
-    /* ==========================================================================
-       L1 首屏决策层：核心价值主张 + 一行命令体验 + Before vs After + ROI 算力
-       ========================================================================== */
-    .hero-section {
-      text-align: center;
-      max-width: 960px;
-      margin: 0 auto 2.5rem;
-    }
-
-    .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-      color: var(--brand-emerald);
-      background: color-mix(in srgb, var(--a) 12%, transparent);
-      border: 1px solid color-mix(in srgb, var(--a) 35%, transparent);
-      padding: 0.32rem 1rem;
-      border-radius: 999px;
-      margin-bottom: 1.1rem;
-      font-weight: 600;
-    }
-
-    .hero-title {
-      font-size: 3.1rem;
-      line-height: 1.18;
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      margin-bottom: 1.1rem;
-      background: linear-gradient(180deg, var(--cm-text-primary) 0%, var(--a) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .hero-subtitle {
-      font-size: 1.12rem;
-      color: var(--text-body);
-      margin-bottom: 1.6rem;
-      max-width: 820px;
-      margin-left: auto;
-      margin-right: auto;
-      line-height: 1.7;
-    }
-
-    .hero-subtitle strong {
-      color: var(--text-primary);
-    }
-
-    /* Quick Install Command Box */
-    .install-wrap {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .pm-tabs {
-      display: inline-flex;
-      gap: 0.35rem;
-      background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent);
-      padding: 0.22rem;
-      border-radius: 8px;
-      border: 1px solid var(--border-dim);
-    }
-
-    .pm-tab {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      font-size: 0.73rem;
-      font-weight: 600;
-      padding: 0.22rem 0.65rem;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .pm-tab.active {
-      background: color-mix(in srgb, var(--a) 25%, transparent);
-      color: var(--a);
-    }
-
-    .install-shell {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.9rem;
-      background: var(--bg-panel);
-      border: 1px solid color-mix(in srgb, var(--a) 50%, transparent);
-      box-shadow: 0 0 32px color-mix(in srgb, var(--a) 20%, transparent);
-      padding: 0.62rem 0.8rem 0.62rem 1.2rem;
-      border-radius: 10px;
-      font-family: var(--font-mono);
-      font-size: 0.88rem;
-      color: var(--text-primary);
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .install-shell .prompt-char { color: var(--brand-emerald); user-select: none; font-weight: 700; }
-
-    .copy-cli-btn {
-      background: linear-gradient(135deg, color-mix(in srgb, var(--a) 30%, transparent), color-mix(in srgb, var(--a) 30%, transparent));
-      border: 1px solid color-mix(in srgb, var(--a) 50%, transparent);
-      color: var(--text-primary);
-      padding: 0.36rem 0.85rem;
-      border-radius: 6px;
-      font-size: 0.76rem;
-      cursor: pointer;
-      font-family: var(--font-sans);
-      font-weight: 700;
-      transition: all 0.15s;
-    }
-
-    .copy-cli-btn:hover { background: color-mix(in srgb, var(--a) 50%, transparent); }
-
-    /* L1 Dual Grid: Before/After vs Interactive Dual-Mode Showcase */
-    .first-screen-grid {
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 1.5rem;
-      margin-bottom: 3.5rem;
-    }
-
-    .fs-panel {
-      background: var(--bg-card);
-      border: 1px solid var(--border-dim);
-      border-radius: var(--radius-lg);
-      padding: 1.5rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .fs-panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.2rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid var(--border-dim);
-    }
-
-    .fs-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--text-white);
-    }
-
-    .badge-diff {
-      font-size: 0.7rem;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      padding: 0.15rem 0.55rem;
-      border-radius: 4px;
-    }
-
-    .badge-diff.before { background: color-mix(in srgb, var(--cm-status-failed) 15%, transparent); color: var(--cm-status-failed); border: 1px solid color-mix(in srgb, var(--cm-status-failed) 30%, transparent); }
-    .badge-diff.after { background: color-mix(in srgb, var(--cm-status-success) 15%, transparent); color: var(--cm-status-success); border: 1px solid color-mix(in srgb, var(--cm-status-success) 40%, transparent); }
-
-    /* Interactive Dual Mode Live Preview in Hero */
-    .interactive-mode-box {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .mode-tab-bar {
-      display: flex;
-      gap: 0.5rem;
-      background: var(--bg-panel);
-      padding: 0.3rem;
-      border-radius: 8px;
-      border: 1px solid var(--border-dim);
-    }
-
-    .mode-tab-btn {
-      flex: 1;
-      padding: 0.5rem 0.8rem;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      font-weight: 600;
-      font-size: 0.82rem;
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-
-    .mode-tab-btn.active {
-      background: linear-gradient(135deg, color-mix(in srgb, var(--a) 25%, transparent), color-mix(in srgb, var(--a) 25%, transparent));
-      color: var(--a);
-      border: 1px solid color-mix(in srgb, var(--a) 40%, transparent);
-      font-weight: 700;
-    }
-
-    .preview-card-viewport {
-      background: var(--bg-primary);
-      border: 1px solid var(--border-dim);
-      border-radius: 10px;
-      padding: 1.1rem;
-      min-height: 250px;
-      font-size: 0.82rem;
-      position: relative;
-    }
-
-    /* Business Step Card Mock */
-    .mock-step-card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-primary);
-      border-radius: 8px;
-      padding: 0.75rem 0.9rem;
-      margin-bottom: 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: all 0.2s;
-    }
-
-    .mock-step-card:hover {
-      border-color: color-mix(in srgb, var(--a) 50%, transparent);
-      transform: translateX(2px);
-    }
-
-    .mock-capsule {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 7px;
-      border-radius: 4px;
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      background: color-mix(in srgb, var(--a) 15%, transparent);
-      color: var(--a);
-      border: 1px solid color-mix(in srgb, var(--a) 30%, transparent);
-    }
-
-    /* ROI Calculator */
-    .roi-calc {
-      display: flex;
-      flex-direction: column;
-      gap: 1.1rem;
-    }
-
-    .roi-slider-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .roi-slider-header {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.82rem;
-      color: var(--text-body);
-    }
-
-    .roi-slider-header strong {
-      color: var(--brand-emerald);
-      font-family: var(--font-mono);
-    }
-
-    .roi-slider {
-      width: 100%;
-      accent-color: var(--brand-emerald);
-      cursor: pointer;
-    }
-
-    .roi-results-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.6rem;
-      background: var(--bg-panel);
-      padding: 0.9rem;
-      border-radius: 10px;
-      border: 1px solid var(--border-dim);
-      margin-top: 0.5rem;
-    }
-
-    .roi-stat-item {
-      text-align: center;
-    }
-
-    .roi-stat-val {
-      font-size: 1.35rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      color: var(--brand-emerald);
-    }
-
-    .roi-stat-label {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      margin-top: 0.1rem;
-    }
-
-    /* Impact Strip */
-    .impact-strip {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.2rem;
-      margin-bottom: 4rem;
-    }
-
-    .impact-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-dim);
-      border-radius: var(--radius-md);
-      padding: 1.3rem;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .impact-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--brand-emerald), var(--brand-cyan));
-    }
-
-    .impact-num {
-      font-size: 2.3rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      background: linear-gradient(180deg, var(--cm-text-primary), var(--a));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.3rem;
-    }
-
-    .impact-sub {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--text-white);
-      margin-bottom: 0.2rem;
-    }
-
-    .impact-desc {
-      font-size: 0.74rem;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    /* Section Headers */
-    .section-head {
-      text-align: center;
-      max-width: 800px;
-      margin: 0 auto 2.5rem;
-    }
-
-    .section-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 0.76rem;
-      color: var(--brand-cyan);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 0.5rem;
-    }
-
-    .section-title {
-      font-size: 2.1rem;
-      font-weight: 800;
-      color: var(--text-white);
-      margin-bottom: 0.8rem;
-      letter-spacing: -0.02em;
-    }
-
-    .section-desc {
-      font-size: 0.95rem;
-      color: var(--text-body);
-      line-height: 1.7;
-    }
-
-    /* Bento Grid Showcase */
-    .bento-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-      margin-bottom: 4rem;
-    }
-
-    .bento-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-dim);
-      border-radius: var(--radius-lg);
-      padding: 1.6rem;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      transition: all 0.2s;
-    }
-
-    .bento-card:hover {
-      border-color: color-mix(in srgb, var(--a) 40%, transparent);
-      transform: translateY(-2px);
-      box-shadow: var(--cm-shadow-float);
-    }
-
-    .bento-card.span-2 {
-      grid-column: span 2;
-    }
-
-    .bento-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.72rem;
-      font-family: var(--font-mono);
-      font-weight: 700;
-      padding: 0.15rem 0.55rem;
-      border-radius: 4px;
-      margin-bottom: 0.9rem;
-      width: fit-content;
-    }
-
-    .bento-badge.green { background: color-mix(in srgb, var(--cm-status-success) 15%, transparent); color: var(--cm-status-success); border: 1px solid color-mix(in srgb, var(--cm-status-success) 35%, transparent); }
-    .bento-badge.cyan { background: color-mix(in srgb, var(--a) 15%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 35%, transparent); }
-    .bento-badge.purple { background: color-mix(in srgb, var(--a) 15%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 35%, transparent); }
-    .bento-badge.orange { background: color-mix(in srgb, var(--cm-status-warning) 15%, transparent); color: var(--cm-status-warning); border: 1px solid color-mix(in srgb, var(--cm-status-warning) 35%, transparent); }
-
-    .bento-card h3 {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--text-white);
-      margin-bottom: 0.6rem;
-    }
-
-    .bento-card p {
-      font-size: 0.85rem;
-      color: var(--text-body);
-      line-height: 1.6;
-      margin-bottom: 1.2rem;
-    }
-
-    .bento-inner-box {
-      background: var(--bg-panel);
-      border: 1px solid var(--border-dim);
-      border-radius: 10px;
-      padding: 1rem;
-      font-size: 0.8rem;
-      margin-top: auto;
-    }
-
-    /* Comparison Table */
-    .compare-section {
-      background: var(--bg-card);
-      border: 1px solid var(--border-dim);
-      border-radius: var(--radius-lg);
-      padding: 2rem;
-      margin-bottom: 4rem;
-    }
-
-    .compare-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.84rem;
-      margin-top: 1.5rem;
-    }
-
-    .compare-table th {
-      text-align: left;
-      padding: 0.85rem 1rem;
-      background: var(--bg-panel);
-      color: var(--text-white);
-      border-bottom: 2px solid var(--border-dim);
-      font-weight: 700;
-    }
-
-    .compare-table td {
-      padding: 0.95rem 1rem;
-      border-bottom: 1px solid var(--border-dim);
-      color: var(--text-body);
-    }
-
-    .compare-table tr:hover td {
-      background: var(--bg-highlight);
-    }
-
-    .compare-table strong { color: var(--text-white); }
-
-    /* Quickstart Box */
-    .quickstart-box {
-      background: var(--bg-card);
-      border: 1px solid var(--border-dim);
-      border-radius: var(--radius-lg);
-      padding: 2rem;
-      margin-bottom: 4rem;
-    }
-
-    .qs-tabs {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .qs-tab {
-      background: var(--bg-panel);
-      border: 1px solid var(--border-dim);
-      color: var(--text-muted);
-      padding: 0.4rem 0.9rem;
-      border-radius: 6px;
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .qs-tab.active {
-      background: color-mix(in srgb, var(--a) 20%, transparent);
-      border-color: color-mix(in srgb, var(--a) 50%, transparent);
-      color: var(--a);
-    }
-
-    .code-container {
-      position: relative;
-    }
-
-    .code-body {
-      background: var(--bg-panel);
-      border: 1px solid var(--border-dim);
-      border-radius: 10px;
-      padding: 1.2rem;
-      font-family: var(--font-mono);
-      font-size: 0.82rem;
-      color: var(--text-primary);
-      line-height: 1.6;
-      white-space: pre;
-      overflow-x: auto;
-    }
-
-    .copy-code-btn {
-      position: absolute;
-      top: 0.75rem;
-      right: 0.75rem;
-      background: var(--bg-highlight);
-      border: 1px solid var(--border-dim);
-      color: var(--text-body);
-      padding: 0.3rem 0.65rem;
-      border-radius: 6px;
-      font-size: 0.72rem;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .copy-code-btn:hover { color: var(--text-primary); border-color: var(--brand-emerald); }
-
-    /* Historical Banner Link */
-    .history-card-box {
-      background: linear-gradient(135deg, var(--cm-overlay), var(--cm-overlay));
-      border: 1px solid var(--border-dim);
-      border-radius: var(--radius-lg);
-      padding: 1.8rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 4rem;
-    }
-
-    /* Footer */
-    footer {
-      border-top: 1px solid var(--border-dim);
-      padding: 2.5rem 2rem;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.82rem;
-    }
-
-    footer a {
-      color: var(--text-body);
-      text-decoration: none;
-      margin: 0 0.5rem;
-    }
-
-    footer a:hover { color: var(--brand-emerald); }
-
-    @media (max-width: 960px) {
-      .first-screen-grid { grid-template-columns: 1fr; }
-      .impact-strip { grid-template-columns: repeat(2, 1fr); }
-      .bento-grid { grid-template-columns: 1fr; }
-      .bento-card.span-2 { grid-column: span 1; }
-      .hero-title { font-size: 2.2rem; }
-    }
-
-    /* ==========================================================================
-       v1.2.0 起的无障碍与新组件（沿用 1.1 的 Bento Launchpad 令牌与组件）
-       ========================================================================== */
-    :root { --text-muted: var(--text-muted); } /* 提亮次要文字，保证小字号对比度 >= 4.5:1 */
+    /* STYLE: Bento Launchpad · campaign Ember（v1.3.0 用 Glacier）
+       structure: design/guidelines/marketing.md「版本宣传页结构」, design/examples/landing-release-v1.3.0.html
+       components: design/reference/components.css; accent = --a / --a-hi / --on (src/marketing/campaign.css) */
 
     html { scroll-behavior: smooth; }
-    img, svg { max-width: 100%; }
-    h1, h2, h3, h4, p, li { overflow-wrap: anywhere; }
+    body { font-family: var(--cm-font-sans); }
+    a:not(.cm-btn) { color: var(--a-hi); text-decoration: none; }
+    a:not(.cm-btn):hover { color: var(--cm-text-primary); }
+    .cm-btn--primary { background: var(--a); border-color: var(--a); color: var(--on); }
+    .cm-btn--primary:hover { background: var(--a-hi); border-color: var(--a-hi); color: var(--on); }
 
-    .skip-link {
-      position: absolute; left: 1rem; top: -4rem; z-index: 400;
-      background: var(--brand-emerald); color: var(--on); font-weight: 800;
-      padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none;
+    /* one campaign palette: syntax colours stay inside the accent and neutral text */
+    .cm-codeblock .kw, .cm-term__body .k { color: var(--a-hi); }
+    .cm-codeblock .attr { color: var(--cm-text-primary); }
+    .cm-codeblock .str { color: var(--cm-text-secondary); }
+
+    .nav {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; flex-wrap: wrap; align-items: center; gap: var(--cm-space-4);
+      box-sizing: border-box; min-height: 64px; padding: 0 max(var(--cm-space-4), 4vw);
+      background: color-mix(in srgb, var(--cm-surface-0) 80%, transparent);
+      border-bottom: 1px solid var(--cm-border-subtle);
+      backdrop-filter: blur(12px);
     }
-    .skip-link:focus { top: 0.75rem; }
+    .nav__brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; letter-spacing: -0.02em; color: var(--cm-text-primary); }
+    .nav__brand em { font-style: normal; color: var(--a); }
+    .nav__links { display: flex; flex-wrap: wrap; gap: var(--cm-space-4); }
+    .nav__links a:not(.cm-btn) { color: var(--cm-text-secondary); font-size: 13px; }
+    .nav__links a:not(.cm-btn):hover { color: var(--cm-text-primary); }
+    .nav__spacer { flex-grow: 1; }
 
-    :focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 4px; }
-
-    .nav-tagline { color: var(--text-muted); font-size: 0.8rem; }
-    .section { margin-bottom: 4.5rem; scroll-margin-top: 5rem; }
-    .hero-section { margin-bottom: 3rem; }
-    .hero-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.6rem; }
-    .cta-btn.lg { padding: 0.7rem 1.5rem; font-size: 0.92rem; display: inline-block; }
-    .ghost-btn.lg { padding: 0.68rem 1.3rem; font-size: 0.9rem; display: inline-block; }
-    .hero-adds {
-      display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; list-style: none; margin: 0 auto 1.6rem; max-width: 900px;
+    .versions { position: relative; }
+    .versions summary {
+      list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      height: 28px; padding: 0 10px; border-radius: var(--cm-radius-md);
+      border: 1px solid var(--cm-border-default); color: var(--cm-text-secondary); font: 500 12px/1 var(--cm-font-mono);
     }
-    .hero-adds li {
-      font-size: 0.8rem; color: var(--text-secondary); background: color-mix(in srgb, var(--cm-surface-1) 90%, transparent); border: 1px solid var(--border-dim);
-      padding: 0.3rem 0.8rem; border-radius: 999px;
+    .versions summary::-webkit-details-marker { display: none; }
+    .versions[open] summary .ic { transform: rotate(180deg); }
+    .versions__menu {
+      position: absolute; right: 0; top: 34px; min-width: 200px; padding: 6px;
+      display: flex; flex-direction: column; gap: 2px;
+      background: var(--cm-surface-2); border: 1px solid var(--cm-border-default);
+      border-radius: var(--cm-radius-lg); box-shadow: var(--cm-shadow-dialog);
     }
-    .hero-adds li b { color: var(--a); font-weight: 700; margin-right: 0.25rem; }
-    .hero-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.9rem; }
-    .install-shell #cli-cmd { word-break: break-all; text-align: left; }
+    .versions__menu a:not(.cm-btn) { padding: 8px 10px; border-radius: var(--cm-radius-md); color: var(--cm-text-secondary); font-size: 13px; }
+    .versions__menu a:not(.cm-btn):hover { background: var(--cm-surface-3); color: var(--cm-text-primary); }
+    .versions__menu a[aria-current] { color: var(--a-hi); font-weight: 600; }
 
-    .impact-strip { margin-bottom: 4.5rem; }
-    .impact-num { line-height: 1.2; }
-
-    .bento-grid { margin-bottom: 0; }
-    .bento-card p:last-child { margin-bottom: 0; }
-    .bento-card ul.tick { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-body); }
-    .bento-card ul.tick li { padding-left: 1.3rem; position: relative; line-height: 1.6; }
-    .bento-card ul.tick li::before { content: ''; width: 0.95em; height: 0.95em; margin-top: 0.3em; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat; position: absolute; left: 0; color: var(--brand-emerald); font-weight: 800; }
-    code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
-    p code, li code, td code, dd code {
-      background: color-mix(in srgb, var(--a) 14%, transparent); color: var(--a); padding: 0.05rem 0.38rem; border-radius: 4px; word-break: break-all;
+    .version-pill {
+      display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px 0 6px;
+      border-radius: var(--cm-radius-pill); background: var(--a-tint); border: 1px solid var(--a-line);
+      font: 500 12px/1 var(--cm-font-mono); color: var(--a-hi);
     }
+    .version-pill b { height: 18px; padding: 0 8px; border-radius: var(--cm-radius-pill); background: var(--a); color: var(--on); font-weight: 600; line-height: 18px; }
 
-    /* 流水线：定义 → 动作 → SUB_WORKFLOW */
-    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 0.6rem; align-items: stretch; }
-    .pipe-box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.85rem; font-size: 0.78rem; color: var(--text-body); }
-    .pipe-box h4 { font-size: 0.82rem; color: var(--text-white); margin-bottom: 0.4rem; }
-    .pipe-box pre { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
-    .pipe-arrow { align-self: center; color: var(--brand-emerald); font-size: 1.3rem; font-weight: 800; }
-    .form-line { display: flex; justify-content: space-between; gap: 0.5rem; border-bottom: 1px dashed var(--border-primary); padding: 0.22rem 0; }
-    .form-line span:last-child { color: var(--a); font-family: var(--font-mono); font-size: 0.72rem; }
-
-    /* 版本固定演示 */
-    .pin-demo { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 1.5rem; align-items: start; }
-    .pin-controls { display: flex; flex-direction: column; gap: 0.5rem; }
-    .pin-controls h3 { font-size: 1.15rem; margin-bottom: 0.2rem; }
-    .state-btn {
-      text-align: left; background: var(--bg-panel); border: 1px solid var(--border-dim); color: var(--text-body);
-      padding: 0.75rem 0.9rem; border-radius: 10px; cursor: pointer; font-size: 0.84rem; font-family: inherit;
+    .hero {
+      max-width: 880px; margin: 0 auto; padding: 56px var(--cm-space-4) 72px;
+      display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px;
     }
-    .state-btn strong { display: block; color: var(--text-white); margin-bottom: 0.15rem; }
-    .state-btn[aria-pressed="true"] { border-color: color-mix(in srgb, var(--a) 70%, transparent); background: color-mix(in srgb, var(--a) 10%, transparent); }
-    .state-btn:hover { border-color: color-mix(in srgb, var(--a) 45%, transparent); }
+    .hero h1 { margin: 0; font: var(--cm-type-display-xl); letter-spacing: var(--cm-tracking-display-xl); text-wrap: balance; }
+    .hero__lead { margin: 0; max-width: 680px; text-wrap: balance; font: var(--cm-type-prose); color: var(--cm-text-secondary); }
+    .row-center { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--cm-space-2); }
+    .cm-chip .ic { color: var(--a-hi); }
+    .cm-grad { background: linear-gradient(90deg, var(--cm-text-primary), var(--a-hi)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .cm-eyebrow { color: var(--a-hi); }
 
-    .mock-app { background: var(--bg-primary); border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.1rem; position: relative; min-height: 22rem; }
-    .mock-app-bar { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.9rem; font-size: 0.72rem; color: var(--text-muted); }
-    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--bg-secondary); display: inline-block; }
-    .mock-step { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.9rem; }
-    .mock-step-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-    .mock-step-title { font-weight: 700; color: var(--text-white); font-size: 0.95rem; }
-    .mock-step-name { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted); width: 100%; word-break: break-all; }
-    .badge-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0; align-items: center; }
-    .lib-badge { font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; background: color-mix(in srgb, var(--a) 14%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 30%, transparent); font-family: inherit; }
-    .lib-badge.up { border: 1px solid var(--cm-status-warning); background: color-mix(in srgb, var(--cm-status-warning) 12%, transparent); color: var(--cm-status-warning); cursor: pointer; }
-    .lib-badge.up:hover { background: color-mix(in srgb, var(--cm-status-warning) 25%, transparent); }
-    .lib-badge.bad { border: 1px solid var(--cm-status-failed); background: color-mix(in srgb, var(--cm-status-failed) 12%, transparent); color: var(--cm-status-failed); }
-    .lib-badge.ok { border: 1px solid color-mix(in srgb, var(--cm-status-success) 45%, transparent); background: color-mix(in srgb, var(--cm-status-success) 12%, transparent); color: var(--cm-status-success); }
-    .mock-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.75rem; margin-bottom: 0.7rem; }
-    .mock-field { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 6px; padding: 0.35rem 0.55rem; color: var(--text-body); }
-    .mock-field small { display: block; color: var(--text-muted); font-size: 0.66rem; }
-    .compile-box { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.65rem 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
-    .compile-box .hl { color: var(--cm-status-warning); font-weight: 700; }
-    .pin-note { font-size: 0.78rem; color: var(--text-body); margin-top: 0.7rem; min-height: 2.6em; }
+    .main { max-width: 1120px; margin: 0 auto; padding: 0 var(--cm-space-4); display: flex; flex-direction: column; gap: 96px; }
+    .block { display: flex; flex-direction: column; gap: 32px; scroll-margin-top: 80px; }
+    .bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--cm-space-4); }
+    .s3 { grid-column: span 3; } .s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; }
+    .s7 { grid-column: span 7; } .s8 { grid-column: span 8; } .s12 { grid-column: span 12; }
+    .cm-card.is-key { border-color: color-mix(in srgb, var(--a) 70%, transparent); }
+    .cm-card__label { background: var(--a-tint); color: var(--a-hi); }
+    .cm-stat::before { background: linear-gradient(90deg, transparent, var(--a), transparent); }
+    .cm-term__tabs span.is-on { border-color: var(--a); }
+    .cm-term__body i { color: var(--a-hi); }
+    .ver { align-self: flex-start; font: 600 13px/1 var(--cm-font-mono); color: var(--a-hi); }
 
-    .mock-dialog {
-      position: absolute; inset: 1rem; z-index: 5; background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 12px;
-      padding: 1rem; box-shadow: var(--cm-shadow-float); overflow: auto; display: none;
-    }
-    .mock-dialog.open { display: block; }
-    .mock-dialog h4 { font-size: 0.92rem; color: var(--text-white); margin-bottom: 0.5rem; line-height: 1.5; }
-    .diff-group { font-size: 0.78rem; font-weight: 700; margin: 0.7rem 0 0.3rem; }
-    .diff-group.impact { color: var(--cm-status-warning); }
-    .diff-group.plain { color: var(--a); }
-    .mock-dialog ul { list-style: none; font-size: 0.78rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.3rem; }
-    .mock-dialog li { padding-left: 0.9rem; position: relative; line-height: 1.55; }
-    .mock-dialog li::before { content: '·'; position: absolute; left: 0.2rem; }
-    .tag-demo { font-size: 0.64rem; border: 1px solid var(--border-primary); color: var(--text-muted); padding: 0 4px; border-radius: 3px; margin-left: 4px; white-space: nowrap; }
-    .dialog-foot { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.8rem; line-height: 1.55; }
-    .dialog-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.9rem; }
-    .mini-btn { font-family: inherit; font-size: 0.78rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 7px; cursor: pointer; border: 1px solid var(--border-dim); background: var(--bg-highlight); color: var(--text-white); }
-    .mini-btn.primary { background: linear-gradient(135deg, var(--brand-emerald), var(--brand-cyan)); color: var(--on); border: none; }
+    /* a run result, shown as the IDE shows it */
+    .run { display: flex; flex-direction: column; border: 1px solid var(--cm-border-default); border-radius: var(--cm-radius-lg); background: var(--cm-surface-1); overflow: hidden; }
+    .run__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cm-space-2); padding: 10px var(--cm-space-4); border-bottom: 1px solid var(--cm-border-subtle); font-size: 12px; color: var(--cm-text-muted); }
+    .run__row { display: grid; grid-template-columns: minmax(0, 1fr) 96px 112px; gap: var(--cm-space-3); align-items: center; padding: 12px var(--cm-space-4); border-bottom: 1px solid var(--cm-border-subtle); }
+    .run__row:last-child { border-bottom: 0; }
+    .run__name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .run__name b { font: 600 13px/18px var(--cm-font-mono); overflow: hidden; text-overflow: ellipsis; }
+    .run__name span { font-size: 12px; line-height: 18px; color: var(--cm-text-muted); }
+    .source { justify-self: start; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: var(--cm-radius-sm); font: 500 11px/1 var(--cm-font-mono); color: var(--cm-text-secondary); border: 1px solid var(--cm-border-default); }
+    .run__row .cm-badge { justify-self: start; }
+    .run__note { grid-column: 1 / -1; margin-top: -4px; font-size: 12px; line-height: 18px; color: var(--cm-text-muted); }
+    .cm-badge--terminated { --fg: var(--cm-status-failed); --bg: var(--cm-failed-tint); }
 
-    /* 命名规范 + 分层选择器 */
-    .name-parse { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: stretch; list-style: none; margin: 0.6rem 0 1rem; }
-    .name-seg { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 8px; padding: 0.4rem 0.7rem; text-align: center; min-width: 4.2rem; }
-    .name-seg b { display: block; font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-primary); font-weight: 700; }
-    .name-seg span { font-size: 0.68rem; color: var(--text-muted); }
-    .name-seg.c1 b { color: var(--a); } .name-seg.c2 b { color: var(--cm-status-warning); } .name-seg.c3 b { color: var(--a); } .name-seg.c4 b { color: var(--a); } .name-seg.c5 b { color: var(--a); }
-    .name-sep { align-self: center; color: var(--text-muted); font-family: var(--font-mono); }
-    .domain-demo { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1.5rem; }
-    .level-bar { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.6rem 0 0.9rem; font-size: 0.8rem; color: var(--text-body); }
-    .seg-btn { font-family: var(--font-mono); font-size: 0.76rem; font-weight: 700; padding: 0.3rem 0.75rem; border-radius: 7px; border: 1px solid var(--border-dim); background: var(--bg-panel); color: var(--text-body); cursor: pointer; }
-    .seg-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--a) 22%, transparent); border-color: color-mix(in srgb, var(--a) 60%, transparent); color: var(--a); }
-    .picker-groups { display: flex; flex-direction: column; gap: 0.7rem; }
-    .picker-group h4 { font-size: 0.74rem; color: var(--brand-cyan); letter-spacing: 0.04em; margin-bottom: 0.3rem; }
-    .picker-items { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; }
-    .picker-item { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.78rem; color: var(--text-white); }
-    .lv { font-family: var(--font-mono); font-size: 0.65rem; padding: 0 5px; border-radius: 3px; font-weight: 700; }
-    .lv.L1 { background: color-mix(in srgb, var(--a) 18%, transparent); color: var(--a); }
-    .lv.L2 { background: color-mix(in srgb, var(--cm-status-warning) 18%, transparent); color: var(--cm-status-warning); }
-    .lv.L3 { background: color-mix(in srgb, var(--cm-status-failed) 18%, transparent); color: var(--cm-status-failed); }
-    .picker-status { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.8rem; min-height: 1.5em; }
-    .rule-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
-    .rule-table th, .rule-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); }
-    .rule-table th { color: var(--text-white); }
+    .notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--cm-radius-md); background: var(--cm-warning-tint); color: var(--cm-text-primary); font-size: 13px; line-height: 22px; }
+    .notice .ic { color: var(--cm-status-warning); margin-top: 3px; }
 
-    /* 一个数据源，两个 IDE */
-    .fanout { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; }
-    .fan-center { background: linear-gradient(135deg, color-mix(in srgb, var(--a) 16%, transparent), color-mix(in srgb, var(--a) 16%, transparent)); border: 1px solid color-mix(in srgb, var(--a) 50%, transparent); border-radius: 14px; padding: 1.1rem; text-align: center; }
-    .fan-center code { background: none; color: var(--a); font-size: 1rem; font-weight: 700; padding: 0; }
-    .fan-center p { margin: 0.4rem 0 0; font-size: 0.78rem; }
-    .fan-col { display: flex; flex-direction: column; gap: 0.7rem; }
-    .fan-box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.8rem; font-size: 0.8rem; color: var(--text-body); }
-    .fan-box h4 { color: var(--text-white); font-size: 0.88rem; margin-bottom: 0.25rem; }
-    .fan-arrow { color: var(--brand-emerald); font-size: 1.4rem; font-weight: 800; text-align: center; }
+    .code-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .changes { counter-reset: n; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .changes li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 13px; line-height: 22px; color: var(--cm-text-secondary); }
+    .changes li::before { counter-increment: n; content: counter(n); width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; background: var(--cm-surface-3); color: var(--cm-text-primary); font: 600 11px/1 var(--cm-font-mono); }
+    .changes b { color: var(--cm-text-primary); font-weight: 600; }
 
-    /* 接入 */
-    .qs-tab { color: var(--text-body); }
-    .qs-note { font-size: 0.82rem; color: var(--text-body); margin-top: 1rem; line-height: 1.7; }
-    .qs-note a, .link-inline { color: var(--a); }
-    .code-body { max-height: 30rem; overflow: auto; }
-    .two-col { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 1.5rem; }
+    .cta { align-items: center; text-align: center; padding: 56px var(--cm-space-6); background: var(--cm-surface-2); }
+    .cta h2 { margin: 0; font-size: 40px; line-height: 48px; font-weight: 700; letter-spacing: -0.01em; }
+    .cta p { max-width: 560px; }
 
-    /* 体验与质量 */
-    .quality-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; list-style: none; }
-    .q-item { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: var(--radius-md); padding: 1rem 1.1rem; }
-    .q-item h3 { font-size: 0.95rem; color: var(--text-white); margin-bottom: 0.3rem; display: flex; gap: 0.45rem; align-items: baseline; }
-    .q-item p { font-size: 0.8rem; color: var(--text-body); line-height: 1.6; }
-    .q-tag { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-muted); margin-top: 0.4rem; display: block; }
+    .footer { margin-top: 96px; border-top: 1px solid var(--cm-border-default); background: var(--cm-surface-0); padding: 28px var(--cm-space-4); display: flex; flex-wrap: wrap; gap: 12px 20px; justify-content: center; font-size: 13px; color: var(--cm-text-muted); }
+    .footer a:not(.cm-btn) { color: var(--cm-text-secondary); }
 
-    /* 接下来 */
-    .roadmap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; list-style: none; }
-    .rm-card { background: var(--bg-card); border: 1px solid var(--border-dim); border-radius: var(--radius-md); padding: 1.1rem; }
-    .rm-card .ver { font-family: var(--font-mono); font-weight: 800; color: var(--a); font-size: 1rem; }
-    .rm-card h3 { font-size: 1.05rem; color: var(--text-white); margin: 0.2rem 0; }
-    .rm-card .when { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 0.5rem; }
-    .rm-card p { font-size: 0.8rem; color: var(--text-body); line-height: 1.6; }
-    .rm-card.labs { border-style: dashed; border-color: color-mix(in srgb, var(--a) 50%, transparent); }
-    .rm-card.labs .ver { color: var(--a); }
-
-    /* 上手 */
-    .try-steps { counter-reset: s; list-style: none; display: flex; flex-direction: column; gap: 0.8rem; }
-    .try-steps li { counter-increment: s; position: relative; padding-left: 2.6rem; font-size: 0.88rem; color: var(--text-body); line-height: 1.7; }
-    .try-steps li::before {
-      content: counter(s); position: absolute; left: 0; top: 0.1rem; width: 1.8rem; height: 1.8rem; border-radius: 50%;
-      background: color-mix(in srgb, var(--a) 20%, transparent); border: 1px solid color-mix(in srgb, var(--a) 50%, transparent); color: var(--a); font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.82rem;
-    }
-    .try-steps strong { color: var(--text-white); }
-    .link-list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
-    .link-list a { display: block; background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 10px; padding: 0.7rem 0.9rem; color: var(--text-white); text-decoration: none; font-size: 0.85rem; font-weight: 600; }
-    .link-list a small { display: block; color: var(--text-muted); font-weight: 400; font-size: 0.74rem; margin-top: 0.1rem; }
-    .link-list a:hover { border-color: var(--brand-emerald); }
-
-    footer { padding: 2.5rem 1.5rem; }
-    footer a { display: inline-block; margin: 0.25rem 0.6rem; }
-    footer a { color: var(--text-secondary); }
-
-    @media (prefers-reduced-motion: no-preference) {
-      .bento-card, .state-btn, .lib-badge { transition: border-color 0.2s, transform 0.2s, background 0.2s; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      *, *::before, *::after { transition: none !important; animation: none !important; }
-      .bento-card:hover, .cta-btn:hover, .mock-step-card:hover { transform: none; }
-    }
-
-    @media (max-width: 960px) {
-      .pin-demo, .domain-demo, .two-col { grid-template-columns: 1fr; }
-      .quality-grid { grid-template-columns: repeat(2, 1fr); }
-      .roadmap-grid { grid-template-columns: repeat(2, 1fr); }
-      .pipeline { grid-template-columns: 1fr; }
-      .pipe-arrow { transform: rotate(90deg); justify-self: center; }
-      .fanout { grid-template-columns: 1fr; }
-      .fan-arrow { transform: rotate(90deg); }
+    @media (max-width: 900px) {
+      .s3 { grid-column: span 6; }
+      .s4, .s5, .s6, .s7, .s8 { grid-column: span 12; }
     }
     @media (max-width: 640px) {
-      .launch-nav { padding: 0.6rem 1rem; }
-      .nav-tagline { display: none; }
-      .nav-left { flex-wrap: wrap; gap: 0.5rem; }
-      .container { padding: 1.5rem 1rem 3rem; }
-      .hero-title { font-size: 1.85rem; }
-      .hero-subtitle { font-size: 1rem; }
-      .section-title { font-size: 1.55rem; }
-      .impact-strip, .quality-grid, .roadmap-grid { grid-template-columns: 1fr; }
-      .impact-num { font-size: 1.9rem; }
-      .bento-card, .fs-panel, .quickstart-box { padding: 1.1rem; }
-      .mock-fields { grid-template-columns: 1fr; }
-      .install-shell { padding: 0.6rem; font-size: 0.78rem; }
-      .nav-right .cta-btn { padding: 0.4rem 0.8rem; font-size: 0.76rem; }
-      .mock-dialog { inset: 0.4rem; padding: 0.8rem; }
-    }
-  
-    /* ==========================================================================
-       v1.3.0 新增：自助接入旅程、命名生成器、接口导入演示、埋点回放（沿用 1.2 令牌）
-       ========================================================================== */
-    .env-bar { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; margin-bottom: 1.2rem; font-size: 0.82rem; color: var(--text-body); }
-    .env-bar .seg-group { display: inline-flex; gap: 0.4rem; }
-    .acceptance-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.7rem; text-align: center; }
-
-    .journey { display: grid; grid-template-columns: 16.5rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
-    .j-nav { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
-    .j-step-btn {
-      width: 100%; text-align: left; display: flex; gap: 0.7rem; align-items: center; font: inherit; font-size: 0.86rem;
-      background: var(--bg-panel); border: 1px solid var(--border-dim); color: var(--text-body);
-      padding: 0.65rem 0.8rem; border-radius: 10px; cursor: pointer;
-    }
-    .j-step-btn:hover { border-color: color-mix(in srgb, var(--a) 45%, transparent); }
-    .j-step-btn .num {
-      flex: none; width: 1.8rem; height: 1.8rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-      background: color-mix(in srgb, var(--a) 16%, transparent); border: 1px solid color-mix(in srgb, var(--a) 45%, transparent); color: var(--a); font-weight: 800; font-size: 0.8rem;
-    }
-    .j-step-btn strong { display: block; color: var(--text-white); font-size: 0.88rem; }
-    .j-step-btn small { display: block; color: var(--text-muted); font-size: 0.72rem; line-height: 1.4; }
-    .j-step-btn[aria-current="step"] { border-color: color-mix(in srgb, var(--a) 75%, transparent); background: color-mix(in srgb, var(--a) 10%, transparent); }
-    .j-step-btn.done .num { background: var(--cm-status-success); color: var(--on); border-color: var(--cm-status-success); }
-
-    .j-panel { background: var(--bg-panel); border: 1px solid var(--border-dim); border-radius: 14px; padding: 1.3rem; min-width: 0; }
-    .j-panel[hidden] { display: none; }
-    .j-panel h3 { font-size: 1.15rem; margin-bottom: 0.3rem; color: var(--text-white); }
-    .j-lead { font-size: 0.85rem; color: var(--text-body); margin-bottom: 1rem; line-height: 1.7; }
-    .j-foot { display: flex; justify-content: space-between; gap: 0.6rem; margin-top: 1.2rem; flex-wrap: wrap; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
-    .field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.78rem; min-width: 0; }
-    .field > label, .field > .lbl { color: var(--text-white); font-weight: 600; font-size: 0.8rem; }
-    .field small { color: var(--text-muted); font-size: 0.72rem; line-height: 1.5; }
-    .field.full { grid-column: 1 / -1; }
-    .input {
-      width: 100%; min-width: 0; font: inherit; font-size: 0.86rem; color: var(--text-primary); background: var(--bg-primary);
-      border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.5rem 0.7rem;
-    }
-    select.input { cursor: pointer; }
-    .input:disabled { opacity: 0.7; cursor: not-allowed; }
-    .input.mono { font-family: var(--font-mono); font-size: 0.82rem; }
-    textarea.input { font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.55; min-height: 9rem; resize: vertical; }
-    .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; margin: 0.2rem 0 0; }
-    .chip { font-size: 0.76rem; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 999px; padding: 0.15rem 0.7rem; color: var(--text-secondary); }
-    .chip b { color: var(--a); font-weight: 700; }
-    .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.9rem; }
-    .mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .mini-btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--a) 60%, transparent); }
-    .result { margin-top: 0.9rem; padding: 0.7rem 0.9rem; border-radius: 10px; font-size: 0.82rem; line-height: 1.65; border: 1px solid var(--border-dim); background: var(--bg-primary); color: var(--text-body); }
-    .result:empty { display: none; }
-    .result.ok { border-color: color-mix(in srgb, var(--cm-status-success) 50%, transparent); background: color-mix(in srgb, var(--cm-status-success) 10%, transparent); color: var(--cm-status-success); }
-    .result.warn { border-color: color-mix(in srgb, var(--cm-status-warning) 50%, transparent); background: color-mix(in srgb, var(--cm-status-warning) 10%, transparent); color: var(--cm-status-warning); }
-    .result.err { border-color: color-mix(in srgb, var(--cm-status-failed) 50%, transparent); background: color-mix(in srgb, var(--cm-status-failed) 10%, transparent); color: var(--cm-status-failed); }
-    .result ul { list-style: none; display: flex; flex-direction: column; gap: 0.2rem; }
-    .result li { padding-left: 1rem; position: relative; }
-    .result li::before { content: '·'; position: absolute; left: 0.2rem; }
-
-    .name-segs { margin: 0.7rem 0 0; }
-    .tag-sample { font-size: 0.68rem; font-weight: 700; color: var(--cm-status-warning); background: color-mix(in srgb, var(--cm-status-warning) 14%, transparent); border: 1px solid color-mix(in srgb, var(--cm-status-warning) 40%, transparent); padding: 0.05rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; white-space: nowrap; vertical-align: middle; }
-
-    .radio-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
-    .radio-card { position: relative; display: block; background: var(--bg-primary); border: 1px solid var(--border-dim); border-radius: 10px; padding: 0.7rem 0.8rem; cursor: pointer; font-size: 0.8rem; color: var(--text-body); min-width: 0; }
-    .radio-card input { position: absolute; opacity: 0; inset: 0; cursor: pointer; margin: 0; }
-    .radio-card strong { display: block; color: var(--text-white); font-size: 0.88rem; margin-bottom: 0.1rem; }
-    .radio-card.on { border-color: color-mix(in srgb, var(--a) 75%, transparent); background: color-mix(in srgb, var(--a) 10%, transparent); }
-    .radio-card:focus-within { outline: 2px solid var(--a); outline-offset: 2px; }
-
-    .run-list { list-style: none; display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.9rem; }
-    .run-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.8rem; color: var(--text-body); }
-    .run-row .st { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; padding: 0.05rem 0.45rem; border-radius: 4px; }
-    .st.COMPLETED { background: color-mix(in srgb, var(--cm-status-success) 18%, transparent); color: var(--cm-status-success); }
-    .st.FAILED { background: color-mix(in srgb, var(--cm-status-failed) 18%, transparent); color: var(--cm-status-failed); }
-    .st.SKIPPED { background: color-mix(in srgb, var(--cm-text-muted) 25%, transparent); color: var(--text-secondary); }
-    .run-row code { background: none; padding: 0; color: var(--a); }
-    .check-line { display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: var(--text-body); margin-top: 0.8rem; }
-    .check-line input { accent-color: var(--brand-emerald); width: 1rem; height: 1rem; }
-
-    .tl { list-style: none; display: flex; flex-direction: column; gap: 0; margin: 1rem 0 0; position: relative; }
-    .tl li { position: relative; padding: 0 0 0.9rem 2rem; font-size: 0.82rem; color: var(--text-muted); min-height: 2.2rem; }
-    .tl li::before { content: ''; position: absolute; left: 0.43rem; top: 1.1rem; bottom: -0.1rem; width: 2px; background: var(--border-dim); }
-    .tl li:last-child::before { display: none; }
-    .tl li .dot { position: absolute; left: 0; top: 0.15rem; width: 0.95rem; height: 0.95rem; border-radius: 50%; border: 2px solid var(--border-primary); background: var(--bg-panel); }
-    .tl li.done .dot { background: var(--cm-status-success); border-color: var(--cm-status-success); }
-    .tl li.cur .dot { border-color: var(--cm-status-warning); background: var(--cm-status-warning); }
-    .tl li.rej .dot { border-color: var(--cm-status-failed); background: var(--cm-status-failed); }
-    .tl li.done, .tl li.cur, .tl li.rej { color: var(--text-white); }
-    .tl li code { background: none; padding: 0; color: var(--a); font-weight: 700; }
-    .tl li small { display: block; color: var(--text-body); font-size: 0.75rem; }
-
-    .fmt-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    .fmt-table th, .fmt-table td { text-align: left; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); vertical-align: top; }
-    .fmt-table th { color: var(--text-white); }
-    .fmt-table .no { color: var(--cm-status-failed); }
-    .table-scroll { overflow-x: auto; }
-
-    .import-demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.2rem; }
-    .imp-out { background: var(--bg-primary); border: 1px solid var(--border-dim); border-radius: 12px; padding: 1rem; min-width: 0; font-size: 0.8rem; color: var(--text-body); }
-    .imp-out h4 { font-size: 0.82rem; color: var(--text-white); margin: 0.8rem 0 0.35rem; }
-    .imp-out h4:first-child { margin-top: 0; }
-    .method { display: inline-block; font-family: var(--font-mono); font-weight: 800; font-size: 0.78rem; padding: 0.1rem 0.55rem; border-radius: 5px; background: color-mix(in srgb, var(--a) 18%, transparent); color: var(--a); border: 1px solid color-mix(in srgb, var(--a) 40%, transparent); margin-right: 0.5rem; }
-    .method.POST { background: color-mix(in srgb, var(--a) 16%, transparent); color: var(--a); border-color: color-mix(in srgb, var(--a) 40%, transparent); }
-    .method.DELETE { background: color-mix(in srgb, var(--cm-status-failed) 16%, transparent); color: var(--cm-status-failed); border-color: color-mix(in srgb, var(--cm-status-failed) 40%, transparent); }
-    .method.PUT, .method.PATCH { background: color-mix(in srgb, var(--cm-status-warning) 16%, transparent); color: var(--cm-status-warning); border-color: color-mix(in srgb, var(--cm-status-warning) 40%, transparent); }
-    .url-line { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-primary); word-break: break-all; }
-    .hdr-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; table-layout: fixed; }
-    .hdr-table th, .hdr-table td { text-align: left; padding: 0.3rem 0.4rem; border-bottom: 1px dashed var(--border-primary); vertical-align: top; word-break: break-all; }
-    .hdr-table th { color: var(--text-muted); font-weight: 600; }
-    .hdr-table td:first-child { font-family: var(--font-mono); color: var(--text-secondary); }
-    .sub { color: var(--cm-status-warning); font-family: var(--font-mono); font-weight: 700; }
-    .mask { color: var(--text-muted); font-family: var(--font-mono); text-decoration: line-through; }
-    pre.mini-code { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-primary); background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 8px; padding: 0.6rem 0.75rem; white-space: pre-wrap; word-break: break-all; line-height: 1.55; max-height: 14rem; overflow: auto; }
-    .preset-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 0; align-items: center; font-size: 0.78rem; color: var(--text-muted); }
-
-    .resolve { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap: 0.5rem; align-items: stretch; list-style: none; }
-    .resolve li.box { background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.7rem; font-size: 0.78rem; color: var(--text-body); min-width: 0; }
-    .resolve li.box b { display: block; color: var(--text-white); font-size: 0.82rem; margin-bottom: 0.2rem; }
-    .resolve li.box.last { border-style: dashed; }
-    .resolve li.arr { align-self: center; color: var(--brand-emerald); font-weight: 800; }
-    .ev-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-    .ev-table th, .ev-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border-dim); color: var(--text-body); vertical-align: top; }
-    .ev-table th { color: var(--text-white); }
-    .ev-table td:first-child code { color: var(--a); background: color-mix(in srgb, var(--a) 12%, transparent); }
-    .funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; list-style: none; margin-bottom: 1.2rem; counter-reset: f; }
-    .funnel li { counter-increment: f; background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.7rem 0.8rem; font-size: 0.78rem; color: var(--text-body); position: relative; }
-    .funnel li::before { content: counter(f); position: absolute; top: 0.5rem; right: 0.7rem; font-family: var(--font-mono); font-weight: 800; color: var(--text-secondary); font-size: 1.2rem; }
-    .funnel li b { display: block; color: var(--text-white); font-size: 0.88rem; }
-    .funnel li code { background: none; padding: 0; color: var(--a); font-size: 0.72rem; }
-    .term { background: var(--bg-primary); border: 1px solid var(--border-primary); border-radius: 10px; padding: 0.8rem 0.9rem; font-family: var(--font-mono); font-size: 0.74rem; color: var(--text-secondary); min-height: 8rem; max-height: 16rem; overflow: auto; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
-    .term .grp { color: var(--a); font-weight: 700; }
-    .term .ev { color: var(--a); }
-    .term .empty { color: var(--text-muted); }
-    .no-collect { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin-top: 0.8rem; }
-    .no-collect li { font-size: 0.78rem; background: color-mix(in srgb, var(--cm-status-failed) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cm-status-failed) 35%, transparent); color: var(--cm-status-failed); padding: 0.15rem 0.7rem; border-radius: 999px; }
-    .roadmap-grid.three { grid-template-columns: repeat(3, 1fr); }
-    .try-steps .try-list { list-style: none; padding-left: 0; margin-top: 0.3rem; display: flex; flex-direction: column; gap: 0.2rem; }
-    .try-steps .try-list li { counter-increment: none; padding-left: 0; font-size: 0.82rem; }
-    .try-steps .try-list li::before { content: none; }
-    /* 行内代码在表格 / 说明里按词换行，不再在单词中间断开 */
-    p code, li code, td code, dd code { word-break: normal; overflow-wrap: anywhere; }
-    .hero-eyebrow { flex-wrap: wrap; justify-content: center; }
-    .bento-grid > *, .two-col > *, .import-demo > * { min-width: 0; }
-    @media (max-width: 960px) { .bento-grid { grid-template-columns: minmax(0, 1fr); } }
-    .ev-table { min-width: 34rem; }
-    .ev-table td:nth-child(3), .ev-table th:nth-child(3) { white-space: nowrap; }
-    .fmt-table { min-width: 28rem; }
-    .vd-menu a { padding: 0.45rem 0.7rem; }
-
-    @media (max-width: 960px) {
-      .journey { grid-template-columns: 1fr; }
-      .j-nav { flex-direction: row; flex-wrap: wrap; }
-      .j-nav > li { flex: 1 1 10rem; min-width: 0; }
-      .import-demo { grid-template-columns: 1fr; }
-      .resolve { grid-template-columns: 1fr; }
-      .resolve li.arr { transform: rotate(90deg); justify-self: center; }
-      .funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .roadmap-grid.three { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 640px) {
-      .form-grid, .radio-cards { grid-template-columns: 1fr; }
-      .j-nav > li { flex: 1 1 100%; }
-      .j-panel { padding: 1rem; }
-      .funnel { grid-template-columns: 1fr; }
-      .qs-tabs { flex-wrap: wrap; }
+      .nav__links, .version-pill { display: none; }
+      .hero { padding-top: 56px; }
+      .hero h1 { font-size: 36px; line-height: 44px; }
+      .cm-section h2, .cta h2 { font-size: 28px; line-height: 36px; }
+      .main { gap: 72px; }
+      .bento { gap: var(--cm-space-3); }
+      .cm-card { padding: var(--cm-space-4); }
+      .run__row { grid-template-columns: minmax(0, 1fr) auto; }
+      .run__row .cm-badge { justify-self: end; }
+      .run__row .source { grid-row: 2; }
+      .cm-stat b { font-size: 32px; line-height: 36px; }
     }
   </style>
 </head>
 <body>
-  <a class="skip-link" href="#main">跳到主要内容</a>
+  <!-- Lucide icons (stroke 1.75 via .ic), referenced with <use> -->
+  <svg width="0" height="0" style="position: absolute;" aria-hidden="true">
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-circle-stop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" rx="1"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></symbol>
+    <symbol id="i-skip" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/></symbol>
+    <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></symbol>
+    <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></symbol>
+    <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+    <symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  </svg>
 
-  <header class="launch-nav">
-    <div class="nav-left">
-      <a href="./" class="brand-logo" aria-label="CMASTER 首页">
-        <svg width="28" height="28" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="flex-shrink:0;">
-          <g stroke="#ff6a13" stroke-width="3" opacity="0.7"><line x1="50" y1="50" x2="75.5" y2="24.5"/><line x1="50" y1="50" x2="14" y2="50"/><line x1="50" y1="50" x2="75.5" y2="75.5"/></g>
-          <path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="9" stroke-linecap="round"/>
-          <g fill="#0b0a09" stroke="#ff6a13" stroke-width="5"><circle cx="75.46" cy="24.54" r="7"/><circle cx="14" cy="50" r="7"/><circle cx="75.46" cy="75.46" r="7"/></g>
-          <circle cx="50" cy="50" r="10" fill="#ff6a13"/>
-        </svg>
-        <span style="font-weight:800; letter-spacing:-0.02em;"><span style="color:#ff6a13;">C</span>MASTER</span>
-      </a>
-
-      <details class="version-dropdown" id="version-dropdown">
-        <summary title="切换版本宣传页" aria-label="切换版本宣传页，当前 v1.3.0">v1.3.0 最新发布 <span class="vd-caret" aria-hidden="true">▾</span></summary>
-        <div class="vd-menu">
-          <a href="./" class="active" aria-current="page" title="当前版本：v1.3.0 自助接入">v1.3.0 最新发布</a>
-          <a href="./v1-2.html" title="查阅 v1.2.0 流程库就绪宣传页">v1.2.0 历史回顾</a>
-          <a href="./v1-1.html" title="查阅 v1.1.0 业务全融合宣传页">v1.1.0 历史回顾</a>
-          <a href="./v1-0.html" title="查阅 v1.0.0 确定性 IDE 历史首发页">v1.0.0 历史回顾</a>
-        </div>
-      </details>
-
-      <span class="nav-tagline">自助接入 · 接口导入 · 统一扩展点 · 接入埋点</span>
+  <nav class="nav" aria-label="页面导航">
+    <a href="./" class="nav__brand" aria-label="CMASTER 首页">
+      <svg width="24" height="24" viewBox="0 0 100 100" aria-hidden="true"><path d="M75.46 24.54A36 36 0 1 0 75.46 75.46" fill="none" stroke="#ff6a13" stroke-width="10" stroke-linecap="round"/><g stroke="#ff6a13" stroke-width="4" opacity=".7"><line x1="50" y1="50" x2="75.5" y2="24.5"/><line x1="50" y1="50" x2="14" y2="50"/><line x1="50" y1="50" x2="75.5" y2="75.5"/></g><g fill="var(--cm-canvas)" stroke="#ff6a13" stroke-width="6"><circle cx="75.46" cy="24.54" r="7"/><circle cx="14" cy="50" r="7"/><circle cx="75.46" cy="75.46" r="7"/></g><circle cx="50" cy="50" r="11" fill="#ff6a13"/></svg>
+      <span><em>C</em>MASTER</span>
+    </a>
+    <span class="version-pill"><b>v1.3.2</b>最新发布</span>
+    <div class="nav__links">
+      <a href="#sandbox">沙箱真实执行</a>
+      <a href="#spec">规范 JSON</a>
+      <a href="#safe">修改不丢</a>
+      <a href="#honest">界面如实</a>
+      <a href="#upgrade">升级须知</a>
     </div>
+    <span class="nav__spacer"></span>
+    <details class="versions">
+      <summary aria-label="切换版本宣传页，当前 v1.3.2">版本 <svg class="ic ic-sm" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+      <div class="versions__menu">
+        <a href="./" aria-current="page">v1.3.2 最新发布（含 v1.3.1）</a>
+        <a href="./v1-3.html">v1.3.0 自助接入</a>
+        <a href="./v1-2.html">v1.2.0 流程库就绪</a>
+        <a href="./v1-1.html">v1.1.0 业务全融合</a>
+        <a href="./v1-0.html">v1.0.0 首发</a>
+      </div>
+    </details>
+    <a href="./app" class="cm-btn cm-btn--sm cm-btn--primary">进入工作台</a>
+  </nav>
 
-    <div class="nav-right">
-      <a href="./app" class="cta-btn">进入工作台 (/app)</a>
+  <header class="hero">
+    <span class="cm-eyebrow">CMASTER WORKFLOW IDE · RELEASE 1.3.1 + 1.3.2</span>
+    <h1>补齐与打磨<br /><span class="cm-grad">试跑结果按 Conductor 的规则来</span></h1>
+    <p class="hero__lead">两个补丁版本不加新能力，把已经发布的功能做对：沙箱真实执行不依赖外部系统的任务，生成的 JSON 按 Conductor 规范写，编辑中的修改不会被运行覆盖，界面只显示真实状态。</p>
+    <div class="row-center">
+      <span class="cm-chip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-flask"/></svg>沙箱真实执行</span>
+      <span class="cm-chip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-braces"/></svg>规范 JSON，往返不变</span>
+      <span class="cm-chip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-shield"/></svg>修改不丢，权限不越</span>
+      <span class="cm-chip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-eye"/></svg>界面如实</span>
+      <span class="cm-chip"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-layers"/></svg>CMASTER 设计系统</span>
     </div>
+    <div class="cm-term" style="margin-top: 6px;">
+      <div class="cm-term__tabs"><span class="is-on">npm</span></div>
+      <div class="cm-term__body"><i>$</i><code id="install-cmd"><span class="k">npm install</span> @yiyi_zhang/reactflow-ui@1.3.2 reactflow react react-dom</code><button type="button" class="cm-btn cm-btn--sm" id="copy-install"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-copy"/></svg><span>复制命令</span></button></div>
+    </div>
+    <div class="row-center" style="gap: 12px; margin-top: 4px;">
+      <a href="./app" class="cm-btn cm-btn--lg cm-btn--primary cm-btn--cta"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>进入工作台试跑</a>
+      <a href="#upgrade" class="cm-btn cm-btn--lg"><svg class="ic" aria-hidden="true"><use href="#i-package"/></svg>查看升级须知</a>
+      <a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer" class="cm-btn cm-btn--lg cm-btn--ghost">阅读完整变更记录</a>
+    </div>
+    <span class="cm-cap">v1.3.1 于 2026-10-25 发布 · v1.3.2 于 2026-10-29 发布 · 演示站运行在模拟治理服务上，没有接真实后端</span>
   </header>
 
-  <main id="main" class="container">
+  <main class="main">
+    <div class="bento" aria-label="v1.3.1 与 v1.3.2 概览">
+      <div class="cm-stat s3"><b>0<small>处</small></b><strong>公开接口破坏性变更</strong><span>两个补丁版本只新增可选属性</span></div>
+      <div class="cm-stat s3"><b>1660<small>个</small></b><strong>单元测试</strong><span>v1.3.2 发版时全部通过</span></div>
+      <div class="cm-stat s3"><b>6<small>项</small></b><strong>发布前走查</strong><span>深色、浅色主题各走一遍</span></div>
+      <div class="cm-stat s3"><b>5<small>批</small></b><strong>v1.3.2 修复批次</strong><span>每批一个 PR，<span class="cm-mono">#81</span> 至 <span class="cm-mono">#85</span></span></div>
+    </div>
 
-    <!-- ===================== Hero ===================== -->
-    <section class="hero-section" aria-labelledby="hero-title">
-      <div class="hero-eyebrow">
-        <span>CMASTER Workflow IDE v1.3.0</span>
-        <span style="opacity: 0.4;" aria-hidden="true">|</span>
-        <span>自助接入</span>
+    <section id="sandbox" class="block">
+      <div class="cm-section">
+        <span class="cm-eyebrow">SANDBOX</span>
+        <h2>沙箱里<span class="cm-grad">真的跑一遍</span></h2>
+        <p><span class="cm-code">INLINE</span> <span class="cm-code">JQ</span> <span class="cm-code">SWITCH</span> <span class="cm-code">DO_WHILE</span> 等不依赖外部系统的任务，在浏览器里按 Conductor 语义真实执行；依赖外部系统的任务仍用模拟数据，结果里标得清清楚楚。</p>
       </div>
-
-      <h1 class="hero-title" id="hero-title">自助接入<br/>新团队不靠陪跑，自己把第一个流程跑起来</h1>
-
-      <p class="hero-subtitle">
-        <strong>@yiyi_zhang/reactflow-ui</strong> 是供内部项目嵌入的<strong>工作流 IDE SDK</strong>。v1.3.0 让一个从未接触过平台的团队，在测试环境里<strong>自己</strong>完成：登记产品 → 规范命名建流程 → 接上已有接口 → 试跑 → 申请上线。
-      </p>
-
-      <ul class="hero-adds" aria-label="v1.3.0 新增内容">
-        <li><b>＋</b>扩展点注册 <code>WorkflowIdeProvider</code></li>
-        <li><b>＋</b>自助接入向导与命名生成器</li>
-        <li><b>＋</b>申请上线与进度</li>
-        <li><b>＋</b>接口导入（OpenAPI / Swagger / Postman / curl）</li>
-        <li><b>＋</b>接入埋点 <code>TelemetrySink</code></li>
-      </ul>
-
-      <div class="install-wrap">
-        <div class="pm-tabs" role="group" aria-label="选择安装方式">
-          <button type="button" class="pm-tab active" data-pm="npm" aria-pressed="true">npm</button>
-          <button type="button" class="pm-tab" data-pm="pnpm" aria-pressed="false">pnpm</button>
-          <button type="button" class="pm-tab" data-pm="yarn" aria-pressed="false">yarn</button>
-          <button type="button" class="pm-tab" data-pm="import" aria-pressed="false">React 引入</button>
-        </div>
-        <div class="install-shell">
-          <span class="prompt-char" aria-hidden="true">$</span>
-          <span id="cli-cmd">npm install @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom</span>
-          <button type="button" class="copy-cli-btn" id="copy-install">复制命令</button>
-        </div>
-      </div>
-
-      <div class="hero-actions">
-        <a href="#journey" class="cta-btn lg"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;"><polygon points="6 3 20 12 6 21 6 3"/></svg>先在页面里走一遍</a>
-        <a href="./app" class="ghost-btn lg">在工作台里亲手试</a>
-        <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" class="ghost-btn lg" target="_blank" rel="noreferrer">宿主接入指南</a>
-      </div>
-      <p class="hero-note">v1.3.0 已于 2026-10-24 发布，详见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG</a>。演示站运行在<strong>模拟治理服务</strong>上，没有接真实后端；不接这些扩展点时，SDK 行为与 1.2.0 完全一致。</p>
-    </section>
-
-    <section class="impact-strip" aria-label="v1.3.0 概览">
-      <div class="impact-card">
-        <div class="impact-num">5 步</div>
-        <div class="impact-sub">首个流程的自助路径</div>
-        <div class="impact-desc">登记产品 → 规范命名 → 选择起点 → 沙箱试跑 → 申请上线</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-num">4 种</div>
-        <div class="impact-sub">接口来源</div>
-        <div class="impact-desc">OpenAPI 3 / Swagger 2 / Postman v2.1 / curl，均为 JSON，不支持 YAML</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-num">3 个</div>
-        <div class="impact-sub"><code>providers</code> 字段</div>
-        <div class="impact-desc"><code>library</code> / <code>onboarding</code> / <code>telemetry</code>，配置一次，所有 IDE 共用</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-num">10 个</div>
-        <div class="impact-sub">首批埋点事件</div>
-        <div class="impact-desc">只记“用了什么功能”，不采集参数值与对话内容</div>
-      </div>
-    </section>
-
-    <!-- ===================== 五分钟走完第一个流程 ===================== -->
-    <section class="section" id="journey" aria-labelledby="journey-title">
-      <div class="section-head">
-        <div class="section-eyebrow">SELF-SERVICE PATH</div>
-        <h2 class="section-title" id="journey-title">五分钟走完第一个流程</h2>
-        <p class="section-desc">下面是自助路径的<strong>交互示意</strong>（HTML/CSS/JS 模拟，不是真实应用，也不发任何请求）：命名校验的规则与消息与 SDK 的 <code>validateWorkflowName</code> 一致，审批状态与演示站的模拟实现一致。“5 分钟”是发布计划里的验收目标，不是实测数据。</p>
-      </div>
-
-      <div class="fs-panel">
-        <div class="env-bar">
-          <span id="env-label">演示环境</span>
-          <div class="seg-group" role="group" aria-labelledby="env-label">
-            <button type="button" class="seg-btn" data-env="TEST" aria-pressed="true">TEST</button>
-            <button type="button" class="seg-btn" data-env="PROD" aria-pressed="false">PROD</button>
+      <div class="bento">
+        <div class="cm-card is-key s8">
+          <span class="cm-card__label">一次本地试运行的结果</span>
+          <h3>哪步真跑、哪步模拟，一眼分清</h3>
+          <div class="run" role="group" aria-label="试运行结果示意">
+            <div class="run__bar"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-flask"/></svg>沙箱试运行 · 模拟数据<span class="nav__spacer"></span><span class="cm-tag cm-tag--std">示意</span></div>
+            <div class="run__row">
+              <div class="run__name"><b>reserve_stock</b><span>HTTP · 可选任务</span></div>
+              <span class="source">模拟数据</span>
+              <span class="cm-badge cm-badge--warning"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-alert"/></svg>带错完成</span>
+              <span class="run__note">模拟失败：可选任务按 Conductor 记为带错完成，流程继续</span>
+            </div>
+            <div class="run__row">
+              <div class="run__name"><b>route_level</b><span>SWITCH · value-param</span></div>
+              <span class="source">真实执行</span>
+              <span class="cm-badge cm-badge--success"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg>成功</span>
+            </div>
+            <div class="run__row">
+              <div class="run__name"><b>calc_price</b><span>INLINE · graaljs</span></div>
+              <span class="source">真实执行</span>
+              <span class="cm-badge cm-badge--success"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg>成功</span>
+            </div>
+            <div class="run__row">
+              <div class="run__name"><b>stop_here</b><span>TERMINATE · terminationStatus = TERMINATED</span></div>
+              <span class="source">真实执行</span>
+              <span class="cm-badge cm-badge--terminated"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-circle-stop"/></svg>已终止</span>
+              <span class="run__note">实例状态取 <span class="cm-mono">terminationStatus</span>，输出取 <span class="cm-mono">workflowOutput</span></span>
+            </div>
           </div>
-          <span id="env-hint" style="font-size:0.76rem; color:var(--text-muted);">TEST 开放自助试用，流程名类型固定为 <code>tmp</code></span>
         </div>
+        <div class="cm-card s4">
+          <span class="cm-card__label">脚本隔离</span>
+          <h3>脚本碰不到网络</h3>
+          <ul class="cm-list">
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>v1.3.2 起脚本在 CSP 沙箱 iframe 里运行，每次求值新建 Worker</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span><span class="cm-code">import()</span> <span class="cm-code">FontFace</span> <span class="cm-code">fetch</span> 都发不出请求</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>一个脚本不能篡改后面脚本的结果，也读不到它们的入参</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>单个脚本默认 2 秒超时，死循环会被终止</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>宿主页面不允许沙箱时，如实标为「未执行」并说明原因</span></li>
+          </ul>
+        </div>
+        <div class="cm-card s6">
+          <span class="cm-card__label">入参</span>
+          <h3>模拟入参带对类型</h3>
+          <p>默认模拟入参按 <span class="cm-code">inputSchema</span> 的类型、示例和 <span class="cm-code">inputTemplate</span> 的默认值生成，数字给数字；执行前用 <span class="cm-code">inputTemplate</span> 补齐没给的入参，<span class="cm-code">variables</span> 取定义里的初值。</p>
+        </div>
+        <div class="cm-card s6">
+          <span class="cm-card__label">结果可区分</span>
+          <h3>每个任务都标明来源</h3>
+          <p>任务结果带 <span class="cm-code">sandboxExecution</span>：<span class="cm-code">executed</span> 真实执行、<span class="cm-code">mocked</span> 模拟数据、<span class="cm-code">not_executed</span> 未执行；取不到值的引用记入 <span class="cm-code">sandboxWarnings</span>。</p>
+        </div>
+      </div>
+    </section>
 
-        <div class="journey">
-          <ol class="j-nav" aria-label="自助接入的五个步骤">
-            <li><button type="button" class="j-step-btn" data-step="0" aria-controls="jp-0" aria-current="step"><span class="num" aria-hidden="true">1</span><span><strong>登记产品</strong><small>开始试用 · 选业务域</small></span></button></li>
-            <li><button type="button" class="j-step-btn" data-step="1" aria-controls="jp-1"><span class="num" aria-hidden="true">2</span><span><strong>规范命名</strong><small>tmp-层级-业务域-产品-功能</small></span></button></li>
-            <li><button type="button" class="j-step-btn" data-step="2" aria-controls="jp-2"><span class="num" aria-hidden="true">3</span><span><strong>选择起点</strong><small>空白 / 模板 / 从接口导入</small></span></button></li>
-            <li><button type="button" class="j-step-btn" data-step="3" aria-controls="jp-3"><span class="num" aria-hidden="true">4</span><span><strong>沙箱试跑</strong><small>浏览器内，不依赖后端</small></span></button></li>
-            <li><button type="button" class="j-step-btn" data-step="4" aria-controls="jp-4"><span class="num" aria-hidden="true">5</span><span><strong>申请上线</strong><small>提交 → 审批进度</small></span></button></li>
+    <section id="spec" class="block">
+      <div class="cm-section">
+        <span class="cm-eyebrow">CONDUCTOR SPEC</span>
+        <h2>三种编辑方式，<span class="cm-grad">写出同一份规范 JSON</span></h2>
+        <p>专业编辑器、业务卡片流和 AI 生成的定义都按 Conductor 的字段要求写；在业务模式和画布之间来回切换，定义逐字段不变。</p>
+      </div>
+      <div class="bento">
+        <div class="cm-codeblock s7" style="box-shadow: var(--cm-shadow-card);">
+          <div class="cm-codeblock__bar">SWITCH 的写法</div>
+<pre><span class="cmt">// 旧写法：DECISION 的字段写在 SWITCH 上，Conductor 保存时会拒绝</span>
+{ <span class="attr">"type"</span>: <span class="str">"SWITCH"</span>, <span class="attr">"caseValueParam"</span>: <span class="str">"level"</span> }
+
+<span class="cmt">// v1.3.2：校验直接报错并给出改法，AI 规范化自动迁移成</span>
+{
+  <span class="attr">"type"</span>: <span class="str">"SWITCH"</span>,
+  <span class="attr">"evaluatorType"</span>: <span class="str">"value-param"</span>,
+  <span class="attr">"expression"</span>: <span class="str">"level"</span>,
+  <span class="attr">"inputParameters"</span>: { <span class="attr">"level"</span>: <span class="str">"${workflow.input.level}"</span> }
+}</pre>
+        </div>
+        <div class="cm-card s5">
+          <span class="cm-card__label">往返不变</span>
+          <h3>切来切去，定义不走样</h3>
+          <ul class="cm-list">
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>只等部分分支的 FORK，<span class="cm-code">joinOn</span> 原样保留</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>没有 <span class="cm-code">description</span> / <span class="cm-code">version</span> 的定义不会被补出字段</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>任务上的 <span class="cm-code">optional</span> <span class="cm-code">retryCount</span> <span class="cm-code">timeoutSeconds</span> 等配置往返不丢</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>超时与重试策略写进 <span class="cm-code">taskDefinition</span></span></li>
+          </ul>
+        </div>
+        <div class="cm-card s12">
+          <span class="cm-card__label">校验器</span>
+          <h3>保存前就拦下 Conductor 会拒的写法</h3>
+          <p>新增与补强的检查，每条提示都写明怎么改：</p>
+          <div class="code-chips">
+            <span class="cm-code">SWITCH 缺 evaluatorType / expression</span>
+            <span class="cm-code">KAFKA_PUBLISH 缺 topic / bootStrapServers</span>
+            <span class="cm-code">EVENT 缺 sink</span>
+            <span class="cm-code">WAIT 同时配了 duration 与 until</span>
+            <span class="cm-code">INLINE 脚本写在 scriptExpression</span>
+            <span class="cm-code">TERMINATE 的 terminationStatus 写错</span>
+            <span class="cm-code">表达式引用了不存在的任务</span>
+            <span class="cm-code">FORK 后未紧跟 JOIN</span>
+            <span class="cm-code">joinOn 引用不存在的任务</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="safe" class="block">
+      <div class="cm-section">
+        <span class="cm-eyebrow">SAFE BY DEFAULT</span>
+        <h2>修改不丢，<span class="cm-grad">权限不越</span></h2>
+        <p>执行验证、复制粘贴、AI 对话这些日常操作，不再悄悄改掉或带走你的东西。</p>
+      </div>
+      <div class="bento">
+        <div class="cm-card s6">
+          <span class="cm-card__label">执行验证</span>
+          <h3>运行完，修改还在</h3>
+          <div class="notice" role="note"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-alert"/></svg><span>画布有未保存的修改。将运行已保存的版本（<span class="cm-code">order_flow</span> v3），这些修改不会参与本次执行；要验证修改，先保存再执行。</span></div>
+          <p>运行视图用实例里的定义渲染，编辑中的定义单独保存；回到编辑态原样换回，不进撤销历史。运行态下保存，存的也是编辑中的定义。</p>
+        </div>
+        <div class="cm-card s6">
+          <span class="cm-card__label">AI 权限</span>
+          <h3>AI 只做你允许的事</h3>
+          <ul class="cm-list">
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>只读权限或运行态下，越权的工具调用被拒绝，时间线记一条「已拒绝调用 <span class="cm-mono">replace_workflow</span>：当前没有编辑权限」</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>有可续跑的断点时，新消息先问「继续上次」还是「放弃断点并发送」，不再静默丢弃</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span><span class="cm-code">transport</span> 与请求头不再写进 localStorage</span></li>
+          </ul>
+        </div>
+        <div class="cm-card s6">
+          <span class="cm-card__label">剪贴板</span>
+          <h3>复制的任务只放内存</h3>
+          <p>复制的 HTTP 任务可能带着 <span class="cm-code">Authorization</span> 头，现在不再写进 localStorage；旧版本留下的内容在升级后第一次加载时清除。接口导入时，请求体任意层级的敏感字段都换成 <span class="cm-code">${workflow.input.…}</span> 占位。</p>
+        </div>
+        <div class="cm-card s6">
+          <span class="cm-card__label">撤销</span>
+          <h3>替换之前先问，替换之后能撤</h3>
+          <p>新建流程、从模板中心选模板会替换画布上的流程时，先确认替换哪个，替换后可以撤销。宿主用受控方式回写定义时，连续编辑也能一步步撤回。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="honest" class="block">
+      <div class="cm-section">
+        <span class="cm-eyebrow">HONEST UI</span>
+        <h2>界面<span class="cm-grad">只说真话</span></h2>
+        <p>状态、数字和提示都来自真实数据；拿不到的就不显示，不再编。</p>
+      </div>
+      <div class="bento">
+        <div class="cm-card s8">
+          <span class="cm-card__label">状态</span>
+          <h3>颜色 + 图标 + 中文，处处一致</h3>
+          <p>一套共用的状态映射覆盖 Conductor 的全部任务与工作流状态，节点角标、执行状态栏、任务详情、执行分析、瀑布图与运行故事线显示一致。</p>
+          <div class="row-center" style="justify-content: flex-start;">
+            <span class="cm-badge cm-badge--running"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-loader"/></svg>运行中</span>
+            <span class="cm-badge cm-badge--success"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg>成功</span>
+            <span class="cm-badge cm-badge--failed"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-x"/></svg>失败</span>
+            <span class="cm-badge cm-badge--warning"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-timer"/></svg>已超时</span>
+            <span class="cm-badge cm-badge--warning"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-alert"/></svg>带错完成</span>
+            <span class="cm-badge cm-badge--terminated"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-circle-stop"/></svg>已终止</span>
+            <span class="cm-badge cm-badge--skipped"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-skip"/></svg>已跳过</span>
+            <span class="cm-badge cm-badge--pending"><svg class="ic ic-sm" aria-hidden="true"><use href="#i-circle"/></svg>等待中</span>
+          </div>
+        </div>
+        <div class="cm-card s4">
+          <span class="cm-card__label">不再编数字</span>
+          <h3>没有就不写</h3>
+          <ul class="cm-list">
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>模板中心去掉编造的使用次数</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>运行故事线按真实输出生成，缺数据时不写</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>模板试跑失败时写出失败任务与原因，不再一律「试跑通过」</span></li>
+            <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>没接执行回调时不显示「执行验证」</span></li>
+          </ul>
+        </div>
+        <div class="cm-card s12">
+          <span class="cm-card__label">CMASTER 设计系统</span>
+          <h3>人和 AI 按同一套规则做界面，同一套检查把关</h3>
+          <div class="bento" style="gap: var(--cm-space-3);">
+            <ul class="cm-list s6">
+              <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span><span class="cm-code">design/tokens.json</span> 是唯一来源，生成 <span class="cm-code">--cm-*</span> 变量，深浅两套主题</span></li>
+              <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>图标统一用 Lucide，线宽 1.75；橙色底上的文字用深色</span></li>
+            </ul>
+            <ul class="cm-list s6">
+              <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>守卫测试拦下 emoji、写死的颜色和手画的内联 <span class="cm-code">&lt;svg&gt;</span></span></li>
+              <li><svg class="ic ic-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Playwright 截图回归覆盖深浅两套主题</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="upgrade" class="block">
+      <div class="cm-section">
+        <span class="cm-eyebrow">UPGRADE</span>
+        <h2>从 v1.3.0 <span class="cm-grad">直接升级</span></h2>
+        <p>公开接口没有破坏性变更。下面几条行为变化建议升级前看一眼。</p>
+      </div>
+      <div class="bento">
+        <div class="cm-codeblock s7" style="box-shadow: var(--cm-shadow-card);">
+          <div class="cm-codeblock__bar">WorkflowStudio.tsx · v1.3.2 新增的可选属性</div>
+<pre>&lt;WorkflowIDE
+  <span class="attr">workflowDef</span>={def}
+  <span class="cmt">// 传入本地文件、草稿等还没保存的定义时设为 false</span>
+  <span class="attr">workflowDefSaved</span>={<span class="kw">false</span>}
+  <span class="cmt">// 可以返回 Promise：resolve 后才记为已保存，reject 时继续提示未保存</span>
+  <span class="attr">onSave</span>={<span class="kw">async</span> (def) =&gt; { <span class="kw">await</span> api.saveWorkflow(def); }}
+  <span class="attr">onTriggerExecution</span>={trigger}
+/&gt;
+
+<span class="cmt">// 用其它方式确认保存了服务端定义后，告诉 IDE 以它为已保存版本</span>
+ideRef.current.markSaved(def);</pre>
+        </div>
+        <div class="cm-card s5">
+          <span class="cm-card__label">行为变化</span>
+          <h3>升级前看一眼</h3>
+          <ol class="changes">
+            <li><span><b>SWITCH 校验变严</b>：只写了 <span class="cm-code">caseValueParam</span> / <span class="cm-code">caseExpression</span> 的 SWITCH 由警告改为错误；AI 规范化会自动迁移。</span></li>
+            <li><span><b>新增必填</b>：EVENT 的 <span class="cm-code">sink</span>，KAFKA_PUBLISH 的 <span class="cm-code">topic</span> 与 <span class="cm-code">bootStrapServers</span>。</span></li>
+            <li><span><b>本地缓存清理</b>：升级后第一次加载会删除旧版本存下的剪贴板任务。</span></li>
+            <li><span><b>沙箱同步接口</b>：<span class="cm-code">executeLocalSandboxDryRun</span> 不再伪造脚本结果，建议改用 <span class="cm-code">executeLocalSandboxDryRunAsync</span>。</span></li>
+            <li><span><b>执行验证入口</b>：没传 <span class="cm-code">onTriggerExecution</span> 时不再显示「执行验证」。</span></li>
           </ol>
-
-          <div>
-            <!-- Step 1 -->
-            <div class="j-panel" id="jp-0" role="group" aria-labelledby="jp-0-t">
-              <h3 id="jp-0-t">1.登记产品 <span class="tag-sample">示意</span></h3>
-              <p class="j-lead">新团队先登记自己的产品，登记后自动成为负责人。产品名就是流程名里的“产品”段，所以<strong>不能含 <code>-</code></strong>；业务域由服务端提供（<code>listDomains</code>）。</p>
-              <div class="field full" style="margin-bottom:0.8rem;">
-                <span class="lbl" id="myprod-lbl">我的产品</span>
-                <ul class="chips" id="my-products" aria-labelledby="myprod-lbl"></ul>
-              </div>
-              <div class="form-grid">
-                <div class="field">
-                  <label for="prod-name">产品名称</label>
-                  <input class="input" id="prod-name" type="text" autocomplete="off" placeholder="例如 order" aria-describedby="prod-hint" />
-                  <small id="prod-hint">试试：<code>cmdb</code>（已被他人占用）、<code>ecs</code>（已是你的）、含 <code>-</code> 的名字。</small>
-                </div>
-                <div class="field">
-                  <label for="prod-domain">业务域</label>
-                  <select class="input" id="prod-domain"></select>
-                  <small>演示库的 10 个业务域；真实环境由治理服务返回。</small>
-                </div>
-              </div>
-              <div class="btn-row"><button type="button" class="mini-btn primary" id="btn-register">登记产品，开始试用</button></div>
-              <div class="result" id="register-result" role="status" aria-live="polite"></div>
-              <div class="j-foot"><span></span><button type="button" class="mini-btn primary" data-go="1">下一步：规范命名 →</button></div>
-            </div>
-
-            <!-- Step 2 -->
-            <div class="j-panel" id="jp-1" role="group" aria-labelledby="jp-1-t" hidden>
-              <h3 id="jp-1-t">2.规范命名 <span class="tag-sample">示意</span></h3>
-              <p class="j-lead">命名生成器（<code>WorkflowNameBuilder</code>）按 <code>类型-层级-业务域-产品-功能</code> 五段拼出名称，实时校验。<strong>完整名称框可以直接改</strong>，试试删掉一段、写错层级。</p>
-              <div class="form-grid">
-                <div class="field">
-                  <label for="nb-type">类型</label>
-                  <select class="input" id="nb-type"></select>
-                  <small id="nb-type-hint"></small>
-                </div>
-                <div class="field">
-                  <label for="nb-level">层级</label>
-                  <select class="input" id="nb-level">
-                    <option value="L1">L1</option><option value="L2">L2</option><option value="L3">L3</option>
-                  </select>
-                  <small>写入后作为 <code>currentWorkflowLevel</code> 的默认值，动作选择器随之按分层过滤。</small>
-                </div>
-                <div class="field">
-                  <label for="nb-product">产品</label>
-                  <select class="input" id="nb-product"></select>
-                  <small>业务域取自所选产品：<span id="nb-domain-view" style="color:var(--cm-status-success); font-weight:700;"></span></small>
-                </div>
-                <div class="field">
-                  <label for="nb-desc">功能说明（可选）</label>
-                  <input class="input" id="nb-desc" type="text" autocomplete="off" placeholder="例如 Snapshot Check 或 磁盘告警处理" />
-                  <small>据此建议“功能”段：纯英文转小写 <code>snake_case</code>，含中文保持原样。</small>
-                </div>
-                <div class="field full">
-                  <label for="nb-func">功能</label>
-                  <input class="input mono" id="nb-func" type="text" autocomplete="off" placeholder="snake_case，例如 snapshot_check" />
-                </div>
-                <div class="field full">
-                  <label for="nb-full">完整名称（可直接编辑）</label>
-                  <input class="input mono" id="nb-full" type="text" autocomplete="off" spellcheck="false" aria-describedby="nb-result" />
-                </div>
-              </div>
-              <ol class="name-parse name-segs" id="nb-segs" aria-label="名称解析结果"></ol>
-              <div class="result" id="nb-result" role="status" aria-live="polite"></div>
-              <div class="j-foot"><button type="button" class="mini-btn" data-go="0">← 上一步</button><button type="button" class="mini-btn primary" data-go="2">下一步：选择起点 →</button></div>
-            </div>
-
-            <!-- Step 3 -->
-            <div class="j-panel" id="jp-2" role="group" aria-labelledby="jp-2-t" hidden>
-              <h3 id="jp-2-t">3.选择起点 <span class="tag-sample">示意</span></h3>
-              <p class="j-lead">向导的最后一步选起点，完成后生成<strong>骨架定义</strong>并设为当前流程（<code>version: 1</code>、<code>schemaVersion: 2</code>、空 <code>tasks</code>）。模板与接口导入两项，仅在宿主提供对应入口时出现。</p>
-              <div class="radio-cards" role="radiogroup" aria-label="选择起点">
-                <label class="radio-card on"><input type="radio" name="start" value="blank" checked /><strong>空白</strong>从空画布开始，自己添加步骤。</label>
-                <label class="radio-card"><input type="radio" name="start" value="template" /><strong>场景模板</strong>从模板中心选一个场景模板作为起点。</label>
-                <label class="radio-card"><input type="radio" name="start" value="import" /><strong>从接口导入</strong>粘贴 / 上传已有接口，直接生成 HTTP 步骤。</label>
-              </div>
-              <div class="result" id="start-result" role="status" aria-live="polite"></div>
-              <h4 style="font-size:0.84rem; color:var(--text-white); margin:0.9rem 0 0.4rem;">生成的骨架定义</h4>
-              <pre class="mini-code" id="skeleton" tabindex="0" aria-label="骨架定义 JSON"></pre>
-              <div class="j-foot"><button type="button" class="mini-btn" data-go="1">← 上一步</button><button type="button" class="mini-btn primary" data-go="3">下一步：沙箱试跑 →</button></div>
-            </div>
-
-            <!-- Step 4 -->
-            <div class="j-panel" id="jp-3" role="group" aria-labelledby="jp-3-t" hidden>
-              <h3 id="jp-3-t">4.沙箱试跑 <span class="tag-sample">示意</span></h3>
-              <p class="j-lead">编辑后直接在浏览器里本地试跑（v1.0 起的确定性沙箱），不需要后端、不会碰生产。可以在配置台里设置 Mock 输出，或注入 <code>FAILED</code> / <code>TIMED_OUT</code> 故障。下面是一个<strong>虚构的 2 步流程</strong>的试跑效果。</p>
-              <div class="check-line"><input type="checkbox" id="inject-fail" /><label for="inject-fail">注入故障：让第 2 步失败</label></div>
-              <div class="btn-row"><button type="button" class="mini-btn primary" id="btn-run"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;"><polygon points="6 3 20 12 6 21 6 3"/></svg>试跑</button></div>
-              <ul class="run-list" id="run-list" aria-live="polite"></ul>
-              <div class="result" id="run-result" role="status" aria-live="polite"></div>
-              <div class="j-foot"><button type="button" class="mini-btn" data-go="2">← 上一步</button><button type="button" class="mini-btn primary" data-go="4">下一步：申请上线 →</button></div>
-            </div>
-
-            <!-- Step 5 -->
-            <div class="j-panel" id="jp-4" role="group" aria-labelledby="jp-4-t" hidden>
-              <h3 id="jp-4-t">5.申请上线 <span class="tag-sample">示意</span></h3>
-              <p class="j-lead">只有 <code>tmp</code> 类型的临时流程可以申请上线：选择目标类型，预览正式名称（类型段被替换），提交后在 IDE 里看审批进度。真实 SDK 用指数退避轮询（2 秒起，30 秒封顶），到 <code>APPROVED</code> / <code>REJECTED</code> / <code>SYNCED</code> 停止；这里每点一次“刷新进度”相当于一次轮询。</p>
-              <div class="form-grid">
-                <div class="field">
-                  <label for="pr-name">流程名称</label>
-                  <input class="input mono" id="pr-name" type="text" readonly />
-                </div>
-                <div class="field">
-                  <label for="pr-target">目标类型</label>
-                  <select class="input" id="pr-target"><option value="custom">custom</option><option value="std">std</option></select>
-                </div>
-                <div class="field full">
-                  <label for="pr-final">正式名称预览</label>
-                  <input class="input mono" id="pr-final" type="text" readonly />
-                </div>
-              </div>
-              <div class="check-line"><input type="checkbox" id="pr-reject" /><label for="pr-reject">模拟被驳回（演示站的模拟实现支持，界面上暂无开关）</label></div>
-              <div class="btn-row">
-                <button type="button" class="mini-btn primary" id="btn-submit">提交上线申请</button>
-                <button type="button" class="mini-btn" id="btn-poll" disabled>刷新进度（模拟一次轮询）</button>
-                <button type="button" class="mini-btn" id="btn-restart" hidden>重新演示</button>
-              </div>
-              <div class="result" id="promo-result" role="status" aria-live="polite"></div>
-              <ol class="tl" id="promo-tl" aria-label="审批进度"></ol>
-              <div class="j-foot"><button type="button" class="mini-btn" data-go="3">← 上一步</button><span></span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <p class="acceptance-note">任一接口失败时，向导停在当前步并显示“重试”，已填内容保留；产品被他人占用时提示联系负责人；生产环境不出现“开始试用”，类型段可选 <code>custom</code> / <code>std</code>。</p>
-    </section>
-
-    <!-- ===================== 接口导入 ===================== -->
-    <section class="section" id="import" aria-labelledby="import-title">
-      <div class="section-head">
-        <div class="section-eyebrow">API IMPORT</div>
-        <h2 class="section-title" id="import-title">接口导入：已有接口，几步变成流程步骤</h2>
-        <p class="section-desc">工具栏“导入接口”：粘贴或上传 → 自动识别格式 → 勾选接口 → 插入。每个接口生成一个 HTTP 业务动作，编译为 Conductor <code>HTTP</code> 任务（<code>http_request.uri / method / headers / body</code>）。</p>
-      </div>
-
-      <div class="bento-grid" style="margin-bottom:1.5rem;">
-        <div class="bento-card span-2">
-          <span class="bento-badge green">四种来源</span>
-          <h3>粘贴就能认出格式</h3>
-          <div class="table-scroll">
-            <table class="fmt-table">
-              <thead><tr><th scope="col">格式</th><th scope="col">1.3.0</th><th scope="col">说明</th></tr></thead>
-              <tbody>
-                <tr><th scope="row">OpenAPI 3.x（JSON）</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td>选择一个或多个 operation；<code>servers[0].url</code>、本地 <code>$ref</code>、<code>security</code> 推断认证头</td></tr>
-                <tr><th scope="row">Swagger 2.0（JSON）</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td><code>schemes</code> / <code>host</code> / <code>basePath</code>、<code>definitions</code> 引用</td></tr>
-                <tr><th scope="row">Postman Collection v2.1（JSON）</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td>文件夹作为标签；<code>{{var}}</code> 转为 <code>${workflow.input.var}</code></td></tr>
-                <tr><th scope="row">curl 命令</th><td><span class="cm-mark cm-mark--yes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>支持</span></td><td>方法、URL、头、<code>-d</code> / <code>--data-raw</code> 请求体、<code>-u</code>、行尾 <code>\</code> 续行</td></tr>
-                <tr><th scope="row">YAML 格式的 OpenAPI</th><td class="no"><span class="cm-mark cm-mark--no"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>不支持</span></td><td>暂不支持：<strong>请先转为 JSON</strong> 再导入（不引入 YAML 依赖）</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="bento-card">
-          <span class="bento-badge orange">敏感头不落定义</span>
-          <h3>凭据永远不写进流程</h3>
-          <ul class="tick">
-            <li><code>Authorization</code> / <code>Cookie</code> / <code>X-Api-Key</code>、名称含 token、secret、api-key 的头，以及 curl <code>-u</code>，一律换成 <code>${workflow.input.xxx}</code> 占位</li>
-            <li>导入面板提示改用凭据管理；步骤引用的 <code>workflow.input.*</code> 自动补进流程入参</li>
-            <li>出参取 2xx 响应 schema，键为 <code>response.body.&lt;字段&gt;</code></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="fs-panel">
-        <div class="fs-panel-header">
-          <h3 class="fs-title">粘贴 curl，看它怎么被识别 <span class="tag-sample">示意</span></h3>
-        </div>
-        <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.8rem;">这是<strong>简化版</strong>的浏览器内演示：只解析常见写法，内容不会上传。真实解析由 SDK 的 <code>parseCurl</code> / <code>detectFormat</code> 完成，覆盖更全。</p>
-        <div class="import-demo">
-          <div>
-            <div class="field">
-              <label for="curl-in">粘贴 curl 命令（或 JSON / YAML 片段）</label>
-              <textarea class="input" id="curl-in" spellcheck="false" aria-describedby="curl-hint"></textarea>
-              <small id="curl-hint">所有内容仅在本页内存里处理；示例里的凭据都是虚构占位。</small>
-            </div>
-            <div class="preset-row" role="group" aria-label="填入示例">
-              <span>填入示例：</span>
-              <button type="button" class="mini-btn" data-preset="bearer">Bearer + JSON 体</button>
-              <button type="button" class="mini-btn" data-preset="basic">-u 基本认证 + 查询 token</button>
-              <button type="button" class="mini-btn" data-preset="openapi">OpenAPI JSON</button>
-              <button type="button" class="mini-btn" data-preset="yaml">YAML</button>
-            </div>
-          </div>
-          <div class="imp-out" id="curl-out" aria-live="polite"></div>
         </div>
       </div>
     </section>
 
-    <!-- ===================== 统一扩展点 ===================== -->
-    <section class="section" id="providers" aria-labelledby="providers-title">
-      <div class="section-head">
-        <div class="section-eyebrow">EXTENSION POINTS</div>
-        <h2 class="section-title" id="providers-title">统一扩展点：配置一次，处处生效</h2>
-        <p class="section-desc">此前每加一个能力就要在两个 IDE 上各传一遍 props。现在用 <code>WorkflowIdeProvider</code> 在外层配置 <code>providers</code>，页面里所有 IDE 实例共用；每个功能自己检查对应 provider 在不在，不在就不显示入口。</p>
+    <section id="next" class="block">
+      <div class="cm-section">
+        <span class="cm-eyebrow">WHAT'S NEXT</span>
+        <h2>接下来</h2>
+        <p>小步发版，每个小版本一个主题；每个扩展点同时提供契约文档与演示站的模拟实现。</p>
       </div>
-
-      <div class="quickstart-box">
-        <div class="qs-tabs" role="group" aria-label="选择代码示例">
-          <button type="button" class="qs-tab active" data-code="register" aria-pressed="true">注册 providers</button>
-          <button type="button" class="qs-tab" data-code="override" aria-pressed="false">单个组件覆盖</button>
-          <button type="button" class="qs-tab" data-code="demo" aria-pressed="false">Demo 的模拟实现</button>
-        </div>
-        <div class="code-container">
-          <pre class="code-body" id="qs-code-body" tabindex="0" aria-label="代码示例"></pre>
-          <button type="button" class="copy-code-btn" id="copy-code">复制代码</button>
-        </div>
-        <p class="qs-note" id="qs-note"></p>
-      </div>
-
-      <h3 style="font-size:1.05rem; margin:2rem 0 0.8rem; text-align:center;">解析顺序：逐字段，高优先级缺这个字段才落到下一层</h3>
-      <ol class="resolve" aria-label="providers 解析顺序">
-        <li class="box"><b>1.组件专用 prop</b>如 <code>libraryProvider</code></li>
-        <li class="arr" aria-hidden="true">→</li>
-        <li class="box"><b>2.组件 <code>providers</code> prop</b>只覆盖这个组件</li>
-        <li class="arr" aria-hidden="true">→</li>
-        <li class="box"><b>3.外层 <code>WorkflowIdeProvider</code></b>页面级默认配置</li>
-        <li class="arr" aria-hidden="true">→</li>
-        <li class="box last"><b>4.无</b>该功能不显示入口</li>
-      </ol>
-
-      <div class="bento-grid" style="margin-top:1.5rem;">
-        <div class="bento-card span-2">
-          <span class="bento-badge cyan">OnboardingProvider 对接治理服务</span>
-          <h3>契约与治理服务接口一一对应</h3>
-          <div class="table-scroll">
-            <table class="fmt-table">
-              <thead><tr><th scope="col">方法</th><th scope="col">治理服务接口</th><th scope="col">说明</th></tr></thead>
-              <tbody>
-                <tr><th scope="row"><code>listDomains</code></th><td><code>GET /api/library/domains</code></td><td>业务域全局列表</td></tr>
-                <tr><th scope="row"><code>listMyProducts</code></th><td><code>GET /api/products/mine</code></td><td>我的产品（名称、业务域、状态、角色）</td></tr>
-                <tr><th scope="row"><code>startTrial</code></th><td><code>POST /api/onboarding/trial</code></td><td>登记产品并开通试用；已被他人占用返回 <code>conflict</code> 与负责人</td></tr>
-                <tr><th scope="row"><code>requestPromotion</code></th><td><code>POST /api/onboarding/promote</code></td><td>提交上线申请，返回 <code>requestId</code></td></tr>
-                <tr><th scope="row"><code>getPromotion</code></th><td><code>GET /api/onboarding/promote/{id}</code></td><td><code>SUBMITTED</code> → <code>REVIEWING</code> → <code>APPROVED</code> / <code>REJECTED</code> → <code>SYNCED</code></td></tr>
-                <tr><th scope="row"><code>getContext</code></th><td>由宿主从会话 / 配置取得</td><td><code>env</code>、当前用户、<code>trialEnabled</code>（生产为 <code>false</code>）</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="bento-card">
-          <span class="bento-badge purple">升级无感</span>
-          <h3>不接就不变</h3>
-          <ul class="tick">
-            <li>只传 <code>libraryProvider</code>、不用 <code>WorkflowIdeProvider</code> 的现有写法，行为与 1.2.0 一致</li>
-            <li>没有 <code>onboarding</code> 就没有“新建流程”“申请上线”“开始试用”</li>
-            <li>按字段比较引用：每次渲染新建 <code>providers</code> 对象没关系，但 provider 实例要只创建一次，否则目录会反复重载</li>
-          </ul>
-        </div>
+      <div class="bento">
+        <div class="cm-card s4"><span class="ver">v1.4.0</span><h3>放心上线</h3><p>发布审核流、影子运行与一键回滚、AI 产出体检报告、默认可靠性模板。</p><span class="cm-cap">目标 2026-11-20 · 规划中</span></div>
+        <div class="cm-card s4"><span class="ver">v1.5.0</span><h3>持续好用</h3><p>Schema 助手、模板中心接入组织模板源、新手引导与「解释这个流程」。</p><span class="cm-cap">目标 2026-12-18 · 规划中</span></div>
+        <div class="cm-card s4"><span class="ver">Labs</span><h3>前沿探索</h3><p>先做可验证的意图到流程、历史回放回归。</p><span class="cm-cap">与稳定线并行 · 不承诺版本</span></div>
       </div>
     </section>
 
-    <!-- ===================== 埋点 ===================== -->
-    <section class="section" id="telemetry" aria-labelledby="telemetry-title">
-      <div class="section-head">
-        <div class="section-eyebrow">TELEMETRY</div>
-        <h2 class="section-title" id="telemetry-title">埋点：看得见的推广漏斗</h2>
-        <p class="section-desc">推广进度不再靠手工统计。<code>TelemetrySink.track(events)</code> 由 SDK 按“5 秒或 20 条”攒批、页面隐藏时 flush，宿主把事件送到自己的事件接口即可；没有 sink 时事件直接丢弃。</p>
-      </div>
-
-      <ol class="funnel" aria-label="接入漏斗阶段">
-        <li><b>开始试用</b><code>trial_started</code></li>
-        <li><b>首份草稿</b><code>workflow_created</code></li>
-        <li><b>首次试跑</b><code>sandbox_run</code></li>
-        <li><b>上线</b><code>promotion_requested</code> · <code>promotion_state</code></li>
-      </ol>
-
-      <div class="bento-grid" style="margin-bottom:0;">
-        <div class="bento-card span-2">
-          <span class="bento-badge green">首批事件（设计 §5.2）</span>
-          <h3>事件与用途</h3>
-          <div class="table-scroll">
-            <table class="ev-table">
-              <thead><tr><th scope="col">事件</th><th scope="col">触发</th><th scope="col">用途</th></tr></thead>
-              <tbody>
-                <tr><td><code>ide_opened</code></td><td>IDE 挂载</td><td>活跃度</td></tr>
-                <tr><td><code>trial_started</code></td><td>向导完成产品登记</td><td>漏斗：开始试用</td></tr>
-                <tr><td><code>workflow_created</code></td><td>向导生成骨架</td><td>漏斗：首份草稿</td></tr>
-                <tr><td><code>step_added</code></td><td>插入步骤（<code>props.source</code>：builtin / library / import / template）</td><td>能力复用情况</td></tr>
-                <tr><td><code>api_imported</code></td><td>接口导入（<code>props.count</code>、<code>props.format</code>）</td><td>接口导入使用率</td></tr>
-                <tr><td><code>sandbox_run</code></td><td>本地沙箱试跑（<code>props.result</code>）</td><td>漏斗：首次试跑</td></tr>
-                <tr><td><code>workflow_saved</code></td><td>触发 <code>onSave</code></td><td>保存</td></tr>
-                <tr><td><code>promotion_requested</code> / <code>promotion_state</code></td><td>申请上线 / 状态变化</td><td>漏斗：上线</td></tr>
-                <tr><td><code>ai_event</code></td><td>透传现有 <code>onAiEvent</code> 的类型（不含内容）</td><td>AI 使用情况</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="bento-card">
-          <span class="bento-badge orange">不采集</span>
-          <h3>只记“用了什么”</h3>
-          <p>事件只有名称、时间、IDE 类型、流程名与简单属性（<code>props</code> 里非 string / number / boolean 的值会被剔除）。</p>
-          <ul class="no-collect" aria-label="不采集的内容">
-            <li>参数值</li><li>表达式</li><li>提示词</li><li>对话内容</li><li>执行数据</li>
-          </ul>
-          <p style="margin-top:0.9rem; font-size:0.8rem;">生产首跑（KPI 口径）由服务端按执行数据判定，SDK 不上报“首跑成功”。</p>
-        </div>
-      </div>
-
-      <div class="fs-panel" style="margin-top:1.5rem;">
-        <div class="fs-panel-header">
-          <h3 class="fs-title">回放一次示意事件流 <span class="tag-sample">示意</span></h3>
-          <button type="button" class="mini-btn primary" id="btn-events">回放</button>
-        </div>
-        <p style="font-size:0.8rem; color:var(--text-body); margin-bottom:0.8rem;">演示站里同样的事件会按批次打印到浏览器控制台（<code>[telemetry]</code>）。下面按上面“五分钟走完”的名称回放一批示意事件，注意里面<strong>没有任何参数值</strong>。</p>
-        <pre class="term" id="term" tabindex="0" aria-label="示意事件流" aria-live="polite"><span class="empty">点击“回放”查看示意事件流……</span></pre>
-      </div>
-    </section>
-
-    <!-- ===================== 接下来 ===================== -->
-    <section class="section" id="next" aria-labelledby="next-title">
-      <div class="section-head">
-        <div class="section-eyebrow">WHAT'S NEXT</div>
-        <h2 class="section-title" id="next-title">接下来</h2>
-        <p class="section-desc">小步发版，每个小版本一个主题；每个新扩展点同时提供契约文档和 Demo 用的模拟实现。导入的接口目前只存在于当前流程，<strong>登记为流程库能力</strong>要经审核，放在 v1.4.0 与发布审核流一起做。完整计划见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">docs/roadmap.md</a>。</p>
-      </div>
-      <ul class="roadmap-grid three">
-        <li class="rm-card"><div class="ver">v1.4.0</div><h3>放心上线</h3><div class="when">目标 2026-12-11</div><p>发布审核流（<code>ReviewProvider</code>）、影子运行与一键回滚、AI 产出体检报告、默认可靠性模板、系统价值报告。</p></li>
-        <li class="rm-card"><div class="ver">v1.5.0</div><h3>持续好用</h3><div class="when">目标 2027 Q1</div><p>Schema 助手（<code>ExecutionSampleProvider</code>）、模板中心接入组织模板源（<code>TemplateProvider</code>）、新手引导与“解释这个流程”。</p></li>
-        <li class="rm-card labs"><div class="ver">Labs</div><h3>前沿探索</h3><div class="when">与稳定线并行 · 不承诺兼容</div><p>先做可验证的意图到流程、历史回放回归；之后探索能力即工具（MCP）、智能体编排、执行自愈、流程挖掘、类型化数据流、流程即代码。</p></li>
-      </ul>
-    </section>
-
-    <!-- ===================== CTA ===================== -->
-    <section class="section" id="try" aria-labelledby="try-title">
-      <div class="section-head">
-        <div class="section-eyebrow">TRY IT</div>
-        <h2 class="section-title" id="try-title">在工作台里亲手走一遍</h2>
-        <p class="section-desc">工作台跑在模拟治理服务上，所有数据都是合成的演示数据。下面的按钮名称取自当前演示站，界面调整时以工作台为准。</p>
-      </div>
-      <div class="fs-panel">
-        <div class="two-col">
-          <ol class="try-steps">
-            <li>打开 <a class="link-inline" href="./app"><code>/app</code> 工作台</a>。顶栏 <strong>演示设置</strong> 里的 <strong>环境</strong> 默认是 <strong>TEST</strong>（开放自助试用）；切到 <strong>PROD</strong> 可以看到降级：没有“开始试用”，新建流程的类型可选 <code>custom</code> / <code>std</code>。</li>
-            <li>在 <strong>演示设置</strong> 里点 <strong>重置产品</strong>（在 TEST 下）：画布清空，出现 <strong>开始试用</strong> 引导卡片。登记产品时试试 <code>cmdb</code>，会得到“已被他人占用”及负责人列表。</li>
-            <li>工具栏 <strong>新建流程</strong>：3 步向导（产品 → 命名 → 起点），完成后得到 <code>tmp-…</code> 骨架流程。</li>
-            <li>用本地沙箱试跑，然后点 <strong>申请上线</strong>：选 <code>custom</code> / <code>std</code>，提交后进度约经 3–4 次轮询走完。</li>
-            <li>工具栏 <strong>导入接口</strong>：上传下面任一样例文件（也可粘贴内容），勾选接口后插入；看 <code>Authorization</code> 是否变成了占位。
-              <ul class="try-list">
-                <li><a class="link-inline" href="./sample-imports/cmdb-openapi3.json" download><code>cmdb-openapi3.json</code></a>（OpenAPI 3）</li>
-                <li><a class="link-inline" href="./sample-imports/ticket-swagger2.json" download><code>ticket-swagger2.json</code></a>（Swagger 2）</li>
-                <li><a class="link-inline" href="./sample-imports/cmdb-postman.json" download><code>cmdb-postman.json</code></a>（Postman v2.1）</li>
-              </ul>
-            </li>
-            <li>打开浏览器开发者工具的控制台，观察按批次打印的 <code>[telemetry]</code> 事件。</li>
-          </ol>
-          <ul class="link-list">
-            <li><a href="./app">打开工作台 /app<small>TEST / PROD 环境 · 重置产品 · 导入接口</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/design/v1.3.0-%E8%87%AA%E5%8A%A9%E6%8E%A5%E5%85%A5%E8%AE%BE%E8%AE%A1.md" target="_blank" rel="noreferrer">v1.3.0 设计文档<small>docs/design/v1.3.0-自助接入设计.md</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南<small>第 4.5 – 4.7 节：providers、自助接入、接口导入</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">CHANGELOG<small>[Unreleased] 即 1.3.0 的变更</small></a></li>
-            <li><a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/roadmap.md" target="_blank" rel="noreferrer">演进路线图<small>docs/roadmap.md</small></a></li>
-          </ul>
-        </div>
+    <section class="cm-card is-key cta">
+      <span class="cm-eyebrow">TRY IT</span>
+      <h2>拖一拖，<span class="cm-grad">流程就跑起来</span></h2>
+      <p>首个流程，我们陪你跑通。在工作台里点「沙箱试运行」，看看哪一步真跑、哪一步模拟。</p>
+      <div class="row-center" style="gap: 12px; margin-top: 8px;">
+        <a href="./app" class="cm-btn cm-btn--lg cm-btn--primary cm-btn--cta"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg>进入工作台</a>
+        <a href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer" class="cm-btn cm-btn--lg"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg>阅读宿主接入指南</a>
       </div>
     </section>
   </main>
 
-  <footer>
-    <nav aria-label="页脚导航" style="margin-bottom: 1rem;">
-      <a href="./">v1.3.0 最新宣传页</a>
-      <a href="./v1-2.html">v1.2.0 历史页</a>
-      <a href="./v1-1.html">v1.1.0 历史页</a>
-      <a href="./v1-0.html">v1.0.0 历史首发页</a>
-      <a href="./app">在线演练场</a>
-      <a href="https://github.com/yiyisf/reactflow-ui" target="_blank" rel="noreferrer">GitHub 仓库</a>
-      <a href="https://www.npmjs.com/package/@yiyi_zhang/reactflow-ui" target="_blank" rel="noreferrer">npm 包主页</a>
-    </nav>
-    <div>© 2026 CMASTER · @yiyi_zhang/reactflow-ui</div>
+  <footer class="footer">
+    <a href="./v1-3.html">v1.3.0 历史页</a>
+    <a href="./v1-2.html">v1.2.0 历史页</a>
+    <a href="./v1-1.html">v1.1.0 历史页</a>
+    <a href="./v1-0.html">v1.0.0 历史页</a>
+    <a href="./app">在线演练场</a>
+    <a href="https://github.com/yiyisf/reactflow-ui/blob/master/CHANGELOG.md" target="_blank" rel="noreferrer">变更记录</a>
+    <a href="https://github.com/yiyisf/reactflow-ui" target="_blank" rel="noreferrer">GitHub</a>
+    <a href="https://www.npmjs.com/package/@yiyi_zhang/reactflow-ui" target="_blank" rel="noreferrer">npm</a>
+    <span>© 2026 CMASTER · @yiyi_zhang/reactflow-ui</span>
   </footer>
 
   <script>
-(function () {
-  'use strict';
-  var $ = function (id) { return document.getElementById(id); };
-  function el(tag, cls, text) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text != null) n.textContent = text;
-    return n;
-  }
-  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
-  function setResult(node, kind, content) {
-    node.className = 'result' + (kind ? ' ' + kind : '');
-    clear(node);
-    if (content == null) return;
-    if (typeof content === 'string') node.textContent = content;
-    else node.appendChild(content);
-  }
-  function listOf(items) {
-    var ul = document.createElement('ul');
-    items.forEach(function (t) { ul.appendChild(el('li', '', t)); });
-    return ul;
-  }
-
-  // ======================================================================
-  // 安装命令切换 / 复制
-  // ======================================================================
-  var pmCmds = {
-    npm: 'npm install @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom',
-    pnpm: 'pnpm add @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom',
-    yarn: 'yarn add @yiyi_zhang/reactflow-ui@1.3.0 reactflow react react-dom',
-    'import': "import { WorkflowIDE, WorkflowIdeProvider } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';"
-  };
-  document.querySelectorAll('.pm-tab').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      document.querySelectorAll('.pm-tab').forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
-      btn.classList.add('active');
-      btn.setAttribute('aria-pressed', 'true');
-      var cmd = $('cli-cmd');
-      cmd.textContent = pmCmds[btn.dataset.pm];
-      cmd.style.whiteSpace = btn.dataset.pm === 'import' ? 'pre-wrap' : '';
-    });
-  });
-  function copyText(text, btn, doneText) {
-    var orig = btn.textContent;
-    var reset = function () { setTimeout(function () { btn.textContent = orig; }, 1500); };
-    var fail = function () { btn.textContent = '请手动复制'; reset(); };
-    try {
-      navigator.clipboard.writeText(text).then(function () { btn.textContent = doneText; reset(); }, fail);
-    } catch (e) { fail(); }
-  }
-  $('copy-install').addEventListener('click', function (e) { copyText($('cli-cmd').textContent, e.currentTarget, '已复制'); });
-
-  // 版本下拉：Esc 关闭并回到触发器
-  var vd = $('version-dropdown');
-  vd.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && vd.open) { vd.open = false; vd.querySelector('summary').focus(); }
-  });
-  document.addEventListener('click', function (e) { if (vd.open && !vd.contains(e.target)) vd.open = false; });
-
-  // ======================================================================
-  // 命名规范：与 src/library/naming.ts、src/onboarding/naming.ts 的规则和消息一致
-  // ======================================================================
-  var TYPES = ['std', 'proxy', 'tmp', 'custom'];
-  var LEVELS = ['L1', 'L2', 'L3'];
-  var DOMAINS = ['云资源', '配置管理', '监控运维', '数据服务', '通知协助', '安全服务', '服务管理', '运维操作', '系统工具', '应用管理'];
-
-  function parseWorkflowName(name) {
-    if (typeof name !== 'string') return null;
-    var p = name.split('-');
-    if (p.length < 5) return null;
-    if (TYPES.indexOf(p[0]) < 0 || LEVELS.indexOf(p[1]) < 0) return null;
-    return { type: p[0], level: p[1], domain: p[2], product: p[3], func: p.slice(4).join('-') };
-  }
-  function validateWorkflowName(name, allowedDomains) {
-    var errors = [];
-    if (typeof name !== 'string' || name.trim() === '') return ['流程名称不能为空'];
-    var p = name.split('-');
-    if (p.length < 5) errors.push('流程名称需为「类型-层级-业务域-产品-功能」5 段，以 - 分隔');
-    if (TYPES.indexOf(p[0]) < 0) errors.push('类型「' + p[0] + '」不合法，应为 ' + TYPES.join(' / ') + ' 之一');
-    if (p.length > 1 && LEVELS.indexOf(p[1]) < 0) errors.push('层级「' + p[1] + '」不合法，应为 L1 / L2 / L3 之一');
-    if (p.length >= 5) {
-      if (p[2] === '') errors.push('业务域不能为空');
-      else if (allowedDomains && allowedDomains.indexOf(p[2]) < 0) errors.push('业务域「' + p[2] + '」不在允许的列表中（' + allowedDomains.join('、') + '）');
-      if (p[3] === '') errors.push('产品不能为空');
-      if (p.slice(4).join('-') === '') errors.push('功能不能为空');
-    }
-    return errors;
-  }
-  function cleanSegment(s) { return (s || '').replace(/-/g, '').trim(); }
-  function buildWorkflowName(t, l, d, p, f) {
-    return [t, l, cleanSegment(d), cleanSegment(p), (f || '').trim()].join('-');
-  }
-  function suggestFuncSlug(text) {
-    var raw = (text || '').trim();
-    if (!raw) return '';
-    if (/[㐀-鿿]/.test(raw)) return raw.replace(/-/g, '').replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
-    return raw.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-  }
-  function promotionTargetName(tmpName, targetType) {
-    if (!parseWorkflowName(tmpName)) return null;
-    return targetType + tmpName.slice(tmpName.indexOf('-'));
-  }
-
-  // ======================================================================
-  // 旅程状态
-  // ======================================================================
-  var S = {
-    env: 'TEST',
-    step: 0,
-    products: [{ name: 'ecs', domain: '云资源', role: 'OWNER' }],
-    product: 'ecs',
-    registered: false,
-    descTouched: false,
-    funcTouched: false,
-    name: '',
-    start: 'blank',
-    done: {},
-    promo: null,
-    promoTerminal: false
-  };
-  var FOREIGN = { cmdb: ['李四', '王五'] };
-  var panels = [0, 1, 2, 3, 4].map(function (i) { return $('jp-' + i); });
-  var stepBtns = document.querySelectorAll('.j-step-btn');
-
-  function currentProduct() {
-    for (var i = 0; i < S.products.length; i++) if (S.products[i].name === S.product) return S.products[i];
-    return S.products[0];
-  }
-  function markDone(i) { S.done[i] = true; renderNav(); }
-  function renderNav() {
-    stepBtns.forEach(function (b) {
-      var i = Number(b.dataset.step);
-      b.classList.toggle('done', !!S.done[i]);
-      if (i === S.step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-    });
-  }
-  function go(n, focusPanel) {
-    if (n > S.step && (S.step === 0 || S.step === 2 || (S.step === 1 && validateWorkflowName(S.name, DOMAINS).length === 0))) S.done[S.step] = true;
-    S.step = n;
-    panels.forEach(function (p, i) { p.hidden = i !== n; });
-    renderNav();
-    if (n === 1) renderBuilderChrome();
-    if (n === 2) renderStart();
-    if (n === 4) renderPromoHead();
-    if (focusPanel) { var h = panels[n].querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); } }
-  }
-  stepBtns.forEach(function (b) { b.addEventListener('click', function () { go(Number(b.dataset.step), true); }); });
-  document.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function () { go(Number(b.dataset.go), true); }); });
-
-  // ---- 环境切换 ----
-  function setEnv(env) {
-    S.env = env;
-    document.querySelectorAll('[data-env]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.env === env)); });
-    $('env-hint').innerHTML = env === 'TEST'
-      ? 'TEST 开放自助试用，流程名类型固定为 <code>tmp</code>'
-      : 'PROD 不开放自助试用（<code>trialEnabled = false</code>），新建流程的类型可选 <code>custom</code> / <code>std</code>';
-    renderRegisterGate();
-    buildTypeOptions();
-    syncFromBuilder();
-    renderPromoHead();
-  }
-  document.querySelectorAll('[data-env]').forEach(function (b) { b.addEventListener('click', function () { setEnv(b.dataset.env); }); });
-
-  // ======================================================================
-  // 步骤 1：登记产品
-  // ======================================================================
-  DOMAINS.forEach(function (d) { var o = el('option', '', d); o.value = d; $('prod-domain').appendChild(o); });
-  function renderProducts() {
-    var ul = $('my-products');
-    clear(ul);
-    S.products.forEach(function (p) {
-      var li = el('li', 'chip');
-      li.appendChild(el('b', '', p.name));
-      li.appendChild(document.createTextNode(' · ' + p.domain + ' · ' + p.role));
-      ul.appendChild(li);
-    });
-    var sel = $('nb-product');
-    clear(sel);
-    S.products.forEach(function (p) { var o = el('option', '', p.name); o.value = p.name; sel.appendChild(o); });
-    sel.value = S.product;
-  }
-  function renderRegisterGate() {
-    var prod = S.env === 'PROD';
-    $('btn-register').disabled = prod;
-    $('prod-name').disabled = prod;
-    $('prod-domain').disabled = prod;
-    if (prod) setResult($('register-result'), 'warn', '生产环境不开放自助试用：请在测试环境登记产品，或直接使用你已有的产品（上面的列表）。');
-    else if (!S.registered) setResult($('register-result'), '', null);
-  }
-  $('btn-register').addEventListener('click', function () {
-    var name = $('prod-name').value.trim();
-    var domain = $('prod-domain').value;
-    var out = $('register-result');
-    if (!name) { setResult(out, 'err', '请先填写产品名称。'); return; }
-    if (name.indexOf('-') >= 0) { setResult(out, 'err', '产品名称不合法：不能包含 -（会破坏五段命名的切分）。'); return; }
-    for (var i = 0; i < S.products.length; i++) {
-      if (S.products[i].name === name) {
-        S.product = name; renderProducts(); syncFromBuilder(); markDone(0);
-        setResult(out, 'ok', '「' + name + '」已经是你名下的产品，直接沿用。');
-        return;
-      }
-    }
-    if (FOREIGN[name]) {
-      setResult(out, 'warn', '产品「' + name + '」已存在，请联系负责人加入：' + FOREIGN[name].join('、') + '。（对应 startTrial 返回 conflict 与 owners）');
-      return;
-    }
-    S.products.push({ name: name, domain: domain, role: 'OWNER' });
-    S.product = name;
-    S.registered = true;
-    renderProducts(); syncFromBuilder(); markDone(0);
-    setResult(out, 'ok', '已登记「' + name + '」（业务域：' + domain + '），你是负责人，可以开始试用。上报 trial_started。');
-  });
-
-  // ======================================================================
-  // 步骤 2：命名生成器
-  // ======================================================================
-  function buildTypeOptions() {
-    var sel = $('nb-type');
-    clear(sel);
-    var opts = S.env === 'TEST' ? ['tmp'] : ['custom', 'std'];
-    opts.forEach(function (t) { var o = el('option', '', t); o.value = t; sel.appendChild(o); });
-    sel.disabled = S.env === 'TEST';
-    $('nb-type-hint').textContent = S.env === 'TEST' ? '试用环境类型固定为 tmp（临时流程，可申请上线）。' : '生产环境可选 custom / std。';
-  }
-  function renderBuilderChrome() {
-    $('nb-domain-view').textContent = currentProduct().domain;
-  }
-  function syncFromBuilder() {
-    var p = currentProduct();
-    $('nb-domain-view').textContent = p.domain;
-    S.name = buildWorkflowName($('nb-type').value, $('nb-level').value, p.domain, p.name, $('nb-func').value);
-    $('nb-full').value = S.name;
-    validateFull();
-  }
-  function validateFull() {
-    var name = $('nb-full').value;
-    S.name = name;
-    var errors = validateWorkflowName(name, DOMAINS);
-    var out = $('nb-result');
-    if (errors.length) {
-      var wrap = document.createElement('div');
-      wrap.appendChild(el('strong', '', 'validateWorkflowName 返回 ' + errors.length + ' 个错误：'));
-      wrap.appendChild(listOf(errors));
-      setResult(out, 'err', wrap);
-      markUndone(1);
-    } else {
-      setResult(out, 'ok', 'validateWorkflowName 通过：0 个错误。保存前 SDK 会用它提示命名问题（不阻断，服务端做权威校验）。');
-      if (S.step === 1) markDone(1);
-    }
-    renderSegs(name);
-  }
-  function markUndone(i) { delete S.done[i]; renderNav(); }
-  function renderSegs(name) {
-    var ol = $('nb-segs');
-    clear(ol);
-    var parsed = parseWorkflowName(name);
-    if (!parsed) return;
-    var segs = [['type', '类型', 'c1'], ['level', '层级', 'c2'], ['domain', '业务域', 'c3'], ['product', '产品', 'c4'], ['func', '功能', 'c5']];
-    segs.forEach(function (s, i) {
-      var li = el('li', 'name-seg ' + s[2]);
-      li.appendChild(el('b', '', parsed[s[0]] === '' ? '（空）' : parsed[s[0]]));
-      li.appendChild(el('span', '', s[1]));
-      ol.appendChild(li);
-      if (i < segs.length - 1) { var sep = el('li', 'name-sep', '-'); sep.setAttribute('aria-hidden', 'true'); ol.appendChild(sep); }
-    });
-  }
-  $('nb-type').addEventListener('change', syncFromBuilder);
-  $('nb-level').addEventListener('change', syncFromBuilder);
-  $('nb-product').addEventListener('change', function () { S.product = $('nb-product').value; syncFromBuilder(); });
-  $('nb-desc').addEventListener('input', function () {
-    if (!S.funcTouched) $('nb-func').value = suggestFuncSlug($('nb-desc').value);
-    syncFromBuilder();
-  });
-  $('nb-func').addEventListener('input', function () { S.funcTouched = true; syncFromBuilder(); });
-  $('nb-full').addEventListener('input', validateFull);
-
-  // ======================================================================
-  // 步骤 3：选择起点
-  // ======================================================================
-  var startNotes = {
-    blank: '空白：直接得到下面的骨架，从空画布开始加步骤。上报 workflow_created { source: "blank" }。',
-    template: '场景模板：打开模板中心，选定场景模板后以它为起点。仅在宿主提供模板入口时出现。上报 workflow_created { source: "template" }。',
-    'import': '从接口导入：打开“导入接口”，把已有接口生成的 HTTP 步骤追加到骨架上，仅在宿主提供导入入口时出现。上报 workflow_created { source: "import" }，插入时再上报 api_imported。'
-  };
-  function renderStart() {
-    document.querySelectorAll('.radio-card').forEach(function (c) { c.classList.toggle('on', c.querySelector('input').checked); });
-    var node = document.createElement('span');
-    node.appendChild(document.createTextNode(startNotes[S.start]));
-    if (S.start === 'import') {
-      node.appendChild(document.createTextNode(' '));
-      var a = el('a', 'link-inline', '先看看接口导入的演示 ↓');
-      a.href = '#import';
-      node.appendChild(a);
-    }
-    setResult($('start-result'), 'ok', node);
-    $('skeleton').textContent = JSON.stringify({
-      name: S.name,
-      description: $('nb-desc').value.trim(),
-      version: 1,
-      schemaVersion: 2,
-      tasks: [],
-      inputParameters: [],
-      outputParameters: {}
-    }, null, 2);
-  }
-  document.querySelectorAll('input[name="start"]').forEach(function (r) {
-    r.addEventListener('change', function () { S.start = r.value; renderStart(); });
-  });
-
-  // ======================================================================
-  // 步骤 4：沙箱试跑（示意）
-  // ======================================================================
-  var RUN_STEPS = [
-    { label: '查询配置项', type: 'SUB_WORKFLOW' },
-    { label: '发送群消息', type: 'SIMPLE' }
-  ];
-  S.runResult = null;
-  $('btn-run').addEventListener('click', function () {
-    var fail = $('inject-fail').checked;
-    var list = $('run-list');
-    clear(list);
-    RUN_STEPS.forEach(function (s, i) {
-      var st = fail && i === 1 ? 'FAILED' : 'COMPLETED';
-      var li = el('li', 'run-row');
-      li.appendChild(el('span', 'st ' + st, st));
-      li.appendChild(el('span', '', (i + 1) + '. ' + s.label));
-      li.appendChild(el('code', '', s.type));
-      list.appendChild(li);
-    });
-    S.runResult = fail ? 'FAILED' : 'COMPLETED';
-    if (fail) setResult($('run-result'), 'err', '流程 FAILED：第 2 步为注入的故障。可在沙箱配置台里取消注入，或改 Mock 输出后重跑。上报 sandbox_run { result: "FAILED" }。');
-    else { setResult($('run-result'), 'ok', '流程 COMPLETED，全程在浏览器里完成，没有请求后端。上报 sandbox_run { result: "COMPLETED" }。'); markDone(3); }
-  });
-
-  // ======================================================================
-  // 步骤 5：申请上线（示意）
-  // ======================================================================
-  var PROMO_COMMENT = { APPROVED: '审批通过', REJECTED: '演示驳回：功能说明不完整，请补充后重新申请' };
-  var PROMO_LABEL = { SUBMITTED: '已提交', REVIEWING: '审核中', APPROVED: '已通过', REJECTED: '已驳回' };
-  function isPromotable() { var p = parseWorkflowName(S.name); return !!p && p.type === 'tmp'; }
-  function renderPromoHead() {
-    $('pr-name').value = S.name;
-    var tn = promotionTargetName(S.name, $('pr-target').value);
-    $('pr-final').value = tn || '（名称不符合五段规范）';
-    if (S.promo) return;
-    var ok = isPromotable();
-    $('btn-submit').disabled = !ok;
-    if (!ok) {
-      var p = parseWorkflowName(S.name);
-      setResult($('promo-result'), 'warn', p
-        ? '只有 tmp 类型的临时流程可以申请上线；当前类型是 ' + p.type + '（生产环境创建的 custom / std 流程不走这条路径）。'
-        : '当前流程名称还不符合五段规范，请先回到第 2 步修正。');
-    } else setResult($('promo-result'), '', null);
-    renderTimeline();
-  }
-  function timelineStates() {
-    var rej = S.promo ? S.promo.reject : $('pr-reject').checked;
-    return rej ? ['SUBMITTED', 'REVIEWING', 'REJECTED'] : ['SUBMITTED', 'REVIEWING', 'APPROVED'];
-  }
-  function renderTimeline() {
-    var ol = $('promo-tl');
-    clear(ol);
-    var states = timelineStates();
-    var curIdx = S.promo ? S.promo.idx : -2;
-    states.forEach(function (s, i) {
-      var cls = '';
-      if (i < curIdx) cls = 'done';
-      else if (i === curIdx) cls = s === 'REJECTED' ? 'rej' : (s === 'APPROVED' ? 'done' : 'cur');
-      var li = el('li', cls);
-      li.appendChild(el('span', 'dot'));
-      var c = el('code', '', s);
-      li.appendChild(c);
-      li.appendChild(document.createTextNode(' ' + PROMO_LABEL[s]));
-      if (i === curIdx && (s === 'APPROVED' || s === 'REJECTED')) {
-        var sm = el('small', '', PROMO_COMMENT[s] + (s === 'APPROVED' ? '；正式名称：' + S.promo.target : ''));
-        li.appendChild(sm);
-        if (s === 'APPROVED') li.appendChild(el('small', '', '之后由服务端同步到生产（SYNCED）。'));
-      }
-      if (i === curIdx) li.setAttribute('aria-current', 'step');
-      ol.appendChild(li);
-    });
-  }
-  ['pr-target', 'pr-reject'].forEach(function (id) { $(id).addEventListener('change', function () { if (!S.promo) { renderPromoHead(); } }); });
-  $('btn-submit').addEventListener('click', function () {
-    var target = $('pr-target').value;
-    S.promo = { idx: -1, polls: 0, reject: $('pr-reject').checked, target: promotionTargetName(S.name, target), targetType: target };
-    S.promoTerminal = false;
-    $('btn-submit').disabled = true;
-    $('pr-target').disabled = true; $('pr-reject').disabled = true;
-    $('btn-poll').disabled = false;
-    $('btn-restart').hidden = false;
-    setResult($('promo-result'), '', '申请已提交（requestId: promo-1）。上报 promotion_requested { targetType: "' + target + '" }。点“刷新进度”模拟一次轮询。');
-    renderTimeline();
-    $('btn-poll').focus();
-  });
-  $('btn-poll').addEventListener('click', function () {
-    if (!S.promo || S.promoTerminal) return;
-    var states = timelineStates();
-    S.promo.idx = Math.min(S.promo.polls, states.length - 1);
-    S.promo.polls += 1;
-    var s = states[S.promo.idx];
-    var out = $('promo-result');
-    if (s === 'APPROVED') {
-      S.promoTerminal = true; $('btn-poll').disabled = true; markDone(4);
-      setResult(out, 'ok', '申请已通过，正式名称 ' + S.promo.target + '。五步走完：登记 → 命名 → 起点 → 试跑 → 上线申请。上报 promotion_state { state: "APPROVED" }。');
-    } else if (s === 'REJECTED') {
-      S.promoTerminal = true; $('btn-poll').disabled = true;
-      setResult(out, 'err', '申请被驳回：' + PROMO_COMMENT.REJECTED + '。修改流程后可重新申请上线。上报 promotion_state { state: "REJECTED" }。');
-    } else {
-      setResult(out, 'warn', '当前状态 ' + s + '（' + PROMO_LABEL[s] + '）。真实 SDK 会按退避间隔继续轮询，直到终态。上报 promotion_state { state: "' + s + '" }。');
-    }
-    renderTimeline();
-  });
-  $('btn-restart').addEventListener('click', function () {
-    S.promo = null; S.promoTerminal = false;
-    $('pr-target').disabled = false; $('pr-reject').disabled = false;
-    $('btn-poll').disabled = true; $('btn-restart').hidden = true;
-    delete S.done[4];
-    renderPromoHead(); renderNav();
-    $('btn-submit').focus();
-  });
-
-  // ======================================================================
-  // 接口导入演示（简化版 curl 解析，示意）
-  // ======================================================================
-  var PRESETS = {
-    bearer: "curl -X POST 'https://itsm.example.com/api/tickets?notify=true' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer sample-token-123' \\\n  -d '{\"title\":\"磁盘告警\",\"priority\":\"high\"}'",
-    basic: 'curl -u admin:sample-password "https://monitor.example.com/api/metrics?name=cpu&access_token=sample-abc&limit=10"',
-    openapi: '{\n  "openapi": "3.0.3",\n  "info": { "title": "CMDB 资产管理", "version": "1.0.0" },\n  "paths": {\n    "/assets": {\n      "get": { "summary": "查询资产列表" },\n      "post": { "summary": "新增资产" }\n    }\n  }\n}',
-    yaml: 'openapi: 3.0.3\ninfo:\n  title: CMDB 资产管理\n  version: 1.0.0\npaths: {}'
-  };
-  var SENSITIVE_HEADER = /^(authorization|cookie|set-cookie|proxy-authorization|x-api-key)$/i;
-  var SENSITIVE_NAME = /token|secret|api[-_]?key|passw(or)?d/i;
-  function isSensitiveHeader(n) { return SENSITIVE_HEADER.test(n.trim()) || SENSITIVE_NAME.test(n); }
-  function camelName(s) {
-    return s.split(/[^A-Za-z0-9]+/).filter(Boolean).map(function (w, i) {
-      return i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-    }).join('');
-  }
-  function placeholder(n) { return '$' + '{workflow.input.' + camelName(n) + '}'; }
-
-  function tokenize(src) {
-    var s = src.replace(/\\\r?\n/g, ' ');
-    var out = [], cur = '', q = null, has = false;
-    for (var i = 0; i < s.length; i++) {
-      var c = s.charAt(i);
-      if (q) {
-        if (c === q) q = null;
-        else if (q === '"' && c === '\\' && '"\\$`'.indexOf(s.charAt(i + 1)) >= 0) { cur += s.charAt(i + 1); i++; }
-        else cur += c;
-      } else if (/\s/.test(c)) {
-        if (has) { out.push(cur); cur = ''; has = false; }
-      } else if (c === '$' && s.charAt(i + 1) === "'" && !has) {
-        continue;
-      } else if (c === "'" || c === '"') { q = c; has = true; }
-      else if (c === '\\') { cur += s.charAt(i + 1); i++; has = true; }
-      else { cur += c; has = true; }
-    }
-    if (has) out.push(cur);
-    return out;
-  }
-
-  var VALUE_FLAGS = { '-A': 1, '-b': 1, '-e': 1, '-o': 1, '-m': 1, '-x': 1, '-F': 1, '--max-time': 1, '--output': 1, '--user-agent': 1, '--referer': 1, '--proxy': 1, '--cookie': 1 };
-  function parseCurlSimple(text) {
-    var t = tokenize(text);
-    while (t.length && (t[0] === '$' || t[0] === 'sudo')) t.shift();
-    if (!t.length || t[0] !== 'curl') return { error: '不是 curl 命令（应以 curl 开头）' };
-    var r = { method: null, url: null, headers: [], data: [], auth: null, get: false, cookie: null };
-    for (var i = 1; i < t.length; i++) {
-      var a = t[i];
-      var val = function () { i++; return t[i]; };
-      if (a === '-X' || a === '--request') r.method = (val() || '').toUpperCase();
-      else if (/^-X.+/.test(a)) r.method = a.slice(2).toUpperCase();
-      else if (a === '-H' || a === '--header') { var h = val() || ''; var k = h.indexOf(':'); if (k > 0) r.headers.push([h.slice(0, k).trim(), h.slice(k + 1).trim()]); }
-      else if (a === '-d' || a === '--data' || a === '--data-raw' || a === '--data-binary') r.data.push(val() || '');
-      else if (a === '-u' || a === '--user') r.auth = val() || '';
-      else if (a === '--url') r.url = val();
-      else if (a === '-G' || a === '--get') r.get = true;
-      else if (VALUE_FLAGS[a]) val();
-      else if (/^-/.test(a)) continue;
-      else if (!r.url) r.url = a;
-    }
-    if (!r.url) return { error: '没有找到请求地址（URL）' };
-    if (!/^https?:\/\//i.test(r.url)) r.url = 'https://' + r.url;
-    r.method = r.method || (r.data.length && !r.get ? 'POST' : 'GET');
-    return r;
-  }
-
-  function renderCurl(text) {
-    var out = $('curl-out');
-    clear(out);
-    var trimmed = text.trim();
-    if (!trimmed) { out.appendChild(el('p', '', '在左侧粘贴内容，或点上方“填入示例”。')); return; }
-
-    // 格式识别（简化）
-    if (/^\s*(openapi|swagger)\s*:/m.test(trimmed) && trimmed.charAt(0) !== '{') {
-      out.appendChild(el('h4', '', '识别结果'));
-      var e = el('div', 'result err', '检测到 YAML：YAML 请先转为 JSON 后再导入。1.3.0 不引入 YAML 依赖。');
-      out.appendChild(e);
-      return;
-    }
-    if (trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') {
-      var doc = null;
-      try { doc = JSON.parse(trimmed); } catch (err) { /* 非法 JSON */ }
-      out.appendChild(el('h4', '', '识别结果'));
-      if (!doc) { out.appendChild(el('div', 'result err', 'JSON 解析失败，请检查格式。')); return; }
-      var fmt = null;
-      if (doc.openapi && String(doc.openapi).charAt(0) === '3') fmt = 'OpenAPI 3.x（JSON）';
-      else if (doc.swagger === '2.0') fmt = 'Swagger 2.0（JSON）';
-      else if (doc.info && doc.item && /postman/i.test(JSON.stringify(doc.info))) fmt = 'Postman Collection v2.1（JSON）';
-      if (!fmt) { out.appendChild(el('div', 'result warn', '无法识别的 JSON：不是 OpenAPI 3 / Swagger 2 / Postman v2.1。')); return; }
-      out.appendChild(el('div', 'result ok', '识别为 ' + fmt + '。真实导入面板会列出全部接口供勾选，下面是从 paths 里读到的接口：'));
-      var ops = [];
-      Object.keys(doc.paths || {}).forEach(function (p) {
-        Object.keys(doc.paths[p]).forEach(function (m) { if (/^(get|post|put|delete|patch)$/i.test(m)) ops.push([m.toUpperCase(), p, (doc.paths[p][m] || {}).summary || '']); });
+    // 复制安装命令；浏览器拒绝时说明原因并给出替代办法
+    (function () {
+      var btn = document.getElementById('copy-install');
+      var label = btn.querySelector('span');
+      var cmd = document.getElementById('install-cmd').textContent.trim();
+      btn.addEventListener('click', function () {
+        var done = function (text) { label.textContent = text; setTimeout(function () { label.textContent = '复制命令'; }, 2400); };
+        if (!navigator.clipboard) { done('浏览器不允许复制，请手动选中命令'); return; }
+        navigator.clipboard.writeText(cmd).then(function () { done('已复制'); }, function () { done('复制失败，请手动选中命令'); });
       });
-      if (ops.length) {
-        var ul = document.createElement('ul'); ul.style.listStyle = 'none'; ul.style.marginTop = '0.6rem';
-        ops.forEach(function (o) {
-          var li = el('li', '', ''); li.style.margin = '0.3rem 0';
-          li.appendChild(el('span', 'method ' + o[0], o[0]));
-          li.appendChild(el('span', 'url-line', o[1]));
-          if (o[2]) li.appendChild(document.createTextNode('  ' + o[2]));
-          ul.appendChild(li);
-        });
-        out.appendChild(ul);
-      }
-      return;
-    }
-
-    var r = parseCurlSimple(text);
-    if (r.error) { out.appendChild(el('h4', '', '识别结果')); out.appendChild(el('div', 'result err', r.error)); return; }
-
-    var warnings = [];
-    var u = r.url, qs = '';
-    var qi = u.indexOf('?');
-    if (qi >= 0) { qs = u.slice(qi + 1); u = u.slice(0, qi); }
-    var qparts = qs ? qs.split('&').filter(Boolean).map(function (kv) {
-      var k = kv.indexOf('='); return k < 0 ? [kv, ''] : [kv.slice(0, k), kv.slice(k + 1)];
-    }) : [];
-    var qsOut = qparts.map(function (kv) { return isSensitiveHeader(kv[0]) ? [kv[0], placeholder(kv[0]), true, kv[1]] : [kv[0], kv[1], false, kv[1]]; });
-
-    var hdrs = r.headers.map(function (h) {
-      if (isSensitiveHeader(h[0]) && h[1].indexOf('$' + '{') < 0) {
-        warnings.push('请求头 ' + h[0] + ' 含敏感信息，已替换为 ' + placeholder(h[0]) + '；请在流程入参中提供（值需包含完整头内容，如 Bearer xxx），或改用凭据管理，不会写入流程定义');
-        return [h[0], placeholder(h[0]), true];
-      }
-      return [h[0], h[1], false];
-    });
-    if (r.auth != null) {
-      warnings.push('curl -u 含账号密码，已替换为 Authorization: ' + placeholder('Authorization') + '；不会写入流程定义');
-      hdrs.push(['Authorization', placeholder('Authorization'), true]);
-    }
-    qsOut.forEach(function (q) { if (q[2]) warnings.push('查询参数 ' + q[0] + ' 名称敏感，默认值已替换为 ' + q[1]); });
-
-    var rawBody = r.data.join('&');
-    var bodyOut = rawBody, bodyObj = null;
-    if (rawBody) {
-      try {
-        bodyObj = JSON.parse(rawBody);
-        if (bodyObj && typeof bodyObj === 'object' && !Array.isArray(bodyObj)) {
-          Object.keys(bodyObj).forEach(function (k) {
-            if (SENSITIVE_NAME.test(k)) { bodyObj[k] = placeholder(k); warnings.push('请求体字段 ' + k + ' 名称敏感，默认值已替换为 ' + placeholder(k)); }
-          });
-          bodyOut = JSON.stringify(bodyObj, null, 2);
-        }
-      } catch (err) { bodyObj = null; }
-    }
-
-    out.appendChild(el('h4', '', '识别结果'));
-    var line = el('div', '');
-    line.appendChild(el('span', 'method ' + r.method, r.method));
-    line.appendChild(el('span', 'url-line', u));
-    out.appendChild(line);
-
-    if (hdrs.length) {
-      out.appendChild(el('h4', '', '请求头'));
-      var tb = document.createElement('table'); tb.className = 'hdr-table';
-      var thead = document.createElement('thead'); var hr = document.createElement('tr');
-      ['名称', '导入前 → 导入后'].forEach(function (x) { var th = el('th', '', x); th.scope = 'col'; hr.appendChild(th); });
-      thead.appendChild(hr); tb.appendChild(thead);
-      var tbody = document.createElement('tbody');
-      hdrs.forEach(function (h) {
-        var tr = document.createElement('tr');
-        tr.appendChild(el('td', '', h[0]));
-        var td = document.createElement('td');
-        if (h[2]) { td.appendChild(el('span', 'mask', '••••••')); td.appendChild(document.createTextNode(' → ')); td.appendChild(el('span', 'sub', h[1])); }
-        else td.textContent = h[1];
-        tr.appendChild(td); tbody.appendChild(tr);
-      });
-      tb.appendChild(tbody); out.appendChild(tb);
-    }
-    if (qsOut.length) {
-      out.appendChild(el('h4', '', '查询参数'));
-      var tq = document.createElement('table'); tq.className = 'hdr-table';
-      var qb = document.createElement('tbody');
-      qsOut.forEach(function (q) {
-        var tr = document.createElement('tr');
-        tr.appendChild(el('td', '', q[0]));
-        var td = document.createElement('td');
-        if (q[2]) { td.appendChild(el('span', 'mask', '••••••')); td.appendChild(document.createTextNode(' → ')); td.appendChild(el('span', 'sub', q[1])); }
-        else td.textContent = q[1];
-        tr.appendChild(td); qb.appendChild(tr);
-      });
-      tq.appendChild(qb); out.appendChild(tq);
-    }
-    if (rawBody) { out.appendChild(el('h4', '', '请求体')); out.appendChild(el('pre', 'mini-code', bodyOut)); }
-
-    // 编译为 Conductor HTTP 任务（示意）
-    var headersObj = {};
-    hdrs.forEach(function (h) { headersObj[h[0]] = h[1]; });
-    var uri = u + (qsOut.length ? '?' + qsOut.map(function (q) { return q[0] + '=' + q[1]; }).join('&') : '');
-    var req = { uri: uri, method: r.method };
-    if (hdrs.length) req.headers = headersObj;
-    if (rawBody) req.body = bodyObj && typeof bodyObj === 'object' ? bodyObj : rawBody;
-    out.appendChild(el('h4', '', '编译为 HTTP 任务（示意）'));
-    out.appendChild(el('pre', 'mini-code', JSON.stringify({ type: 'HTTP', inputParameters: { http_request: req } }, null, 2)));
-
-    if (warnings.length) {
-      var w = el('div', 'result warn'); w.appendChild(listOf(warnings)); out.appendChild(w);
-    }
-  }
-  $('curl-in').addEventListener('input', function () { renderCurl($('curl-in').value); });
-  document.querySelectorAll('[data-preset]').forEach(function (b) {
-    b.addEventListener('click', function () { $('curl-in').value = PRESETS[b.dataset.preset]; renderCurl($('curl-in').value); });
-  });
-  $('curl-in').value = PRESETS.bearer;
-  renderCurl($('curl-in').value);
-
-  // ======================================================================
-  // 扩展点代码示例
-  // ======================================================================
-  var codeSnippets = {
-    register: "import { WorkflowIDE, WorkflowIdeProvider } from '@yiyi_zhang/reactflow-ui';\nimport type { IdeProviders } from '@yiyi_zhang/reactflow-ui';\nimport { AiWorkflowIDE } from '@yiyi_zhang/reactflow-ui/ai';\nimport '@yiyi_zhang/reactflow-ui/style.css';\n\n// provider 实例只创建一次（模块级 / useMemo），不要在渲染中反复创建\nconst providers: IdeProviders = {\n  library: libraryProvider,       // 1.2.0 已有：流程库\n  onboarding: onboardingProvider, // 1.3.0：新建流程向导 + 申请上线\n  telemetry: telemetrySink,       // 1.3.0：接入漏斗埋点\n};\n\nexport function WorkflowStudio({ mode }: { mode: 'business' | 'ai' }) {\n  return (\n    <WorkflowIdeProvider providers={providers}>\n      <div style={{ height: '100vh' }}>\n        {mode === 'ai' ? (\n          <AiWorkflowIDE aiConfig={aiConfig} />\n        ) : (\n          <WorkflowIDE uiMode=\"business\" onSave={saveToGovernance} />\n        )}\n      </div>\n    </WorkflowIdeProvider>\n  );\n}",
-    override: "// 解析顺序（逐字段）：\n// 组件专用 prop > 组件 providers prop > 外层 WorkflowIdeProvider > 无\n\n// 只覆盖 library，onboarding / telemetry 仍取外层\n<WorkflowIDE libraryProvider={anotherLibrary} />\n\n// 只覆盖这个组件的 telemetry\n<WorkflowIDE providers={{ telemetry: anotherSink }} />\n\n// 组件内读取外层配置\nimport { useIdeProviders } from '@yiyi_zhang/reactflow-ui';\nconst providers = useIdeProviders();\n\n// 只传 libraryProvider、不用 WorkflowIdeProvider：行为与 1.2.0 一致\n<WorkflowIDE libraryProvider={libraryProvider} />",
-    demo: "// Demo（src/demo/mockProviders.ts，只供演示站使用，不进入包产物）\nconst providers = createMockProviders();\n// = {\n//   library: createMockGovernanceProvider(),   // 模拟流程库\n//   onboarding: createMockOnboardingProvider(), // 模拟自助接入：内存产品 / 冲突 / 失败注入 / 上线进度\n//   telemetry: consoleSink,                     // 控制台按批次打印 [telemetry]\n// }\n\n// 内部项目按治理服务契约实现，不改 SDK 代码：\n//   library    → 治理服务 /api/library/*\n//   onboarding → /api/library/domains、/api/products/mine、\n//                /api/onboarding/trial、/api/onboarding/promote\n//   telemetry  → 事件接收接口（可用 navigator.sendBeacon）"
-  };
-  var codeNotes = {
-    register: '<code>providers</code> 对象每次渲染新建没关系：SDK 按字段比较引用，只有某个 provider 实例变了才重新加载对应数据。但 provider 本身（如 <code>createGovernanceLibraryProvider(...)</code>）应只创建一次。组件按父容器高度撑满，请给容器明确的高度。',
-    override: '<code>WorkflowIdeProvider</code> 与 <code>useIdeProviders</code>、<code>IdeProviders</code> 类型均从主入口和 <code>/ai</code> 入口导出。',
-    demo: '演示站接的全是模拟实现：Demo 顶栏「演示设置」可切换 TEST / PROD 环境、重置产品；登记 <code>cmdb</code> 会得到冲突，上线申请约经 3–4 次轮询走完。契约与示例实现见 <a class="link-inline" href="https://github.com/yiyisf/reactflow-ui/blob/master/docs/integration-guide.md" target="_blank" rel="noreferrer">宿主接入指南</a> 4.5 – 4.6 节。'
-  };
-  var codeKey = 'register';
-  function renderCode() {
-    $('qs-code-body').textContent = codeSnippets[codeKey];
-    $('qs-note').innerHTML = codeNotes[codeKey];
-  }
-  document.querySelectorAll('.qs-tab').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      document.querySelectorAll('.qs-tab').forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
-      btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
-      codeKey = btn.dataset.code; renderCode();
-    });
-  });
-  $('copy-code').addEventListener('click', function (e) { copyText(codeSnippets[codeKey], e.currentTarget, '已复制代码'); });
-  renderCode();
-
-  // ======================================================================
-  // 示意事件流
-  // ======================================================================
-  function two(n) { return (n < 10 ? '0' : '') + n; }
-  function stamp(d) { return two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds()); }
-  function fmtProps(o) {
-    return '{ ' + Object.keys(o).map(function (k) { var v = o[k]; return k + ': ' + (typeof v === 'string' ? "'" + v + "'" : v); }).join(', ') + ' }';
-  }
-  $('btn-events').addEventListener('click', function () {
-    var term = $('term');
-    clear(term);
-    var wf = S.name || 'tmp-L1-云资源-ecs-snapshot_check';
-    var dom = currentProduct().domain;
-    var t = new Date();
-    var batches = [
-      [['ide_opened', {}], ['trial_started', { domain: dom }], ['workflow_created', { level: $('nb-level').value, source: S.start }]],
-      [['api_imported', { format: 'curl', count: 1 }], ['step_added', { source: 'import' }], ['sandbox_run', { result: S.runResult || 'COMPLETED' }]],
-      [['promotion_requested', { targetType: $('pr-target').value }], ['promotion_state', { state: 'APPROVED' }]]
-    ];
-    var offset = 0;
-    batches.forEach(function (b, bi) {
-      term.appendChild(el('span', 'grp', '[telemetry] ' + b.length + ' 条事件' + (bi === 0 ? '（5 秒攒批）' : bi === 1 ? '（下一批）' : '（页面隐藏时 flush）') + '\n'));
-      b.forEach(function (ev) {
-        offset += 7;
-        var props = ev[1];
-        var text = '  ' + stamp(new Date(t.getTime() + offset * 1000)) + ' ';
-        term.appendChild(document.createTextNode(text));
-        term.appendChild(el('span', 'ev', ev[0]));
-        var meta = { ide: 'workflow', workflowName: wf };
-        Object.keys(props).forEach(function (k) { meta[k] = props[k]; });
-        term.appendChild(document.createTextNode(' ' + fmtProps(meta) + '\n'));
-      });
-    });
-    term.appendChild(el('span', 'empty', '（示意：没有任何参数值、表达式或对话内容）'));
-  });
-
-  // 初始化
-  renderProducts();
-  buildTypeOptions();
-  $('nb-desc').value = 'Snapshot Check';
-  $('nb-func').value = suggestFuncSlug('Snapshot Check');
-  syncFromBuilder();
-  renderRegisterGate();
-  renderPromoHead();
-  renderNav();
-})();
+    })();
   </script>
 </body>
 </html>

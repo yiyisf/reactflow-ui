@@ -8,6 +8,7 @@
     { "source": "/app", "destination": "/app.html" },
     { "source": "/v1-0", "destination": "/v1-0.html" },
     { "source": "/v1-1", "destination": "/v1-1.html" },
-    { "source": "/v1-2", "destination": "/v1-2.html" }
+    { "source": "/v1-2", "destination": "/v1-2.html" },
+    { "source": "/v1-3", "destination": "/v1-3.html" }
   ]
 }

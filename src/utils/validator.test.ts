@@ -87,16 +87,41 @@ describe('validateWorkflow · v1.3.1 结构规则（E21）', () => {
         expect(result.errors.some(e => e.ref === 'sw' && e.message.includes('expression'))).toBe(true);
     });
 
-    it('accepts a SWITCH with evaluatorType + expression, and only warns for legacy caseValueParam', () => {
+    it('accepts a SWITCH with evaluatorType + expression', () => {
         const ok = validateWorkflow(wf([
             task('sw', { type: 'SWITCH', evaluatorType: 'javascript', expression: '"a"', decisionCases: { a: [task('x')] } } as any),
         ]));
         expect(ok.errors).toEqual([]);
-        const legacy = validateWorkflow(wf([
-            task('sw', { type: 'SWITCH', caseValueParam: 'k', inputParameters: { k: '1' }, decisionCases: { a: [task('x')] } } as any),
+    });
+
+    it('[E25-01] SWITCH 只写了 caseValueParam / caseExpression 时报错并给出改法（Conductor 保存会拒绝）', () => {
+        for (const legacyFields of [{ caseValueParam: 'k' }, { caseExpression: '$.k' }]) {
+            const legacy = validateWorkflow(wf([
+                task('sw', { type: 'SWITCH', ...legacyFields, inputParameters: { k: '1' }, decisionCases: { a: [task('x')] } } as any),
+            ]));
+            const err = legacy.errors.find(e => e.ref === 'sw' && e.message.includes('caseValueParam'));
+            expect(err?.message).toMatch(/expression/);
+        }
+        // DECISION 仍用 caseValueParam，不受影响
+        const decision = validateWorkflow(wf([
+            task('d', { type: 'DECISION', caseValueParam: 'k', inputParameters: { k: '1' }, decisionCases: { a: [task('x')] } } as any),
         ]));
-        expect(legacy.errors).toEqual([]);
-        expect(legacy.warnings.some(w => w.ref === 'sw' && w.message.includes('caseValueParam'))).toBe(true);
+        expect(decision.errors).toEqual([]);
+    });
+
+    it('[E25-02] SWITCH 有 expression 没有 evaluatorType 时报错', () => {
+        const result = validateWorkflow(wf([
+            task('sw', { type: 'SWITCH', expression: 'k', inputParameters: { k: '1' }, decisionCases: { a: [task('x')] } } as any),
+        ]));
+        expect(result.errors.some(e => e.ref === 'sw' && e.message.includes('evaluatorType'))).toBe(true);
+    });
+
+    it('[E24-01] TERMINATE 没填 terminationStatus 只警告，填错才报错', () => {
+        const missing = validateWorkflow(wf([task('t', { type: 'TERMINATE', inputParameters: {} } as any)]));
+        expect(missing.errors).toEqual([]);
+        expect(missing.warnings.some(w => w.ref === 't' && w.message.includes('terminationStatus'))).toBe(true);
+        const wrong = validateWorkflow(wf([task('t', { type: 'TERMINATE', inputParameters: { terminationStatus: 'DONE' } } as any)]));
+        expect(wrong.errors.some(e => e.ref === 't')).toBe(true);
     });
 
     it('requires FORK_JOIN to be immediately followed by JOIN', () => {

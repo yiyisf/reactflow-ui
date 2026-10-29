@@ -246,15 +246,28 @@ export function normalizeTaskDef(task: TaskDef, autoFixed: string[] = [], option
         if (Array.isArray(t.defaultCase)) {
             t.defaultCase = t.defaultCase.map((b: TaskDef) => normalizeTaskDef(b, autoFixed, options));
         }
-        if (t.type === 'SWITCH' && !t.evaluatorType) {
-            t.evaluatorType = t.caseExpression ? 'javascript' : 'value-param';
-        }
         if (!t.caseValueParam && !t.caseExpression && !t.expression) {
             const paramKey = t.inputParameters ? Object.keys(t.inputParameters)[0] : undefined;
             t.caseValueParam = paramKey || 'switchCaseValue';
             if (!t.inputParameters || Object.keys(t.inputParameters).length === 0) {
                 t.inputParameters = { [t.caseValueParam]: `\${workflow.input.${t.caseValueParam}}` };
             }
+        }
+        // E25：Conductor 的 SWITCH 只读 evaluatorType + expression；把 DECISION 写法迁移过去，否则保存会被拒
+        if (t.type === 'SWITCH') {
+            if (!t.expression) {
+                if (t.caseExpression) {
+                    t.evaluatorType = t.evaluatorType && t.evaluatorType !== 'value-param' ? t.evaluatorType : 'javascript';
+                    t.expression = t.caseExpression;
+                } else if (t.caseValueParam) {
+                    t.evaluatorType = 'value-param';
+                    t.expression = t.caseValueParam;
+                }
+                if (t.expression) autoFixed.push(`把条件分支「${t.taskReferenceName}」的判断依据写入 evaluatorType + expression（Conductor 的 SWITCH 不读 caseValueParam / caseExpression）`);
+            }
+            if (!t.evaluatorType) t.evaluatorType = 'value-param';
+            delete t.caseValueParam;
+            delete t.caseExpression;
         }
     }
 

@@ -67,7 +67,7 @@ export const BASE_SYSTEM_PROMPT = `你是 Netflix Conductor 工作流建模专�
 - 支持类型：SIMPLE, HTTP, SWITCH, FORK_JOIN, FORK_JOIN_DYNAMIC, DO_WHILE, SUB_WORKFLOW, EVENT, WAIT, HUMAN, INLINE, TERMINATE, SET_VARIABLE, KAFKA_PUBLISH, JSON_JQ_TRANSFORM, START_WORKFLOW, DYNAMIC, NOOP
 - 每个任务必须有唯一的 \`taskReferenceName\`（仅限英文、数字、下划线，如 \`verify_payment\`）
 - 下游任务通过 \`\${upstream_ref.output.field}\` 引用上游输出，严禁引用尚未执行的下游任务
-- SWITCH 需要 \`caseValueParam\` 或 \`caseExpression\`，以及 \`decisionCases\` 键值对
+- SWITCH 需要 \`evaluatorType\` + \`expression\`（\`value-param\` 时 expression 是 inputParameters 里的参数名，\`javascript\` 时是返回分支名的脚本），以及 \`decisionCases\` 键值对；\`caseValueParam\` / \`caseExpression\` 只用于 DECISION
 - FORK_JOIN 需要 \`forkTasks\`（二维数组）和紧随其后的 \`JOIN\` 任务（\`joinOn\` 包含各并行分支最后一个任务的 \`taskReferenceName\`）
 - DO_WHILE 需要 \`loopCondition\` 和 \`loopOver\` 数组
 - HTTP 任务必须配置 \`inputParameters.http_request\`（含 \`uri\` 和 \`method\`），建议设置 \`timeoutSeconds\` 和 \`retryCount\`

@@ -77,21 +77,21 @@ export const TASK_RULES = {
         ],
         'SWITCH': [
             { field: 'decisionCases', type: 'custom', validate: (val: any) => Object.keys(val || {}).length > 0, message: 'Switch 任务必须至少包含一个分支' },
+            // E25：Conductor 的 SWITCH 只读 evaluatorType + expression，缺了保存会被拒；caseValueParam / caseExpression 是 DECISION 的字段
             {
                 field: 'expression', type: 'custom',
                 validate: (val: any, task: any) => hasText(val) || hasText(task?.caseValueParam) || hasText(task?.caseExpression),
                 message: 'SWITCH 任务缺少条件表达式 (expression)：value-param 模式填 inputParameters 中的参数名，脚本模式填返回分支名的脚本'
             },
             {
-                field: 'evaluatorType', type: 'custom',
-                validate: (val: any, task: any) => hasText(val) || !hasText(task?.expression),
-                message: 'SWITCH 任务缺少评估模式 (evaluatorType)：请选择 value-param、javascript 或 graaljs'
+                field: 'expression', type: 'custom',
+                validate: (val: any, task: any) => hasText(val) || !(hasText(task?.caseValueParam) || hasText(task?.caseExpression)),
+                message: 'SWITCH 任务只配置了 caseValueParam / caseExpression（DECISION 的字段），Conductor 保存时会拒绝：把 caseValueParam 的值填到 expression 并选 value-param，或把 caseExpression 的脚本填到 expression 并选 javascript'
             },
             {
-                // 旧数据 / AI 生成的 SWITCH 只写了 DECISION 的字段：Conductor 的 SWITCH 不读它们
-                field: 'expression', type: 'custom', level: 'warning',
-                validate: (val: any, task: any) => hasText(val) || !(hasText(task?.caseValueParam) || hasText(task?.caseExpression)),
-                message: 'SWITCH 任务只配置了 caseValueParam / caseExpression（DECISION 字段），Conductor 会忽略：请在面板中设置评估模式和 expression'
+                field: 'evaluatorType', type: 'custom',
+                validate: (val: any, task: any) => hasText(val) || !hasText(task?.expression),
+                message: 'SWITCH 任务缺少评估模式 (evaluatorType)：expression 是参数名时选 value-param，是脚本时选 javascript 或 graaljs'
             }
         ],
         'FORK_JOIN_DYNAMIC': [

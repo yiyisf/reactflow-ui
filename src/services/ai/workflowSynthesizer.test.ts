@@ -174,3 +174,33 @@ describe('workflowSynthesizer — 4-Phase Progressive Synthesis & Semantic Verif
         expect(verification.errors.some(e => e.message.includes('不能自引用自身输出'))).toBe(true);
     });
 });
+
+describe('E25: AI 规范化把 SWITCH 迁移到 evaluatorType + expression', () => {
+    const sw = (extra: Record<string, unknown>) => ({
+        name: 'wf', version: 1,
+        tasks: [{ name: 'route', taskReferenceName: 'route', type: 'SWITCH', inputParameters: { tier: '${workflow.input.tier}' }, decisionCases: { HIGH: [] }, ...extra }],
+    }) as any;
+
+    it('[E25-03] caseValueParam → value-param + expression', () => {
+        const { workflow, autoFixed } = normalizeWorkflowDef(sw({ caseValueParam: 'tier' }));
+        const t = workflow.tasks[0] as any;
+        expect(t).toMatchObject({ evaluatorType: 'value-param', expression: 'tier' });
+        expect(t.caseValueParam).toBeUndefined();
+        expect(autoFixed.some(m => m.includes('route') && m.includes('expression'))).toBe(true);
+        expect(verifyWorkflowSemantics(workflow).errors.filter((e: any) => String(e.message ?? e).includes('caseValueParam'))).toEqual([]);
+    });
+
+    it('[E25-04] caseExpression → javascript + expression；已有 expression 时不动', () => {
+        const migrated = normalizeWorkflowDef(sw({ caseExpression: '$.tier > 3 ? "HIGH" : "LOW"' })).workflow.tasks[0] as any;
+        expect(migrated).toMatchObject({ evaluatorType: 'javascript', expression: '$.tier > 3 ? "HIGH" : "LOW"' });
+        expect(migrated.caseExpression).toBeUndefined();
+        const kept = normalizeWorkflowDef(sw({ evaluatorType: 'graaljs', expression: '"HIGH"' })).workflow.tasks[0] as any;
+        expect(kept).toMatchObject({ evaluatorType: 'graaljs', expression: '"HIGH"' });
+    });
+
+    it('[E25-05] DECISION 保持 caseValueParam', () => {
+        const d = normalizeWorkflowDef({ name: 'wf', version: 1, tasks: [{ name: 'd', taskReferenceName: 'd', type: 'DECISION', caseValueParam: 'tier', inputParameters: { tier: 'x' }, decisionCases: { a: [] } }] } as any).workflow.tasks[0] as any;
+        expect(d.caseValueParam).toBe('tier');
+        expect(d.expression).toBeUndefined();
+    });
+});

@@ -3,6 +3,7 @@ import { defaultActionRegistry } from '../actions/registry';
 import { compileStepModelToWorkflowDef } from './compile';
 import { decompileWorkflowDefToStepModel } from './decompile';
 import type { BusinessWorkflowModel } from './types';
+import type { WorkflowDef } from '../types/conductor';
 import { createStepFromAction } from './factory';
 
 describe('stepmodel & actions compile/decompile round-trip', () => {
@@ -626,5 +627,39 @@ describe('v1.3.2 B21：业务模式往返保留 JOIN 的 joinOn', () => {
     const out = compileStepModelToWorkflowDef(decompileWorkflowDefToStepModel(def));
     const join = out.tasks.find((t) => t.type === 'JOIN')!;
     expect(join.joinOn).toEqual(['a', 'b']);
+  });
+});
+
+describe('v1.3.2 B22：业务模式往返逐字段一致', () => {
+  const roundtrip = (def: WorkflowDef) => compileStepModelToWorkflowDef(decompileWorkflowDefToStepModel(def));
+
+  it('[B22-01] 没有 description / version / schemaVersion 的定义，往返后 JSON 完全相同', () => {
+    const def = {
+      name: 'minimal_flow',
+      tasks: [{ name: 'noop', taskReferenceName: 'noop', type: 'NOOP' }],
+    } as unknown as WorkflowDef;
+    const out = roundtrip(def);
+    expect(JSON.stringify(out)).toBe(JSON.stringify(def));
+    expect('description' in out).toBe(false);
+    expect('version' in out).toBe(false);
+  });
+
+  it('[B22-02] 已有的空描述、版本号与其它顶层字段原样保留，键序不变', () => {
+    const def = {
+      name: 'full_flow',
+      description: '',
+      version: 7,
+      schemaVersion: 2,
+      ownerEmail: 'ops@example.com',
+      timeoutSeconds: 600,
+      tasks: [{ name: 'noop', taskReferenceName: 'noop', type: 'NOOP' }],
+      outputParameters: { ok: true },
+    } as unknown as WorkflowDef;
+    expect(JSON.stringify(roundtrip(def))).toBe(JSON.stringify(def));
+  });
+
+  it('[B22-03] 全新模型（没有原定义）仍给默认描述、版本与 schemaVersion', () => {
+    const out = compileStepModelToWorkflowDef({ name: 'brand_new', steps: [] });
+    expect(out).toMatchObject({ name: 'brand_new', description: '云平台自动化工作流', version: 1, schemaVersion: 2 });
   });
 });

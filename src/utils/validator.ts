@@ -47,7 +47,8 @@ const executeRules = (target: any, rules: ValidationRule[], context: ValidationC
                 isValid = rule.value.test(value);
                 break;
             case 'enum':
-                isValid = rule.value.includes(value);
+                // E24：没填时只由 required 规则决定（可以是警告），enum 只检查填了的值
+                isValid = value === undefined || value === null || value === '' || rule.value.includes(value);
                 break;
             case 'unique':
                 if (rule.field === 'taskReferenceName' && value) {

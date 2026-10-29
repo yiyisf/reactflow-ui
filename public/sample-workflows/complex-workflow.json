@@ -154,6 +154,7 @@
                         "name": "publish_event",
                         "taskReferenceName": "event_ref",
                         "type": "EVENT",
+                        "sink": "conductor",
                         "inputParameters": {
                             "event": "workflow_completed",
                             "data": "${sub_wf_ref.output}"
@@ -166,10 +167,13 @@
                         "taskReferenceName": "notify_ref",
                         "type": "KAFKA_PUBLISH",
                         "inputParameters": {
-                            "topic": "workflow-notifications",
-                            "message": {
-                                "workflowId": "${workflow.workflowId}",
-                                "status": "completed"
+                            "kafka_request": {
+                                "bootStrapServers": "localhost:9092",
+                                "topic": "workflow-notifications",
+                                "value": {
+                                    "workflowId": "${workflow.workflowId}",
+                                    "status": "completed"
+                                }
                             }
                         }
                     }

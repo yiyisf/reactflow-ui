@@ -253,14 +253,19 @@ export function compileStepModelToWorkflowDef(
   // B21：与专业模式（E5）一致——只按原定义同步受结构变化影响的 joinOn 项，其余原样保留
   syncForkJoinOn(tasks, model.rawWorkflowDef?.tasks ?? null);
 
-  return {
+  const raw = model.rawWorkflowDef;
+  const def: Record<string, unknown> = {
     ...baseDef,
     name: model.name || 'cloud_host_automation',
-    // 已有定义：如实保留描述（含空字符串），不补合成描述；全新模型才给默认描述
-    description: model.rawWorkflowDef ? (model.description ?? baseDef.description) : model.description || '云平台自动化工作流',
-    version: model.version ?? 1,
-    schemaVersion: 2,
+    // B22：已有定义如实保留（含空字符串），原定义没有的字段不补；全新模型才给默认值
+    description: raw ? model.description : model.description || '云平台自动化工作流',
+    version: raw ? model.version : model.version ?? 1,
+    schemaVersion: raw && raw.schemaVersion === undefined ? undefined : 2,
     tasks,
     inputParameters: model.inputParameters || baseDef.inputParameters,
   };
+  for (const key of ['description', 'version', 'schemaVersion', 'inputParameters']) {
+    if (def[key] === undefined) delete def[key];
+  }
+  return def as unknown as WorkflowDef;
 }

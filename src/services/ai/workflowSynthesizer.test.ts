@@ -174,3 +174,57 @@ describe('workflowSynthesizer — 4-Phase Progressive Synthesis & Semantic Verif
         expect(verification.errors.some(e => e.message.includes('不能自引用自身输出'))).toBe(true);
     });
 });
+
+describe('E25: AI 规范化把 SWITCH 迁移到 evaluatorType + expression', () => {
+    const sw = (extra: Record<string, unknown>) => ({
+        name: 'wf', version: 1,
+        tasks: [{ name: 'route', taskReferenceName: 'route', type: 'SWITCH', inputParameters: { tier: '${workflow.input.tier}' }, decisionCases: { HIGH: [] }, ...extra }],
+    }) as any;
+
+    it('[E25-03] caseValueParam → value-param + expression', () => {
+        const { workflow, autoFixed } = normalizeWorkflowDef(sw({ caseValueParam: 'tier' }));
+        const t = workflow.tasks[0] as any;
+        expect(t).toMatchObject({ evaluatorType: 'value-param', expression: 'tier' });
+        expect(t.caseValueParam).toBeUndefined();
+        expect(autoFixed.some(m => m.includes('route') && m.includes('expression'))).toBe(true);
+        expect(verifyWorkflowSemantics(workflow).errors.filter((e: any) => String(e.message ?? e).includes('caseValueParam'))).toEqual([]);
+    });
+
+    it('[E25-04] caseExpression → javascript + expression；已有 expression 时不动', () => {
+        const migrated = normalizeWorkflowDef(sw({ caseExpression: '$.tier > 3 ? "HIGH" : "LOW"' })).workflow.tasks[0] as any;
+        expect(migrated).toMatchObject({ evaluatorType: 'javascript', expression: '$.tier > 3 ? "HIGH" : "LOW"' });
+        expect(migrated.caseExpression).toBeUndefined();
+        const kept = normalizeWorkflowDef(sw({ evaluatorType: 'graaljs', expression: '"HIGH"' })).workflow.tasks[0] as any;
+        expect(kept).toMatchObject({ evaluatorType: 'graaljs', expression: '"HIGH"' });
+    });
+
+    it('[E25-05] DECISION 保持 caseValueParam', () => {
+        const d = normalizeWorkflowDef({ name: 'wf', version: 1, tasks: [{ name: 'd', taskReferenceName: 'd', type: 'DECISION', caseValueParam: 'tier', inputParameters: { tier: 'x' }, decisionCases: { a: [] } }] } as any).workflow.tasks[0] as any;
+        expect(d.caseValueParam).toBe('tier');
+        expect(d.expression).toBeUndefined();
+    });
+});
+
+describe('E26: AI 规范化补齐 EVENT sink、迁移 INLINE 脚本字段', () => {
+    it('[E26-06] EVENT 没有 sink 时补 conductor，写在 inputParameters 里的 sink 移到任务上', () => {
+        const { workflow } = normalizeWorkflowDef({
+            name: 'wf', version: 1,
+            tasks: [
+                { name: 'e1', taskReferenceName: 'e1', type: 'EVENT', inputParameters: { msg: 'x' } },
+                { name: 'e2', taskReferenceName: 'e2', type: 'EVENT', inputParameters: { sink: 'kafka:orders', msg: 'x' } },
+            ],
+        } as any);
+        const [e1, e2] = workflow.tasks as any[];
+        expect(e1.sink).toBe('conductor');
+        expect(e2.sink).toBe('kafka:orders');
+        expect(e2.inputParameters.sink).toBeUndefined();
+    });
+
+    it('[E26-07] INLINE 的 scriptExpression 移到 expression', () => {
+        const t = normalizeWorkflowDef({
+            name: 'wf', version: 1,
+            tasks: [{ name: 'i', taskReferenceName: 'i', type: 'INLINE', inputParameters: { evaluatorType: 'graaljs', scriptExpression: '1 + 1' } }],
+        } as any).workflow.tasks[0] as any;
+        expect(t.inputParameters).toEqual({ evaluatorType: 'graaljs', expression: '1 + 1' });
+    });
+});

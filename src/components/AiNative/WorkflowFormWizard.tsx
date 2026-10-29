@@ -97,7 +97,10 @@ function formToWorkflowDef(data: WizardFormData): WorkflowDef {
         if (step.stepType.type === 'SWITCH') {
             return {
                 ...base,
-                caseValueParam: 'case_value',
+                // E25：Conductor 的 SWITCH 需要 evaluatorType + expression（value-param 时 expression 是参数名）
+                evaluatorType: 'value-param',
+                expression: 'case_value',
+                inputParameters: { case_value: '${workflow.input.case_value}' },
                 decisionCases: {
                     'yes': [makePlaceholderNoop('yes', ref, i)],
                     'no':  [makePlaceholderNoop('no',  ref, i)],

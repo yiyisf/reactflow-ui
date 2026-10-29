@@ -32,7 +32,7 @@
     .nav {
       position: sticky; top: 0; z-index: 10;
       display: flex; flex-wrap: wrap; align-items: center; gap: var(--cm-space-4);
-      min-height: 64px; padding: var(--cm-space-2) max(var(--cm-space-4), 4vw);
+      box-sizing: border-box; min-height: 64px; padding: 0 max(var(--cm-space-4), 4vw);
       background: color-mix(in srgb, var(--cm-surface-0) 80%, transparent);
       border-bottom: 1px solid var(--cm-border-subtle);
       backdrop-filter: blur(12px);
@@ -70,11 +70,11 @@
     .version-pill b { height: 18px; padding: 0 8px; border-radius: var(--cm-radius-pill); background: var(--a); color: var(--on); font-weight: 600; line-height: 18px; }
 
     .hero {
-      max-width: 880px; margin: 0 auto; padding: 88px var(--cm-space-4) 72px;
+      max-width: 880px; margin: 0 auto; padding: 56px var(--cm-space-4) 72px;
       display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px;
     }
-    .hero h1 { margin: 0; font-size: 60px; line-height: 68px; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
-    .hero__lead { margin: 0; max-width: 680px; text-wrap: pretty; font-size: 17px; line-height: 30px; color: var(--cm-text-secondary); }
+    .hero h1 { margin: 0; font: var(--cm-type-display-xl); letter-spacing: var(--cm-tracking-display-xl); text-wrap: balance; }
+    .hero__lead { margin: 0; max-width: 680px; text-wrap: balance; font: var(--cm-type-prose); color: var(--cm-text-secondary); }
     .row-center { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--cm-space-2); }
     .cm-chip .ic { color: var(--a-hi); }
     .cm-grad { background: linear-gradient(90deg, var(--cm-text-primary), var(--a-hi)); -webkit-background-clip: text; background-clip: text; color: transparent; }

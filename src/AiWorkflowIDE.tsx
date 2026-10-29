@@ -51,6 +51,7 @@ import './styles/executionStyles.css';
 import './components/AiNative/AiNative.css';
 import { ChevronLeft, ChevronRight, Code2, LayoutList, Map as MapIcon, MessageSquare, RotateCcw } from 'lucide-react';
 import { handOffSave, type HostSaveHandler } from './utils/hostSave';
+import { isSameWorkflow } from './utils/sameWorkflow';
 
 /** 恢复横幅文案，如"已恢复刚刚的编辑" / "已恢复 3 分钟前的编辑" */
 function formatRestoredBannerText(savedAt: number): string {
@@ -512,7 +513,8 @@ const AiWorkflowIDEInner = forwardRef<AiWorkflowIDERef, AiWorkflowIDEProps>((pro
     const workflowDefSavedRef = useRef(workflowDefSaved);
     workflowDefSavedRef.current = workflowDefSaved;
     useEffect(() => {
-        if (propDef) {
+        // R21：受控用法下宿主回写的定义与画布相同时什么都不做（不重新加载、不退出当前模式、不记成已保存）
+        if (propDef && !isSameWorkflow(useWorkflowStore.getState().getEditingWorkflowDef(), propDef)) {
             workflowStore.setWorkflow(propDef);
             // R19：宿主传入的定义默认视为服务端已保存的版本；宿主声明未保存时清空基线
             useWorkflowStore.getState().markWorkflowSaved(workflowDefSavedRef.current ? undefined : null);

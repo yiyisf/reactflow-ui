@@ -37,6 +37,10 @@ import './styles/executionStyles.css';
 import { LayoutList, LayoutTemplate, Network, Plug, TriangleAlert, X } from 'lucide-react';
 import { saveNameHint } from './onboarding/naming';
 import { handOffSave, type HostSaveHandler } from './utils/hostSave';
+import { isSameWorkflow } from './utils/sameWorkflow';
+import ConfirmDialog from './components/ConfirmDialog';
+import Toast from './components/Toast';
+import { useToast } from './hooks/useToast';
 
 /**
  * WorkflowIDE 的命令式 API（通过 ref 调用）
@@ -292,6 +296,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     // 业务模式下的视图切换：卡片流 (card) vs 全景拓扑 (canvas)
     const [businessViewLayout, setBusinessViewLayout] = useState<'card' | 'canvas'>('card');
     const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+    // R23：等待确认的模板（画布上已有流程时）
+    const [pendingTemplate, setPendingTemplate] = useState<{ def: WorkflowDef; replacing: string } | null>(null);
     // 接口导入：对话框开关；导入生成的动作仅在本会话内注册（登记为流程库能力属 v1.4.0）
     const [showApiImport, setShowApiImport] = useState(false);
     const [importedActions, setImportedActions] = useState<ActionDefinition[]>([]);
@@ -374,23 +380,42 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             workflowInstance: s.workflowInstance,
         })));
 
-    // 导出 JSON
+    // 把模板生成的定义放上画布：替换已有流程时不清撤销历史，可以撤回（R8 / R23）
+    const applyTemplate = useCallback((def: WorkflowDef) => {
+        // 模板带来的步骤：每个顶层任务一条 step_added（source: template）
+        for (let i = 0; i < (def.tasks?.length ?? 0); i++) track('step_added', { source: 'template' });
+        setWorkflow(def, layoutDirection);
+    }, [track, setWorkflow, layoutDirection]);
+
+    // 导出 JSON（R19：运行态画布展示的是实例定义，导出的始终是编辑中的定义）
     const handleExportJson = useCallback(() => {
-        if (!storeWorkflowDef) return;
-        const blob = new Blob([JSON.stringify(storeWorkflowDef, null, 2)], { type: 'application/json' });
+        const def = useWorkflowStore.getState().getEditingWorkflowDef();
+        if (!def) return;
+        const blob = new Blob([JSON.stringify(def, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${storeWorkflowDef.name || 'workflow'}.json`;
+        a.download = `${def.name || 'workflow'}.json`;
         a.click();
         URL.revokeObjectURL(url);
-    }, [storeWorkflowDef]);
+    }, []);
 
-    // 复制 Conductor DSL
-    const handleCopyDsl = useCallback(() => {
-        if (!storeWorkflowDef) return;
-        navigator.clipboard.writeText(JSON.stringify(storeWorkflowDef, null, 2));
-    }, [storeWorkflowDef]);
+    // 复制 Conductor DSL：U5 复制后给出结果，失败时说明原因和替代办法
+    const { toasts, showToast, dismissToast } = useToast();
+    const handleCopyDsl = useCallback(async () => {
+        const def = useWorkflowStore.getState().getEditingWorkflowDef();
+        if (!def) return;
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error('当前浏览器不支持写入剪贴板');
+            await navigator.clipboard.writeText(JSON.stringify(def, null, 2));
+            showToast(`已复制「${def.name || '未命名流程'}」的 Conductor DSL（JSON）`, 'success');
+        } catch (err) {
+            const reason = err instanceof Error && err.name === 'NotAllowedError'
+                ? '浏览器没有授予剪贴板权限（页面需要在 HTTPS 下并处于焦点）'
+                : err instanceof Error ? err.message : String(err);
+            showToast(`复制失败：${reason}。可以改用「导出 JSON」下载文件`, 'error');
+        }
+    }, [showToast]);
 
     // Initialize Store from Props
     useEffect(() => {
@@ -409,15 +434,21 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     // 只在 workflowDef 变化时读取，切换这个标记本身不重新加载定义
     const workflowDefSavedRef = useRef(workflowDefSaved);
     workflowDefSavedRef.current = workflowDefSaved;
+    const layoutDirectionRef = useRef(layoutDirection);
+    layoutDirectionRef.current = layoutDirection;
     useEffect(() => {
-        if (workflowDef) {
-            setWorkflow(workflowDef, layoutDirection);
-            // R19：宿主传入的定义默认视为服务端已保存的版本；宿主声明未保存时清空基线
-            useWorkflowStore.getState().markWorkflowSaved(workflowDefSavedRef.current ? undefined : null);
-            // Clear history after loading a new workflow to prevent undoing to empty state
-            useWorkflowStore.temporal.getState().clear();
-        }
-    }, [workflowDef, setWorkflow, layoutDirection]);
+        if (!workflowDef) return;
+        const current = useWorkflowStore.getState().getEditingWorkflowDef();
+        // R21：受控用法下宿主把 onWorkflowChange 的结果回写成 prop。内容与画布相同就什么都不做：
+        // 不重新布局、不触发 fitView、不清撤销历史，也不把用户的修改记成已保存
+        if (isSameWorkflow(current, workflowDef)) return;
+        // 只有真正换了流程才清撤销历史；同一流程被宿主改动时保留，用户仍能撤回到之前的状态
+        const switching = !current || current.name !== workflowDef.name;
+        setWorkflow(workflowDef, layoutDirectionRef.current);
+        // R19：宿主传入的定义默认视为服务端已保存的版本；宿主声明未保存时清空基线
+        useWorkflowStore.getState().markWorkflowSaved(workflowDefSavedRef.current ? undefined : null);
+        if (switching) useWorkflowStore.temporal.getState().clear();
+    }, [workflowDef, setWorkflow]);
 
     // Handle Execution Data Injection
     useEffect(() => {
@@ -585,8 +616,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                     </button>
                 )}
 
-                {/* P4.2: 执行验证按钮（edit 模式） */}
-                {mode === 'edit' && storeWorkflowDef && (
+                {/* P4.2: 执行验证按钮（edit 模式）。U5：宿主没接 onTriggerExecution 时不显示，免得点开才说未配置 */}
+                {mode === 'edit' && storeWorkflowDef && onTriggerExecution && (
                     <button
                         onClick={() => setShowRunPanel(true)}
                         style={{
@@ -685,7 +716,7 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                             导出 JSON
                         </button>
                         <button
-                            onClick={handleCopyDsl}
+                            onClick={() => { void handleCopyDsl(); }}
                             style={{
                                 height: 28, padding: '0 10px',
                                 background: 'transparent',
@@ -704,6 +735,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                     </>
                 )}
             </div>
+
+            <Toast messages={toasts} onDismiss={dismissToast} />
 
             {saveNameNotice && (
                 <div
@@ -807,23 +840,37 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 onClose={() => { setShowTemplateGallery(false); onboarding.takePendingIdentity(); }}
                 onSandboxRun={handleTemplateSandboxRun}
                 onSelectTemplate={(configuredDef) => {
-                    // 模板带来的步骤：每个顶层任务一条 step_added（source: template）
-                    for (let i = 0; i < (configuredDef.tasks?.length ?? 0); i++) track('step_added', { source: 'template' });
                     // 经自助接入向导选了模板：保留向导按规范生成的名称与说明
                     const identity = onboarding.takePendingIdentity();
-                    setWorkflow(
-                        identity
-                            ? {
-                                ...configuredDef,
-                                name: identity.name,
-                                description: identity.description || configuredDef.description,
-                                ...(identity.ownerEmail ? { ownerEmail: identity.ownerEmail } : {}),
-                            }
-                            : configuredDef,
-                        layoutDirection,
-                    );
+                    const next = identity
+                        ? {
+                            ...configuredDef,
+                            name: identity.name,
+                            description: identity.description || configuredDef.description,
+                            ...(identity.ownerEmail ? { ownerEmail: identity.ownerEmail } : {}),
+                        }
+                        : configuredDef;
+                    // R23：画布上已有流程时先确认（与「新建流程」的 R8 一致），替换后可以撤销
+                    const current = useWorkflowStore.getState().getEditingWorkflowDef();
+                    if ((current?.tasks?.length ?? 0) > 0) {
+                        setPendingTemplate({ def: next, replacing: current?.name || '未命名流程' });
+                        return;
+                    }
+                    applyTemplate(next);
                 }}
             />
+            {pendingTemplate && (
+                <ConfirmDialog
+                    message={`用模板创建的「${pendingTemplate.def.name}」会替换当前画布上的「${pendingTemplate.replacing}」。替换后可以用撤销（⌘Z / Ctrl+Z）找回。`}
+                    confirmLabel="替换当前流程"
+                    onConfirm={() => {
+                        const { def } = pendingTemplate;
+                        setPendingTemplate(null);
+                        applyTemplate(def);
+                    }}
+                    onCancel={() => setPendingTemplate(null)}
+                />
+            )}
 
             {/* 自助接入：向导 / 申请上线弹窗与空画布引导 */}
             <OnboardingOverlays c={onboarding} />

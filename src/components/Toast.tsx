@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { CircleCheck, CircleX, Info } from 'lucide-react';
 
 export interface ToastMessage {
     id: string;
@@ -11,10 +12,11 @@ interface ToastProps {
     onDismiss: (id: string) => void;
 }
 
-const TOAST_COLORS = {
-    success: { bg: 'var(--cm-status-success)', text: 'var(--text-primary)' },
-    error: { bg: 'var(--cm-status-failed)', text: 'var(--text-primary)' },
-    info: { bg: 'var(--color-accent)', text: 'var(--text-primary)' }
+// 规则 5：状态 = 颜色 + 图标 + 文字。表面色底 + 正文色文字，深浅两套主题都清晰；info 不用橙色（规则 3）
+const TOAST_TONES = {
+    success: { color: 'var(--cm-status-success)', Icon: CircleCheck },
+    error: { color: 'var(--cm-status-failed)', Icon: CircleX },
+    info: { color: 'var(--cm-text-secondary)', Icon: Info },
 };
 
 const Toast = ({ messages, onDismiss }: ToastProps) => {
@@ -40,7 +42,7 @@ const Toast = ({ messages, onDismiss }: ToastProps) => {
 };
 
 const ToastItem = ({ message, onDismiss }: { message: ToastMessage; onDismiss: (id: string) => void }) => {
-    const colors = TOAST_COLORS[message.type || 'info'];
+    const { color, Icon } = TOAST_TONES[message.type || 'info'];
 
     useEffect(() => {
         const timer = setTimeout(() => onDismiss(message.id), 2500);
@@ -52,9 +54,13 @@ const ToastItem = ({ message, onDismiss }: { message: ToastMessage; onDismiss: (
             role="status"
             aria-live="polite"
             style={{
-                backgroundColor: colors.bg,
-                color: colors.text,
-                padding: '10px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: 'var(--cm-surface-2)',
+                color: 'var(--text-primary)',
+                border: `1px solid color-mix(in srgb, ${color} 55%, transparent)`,
+                padding: '10px 16px',
                 borderRadius: '8px',
                 fontSize: '13px',
                 fontWeight: 500,
@@ -66,6 +72,7 @@ const ToastItem = ({ message, onDismiss }: { message: ToastMessage; onDismiss: (
             }}
             onClick={() => onDismiss(message.id)}
         >
+            <Icon size={16} strokeWidth={1.75} aria-hidden="true" style={{ color, flexShrink: 0 }} />
             {message.text}
         </div>
     );

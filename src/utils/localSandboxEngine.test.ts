@@ -489,6 +489,63 @@ describe('v1.3.2 批次 2：沙箱与 Conductor 语义对齐', () => {
     expect(instance.variables).toEqual({ count: 1 });
   });
 
+  it('[S15-01] 循环条件能取到嵌套在 SWITCH / FORK 里的子任务输出，没走的分支不计入', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'nested_loop_scope',
+        tasks: [{
+          name: 'loop', taskReferenceName: 'loop', type: 'DO_WHILE',
+          loopCondition: '$.counter.result < 3 && !$.never',
+          loopOver: [{
+            name: 'route', taskReferenceName: 'route', type: 'SWITCH', evaluatorType: 'value-param', expression: 'k',
+            inputParameters: { k: 'go' },
+            decisionCases: {
+              go: [{
+                name: 'fork', taskReferenceName: 'fork', type: 'FORK_JOIN',
+                forkTasks: [[{
+                  name: 'counter', taskReferenceName: 'counter', type: 'INLINE',
+                  inputParameters: { evaluatorType: 'javascript', i: '${loop.output.iteration}', expression: '($.i || 0) + 1' },
+                }]],
+              }, { name: 'join', taskReferenceName: 'join', type: 'JOIN', joinOn: ['counter'] }],
+            },
+            defaultCase: [{ name: 'never', taskReferenceName: 'never', type: 'NOOP' }],
+          }],
+        }],
+      },
+      { scriptEvaluator: evaluate },
+    );
+    expect(instance.status).toBe('COMPLETED');
+    const loop = instance.tasks.find((t) => t.referenceTaskName === 'loop')!;
+    expect(loop.iteration).toBe(3);
+    expect(loop.status).toBe('COMPLETED');
+    expect(Object.keys(loop.outputData?.['1'] ?? {}).sort()).toEqual(['counter', 'fork', 'join', 'route']);
+  });
+
+  it('[S16-01] 配置台只改耗时时，INLINE 仍真实执行，只调整耗时', async () => {
+    const instance = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'timing_only',
+        tasks: [{ name: 'calc', taskReferenceName: 'calc', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', a: 4, expression: '$.a * 2' } }],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { calc: { __isMockOverride: true, durationMs: 1500 } } },
+    );
+    const calc = instance.tasks[0];
+    expect(calc.sandboxExecution).toBe('executed');
+    expect(calc.outputData).toEqual({ result: 8 });
+    expect((calc.endTime ?? 0) - (calc.startTime ?? 0)).toBe(1500);
+    expect(calc.sandboxWarnings?.[0]).toMatch(/1500 ms/);
+
+    const withOutput = await executeLocalSandboxDryRunAsync(
+      {
+        name: 'custom_output',
+        tasks: [{ name: 'calc', taskReferenceName: 'calc', type: 'INLINE', inputParameters: { evaluatorType: 'javascript', expression: '1' } }],
+      },
+      { scriptEvaluator: evaluate, taskMocks: { calc: { __isMockOverride: true, outputData: { result: 'mocked' } } } },
+    );
+    expect(withOutput.tasks[0].sandboxExecution).toBe('mocked');
+    expect(withOutput.tasks[0].outputData).toEqual({ result: 'mocked' });
+  });
+
   it('[S12-02] terminationStatus 写错时 TERMINATE 失败并说明可选值', async () => {
     const instance = await executeLocalSandboxDryRunAsync(
       { name: 'term_bad', tasks: [{ name: 't', taskReferenceName: 't', type: 'TERMINATE', inputParameters: { terminationStatus: 'DONE' } }] },

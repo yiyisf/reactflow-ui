@@ -476,9 +476,10 @@ function* executeSingleTask(task: WorkflowTask, ctx: SandboxRuntimeContext, iter
   }
 
   // ── tasks that run for real ──
+  // S16: a mock that only changes the duration (or says COMPLETED without custom output) keeps the real execution
   const executable = ['INLINE', 'LAMBDA', 'JSON_JQ_TRANSFORM', 'SET_VARIABLE', 'TERMINATE', 'WAIT', 'NOOP'];
-  if (executable.includes(task.type) && !mock) {
-    return yield* executeLocalTask(task, ctx, base, iteration);
+  if (executable.includes(task.type) && (!mock || isTimingOnlyMock(mock))) {
+    return yield* executeLocalTask(task, ctx, base, iteration, mock?.durationMs);
   }
 
   // ── tasks that need an outside system: mocked (or user mock on any task) ──
@@ -578,10 +579,17 @@ function* executeLoop(
 
   for (;;) {
     iter += 1;
+    const before = ctx.tasks.length;
     const res = yield* executeTaskList(loopOver, ctx, iter);
-    summary[String(iter)] = Object.fromEntries(
-      loopOver.filter((c) => ctx.taskOutputs[c.taskReferenceName]).map((c) => [c.taskReferenceName, ctx.taskOutputs[c.taskReferenceName]]),
+    // S15: every task that ran in this iteration, including ones nested in SWITCH / FORK / inner loops (Conductor
+    // exposes them all to the loop condition); tasks on branches not taken this iteration are left out
+    const ranThisIteration = new Set(
+      ctx.tasks.slice(before).map((t) => t.workflowTask?.taskReferenceName).filter((r): r is string => !!r && r !== task.taskReferenceName),
     );
+    const iterationOutputs: Record<string, any> = Object.fromEntries(
+      [...ranThisIteration].filter((r) => ctx.taskOutputs[r]).map((r) => [r, ctx.taskOutputs[r]]),
+    );
+    summary[String(iter)] = iterationOutputs;
     exec.outputData = { iteration: iter, ...summary };
     ctx.taskOutputs[task.taskReferenceName] = exec.outputData;
     if (res !== 'COMPLETED') {
@@ -600,8 +608,7 @@ function* executeLoop(
       continue;
     }
     // Conductor binds the loop's own output (with `iteration`), each child's output and the loop's inputs to `$`.
-    const scope: Record<string, unknown> = { ...base.resolvedInput, [task.taskReferenceName]: exec.outputData };
-    for (const c of loopOver) if (ctx.taskOutputs[c.taskReferenceName]) scope[c.taskReferenceName] = ctx.taskOutputs[c.taskReferenceName];
+    const scope: Record<string, unknown> = { ...base.resolvedInput, ...iterationOutputs, [task.taskReferenceName]: exec.outputData };
     const cond = yield* runScript(task.loopCondition, scope);
     if (!cond.ok) {
       if (cond.notExecuted) {
@@ -628,21 +635,45 @@ function* executeLoop(
   return flow;
 }
 
+/** A mock that only sets the duration, or COMPLETED without custom output: the task can still run for real (S16). */
+function isTimingOnlyMock(mock: TaskMockOverride): boolean {
+  return !mock.outputData && !mock.forceCase && (!mock.status || mock.status === 'COMPLETED');
+}
+
 function* executeLocalTask(
   task: WorkflowTask,
   ctx: SandboxRuntimeContext,
   base: ReturnType<typeof beginTask>,
   iteration?: number,
+  durationOverrideMs?: number,
 ): Gen<Flow> {
   const input = base.resolvedInput;
+  const hasOverride = typeof durationOverrideMs === 'number' && durationOverrideMs >= 0;
+  const timingWarnings = hasOverride ? [`按配置台把耗时设为 ${durationOverrideMs} ms，任务仍真实执行`] : [];
+  const spend = (ms: number) => {
+    ctx.currentTimeMs += hasOverride ? durationOverrideMs! : ms;
+  };
   const fail = (reason: string, outputData: Record<string, any> = { error: reason }, duration = 6): Flow => {
-    ctx.currentTimeMs += duration;
-    record(ctx, task, base, { status: 'FAILED', reasonForIncompletion: reason, outputData, sandboxExecution: 'executed' }, iteration);
+    spend(duration);
+    record(ctx, task, base, {
+      status: 'FAILED',
+      reasonForIncompletion: reason,
+      outputData,
+      sandboxExecution: 'executed',
+      ...(timingWarnings.length ? { sandboxWarnings: timingWarnings } : {}),
+    }, iteration);
     return 'FAILED';
   };
   const done = (outputData: Record<string, any>, duration: number, extra: Partial<TaskExecution> = {}): Flow => {
-    ctx.currentTimeMs += duration;
-    record(ctx, task, base, { status: 'COMPLETED', outputData, sandboxExecution: 'executed', ...extra }, iteration);
+    spend(duration);
+    const warnings = [...timingWarnings, ...(extra.sandboxWarnings ?? [])];
+    record(ctx, task, base, {
+      status: 'COMPLETED',
+      outputData,
+      sandboxExecution: 'executed',
+      ...extra,
+      ...(warnings.length ? { sandboxWarnings: warnings } : {}),
+    }, iteration);
     return 'COMPLETED';
   };
 

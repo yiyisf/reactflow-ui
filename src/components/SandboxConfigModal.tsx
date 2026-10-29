@@ -13,6 +13,7 @@ import {
 const LOOP_SAFETY_DEFAULT = 20;
 import type { TaskDef } from '../types/conductor';
 import { ClipboardList, Compass, Eraser, FlaskConical, RefreshCw, RotateCcw, Shuffle, TriangleAlert, X, Zap } from 'lucide-react';
+import { getSwitchRoutingHint, type SwitchRoutingHint } from '../utils/sandbox/switchHints';
 
 interface SandboxConfigModalProps {
     isOpen: boolean;
@@ -112,31 +113,11 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
         }
     }, [allTasks, selectedTaskRef]);
 
-    // Extract SWITCH routing hints tied to workflow.input.*
-    const switchInputHints = useMemo(() => {
-        const hints: Array<{
-            switchRef: string;
-            switchName: string;
-            inputField: string | null;
-            cases: string[];
-        }> = [];
-        for (const t of allTasks) {
-            if (t.type === 'SWITCH' || t.type === 'DECISION') {
-                const cases = Object.keys(t.decisionCases || {});
-                if (cases.length === 0) continue;
-                const paramKey = t.caseValueParam || 'case_value';
-                const rawExpr = String(t.inputParameters?.[paramKey] ?? t.expression ?? '');
-                const match = rawExpr.match(/\$\{\s*workflow\.input\.([a-zA-Z0-9_]+)\s*\}/);
-                hints.push({
-                    switchRef: t.taskReferenceName,
-                    switchName: t.name || t.taskReferenceName,
-                    inputField: match ? match[1] : null,
-                    cases,
-                });
-            }
-        }
-        return hints;
-    }, [allTasks]);
+    // S14: SWITCH routing hints, identified with the same rules the sandbox uses to choose a branch
+    const switchInputHints = useMemo(
+        () => allTasks.map(getSwitchRoutingHint).filter((h): h is SwitchRoutingHint => h !== null),
+        [allTasks],
+    );
 
     if (!isOpen || !workflowDef || typeof document === 'undefined') return null;
 
@@ -407,8 +388,10 @@ export const SandboxConfigModal: React.FC<SandboxConfigModalProps> = ({ isOpen, 
                                             <span style={{ color: textSecondary }}>
                                                 节点 <b>{hint.switchName}</b> (<code>{hint.switchRef}</code>)
                                                 {hint.inputField
-                                                    ? ` 绑定入参字段 "${hint.inputField}" — 点击一键切换分支:`
-                                                    : ' 可选分支 (可在 Tab 2 强制指定):'}
+                                                    ? ` 按入参 "${hint.inputField}" 选择分支，点击改入参切换：`
+                                                    : hint.evaluator === 'javascript'
+                                                        ? ' 按脚本判断，点击到「2. 节点级人工 Mock」里强制指定分支：'
+                                                        : ' 判断取值不直接来自入参，点击到「2. 节点级人工 Mock」里强制指定分支：'}
                                             </span>
                                             {hint.cases.map((c) => (
                                                 <button

@@ -1,5 +1,6 @@
 /**
- * 视觉测试夹具：沙箱配置台（批次 2：S14 快速路由、U3 模拟状态徽标、U4 标题与启动按钮）。
+ * 视觉测试夹具：沙箱配置台（批次 2：S14 快速路由、U3 模拟状态徽标、U4 标题与启动按钮），
+ * 也用于模板中心测试（批次 4：R23 替换确认、U1 试跑结果、U2 模板数）。
  *   ?theme=dark|light
  * 预置一条「可选 HTTP 任务模拟失败」的配置（sessionStorage，配置台打开时读取），测试点击工具栏按钮打开配置台。
  */
@@ -7,6 +8,10 @@ import { createRoot } from 'react-dom/client';
 import '../../../src/index.css';
 import { WorkflowIDE } from '../../../src/WorkflowIDE';
 import type { WorkflowDef } from '../../../src/types/conductor';
+import useWorkflowStore from '../../../src/store/workflowStore';
+
+// 模板中心测试（template-gallery.spec.ts）用它检查画布上的定义与撤销
+Object.assign(window, { __store: useWorkflowStore });
 
 const theme = new URLSearchParams(location.search).get('theme') === 'light' ? 'light' : 'dark';
 

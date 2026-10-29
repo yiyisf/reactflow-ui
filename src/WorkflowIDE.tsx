@@ -38,6 +38,7 @@ import { LayoutList, LayoutTemplate, Network, Plug, TriangleAlert, X } from 'luc
 import { saveNameHint } from './onboarding/naming';
 import { handOffSave, type HostSaveHandler } from './utils/hostSave';
 import { isSameWorkflow } from './utils/sameWorkflow';
+import ConfirmDialog from './components/ConfirmDialog';
 
 /**
  * WorkflowIDE 的命令式 API（通过 ref 调用）
@@ -293,6 +294,8 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
     // 业务模式下的视图切换：卡片流 (card) vs 全景拓扑 (canvas)
     const [businessViewLayout, setBusinessViewLayout] = useState<'card' | 'canvas'>('card');
     const [showTemplateGallery, setShowTemplateGallery] = useState(false);
+    // R23：等待确认的模板（画布上已有流程时）
+    const [pendingTemplate, setPendingTemplate] = useState<{ def: WorkflowDef; replacing: string } | null>(null);
     // 接口导入：对话框开关；导入生成的动作仅在本会话内注册（登记为流程库能力属 v1.4.0）
     const [showApiImport, setShowApiImport] = useState(false);
     const [importedActions, setImportedActions] = useState<ActionDefinition[]>([]);
@@ -374,6 +377,13 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
             executionData: s.executionData,
             workflowInstance: s.workflowInstance,
         })));
+
+    // 把模板生成的定义放上画布：替换已有流程时不清撤销历史，可以撤回（R8 / R23）
+    const applyTemplate = useCallback((def: WorkflowDef) => {
+        // 模板带来的步骤：每个顶层任务一条 step_added（source: template）
+        for (let i = 0; i < (def.tasks?.length ?? 0); i++) track('step_added', { source: 'template' });
+        setWorkflow(def, layoutDirection);
+    }, [track, setWorkflow, layoutDirection]);
 
     // 导出 JSON
     const handleExportJson = useCallback(() => {
@@ -814,23 +824,37 @@ export const WorkflowIDE = forwardRef<WorkflowIDERef, WorkflowIDEProps>(({
                 onClose={() => { setShowTemplateGallery(false); onboarding.takePendingIdentity(); }}
                 onSandboxRun={handleTemplateSandboxRun}
                 onSelectTemplate={(configuredDef) => {
-                    // 模板带来的步骤：每个顶层任务一条 step_added（source: template）
-                    for (let i = 0; i < (configuredDef.tasks?.length ?? 0); i++) track('step_added', { source: 'template' });
                     // 经自助接入向导选了模板：保留向导按规范生成的名称与说明
                     const identity = onboarding.takePendingIdentity();
-                    setWorkflow(
-                        identity
-                            ? {
-                                ...configuredDef,
-                                name: identity.name,
-                                description: identity.description || configuredDef.description,
-                                ...(identity.ownerEmail ? { ownerEmail: identity.ownerEmail } : {}),
-                            }
-                            : configuredDef,
-                        layoutDirection,
-                    );
+                    const next = identity
+                        ? {
+                            ...configuredDef,
+                            name: identity.name,
+                            description: identity.description || configuredDef.description,
+                            ...(identity.ownerEmail ? { ownerEmail: identity.ownerEmail } : {}),
+                        }
+                        : configuredDef;
+                    // R23：画布上已有流程时先确认（与「新建流程」的 R8 一致），替换后可以撤销
+                    const current = useWorkflowStore.getState().getEditingWorkflowDef();
+                    if ((current?.tasks?.length ?? 0) > 0) {
+                        setPendingTemplate({ def: next, replacing: current?.name || '未命名流程' });
+                        return;
+                    }
+                    applyTemplate(next);
                 }}
             />
+            {pendingTemplate && (
+                <ConfirmDialog
+                    message={`用模板创建的「${pendingTemplate.def.name}」会替换当前画布上的「${pendingTemplate.replacing}」。替换后可以用撤销（⌘Z / Ctrl+Z）找回。`}
+                    confirmLabel="替换当前流程"
+                    onConfirm={() => {
+                        const { def } = pendingTemplate;
+                        setPendingTemplate(null);
+                        applyTemplate(def);
+                    }}
+                    onCancel={() => setPendingTemplate(null)}
+                />
+            )}
 
             {/* 自助接入：向导 / 申请上线弹窗与空画布引导 */}
             <OnboardingOverlays c={onboarding} />

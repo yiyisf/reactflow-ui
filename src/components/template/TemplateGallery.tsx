@@ -9,6 +9,8 @@ import { TemplateSetupWizard } from './TemplateSetupWizard';
 import { executeLocalSandboxDryRunAsync } from '../../utils/localSandboxEngine';
 import { X } from 'lucide-react';
 import { CmIcon } from '../icons/CmIcon';
+import { getStatusMeta } from '../../utils/statusMeta';
+import { describeQuickRun, describeQuickRunError, type QuickRunNotice } from './quickRunNotice';
 
 export interface TemplateGalleryProps {
   isOpen: boolean;
@@ -35,7 +37,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   const [activeWizardTemplate, setActiveWizardTemplate] = useState<WorkflowTemplate | null>(null);
 
   // 快捷试跑提示弹窗
-  const [quickTestNotice, setQuickTestNotice] = useState<string | null>(null);
+  const [quickTestNotice, setQuickTestNotice] = useState<QuickRunNotice | null>(null);
 
   // R17: re-run the search when templates are registered (e.g. one just published from a run)
   // Hosts may pass an older store object without subscribe/getVersion: fall back to a static snapshot.
@@ -46,6 +48,11 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
     void storeVersion; // change signal for the mutable store
     return templateStore.search(searchQuery, selectedCategory);
   }, [templateStore, searchQuery, selectedCategory, storeVersion]);
+  // U2：「全部场景」显示实际模板数（含宿主注册与新发布的模板），不再写死
+  const totalCount = useMemo(() => {
+    void storeVersion;
+    return templateStore.search('', 'all').length;
+  }, [templateStore, storeVersion]);
 
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
@@ -60,12 +67,10 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
       });
 
       onSandboxRun?.(String(instance.status));
-      setQuickTestNotice(
-        `《${template.title}》在本地沙盒试跑通过！共执行 ${instance.tasks.length} 个任务节点，状态: ${instance.status}。点击「使用模板」即可完成填空并上屏编辑。`
-      );
-    } catch (err: any) {
+      setQuickTestNotice(describeQuickRun(template.title, instance));
+    } catch (err: unknown) {
       onSandboxRun?.('error');
-      setQuickTestNotice(`试跑出错: ${err.message}`);
+      setQuickTestNotice(describeQuickRunError(template.title, err));
     }
   };
 
@@ -159,7 +164,7 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           {/* 分类 Tabs */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[
-              { id: 'all', label: '全部场景 (8)' },
+              { id: 'all', label: `全部场景 (${totalCount})` },
               { id: 'compute', label: '交付与计算' },
               { id: 'security', label: '安全与容灾' },
               { id: 'ops', label: '运维与自愈' },
@@ -205,36 +210,48 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
         </div>
 
         {/* 快速试跑成功浮层 */}
-        {quickTestNotice && (
-          <div
-            style={{
-              margin: '12px 24px 0 24px',
-              padding: '10px 14px',
-              borderRadius: 8,
-              background: 'color-mix(in srgb, var(--cm-status-success) 12%, transparent)',
-              border: '1px solid color-mix(in srgb, var(--cm-status-success) 35%, transparent)',
-              color: 'var(--cm-status-success)',
-              fontSize: 12,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div><CmIcon name="sparkles" size={14} style={{ verticalAlign: -2, marginRight: 4 }} />{quickTestNotice}</div>
-            <button
-              onClick={() => setQuickTestNotice(null)}
+        {quickTestNotice && (() => {
+          // U1：图标 + 中文状态 + 对应颜色（规则 5），不再一律成功色
+          const meta = getStatusMeta(quickTestNotice.status);
+          const Icon = meta.icon;
+          return (
+            <div
+              role="status"
+              data-testid="template-quick-run-notice"
               style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--cm-status-success)',
-                cursor: 'pointer',
+                margin: '12px 24px 0 24px',
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: `color-mix(in srgb, ${meta.color} 12%, transparent)`,
+                border: `1px solid color-mix(in srgb, ${meta.color} 35%, transparent)`,
+                color: meta.color,
                 fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
               }}
             >
-              关闭
-            </button>
-          </div>
-        )}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <Icon size={14} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
+                <span>{quickTestNotice.text}</span>
+              </div>
+              <button
+                onClick={() => setQuickTestNotice(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: meta.color,
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  flexShrink: 0,
+                }}
+              >
+                关闭
+              </button>
+            </div>
+          );
+        })()}
 
         {/* 模板卡片网格列表 */}
         <div
